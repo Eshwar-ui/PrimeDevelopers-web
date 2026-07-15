@@ -1,0 +1,111 @@
+@import "tailwindcss";
+
+/* ─────────────────────────────────────────────────────────────
+   Architectural Editorial design system
+   Ink + warm bone + one disciplined steel-blue accent.
+   ───────────────────────────────────────────────────────────── */
+@theme {
+  --color-ink: #0e0e10; /* near-black — text & dark sections */
+  --color-bone: #f4f1ea; /* warm off-white — primary canvas */
+  --color-bone-deep: #ebe7dd; /* slightly deeper bone for panels */
+  --color-accent: #009bde; /* brand primary blue */
+  --color-accent-soft: #4fbde9; /* lighter tint for hovers/secondary */
+  --color-muted: #6b6660; /* secondary text on bone */
+  --color-line: rgba(14, 14, 16, 0.14); /* hairline on bone */
+  --color-line-inv: rgba(244, 241, 234, 0.16); /* hairline on ink */
+
+  --font-display: "Rubik", system-ui, sans-serif;
+  --font-body: "Arimo", system-ui, sans-serif;
+
+  /* Fluid type scale — restrained, premium (no oversized display) */
+  --text-eyebrow: 0.75rem;
+  --text-display: clamp(2.5rem, 6vw, 5rem);
+  --text-h2: clamp(1.6rem, 3vw, 2.5rem);
+  --text-stat: clamp(2rem, 3.4vw, 3rem);
+}
+
+html {
+  scroll-behavior: auto; /* Lenis owns scrolling */
+}
+
+body {
+  margin: 0;
+  background: var(--color-bone);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Editorial eyebrow label — 01 — ABOUT */
+.eyebrow {
+  font-family: var(--font-body);
+  font-size: var(--text-eyebrow);
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+/* Consistent focus ring for keyboard users */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* Projects card image swap — hero-style bottom-to-top slide.
+   New image rises in from below; previous one slides up and out the top. */
+@keyframes proj-slide-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes proj-slide-out {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-100%);
+  }
+}
+.proj-slide-in {
+  animation: proj-slide-in 0.8s cubic-bezier(0.76, 0, 0.24, 1) both;
+}
+.proj-slide-out {
+  animation: proj-slide-out 0.8s cubic-bezier(0.76, 0, 0.24, 1) both;
+}
+
+/* Slow zoom on the active hero carousel slide */
+@keyframes kenburns {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.08);
+  }
+}
+.hero-slide-active {
+  animation: kenburns 6s ease-out forwards;
+  /* Lift the legacy renders while the refreshed assets keep their natural exposure. */
+  filter: brightness(1.12) saturate(1.08) contrast(1.04);
+}
+
+/* Lenis */
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+/* Respect users who prefer less motion */
+@media (prefers-reduced-motion: reduce) {
+  .hero-slide-active {
+    animation: none;
+  }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+  }
+}

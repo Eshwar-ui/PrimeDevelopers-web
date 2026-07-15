@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Portrait placeholder">
+  <rect width="400" height="500" fill="#ebe7dd"/>
+  <g fill="#0e0e10" opacity="0.12">
+    <circle cx="200" cy="205" r="74"/>
+    <path d="M64 500 C64 372 126 306 200 306 C274 306 336 372 336 500 Z"/>
+  </g>
+  <circle cx="200" cy="205" r="74" fill="none" stroke="#009bde" stroke-width="2" opacity="0.25"/>
+</svg>

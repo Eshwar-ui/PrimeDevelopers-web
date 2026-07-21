@@ -10,6 +10,7 @@ import Projects from './components/Projects'
 import Gallery from './components/Gallery'
 import Testimonials from './components/Testimonials'
 import Footer from './components/Footer'
+import CinematicLayer from './components/CinematicLayer'
 import AboutPage from './pages/AboutPage'
 import ProjectsPage from './pages/ProjectsPage'
 import ProjectDetailPage from './pages/ProjectDetailPage'
@@ -46,6 +47,7 @@ function App() {
   return (
     <>
       <ScrollManager />
+      <CinematicLayer />
       <Navbar />
       <main>
         <Routes>

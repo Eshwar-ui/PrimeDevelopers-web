@@ -34,7 +34,6 @@ const ROTATE_MS = 6500
 export default function Testimonials() {
   const [index, setIndex] = useState(0)
 
-  // Auto-rotate; any manual selection resets the timer via the effect dep.
   useEffect(() => {
     const id = setInterval(() => setIndex((i) => (i + 1) % testimonials.length), ROTATE_MS)
     return () => clearInterval(id)
@@ -43,28 +42,24 @@ export default function Testimonials() {
   const active = testimonials[index]
 
   return (
-    <section
-      id="testimonials"
-      className="bg-ink px-6 py-24 text-bone md:px-[75px] md:py-32"
-    >
-      <SectionHeader title="Voices" tone="inv" className="mb-16" />
+    <section id="testimonials" className="bg-ink px-6 py-24 text-bone md:px-[75px] md:py-32">
+      <SectionHeader index="04" title="Voices" tone="inv" className="mb-16" />
 
       <motion.div
         initial={{ opacity: 0, y: 40 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, amount: 0.3 }}
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-        className="grid items-start gap-12 lg:grid-cols-[1.55fr_1fr] lg:gap-20"
+        className="grid items-start gap-12 lg:grid-cols-[1.6fr_1fr] lg:gap-20"
       >
         {/* Rotating featured quote */}
-        <div className="relative min-h-[320px] md:min-h-[360px]">
+        <div className="relative min-h-[340px] md:min-h-[380px]">
           <span
             aria-hidden
-            className="pointer-events-none absolute -top-10 -left-2 select-none font-display text-[8rem] leading-none text-accent-soft/30"
+            className="pointer-events-none absolute -top-16 -left-2 select-none font-display text-[11rem] leading-none text-ember/20"
           >
             &ldquo;
           </span>
-          {/* Keyed remount: new quote fades in when index changes. */}
           <motion.blockquote
             key={index}
             initial={{ opacity: 0, y: 20 }}
@@ -72,12 +67,12 @@ export default function Testimonials() {
             transition={{ duration: 0.55, ease: [0.76, 0, 0.24, 1] }}
             className="absolute inset-0"
           >
-            <p className="max-w-[42ch] font-display text-2xl font-medium leading-[1.32] tracking-[-0.01em] md:text-[34px]">
+            <p className="max-w-[24ch] font-display text-[1.9rem] font-light leading-[1.18] tracking-[-0.015em] md:text-[2.8rem]">
               {active.quote}
             </p>
-            <footer className="mt-8">
-              <p className="font-display text-lg font-bold">{active.name}</p>
-              <p className="eyebrow mt-1.5 text-accent-soft">{active.role}</p>
+            <footer className="mt-9">
+              <p className="font-display text-lg font-medium">{active.name}</p>
+              <p className="eyebrow mt-2 text-accent-soft">{active.role}</p>
             </footer>
           </motion.blockquote>
         </div>
@@ -93,11 +88,11 @@ export default function Testimonials() {
                   onClick={() => setIndex(i)}
                   className="group flex w-full items-center gap-4 py-5 text-left"
                 >
-                  <span className={`eyebrow ${isActive ? 'text-accent-soft' : 'text-bone/30'}`}>
+                  <span className={`numeral text-sm ${isActive ? 'text-ember' : 'text-bone/25'}`}>
                     0{i + 1}
                   </span>
                   <span
-                    className={`font-display text-lg font-bold transition-colors duration-300 ${
+                    className={`font-display text-lg font-medium transition-colors duration-300 ${
                       isActive ? 'text-bone' : 'text-bone/40 group-hover:text-bone/75'
                     }`}
                   >
@@ -106,7 +101,7 @@ export default function Testimonials() {
                   {isActive && (
                     <motion.span
                       layoutId="testi-active"
-                      className="ml-auto h-1.5 w-1.5 rounded-full bg-accent-soft"
+                      className="ml-auto h-1.5 w-1.5 rounded-full bg-ember"
                       transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                     />
                   )}

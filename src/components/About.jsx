@@ -20,7 +20,6 @@ export default function About() {
 
   useGSAP(
     () => {
-      // Reveal text blocks on scroll.
       gsap.from('[data-fade]', {
         y: 40,
         opacity: 0,
@@ -59,14 +58,13 @@ export default function About() {
           )
       })
 
-      // The P monogram pops in, then turns + drifts as the section scrolls
-      // through. Each effect owns a separate transform property so they compose.
+      // The P monogram fades in, then turns + drifts as the section passes.
       const wm = scope.current.querySelector('[data-watermark]')
       gsap.fromTo(
         wm,
         { autoAlpha: 0, scale: 0.85 },
         {
-          autoAlpha: 0.28,
+          autoAlpha: 0.06,
           scale: 1,
           duration: 1.4,
           ease: 'power3.out',
@@ -99,33 +97,36 @@ export default function About() {
     <section
       id="about"
       ref={scope}
-      className="relative overflow-hidden bg-bone px-6 py-20 md:px-[75px] md:py-24"
+      className="relative overflow-hidden bg-void px-6 py-24 text-bone md:px-[75px] md:py-32"
     >
-      {/* Large P monogram — floats upper-right, out of flow so it doesn't
-          stretch the section height. */}
+      {/* Large P monogram — inverted to read on the dark ground. */}
       <img
         src={watermark}
         alt=""
         data-watermark
-        className="pointer-events-none absolute -top-4 right-0 z-0 hidden w-[44%] max-w-none opacity-0 lg:block"
+        className="pointer-events-none absolute -top-4 right-0 z-0 hidden w-[44%] max-w-none opacity-0 invert lg:block"
       />
 
-      <SectionHeader title="Ethos" className="relative z-10 mb-10" />
+      <SectionHeader index="01" title="Ethos" className="relative z-10 mb-12" />
 
       {/* Narrative */}
-      <div className="relative z-10 flex max-w-[560px] flex-col gap-8">
-        <p
+      <div className="relative z-10 flex max-w-[720px] flex-col gap-9">
+        <h3
           data-fade
-          className="font-display text-2xl font-medium leading-[1.25] tracking-[-0.01em] text-ink md:text-[30px]"
+          className="font-display text-[2rem] font-light leading-[1.08] tracking-[-0.015em] text-bone md:text-h2"
         >
-          Experienced professionals crafting iconic properties across the Texan landscape.
-        </p>
+          Experienced professionals turning raw land into{' '}
+          <span className="italic text-accent-soft">finished Texas developments</span>.
+        </h3>
 
-        <div data-fade className="flex max-w-[520px] flex-col gap-6 font-body text-base leading-relaxed text-muted">
+        <div
+          data-fade
+          className="flex max-w-[540px] flex-col gap-6 font-body text-base leading-relaxed text-bone/60"
+        >
           <p>
-            Since 2017, Prime Developer has grown into one of Texas&apos;s most active real estate
-            developers — owning and operating iconic commercial and residential properties in a
-            dynamic, fast-moving market.
+            Since 2017, Prime Developers has grown into one of Texas&apos;s most active
+            developers — owning and operating retail, flex, and residential properties across
+            Dallas–Fort Worth and Austin.
           </p>
           <p>
             Our team pairs a proven track record in large-scale, complex development with a
@@ -137,7 +138,7 @@ export default function About() {
         <div data-fade className="w-fit">
           <PillButton
             href="/about"
-            variant="ink"
+            variant="bone"
             onClick={(e) => {
               e.preventDefault()
               go('/about')
@@ -148,20 +149,20 @@ export default function About() {
         </div>
       </div>
 
-      {/* Stats band — hairline-divided */}
+      {/* Stats band — hairline-divided on dark, ember numerals */}
       <div
         data-stats
-        className="relative z-10 mt-16 grid grid-cols-2 gap-px border-y border-[var(--color-line)] bg-[var(--color-line)] md:grid-cols-4"
+        className="relative z-10 mt-20 grid grid-cols-2 gap-px border-y border-[var(--color-line-inv)] bg-[var(--color-line-inv)] md:grid-cols-4"
       >
         {stats.map((s) => (
-          <div key={s.label} className="flex flex-col gap-3 bg-bone px-1 py-9 md:px-8">
+          <div key={s.label} className="flex flex-col gap-3 bg-void px-1 py-9 md:px-8">
             <span
               data-count={s.value}
-              className="font-display font-light leading-none text-ink text-[var(--text-stat)]"
+              className="numeral text-ember text-stat"
             >
               0+
             </span>
-            <span className="eyebrow text-accent">{s.label}</span>
+            <span className="eyebrow text-bone/45">{s.label}</span>
           </div>
         ))}
       </div>

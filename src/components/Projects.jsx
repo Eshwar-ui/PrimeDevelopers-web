@@ -77,50 +77,61 @@ export default function Projects() {
     <section
       id="projects"
       ref={scope}
-      className="bg-bone px-6 py-24 md:px-[134px] md:py-32"
+      className="bg-carbon px-6 py-24 text-bone md:px-[134px] md:py-32"
     >
-      <SectionHeader title="Work" className="mb-16" />
+      <div className="mb-14 flex flex-col gap-8">
+        <SectionHeader index="02" title="Work" />
+        <h3 className="max-w-[16ch] font-display text-[2.2rem] font-light leading-[1.02] tracking-[-0.02em] md:text-h2">
+          Developments that <span className="italic text-accent-soft">hold the line.</span>
+        </h3>
+      </div>
+
       <div className="flex flex-col items-center gap-16 lg:flex-row lg:gap-24">
         {/* Stacked property cards */}
         <div data-card className="relative shrink-0">
           <div
             data-depth-back
-            className="absolute -left-14 top-9 hidden h-[560px] w-[480px] overflow-hidden rounded-[20px] border border-[var(--color-line)] opacity-40 md:block"
+            className="absolute -left-14 top-9 hidden h-[560px] w-[480px] overflow-hidden rounded-[20px] border border-[var(--color-line-inv)] opacity-30 md:block"
           >
-            <img src={img0} alt="" className="h-full w-full object-cover saturate-[1.08] contrast-[1.04]" />
+            <img src={img0} alt="" className="h-full w-full object-cover" />
           </div>
           <div
             data-depth-front
-            className="relative h-[520px] w-[86vw] max-w-[420px] overflow-hidden rounded-[24px] border border-ink/10 shadow-[0_40px_80px_-30px_rgba(14,14,16,0.45)] md:h-[560px] md:w-[540px] md:max-w-none"
+            className="relative h-[520px] w-[86vw] max-w-[420px] overflow-hidden rounded-[24px] border border-bone/10 shadow-[0_50px_100px_-40px_rgba(0,0,0,0.9)] md:h-[560px] md:w-[540px] md:max-w-none"
           >
-            {/* Sliding project image — keyed layers replay a CSS slide on change:
-                previous slides up and out, new rises in from below. */}
             <img
               key={`back-${active}`}
               src={previous.image}
               alt=""
-              className="proj-slide-out absolute inset-0 z-10 h-full w-full object-cover saturate-[1.08] contrast-[1.04]"
+              className="proj-slide-out absolute inset-0 z-10 h-full w-full object-cover"
             />
             <img
               key={`front-${active}`}
               src={current.image}
               alt={current.name}
-              className="proj-slide-in absolute inset-0 z-20 h-full w-full object-cover saturate-[1.08] contrast-[1.04]"
+              className="proj-slide-in absolute inset-0 z-20 h-full w-full object-cover"
             />
 
-            {/* Stats stay legible without darkening the image. */}
-            <div className="absolute inset-x-8 bottom-8 z-30 border-t border-bone/50 pt-5">
+            {/* gradient scrim so stats stay legible */}
+            <div
+              aria-hidden
+              className="absolute inset-x-0 bottom-0 z-20 h-1/2"
+              style={{ background: 'linear-gradient(180deg, transparent, rgba(26,26,26,0.85))' }}
+            />
+
+            <div className="absolute inset-x-8 bottom-8 z-30 border-t border-bone/25 pt-5">
+              <p className="mb-4 font-display text-xl font-medium text-bone">{current.name}</p>
               <div className="flex items-end justify-between text-bone">
                 {[
-                  ['Total Buildings', current.buildings],
+                  ['Buildings', current.buildings],
                   ['Units Sold', current.units],
                   ['Available', current.available],
                 ].map(([label, n]) => (
                   <div key={label} className="flex flex-col items-start gap-1.5">
-                    <span className="font-display text-[2rem] font-light leading-none">
+                    <span className="numeral text-[2rem] text-ember">
                       {String(n).padStart(2, '0')}
                     </span>
-                    <span className="eyebrow text-bone/60">{label}</span>
+                    <span className="eyebrow text-bone/50">{label}</span>
                   </div>
                 ))}
               </div>
@@ -138,20 +149,20 @@ export default function Projects() {
                   key={p.name}
                   data-row
                   onMouseEnter={() => select(i)}
-                  className={`group flex cursor-pointer items-center gap-3 border-b py-3 transition-colors duration-300 ${
-                    isActive ? 'border-ink' : 'border-[var(--color-line)]'
+                  className={`group flex cursor-pointer items-center gap-3 border-b py-4 transition-colors duration-300 ${
+                    isActive ? 'border-bone/50' : 'border-[var(--color-line-inv)]'
                   }`}
                 >
-                  <span className="eyebrow w-8 shrink-0 text-accent">0{i + 1}</span>
+                  <span className="numeral w-8 shrink-0 text-sm text-ember">0{i + 1}</span>
                   <span
-                    className={`flex-1 font-display text-xl font-light uppercase leading-tight tracking-[0.03em] transition-colors duration-300 md:text-[26px] ${
-                      isActive ? 'text-ink' : 'text-ink/25'
+                    className={`flex-1 font-display text-2xl font-light leading-tight tracking-[-0.01em] transition-colors duration-300 md:text-[28px] ${
+                      isActive ? 'text-bone' : 'text-bone/25'
                     }`}
                   >
                     {p.name}
                   </span>
                   <ArrowRight
-                    className={`size-8 shrink-0 text-ink transition-all duration-300 ${
+                    className={`size-7 shrink-0 text-accent-soft transition-all duration-300 ${
                       isActive ? 'translate-x-0 opacity-100' : '-translate-x-2 opacity-0'
                     }`}
                   />
@@ -166,7 +177,7 @@ export default function Projects() {
               e.preventDefault()
               go('/projects')
             }}
-            className="group mt-10 inline-flex items-center gap-2.5 font-body text-sm font-bold uppercase tracking-[0.18em] text-ink transition-colors hover:text-accent"
+            className="group mt-10 inline-flex items-center gap-2.5 font-body text-sm font-bold uppercase tracking-[0.18em] text-bone transition-colors hover:text-accent-soft"
           >
             More Projects
             <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-1.5" />

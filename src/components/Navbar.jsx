@@ -14,14 +14,12 @@ const sections = ['about', 'projects']
 
 export default function Navbar() {
   const [active, setActive] = useState(null)
-  const [onDark, setOnDark] = useState(true)
+  const [onLight, setOnLight] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const inBand = useRef(new Set())
   const navigate = useNavigate()
   const { pathname } = useLocation()
 
-  // Route to a page, or smooth-scroll to a home-page section (navigating home
-  // first when we're on another route).
   const handleNav = (e, link) => {
     e.preventDefault()
     setMenuOpen(false)
@@ -48,6 +46,7 @@ export default function Navbar() {
   const isActive = (link) =>
     link.to ? pathname === link.to : pathname === '/' && active === link.section
 
+  // Active home-section highlight.
   useEffect(() => {
     inBand.current.clear()
     setActive(null)
@@ -68,44 +67,43 @@ export default function Navbar() {
     return () => observer.disconnect()
   }, [pathname])
 
+  // The site is dark by default; only the minority light "intermission" bands
+  // (tagged data-band="light") flip the chrome to ink. A thin band through the
+  // nav is observed — reliable under Lenis, unlike scroll events.
   useEffect(() => {
-    // Light chrome whenever the nav overlays a dark section (hero, testimonials,
-    // footer); dark chrome over the light bone sections. Uses an Intersection
-    // Observer with a thin band through the nav — reliable under Lenis, unlike
-    // scroll events.
-    const els = ['hero', 'about-hero', 'projects-hero', 'contact-hero', 'testimonials', 'contact']
-      .map((id) => document.getElementById(id))
-      .filter(Boolean)
-    const inBand = new Set()
     let observer
-
     const build = () => {
       if (observer) observer.disconnect()
+      const els = Array.from(document.querySelectorAll('[data-band="light"]'))
+      const seen = new Set()
       observer = new IntersectionObserver(
         (entries) => {
           entries.forEach((e) => {
-            if (e.isIntersecting) inBand.add(e.target)
-            else inBand.delete(e.target)
+            if (e.isIntersecting) seen.add(e.target)
+            else seen.delete(e.target)
           })
-          setOnDark(inBand.size > 0)
+          setOnLight(seen.size > 0)
         },
         { rootMargin: `-40px 0px -${window.innerHeight - 56}px 0px` }
       )
       els.forEach((el) => observer.observe(el))
     }
-
-    build()
+    // Defer one frame so freshly-routed pages have laid out their bands.
+    const id = requestAnimationFrame(build)
     window.addEventListener('resize', build)
     return () => {
+      cancelAnimationFrame(id)
       if (observer) observer.disconnect()
       window.removeEventListener('resize', build)
     }
   }, [pathname])
 
-  // Over the hero photo → light chrome; over bone sections → ink chrome.
-  const light = onDark && !menuOpen
-  const chrome = light ? 'border-bone/70 bg-bone/10' : 'border-ink/15 bg-ink/[0.04]'
-  const logoTone = light ? '' : 'opacity-90 brightness-0'
+  // Over dark → light chrome; over a light band → ink chrome.
+  const light = !onLight && !menuOpen
+  const chrome = light
+    ? 'border-bone/15 bg-void/30 text-bone'
+    : 'border-ink/15 bg-bone/40 text-ink'
+  const logoTone = light ? '' : 'brightness-0 opacity-90'
 
   return (
     <>
@@ -118,32 +116,32 @@ export default function Navbar() {
         <a
           href="/"
           onClick={goHome}
-          className={`flex h-[46px] items-center justify-center rounded-full border px-5 backdrop-blur-md transition-colors duration-300 ${chrome}`}
+          className={`flex h-[46px] items-center justify-center rounded-full border px-5 backdrop-blur-xl transition-colors duration-500 ${chrome}`}
         >
           <img
             src={logo}
             alt="Prime Developers"
-            className={`h-5 w-auto transition-[filter,opacity] duration-300 md:h-6 ${logoTone}`}
+            className={`h-5 w-auto transition-[filter,opacity] duration-500 md:h-6 ${logoTone}`}
           />
         </a>
 
         {/* Desktop links */}
         <nav
-          className={`hidden rounded-full border p-2 backdrop-blur-md transition-colors duration-300 md:block ${chrome}`}
+          className={`hidden rounded-full border p-2 backdrop-blur-xl transition-colors duration-500 md:block ${chrome}`}
         >
           <ul className="flex items-center gap-1 px-1">
             {links.map((link) => {
               const activeLink = isActive(link)
               const inactive = light
-                ? 'text-bone/90 hover:text-bone'
-                : 'text-ink/70 hover:text-ink'
+                ? 'text-bone/60 hover:text-bone'
+                : 'text-ink/55 hover:text-ink'
               return (
                 <li key={link.label}>
                   <a
                     href={link.to ?? `/#${link.section}`}
                     onClick={(e) => handleNav(e, link)}
-                    className={`group relative block rounded-full px-4 py-1 font-display text-[17px] font-medium transition-colors duration-300 ${
-                      activeLink ? 'text-bone' : inactive
+                    className={`group relative block rounded-full px-4 py-1.5 font-body text-[13px] font-bold uppercase tracking-[0.14em] transition-colors duration-300 ${
+                      activeLink ? 'text-void' : inactive
                     }`}
                   >
                     {activeLink && (
@@ -167,7 +165,7 @@ export default function Navbar() {
           onClick={() => setMenuOpen((o) => !o)}
           aria-label={menuOpen ? 'Close menu' : 'Open menu'}
           aria-expanded={menuOpen}
-          className={`flex size-[46px] items-center justify-center rounded-full border backdrop-blur-md transition-colors duration-300 md:hidden ${chrome}`}
+          className={`flex size-[46px] items-center justify-center rounded-full border backdrop-blur-xl transition-colors duration-500 md:hidden ${chrome}`}
         >
           <div className="relative h-3 w-5">
             <span
@@ -192,7 +190,7 @@ export default function Navbar() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-40 flex flex-col justify-center gap-2 bg-ink px-8 md:hidden"
+            className="fixed inset-0 z-40 flex flex-col justify-center gap-3 bg-void px-8 md:hidden"
           >
             {links.map((link, i) => (
               <motion.a
@@ -202,9 +200,9 @@ export default function Navbar() {
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 + i * 0.08, ease: 'easeOut' }}
-                className="font-display text-4xl font-light uppercase tracking-[0.02em] text-bone"
+                className="font-display text-5xl font-light tracking-[-0.02em] text-bone"
               >
-                <span className="eyebrow mr-3 align-middle text-accent-soft">
+                <span className="numeral mr-4 align-middle text-base text-accent-soft">
                   0{i + 1}
                 </span>
                 {link.label}

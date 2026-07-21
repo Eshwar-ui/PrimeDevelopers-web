@@ -80,26 +80,38 @@ export default function Footer() {
     <footer
       id="contact"
       ref={scope}
-      className="relative overflow-hidden border-t border-[var(--color-line-inv)] bg-ink px-6 pb-8 pt-24 text-bone md:px-[75px] md:pt-32"
+      className="relative overflow-hidden border-t border-[var(--color-line-inv)] bg-void px-6 pb-8 pt-24 text-bone md:px-[75px] md:pt-32"
     >
+      {/* ember dusk glow, bottom-right */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(50% 45% at 100% 100%, rgba(252,164,46,0.14) 0%, rgba(252,164,46,0) 100%)',
+        }}
+      />
+
       {/* Big statement + magnetic CTA */}
-      <div className="grid items-end gap-12 lg:grid-cols-[1fr_auto]">
+      <div className="relative grid items-end gap-12 lg:grid-cols-[1fr_auto]">
         <h2
           data-foot
-          className="font-display font-light uppercase leading-[1.05] tracking-[0.02em]"
-          style={{ fontSize: 'clamp(2rem, 4.4vw, 3.5rem)' }}
+          className="font-display font-light leading-[0.98] tracking-[-0.02em]"
+          style={{ fontSize: 'clamp(2.5rem, 6vw, 5.5rem)' }}
         >
           Let&apos;s build
           <br />
-          something lasting
+          something <span className="italic text-accent-soft">lasting.</span>
         </h2>
 
         <div data-foot className="self-center">
           <MagneticButton
             href="mailto:hello@primedevelopers.com"
-            className="group flex size-40 shrink-0 flex-col items-center justify-center gap-2 rounded-full bg-accent text-center text-bone md:size-48"
+            className="group relative flex size-40 shrink-0 flex-col items-center justify-center gap-2 rounded-full bg-accent text-center text-void md:size-48"
           >
-            <span className="font-display text-lg font-bold">Start a project</span>
+            <span className="font-body text-sm font-bold uppercase tracking-[0.1em]">
+              Start a project
+            </span>
             <ArrowRight className="size-6 -rotate-45 transition-transform duration-300 group-hover:rotate-0" />
           </MagneticButton>
         </div>
@@ -108,21 +120,17 @@ export default function Footer() {
       {/* Contact details — hairline-divided */}
       <div
         data-foot
-        className="mt-24 grid gap-px overflow-hidden rounded-2xl border border-[var(--color-line-inv)] bg-[var(--color-line-inv)] md:grid-cols-3"
+        className="relative mt-24 grid gap-px overflow-hidden rounded-2xl border border-[var(--color-line-inv)] bg-[var(--color-line-inv)] md:grid-cols-3"
       >
         {details.map((d) => {
           const inner = (
-            <div className="flex h-full flex-col gap-2.5 bg-ink p-8">
-              <span className="font-body text-[13px] font-bold uppercase tracking-[0.22em] text-bone/40">
-                {d.label}
-              </span>
-              <span className="font-display text-xl font-medium tracking-[-0.01em]">
-                {d.value}
-              </span>
+            <div className="flex h-full flex-col gap-2.5 bg-void p-8">
+              <span className="eyebrow text-bone/40">{d.label}</span>
+              <span className="font-display text-xl font-medium tracking-[-0.01em]">{d.value}</span>
             </div>
           )
           return d.href ? (
-            <a key={d.label} href={d.href} className="[&>div]:transition-colors [&>div]:hover:bg-[#17171a]">
+            <a key={d.label} href={d.href} className="[&>div]:transition-colors [&>div]:hover:bg-carbon">
               {inner}
             </a>
           ) : (
@@ -134,20 +142,18 @@ export default function Footer() {
       {/* Three aligned link columns */}
       <div
         data-foot
-        className="mt-20 grid grid-cols-1 gap-12 border-t border-[var(--color-line-inv)] pt-16 md:grid-cols-3"
+        className="relative mt-20 grid grid-cols-1 gap-12 border-t border-[var(--color-line-inv)] pt-16 md:grid-cols-3"
       >
         {columns.map((col) => (
           <div key={col.title} className={`flex flex-col items-start gap-7 ${alignCls[col.align]}`}>
-            <h3 className="font-body text-[13px] font-bold uppercase tracking-[0.22em] text-bone/45">
-              {col.title}
-            </h3>
+            <h3 className="eyebrow text-bone/45">{col.title}</h3>
             <ul className="flex flex-col gap-4">
               {col.links.map((l) => (
                 <li key={l.label}>
                   <a
                     href={l.href}
                     onClick={(e) => handleNav(e, l.href)}
-                    className="font-display text-[19px] font-medium tracking-[-0.01em] text-bone/70 transition-colors duration-300 hover:text-bone"
+                    className="font-display text-[19px] font-medium tracking-[-0.01em] text-bone/65 transition-colors duration-300 hover:text-bone"
                   >
                     {l.label}
                   </a>
@@ -158,16 +164,17 @@ export default function Footer() {
         ))}
       </div>
 
-      {/* Oversized wordmark */}
+      {/* Oversized wordmark — flattened to a white silhouette to read on the dark ground.
+          (Plain `invert` would hue-shift the CG Blue fill to its complement — orange.) */}
       <img
         src={logo}
         alt=""
         aria-hidden
-        className="pointer-events-none mx-auto mt-24 w-full max-w-none select-none opacity-[0.14]"
+        className="pointer-events-none relative mx-auto mt-24 w-full max-w-none select-none opacity-[0.12] brightness-0 invert"
       />
 
       {/* Copyright bar */}
-      <div className="mt-12 flex flex-col gap-2 text-bone/50 md:flex-row md:justify-between">
+      <div className="relative mt-12 flex flex-col gap-2 text-bone/45 md:flex-row md:justify-between">
         <p className="eyebrow">© 2026 Prime Developers</p>
         <p className="eyebrow">Austin · Texas</p>
       </div>

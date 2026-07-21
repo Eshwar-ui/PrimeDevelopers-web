@@ -10,7 +10,6 @@ import heroImg from '../assets/hero/slide-2-enhanced.png'
 import closingImg from '../assets/hero/slide-4-enhanced.png'
 import watermark from '../assets/watermark-p.svg'
 
-// Reused from the home About section so the two stay in sync.
 const stats = [
   { value: 9, label: 'Years in Texas' },
   { value: 10, label: 'Iconic Properties' },
@@ -46,7 +45,6 @@ export default function AboutPage() {
 
   useGSAP(
     () => {
-      // Hero copy rises in on load.
       gsap.from('[data-hero] > *', {
         y: 44,
         opacity: 0,
@@ -61,7 +59,6 @@ export default function AboutPage() {
         ease: 'power3.out',
       })
 
-      // Generic scroll-reveal for tagged blocks.
       gsap.utils.toArray('[data-reveal]').forEach((el) => {
         gsap.from(el, {
           y: 40,
@@ -72,7 +69,6 @@ export default function AboutPage() {
         })
       })
 
-      // Stats spring in and count up from 0.
       gsap.utils.toArray('[data-count]').forEach((el, i) => {
         const end = Number(el.dataset.count)
         const obj = { v: 0 }
@@ -109,76 +105,74 @@ export default function AboutPage() {
       {/* ── Hero ─────────────────────────────────────────────── */}
       <section
         id="about-hero"
-        className="relative overflow-hidden bg-ink px-6 pb-20 pt-32 text-bone md:px-[75px] md:pb-28 md:pt-44"
+        className="relative overflow-hidden bg-void px-6 pb-20 pt-36 text-bone md:px-[75px] md:pb-28 md:pt-48"
       >
-        {/* accent glow, bottom-left — echoes the home hero */}
         <div
           aria-hidden
           className="absolute inset-0"
           style={{
             background:
-              'radial-gradient(55% 55% at 0% 100%, rgba(0,155,222,0.45) 0%, rgba(0,155,222,0) 100%)',
+              'radial-gradient(55% 55% at 0% 100%, rgba(252,164,46,0.16) 0%, rgba(252,164,46,0) 100%)',
           }}
         />
 
         <div className="relative grid items-end gap-12 lg:grid-cols-[1.15fr_1fr] lg:gap-16">
           <div data-hero>
-            <span className="eyebrow mb-6 block text-bone/70">
-              About Prime Developers <span className="text-accent-soft">—</span> Est. 2017
+            <span className="eyebrow mb-6 flex items-center gap-4 text-bone/70">
+              <span className="h-px w-10 bg-accent-soft" />
+              About — Est. 2017
             </span>
-            <h1
-              className="font-display font-light uppercase leading-[1.05] tracking-[0.02em]"
-              style={{ fontSize: 'clamp(2rem, 4.4vw, 3.5rem)' }}
-            >
+            <h1 className="font-display text-display font-light leading-[0.98] tracking-[-0.02em]">
               Innovating spaces,
               <br />
-              building <span className="text-accent-soft">dreams.</span>
+              building <span className="italic text-accent-soft">dreams.</span>
             </h1>
-            <p className="mt-8 max-w-[46ch] font-body text-lg leading-relaxed text-bone/75">
+            <p className="mt-8 max-w-[46ch] font-body text-lg leading-relaxed text-bone/65">
               A rapidly expanding real estate developer owning and operating iconic commercial and
               residential properties across the vibrant Texas market.
             </p>
           </div>
 
-          {/* Framed portrait image */}
           <div
             data-hero-img
-            className="relative h-[340px] overflow-hidden rounded-3xl border border-[var(--color-line-inv)] md:h-[460px]"
+            className="relative h-[340px] overflow-hidden rounded-3xl border border-[var(--color-line-inv)] md:h-[480px]"
           >
-            <img
-              src={heroImg}
-              alt="A Prime Developers property"
-              className="h-full w-full object-cover"
+            <img src={heroImg} alt="A Prime Developers property" className="h-full w-full object-cover" />
+            <div
+              aria-hidden
+              className="absolute inset-0"
+              style={{ background: 'linear-gradient(180deg, transparent 60%, rgba(26,26,26,0.5))' }}
             />
           </div>
         </div>
       </section>
 
       {/* ── The Firm — narrative + stats ─────────────────────── */}
-      <section className="relative overflow-hidden bg-bone px-6 py-24 md:px-[75px] md:py-32">
+      <section className="relative overflow-hidden bg-void px-6 py-24 text-bone md:px-[75px] md:py-32">
         <img
           src={watermark}
           alt=""
           aria-hidden
-          className="pointer-events-none absolute -top-10 right-0 z-0 hidden w-[38%] max-w-none opacity-[0.05] lg:block"
+          className="pointer-events-none absolute -top-10 right-0 z-0 hidden w-[38%] max-w-none opacity-[0.05] invert lg:block"
         />
 
-        <SectionHeader title="The Firm" className="relative z-10 mb-14" />
+        <SectionHeader index="01" title="The Firm" className="relative z-10 mb-14" />
 
         <div className="relative z-10 grid gap-12 lg:grid-cols-[1.2fr_1fr] lg:gap-20">
-          <p
+          <h3
             data-reveal
-            className="max-w-[20ch] font-display text-2xl font-medium leading-[1.2] tracking-[-0.01em] text-ink md:text-[32px]"
+            className="max-w-[14ch] font-display text-h2 font-light leading-[1.04] tracking-[-0.02em] text-bone"
           >
-            Experienced professionals crafting iconic properties.
-          </p>
+            Experienced professionals crafting{' '}
+            <span className="italic text-accent-soft">iconic properties.</span>
+          </h3>
 
           <div
             data-reveal
-            className="flex max-w-[52ch] flex-col gap-6 font-body text-base leading-relaxed text-muted"
+            className="flex max-w-[52ch] flex-col gap-6 font-body text-base leading-relaxed text-bone/60"
           >
             <p>
-              Prime Developer, a rapidly expanding real estate developer, has been offering services
+              Prime Developers, a rapidly expanding real estate developer, has been offering services
               since 2017. Specializing in iconic commercial and residential properties, we own and
               operate in the vibrant Texas market.
             </p>
@@ -190,7 +184,7 @@ export default function AboutPage() {
             <div className="mt-2 w-fit">
               <PillButton
                 href="/#projects"
-                variant="ink"
+                variant="bone"
                 onClick={(e) => {
                   e.preventDefault()
                   go('#projects')
@@ -202,20 +196,17 @@ export default function AboutPage() {
           </div>
         </div>
 
-        {/* Stats band — hairline-divided, counts up on scroll */}
+        {/* Stats band */}
         <div
           data-stats
-          className="relative z-10 mt-20 grid grid-cols-2 gap-px border-y border-[var(--color-line)] bg-[var(--color-line)] md:grid-cols-4"
+          className="relative z-10 mt-20 grid grid-cols-2 gap-px border-y border-[var(--color-line-inv)] bg-[var(--color-line-inv)] md:grid-cols-4"
         >
           {stats.map((s) => (
-            <div key={s.label} className="flex flex-col gap-3 bg-bone px-1 py-9 md:px-8">
-              <span
-                data-count={s.value}
-                className="font-display font-light leading-none text-ink text-[var(--text-stat)]"
-              >
+            <div key={s.label} className="flex flex-col gap-3 bg-void px-1 py-9 md:px-8">
+              <span data-count={s.value} className="numeral text-ember text-stat">
                 0+
               </span>
-              <span className="eyebrow text-accent">{s.label}</span>
+              <span className="eyebrow text-bone/45">{s.label}</span>
             </div>
           ))}
         </div>
@@ -223,22 +214,22 @@ export default function AboutPage() {
 
       {/* ── Principles — Mission / Leadership / Vision ───────── */}
       <section className="bg-ink px-6 py-24 text-bone md:px-[75px] md:py-32">
-        <SectionHeader title="Principles" tone="inv" className="mb-16" />
+        <SectionHeader index="02" title="Principles" tone="inv" className="mb-16" />
 
         <div className="border-t border-[var(--color-line-inv)]">
           {principles.map((p, i) => (
             <div
               key={p.title}
               data-reveal
-              className="grid gap-6 border-b border-[var(--color-line-inv)] py-12 md:grid-cols-[auto_1fr] md:gap-16 md:py-14"
+              className="grid gap-6 border-b border-[var(--color-line-inv)] py-12 md:grid-cols-[auto_1fr] md:gap-16 md:py-16"
             >
-              <div className="flex items-baseline gap-5 md:w-[16rem]">
-                <span className="eyebrow text-accent-soft">0{i + 1}</span>
-                <h3 className="font-display text-xl font-medium tracking-[-0.01em] md:text-2xl">
+              <div className="flex items-baseline gap-5 md:w-[18rem]">
+                <span className="numeral text-sm text-ember">0{i + 1}</span>
+                <h3 className="font-display text-3xl font-medium tracking-[-0.01em] md:text-4xl">
                   {p.title}
                 </h3>
               </div>
-              <p className="max-w-[64ch] font-body text-base leading-relaxed text-bone/70 md:text-lg">
+              <p className="max-w-[64ch] font-body text-base leading-relaxed text-bone/60 md:text-lg">
                 {p.body}
               </p>
             </div>
@@ -246,9 +237,9 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* ── Founders ─────────────────────────────────────────── */}
-      <section className="bg-bone px-6 py-24 md:px-[75px] md:py-32">
-        <SectionHeader title="Founders" className="mb-16" />
+      {/* ── Founders — light intermission ────────────────────── */}
+      <section data-band="light" className="bg-bone px-6 py-24 text-ink md:px-[75px] md:py-32">
+        <SectionHeader index="03" title="Founders" tone="ink" className="mb-16" />
 
         <div className="grid gap-px overflow-hidden rounded-3xl border border-[var(--color-line)] bg-[var(--color-line)] md:grid-cols-2">
           {founders.map((f) => (
@@ -257,11 +248,10 @@ export default function AboutPage() {
               data-reveal
               className="group flex flex-col bg-bone transition-colors duration-300 hover:bg-bone-deep"
             >
-              {/* Portrait — monogram shows through if the photo is missing */}
-              <div className="relative h-[360px] overflow-hidden bg-bone-deep md:h-[460px]">
+              <div className="relative h-[360px] overflow-hidden bg-bone-deep md:h-[480px]">
                 <span
                   aria-hidden
-                  className="absolute inset-0 flex items-center justify-center font-display text-[5rem] font-light leading-none text-ink/10 md:text-[7rem]"
+                  className="absolute inset-0 flex items-center justify-center font-display text-[6rem] font-light leading-none text-ink/10 md:text-[8rem]"
                 >
                   {f.name.charAt(0)}
                 </span>
@@ -269,7 +259,6 @@ export default function AboutPage() {
                   src={f.image}
                   alt={f.name}
                   onError={(e) => {
-                    // Real photo missing → show the portrait placeholder instead.
                     if (!e.currentTarget.dataset.fallback) {
                       e.currentTarget.dataset.fallback = '1'
                       e.currentTarget.src = '/founders/placeholder-portrait.svg'
@@ -280,19 +269,16 @@ export default function AboutPage() {
               </div>
 
               <div className="p-8 md:p-10">
-                <h3 className="font-display text-xl font-medium tracking-[-0.01em] text-ink md:text-2xl">
+                <h3 className="font-display text-2xl font-medium tracking-[-0.01em] text-ink md:text-3xl">
                   {f.name}
                 </h3>
-                <p className="eyebrow mt-2 text-accent">{f.role}</p>
+                <p className="eyebrow mt-2.5 text-accent">{f.role}</p>
               </div>
             </div>
           ))}
         </div>
 
-        <p
-          data-reveal
-          className="mt-14 max-w-[62ch] font-body text-base leading-relaxed text-muted"
-        >
+        <p data-reveal className="mt-14 max-w-[62ch] font-body text-base leading-relaxed text-muted">
           Our exceptional leaders are committed to a guaranteed, intuitive, and proven approach to
           financing, hands-on value creation, and ethical practices that positively impact our
           society.
@@ -300,23 +286,20 @@ export default function AboutPage() {
       </section>
 
       {/* ── Closing image band ───────────────────────────────── */}
-      <section className="relative h-[60vh] min-h-[420px] overflow-hidden bg-ink">
+      <section className="relative h-[64vh] min-h-[440px] overflow-hidden bg-void">
         <Parallax speed={0.3} className="absolute inset-0 -top-[15%] h-[130%]">
-          <img
-            src={closingImg}
-            alt="Prime Developers landmark"
-            className="h-full w-full object-cover saturate-[1.06] contrast-[1.03]"
-          />
+          <img src={closingImg} alt="Prime Developers landmark" className="h-full w-full object-cover" />
         </Parallax>
+        <div
+          aria-hidden
+          className="absolute inset-0"
+          style={{ background: 'linear-gradient(180deg, rgba(26,26,26,0.5), rgba(26,26,26,0.85))' }}
+        />
         <div className="relative flex h-full items-center px-6 md:px-[75px]">
-          <h2
-            data-reveal
-            className="font-display font-light uppercase leading-[1.1] tracking-[0.02em] text-bone"
-            style={{ fontSize: 'clamp(1.75rem, 3.6vw, 2.75rem)' }}
-          >
+          <h2 className="font-display text-h2 font-light leading-[1.02] tracking-[-0.02em] text-bone">
             Building the
             <br />
-            landmarks of Texas.
+            <span className="italic text-accent-soft">landmarks</span> of Texas.
           </h2>
         </div>
       </section>

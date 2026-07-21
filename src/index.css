@@ -1,49 +1,93 @@
 @import "tailwindcss";
 
 /* ─────────────────────────────────────────────────────────────
-   Architectural Editorial design system
-   Ink + warm bone + one disciplined steel-blue accent.
+   PRIME DEVELOPER — brand design system (per brand guidelines)
+   Dark-charcoal grounds + white/bright-gray surfaces.
+   CG Blue for interaction, deep saffron for stats/energy.
+   Rubik (primary display) against Arimo (secondary body).
    ───────────────────────────────────────────────────────────── */
 @theme {
-  --color-ink: #0e0e10; /* near-black — text & dark sections */
-  --color-bone: #f4f1ea; /* warm off-white — primary canvas */
-  --color-bone-deep: #ebe7dd; /* slightly deeper bone for panels */
-  --color-accent: #009bde; /* brand primary blue */
-  --color-accent-soft: #4fbde9; /* lighter tint for hovers/secondary */
-  --color-muted: #6b6660; /* secondary text on bone */
-  --color-line: rgba(14, 14, 16, 0.14); /* hairline on bone */
-  --color-line-inv: rgba(244, 241, 234, 0.16); /* hairline on ink */
+  /* Dark canvas family — charcoal/independence based */
+  --color-void: #1a1a1a; /* deepest ground */
+  --color-ink: #202020; /* independence — standard dark section */
+  --color-carbon: #2f2f2f; /* dark charcoal — raised dark surface / cards */
+  --color-carbon-2: #3a3a3a; /* card hover */
+
+  /* Light family — white / bright-gray */
+  --color-bone: #ffffff; /* white — text on dark, light bands */
+  --color-bone-deep: #eeeeee; /* bright gray — deeper panels */
+
+  /* Accents */
+  --color-accent: #0073a4; /* CG Blue — interaction */
+  --color-accent-soft: #3e9bc7; /* lighter tint for hovers/secondary */
+  --color-ember: #fca42e; /* deep saffron — stats, energy, data */
+  --color-ember-soft: #fdbe66;
+
+  /* Text tones */
+  --color-muted: #4a4f66; /* independence slate — secondary text on bone */
+
+  /* Hairlines */
+  --color-line: rgba(32, 32, 32, 0.12); /* on bone */
+  --color-line-inv: rgba(255, 255, 255, 0.13); /* on dark */
 
   --font-display: "Rubik", system-ui, sans-serif;
-  --font-body: "Arimo", system-ui, sans-serif;
+  --font-body: "Arimo", Arial, sans-serif;
 
-  /* Fluid type scale — restrained, premium (no oversized display) */
-  --text-eyebrow: 0.75rem;
-  --text-display: clamp(2.5rem, 6vw, 5rem);
-  --text-h2: clamp(1.6rem, 3vw, 2.5rem);
-  --text-stat: clamp(2rem, 3.4vw, 3rem);
+  /* ── Named brand aliases (same values as above, brand-guideline names) ── */
+  --font-rubik: "Rubik", system-ui, sans-serif;
+  --font-arimo: "Arimo", Arial, sans-serif;
+
+  --color-prime: #0073a4; /* CG Blue — primary */
+  --color-prime-deep: #005c85; /* darker blue — hover/press */
+  --color-prime-soft: #e2f0f7; /* pale blue wash */
+  --color-charcoal: #2f2f2f; /* dark charcoal — primary ink */
+  --color-brightgray: #eeeeee; /* bright gray — light canvas */
+  --color-saffron: #fca42e; /* deep saffron — secondary energy accent */
+  --color-slate: #4a4f66; /* independence — muted slate ink */
+
+  /* Fluid, cinematic type scale */
+  --text-eyebrow: 0.72rem;
+  --text-display: clamp(2.75rem, 8.5vw, 8.5rem);
+  --text-h2: clamp(2rem, 4.6vw, 4rem);
+  --text-stat: clamp(2.4rem, 4.4vw, 4rem);
 }
 
 html {
   scroll-behavior: auto; /* Lenis owns scrolling */
+  background: var(--color-void);
 }
 
 body {
   margin: 0;
-  background: var(--color-bone);
-  color: var(--color-ink);
+  background: var(--color-void);
+  color: var(--color-bone);
   font-family: var(--font-body);
+  font-feature-settings: "ss01", "cv01";
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-/* Editorial eyebrow label — 01 — ABOUT */
+/* Rubik display — primary brand font for headings */
+.font-display {
+  font-optical-sizing: auto;
+}
+
+/* Editorial eyebrow label — 01 / ETHOS */
 .eyebrow {
   font-family: var(--font-body);
   font-size: var(--text-eyebrow);
   font-weight: 700;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.28em;
   text-transform: uppercase;
+}
+
+/* Monumental index numeral — the big scroll markers on section intros */
+.numeral {
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  line-height: 0.8;
 }
 
 /* Consistent focus ring for keyboard users */
@@ -53,8 +97,45 @@ body {
   border-radius: 2px;
 }
 
-/* Projects card image swap — hero-style bottom-to-top slide.
-   New image rises in from below; previous one slides up and out the top. */
+::selection {
+  background: var(--color-accent);
+  color: var(--color-void);
+}
+
+/* ── Cinematic overlays ─────────────────────────────────────────
+   A fixed film-grain + vignette plate sits above everything, below
+   the cursor. Gives the whole site a shot-on-film texture. */
+.film-grain {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+  opacity: 0.045;
+  mix-blend-mode: screen;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 9997;
+  pointer-events: none;
+  background: radial-gradient(120% 100% at 50% 40%, transparent 55%, rgba(0, 0, 0, 0.42) 100%);
+}
+
+/* Thin scroll-progress rule pinned to the very top of the viewport */
+.scroll-rail {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 2px;
+  z-index: 9999;
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg, var(--color-accent), var(--color-ember));
+}
+
+/* ── Motion primitives ─────────────────────────────────────────── */
+
+/* Projects card image swap — hero-style bottom-to-top slide. */
 @keyframes proj-slide-in {
   from {
     transform: translateY(100%);
@@ -72,25 +153,55 @@ body {
   }
 }
 .proj-slide-in {
-  animation: proj-slide-in 0.8s cubic-bezier(0.76, 0, 0.24, 1) both;
+  animation: proj-slide-in 0.85s cubic-bezier(0.76, 0, 0.24, 1) both;
 }
 .proj-slide-out {
-  animation: proj-slide-out 0.8s cubic-bezier(0.76, 0, 0.24, 1) both;
+  animation: proj-slide-out 0.85s cubic-bezier(0.76, 0, 0.24, 1) both;
 }
 
-/* Slow zoom on the active hero carousel slide */
+/* Slow cinematic push-in on the active hero carousel slide */
 @keyframes kenburns {
   from {
-    transform: scale(1);
+    transform: scale(1.02);
   }
   to {
-    transform: scale(1.08);
+    transform: scale(1.12);
   }
 }
 .hero-slide-active {
-  animation: kenburns 6s ease-out forwards;
-  /* Lift the legacy renders while the refreshed assets keep their natural exposure. */
-  filter: brightness(1.12) saturate(1.08) contrast(1.04);
+  animation: kenburns 7s ease-out forwards;
+}
+
+/* Marquee-style horizontal drift for the location ticker */
+@keyframes ticker {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.ticker-track {
+  animation: ticker 32s linear infinite;
+}
+
+/* Soft breathing glow used behind key CTAs */
+@keyframes pulse-ring {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.06);
+  }
+}
+
+/* Utility: letterbox reveal wrapper masks content that slides up into frame */
+.reveal-mask {
+  overflow: hidden;
+  display: block;
 }
 
 /* Lenis */
@@ -100,8 +211,12 @@ body {
 
 /* Respect users who prefer less motion */
 @media (prefers-reduced-motion: reduce) {
-  .hero-slide-active {
+  .hero-slide-active,
+  .ticker-track {
     animation: none;
+  }
+  .film-grain {
+    display: none;
   }
   *,
   *::before,

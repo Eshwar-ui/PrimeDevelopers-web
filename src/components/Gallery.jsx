@@ -1,24 +1,21 @@
 import { useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import SectionHeader from './SectionHeader'
-import g1 from '../assets/hero/slide-1-enhanced.png'
-import g2 from '../assets/hero/slide-4-enhanced.png'
-import g3 from '../assets/property-1-enhanced.png'
-import g4 from '../assets/hero/slide-6-enhanced.png'
+import { useSection, useProjects } from '../context/ContentContext'
+import { renderEmphasis } from '../lib/emphasis'
 
 // Asymmetric two-row layout (7/5 then 5/7) — not a generic equal-column grid.
-const items = [
-  { src: g1, span: 'md:col-span-7', caption: 'Cedar Grove Residences', place: 'Lewisville, TX' },
-  { src: g2, span: 'md:col-span-5', caption: 'Sunnyvale Estates', place: 'Leander, TX' },
-  { src: g3, span: 'md:col-span-5', caption: 'Riverside Villas', place: 'Cedar Park, TX' },
-  { src: g4, span: 'md:col-span-7', caption: 'Oakridge Meadows', place: 'Austin, TX' },
-]
+const SPANS = ['md:col-span-7', 'md:col-span-5', 'md:col-span-5', 'md:col-span-7']
 
 // A deliberate bright "intermission" band between the dark cinematic sections.
 export default function Gallery() {
+  const { heading } = useSection('gallery')
+  const projects = useProjects().slice(0, 4)
   const scope = useRef(null)
+  const navigate = useNavigate()
 
   useGSAP(
     () => {
@@ -34,6 +31,8 @@ export default function Gallery() {
     { scope }
   )
 
+  if (projects.length === 0) return null
+
   return (
     <section
       id="gallery"
@@ -44,17 +43,25 @@ export default function Gallery() {
       <div className="mb-14 flex flex-col gap-8">
         <SectionHeader index="03" title="Frames" tone="ink" />
         <h3 className="max-w-[18ch] font-display text-[2.2rem] font-light leading-[1.02] tracking-[-0.02em] text-ink md:text-h2">
-          Places we&apos;ve <span className="italic text-accent">brought to life.</span>
+          {renderEmphasis(heading)}
         </h3>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-12 md:gap-5">
-        {items.map((it) => (
-          <figure key={it.caption} data-gitem className={`group ${it.span}`}>
+        {projects.map((p, i) => (
+          <figure
+            key={p.slug}
+            data-gitem
+            role="link"
+            tabIndex={0}
+            onClick={() => navigate(`/projects/${p.slug}`)}
+            onKeyDown={(e) => e.key === 'Enter' && navigate(`/projects/${p.slug}`)}
+            className={`group cursor-pointer ${SPANS[i % SPANS.length]}`}
+          >
             <div className="relative h-[300px] overflow-hidden rounded-2xl md:h-[460px]">
               <img
-                src={it.src}
-                alt={it.caption}
+                src={p.image}
+                alt={p.name}
                 className="h-full w-full object-cover grayscale transition-all duration-700 ease-out group-hover:scale-[1.04] group-hover:grayscale-0"
               />
               <div
@@ -65,9 +72,9 @@ export default function Gallery() {
             </div>
             <figcaption className="mt-4 flex items-center justify-between">
               <span className="font-display text-lg font-medium tracking-[-0.01em] text-ink">
-                {it.caption}
+                {p.name}
               </span>
-              <span className="eyebrow text-muted">{it.place}</span>
+              <span className="eyebrow text-muted">{p.address}</span>
             </figcaption>
           </figure>
         ))}

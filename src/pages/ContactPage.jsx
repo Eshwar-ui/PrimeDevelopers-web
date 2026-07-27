@@ -1,17 +1,8 @@
+import { useState } from 'react'
 import ArrowRight from '../components/ArrowRight'
-
-const details = [
-  { label: 'Email', value: 'sales@theprimedeveloper.com', href: 'mailto:sales@theprimedeveloper.com' },
-  { label: 'Phone', value: '+1 512-761-8025', href: 'tel:+15127618025' },
-  { label: 'Location', value: 'Texas, United States', href: null },
-]
-
-const socials = [
-  { label: 'WhatsApp', href: 'https://wa.me/15127618025' },
-  { label: 'LinkedIn', href: '#' },
-  { label: 'Instagram', href: '#' },
-  { label: 'Facebook', href: '#' },
-]
+import { useSection } from '../context/ContentContext'
+import { renderEmphasis } from '../lib/emphasis'
+import { supabase } from '../lib/supabase'
 
 const fields = [
   { name: 'name', label: 'Full name', type: 'text', placeholder: 'Jane Doe' },
@@ -20,21 +11,31 @@ const fields = [
 ]
 
 export default function ContactPage() {
-  // No backend — compose a prefilled email to the sales inbox.
-  const onSubmit = (e) => {
+  const c = useSection('contact_page')
+  const [status, setStatus] = useState('idle') // idle | sending | sent | error
+
+  const details = [
+    { label: 'Email', value: c.email, href: c.email ? `mailto:${c.email}` : null },
+    { label: 'Phone', value: c.phone, href: c.phone ? `tel:${c.phone.replace(/[^\d+]/g, '')}` : null },
+    { label: 'Location', value: c.location, href: null },
+  ]
+
+  const onSubmit = async (e) => {
     e.preventDefault()
+    setStatus('sending')
     const fd = new FormData(e.currentTarget)
-    const subject = `Enquiry from ${fd.get('name') || 'website visitor'}`
-    const body = [
-      `Name: ${fd.get('name')}`,
-      `Email: ${fd.get('email')}`,
-      `Phone: ${fd.get('phone')}`,
-      '',
-      fd.get('message'),
-    ].join('\n')
-    window.location.href = `mailto:sales@theprimedeveloper.com?subject=${encodeURIComponent(
-      subject
-    )}&body=${encodeURIComponent(body)}`
+    const { error } = await supabase.from('leads').insert({
+      name: fd.get('name'),
+      email: fd.get('email'),
+      phone: fd.get('phone') || null,
+      message: fd.get('message'),
+    })
+    if (error) {
+      setStatus('error')
+      return
+    }
+    setStatus('sent')
+    e.currentTarget.reset()
   }
 
   return (
@@ -55,17 +56,12 @@ export default function ContactPage() {
         <div className="relative">
           <span className="eyebrow mb-6 flex items-center gap-4 text-bone/70">
             <span className="h-px w-10 bg-accent-soft" />
-            Contact — Prime Developers
+            {c.heroEyebrow}
           </span>
           <h1 className="font-display text-display font-light leading-[0.98] tracking-[-0.02em]">
-            Explore options
-            <br />
-            with us <span className="italic text-accent-soft">today.</span>
+            {renderEmphasis(c.heroHeading)}
           </h1>
-          <p className="mt-8 max-w-[48ch] font-body text-lg leading-relaxed text-bone/65">
-            Experienced Texas property leaders. Tell us about your goals and our team will be in
-            touch.
-          </p>
+          <p className="mt-8 max-w-[48ch] font-body text-lg leading-relaxed text-bone/65">{c.heroParagraph}</p>
         </div>
       </section>
 
@@ -97,7 +93,7 @@ export default function ContactPage() {
             <div className="mt-10">
               <span className="eyebrow text-bone/40">Follow</span>
               <div className="mt-4 flex flex-wrap gap-2.5">
-                {socials.map((s) => (
+                {c.socials.map((s) => (
                   <a
                     key={s.label}
                     href={s.href}
@@ -143,14 +139,22 @@ export default function ContactPage() {
 
               <button
                 type="submit"
-                className="group relative mt-2 inline-flex items-center justify-center overflow-hidden rounded-full bg-accent px-6 py-3.5 font-body text-[14px] font-bold uppercase tracking-[0.1em] text-void"
+                disabled={status === 'sending'}
+                className="group relative mt-2 inline-flex items-center justify-center overflow-hidden rounded-full bg-accent px-6 py-3.5 font-body text-[14px] font-bold uppercase tracking-[0.1em] text-void disabled:opacity-60"
               >
                 <span className="absolute inset-0 translate-y-full bg-void/25 transition-transform duration-300 ease-out group-hover:translate-y-0" />
                 <span className="relative flex items-center gap-1.5">
-                  Send enquiry
+                  {status === 'sending' ? 'Sending…' : 'Send enquiry'}
                   <ArrowRight className="size-5 transition-transform duration-300 ease-out group-hover:translate-x-1.5" />
                 </span>
               </button>
+
+              {status === 'sent' && (
+                <p className="text-sm text-accent-soft">Thanks — we&apos;ve received your enquiry and will be in touch.</p>
+              )}
+              {status === 'error' && (
+                <p className="text-sm text-red-400">Something went wrong sending that. Please try again.</p>
+              )}
             </div>
           </form>
         </div>

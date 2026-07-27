@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { getProject } from '../data/projects'
+import { useProject } from '../context/ContentContext'
 import { useSectionNav } from '../hooks/useSectionNav'
 import PillButton from '../components/PillButton'
+import SocialIcon from '../components/SocialIcon'
 
 // Eyebrow section label with the accent dash, matching the site system.
 function SectionTag({ children, tone = 'inv' }) {
@@ -21,9 +22,14 @@ function SectionTag({ children, tone = 'inv' }) {
   )
 }
 
+function youtubeEmbedUrl(url) {
+  const match = url.match(/(?:youtu\.be\/|v=|embed\/)([\w-]{11})/)
+  return match ? `https://www.youtube.com/embed/${match[1]}` : url
+}
+
 export default function ProjectDetailPage() {
   const { slug } = useParams()
-  const project = getProject(slug)
+  const project = useProject(slug)
   const go = useSectionNav()
   const [tab, setTab] = useState(0)
   const [galleryMain, setGalleryMain] = useState(0)
@@ -41,6 +47,7 @@ export default function ProjectDetailPage() {
   }
 
   const d = project.detail
+  const gallery = project.gallery ?? []
   const soldPct = Math.round((project.sold / project.buildings) * 100)
 
   return (
@@ -73,28 +80,84 @@ export default function ProjectDetailPage() {
               {d.tagline}
             </p>
           )}
+          {d?.socials?.length > 0 && (
+            <div className="mt-7 flex flex-wrap gap-3">
+              {d.socials.map(
+                (s, i) =>
+                  s.url && (
+                    <a
+                      key={i}
+                      href={s.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={s.platform}
+                      className="flex size-10 items-center justify-center rounded-full border border-[var(--color-line-inv)] text-bone/70 transition-colors hover:border-accent-soft hover:text-accent-soft"
+                    >
+                      <SocialIcon platform={s.platform} className="size-4" />
+                    </a>
+                  )
+              )}
+            </div>
+          )}
         </div>
 
-        <div className="relative mt-14 h-[300px] overflow-hidden rounded-3xl border border-[var(--color-line-inv)] md:h-[460px]">
-          <img src={project.image} alt={project.name} className="h-full w-full object-cover" />
-          <div
-            aria-hidden
-            className="absolute inset-0"
-            style={{ background: 'linear-gradient(180deg, transparent 55%, rgba(26,26,26,0.55))' }}
-          />
-        </div>
+        {project.image && (
+          <div className="relative mt-14 h-[300px] overflow-hidden rounded-3xl border border-[var(--color-line-inv)] md:h-[460px]">
+            <img src={project.image} alt={project.name} className="h-full w-full object-cover" />
+            <div
+              aria-hidden
+              className="absolute inset-0"
+              style={{ background: 'linear-gradient(180deg, transparent 55%, rgba(26,26,26,0.55))' }}
+            />
+          </div>
+        )}
       </section>
 
+      {/* ── Resource links — flyers, listings, floor plan PDFs ─── */}
+      {d?.resourceLinks?.length > 0 && (
+        <section className="bg-carbon px-6 py-14 text-bone md:px-[75px] md:py-20">
+          <SectionTag>Resources</SectionTag>
+          <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {d.resourceLinks.map(
+              (link, i) =>
+                link.url &&
+                link.label && (
+                  <a
+                    key={i}
+                    href={link.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="group flex items-center gap-4 rounded-2xl border border-[var(--color-line-inv)] bg-ink p-4 transition-colors hover:border-bone/25"
+                  >
+                    {link.thumbnail ? (
+                      <img src={link.thumbnail} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" />
+                    ) : (
+                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-void">
+                        <span className="text-ember">→</span>
+                      </span>
+                    )}
+                    <span className="font-body text-sm font-bold uppercase tracking-[0.1em] text-bone transition-colors group-hover:text-accent-soft">
+                      {link.label}
+                    </span>
+                  </a>
+                )
+            )}
+          </div>
+        </section>
+      )}
+
       {/* ── Overview ─────────────────────────────────────────── */}
-      {d?.overview && (
+      {d?.overview?.heading && (
         <section className="bg-ink px-6 py-20 text-bone md:px-[75px] md:py-28">
           <div className="grid gap-12 lg:grid-cols-[1fr_1fr] lg:gap-20">
             {/* Image collage */}
-            <div className="grid grid-cols-2 gap-4">
-              <img src={project.gallery[0]} alt="" className="col-span-2 h-64 w-full rounded-2xl object-cover md:h-80" />
-              <img src={project.gallery[1]} alt="" className="h-40 w-full rounded-2xl object-cover md:h-48" />
-              <img src={project.gallery[2]} alt="" className="h-40 w-full rounded-2xl object-cover md:h-48" />
-            </div>
+            {gallery.length >= 3 && (
+              <div className="grid grid-cols-2 gap-4">
+                <img src={gallery[0]} alt="" className="col-span-2 h-64 w-full rounded-2xl object-cover md:h-80" />
+                <img src={gallery[1]} alt="" className="h-40 w-full rounded-2xl object-cover md:h-48" />
+                <img src={gallery[2]} alt="" className="h-40 w-full rounded-2xl object-cover md:h-48" />
+              </div>
+            )}
 
             <div className="flex flex-col justify-center">
               <SectionTag>{d.overview.eyebrow}</SectionTag>
@@ -113,21 +176,23 @@ export default function ProjectDetailPage() {
               )}
 
               {/* Stats box */}
-              <div className="mt-10 grid grid-cols-3 gap-px overflow-hidden rounded-2xl border border-[var(--color-line-inv)] bg-[var(--color-line-inv)]">
-                {d.overview.stats.map((s) => (
-                  <div key={s.label} className="flex flex-col gap-1.5 bg-ink px-3 py-6 text-center">
-                    <span className="numeral text-xl text-ember">{s.value}</span>
-                    <span className="eyebrow text-[0.58rem] text-bone/40">{s.label}</span>
-                  </div>
-                ))}
-              </div>
+              {d.overview.stats?.length > 0 && (
+                <div className="mt-10 grid grid-cols-3 gap-px overflow-hidden rounded-2xl border border-[var(--color-line-inv)] bg-[var(--color-line-inv)]">
+                  {d.overview.stats.map((s) => (
+                    <div key={s.label} className="flex flex-col gap-1.5 bg-ink px-3 py-6 text-center">
+                      <span className="numeral text-xl text-ember">{s.value}</span>
+                      <span className="eyebrow text-[0.58rem] text-bone/40">{s.label}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </section>
       )}
 
       {/* ── Tenants ──────────────────────────────────────────── */}
-      {d?.tenants && (
+      {d?.tenants?.length > 0 && (
         <section className="border-y border-[var(--color-line-inv)] bg-carbon px-6 py-12 md:px-[75px]">
           <div className="flex flex-wrap items-center justify-center gap-x-16 gap-y-8">
             {d.tenants.map((logo, i) => (
@@ -143,7 +208,7 @@ export default function ProjectDetailPage() {
       )}
 
       {/* ── Project highlights ───────────────────────────────── */}
-      {d?.highlights && (
+      {d?.highlights?.heading && (
         <section className="bg-void px-6 py-20 text-bone md:px-[75px] md:py-28">
           <div className="grid gap-12 lg:grid-cols-[1fr_1.1fr] lg:gap-20">
             <div>
@@ -154,30 +219,34 @@ export default function ProjectDetailPage() {
               <p className="mt-6 max-w-[48ch] font-body text-base leading-relaxed text-bone/60">
                 {d.highlights.body}
               </p>
-              <div className="mt-10 flex gap-12">
-                {d.highlights.bigStats.map((s) => (
-                  <div key={s.label} className="flex flex-col gap-1.5">
-                    <span className="numeral text-4xl text-ember">{s.value}</span>
-                    <span className="eyebrow text-bone/45">{s.label}</span>
+              {d.highlights.bigStats?.length > 0 && (
+                <div className="mt-10 flex gap-12">
+                  {d.highlights.bigStats.map((s) => (
+                    <div key={s.label} className="flex flex-col gap-1.5">
+                      <span className="numeral text-4xl text-ember">{s.value}</span>
+                      <span className="eyebrow text-bone/45">{s.label}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {d.highlights.cards?.length > 0 && (
+              <div className="grid gap-px overflow-hidden rounded-2xl border border-[var(--color-line-inv)] bg-[var(--color-line-inv)] sm:grid-cols-2">
+                {d.highlights.cards.map((c) => (
+                  <div key={c.title} className="flex flex-col gap-2.5 bg-ink p-7">
+                    <h3 className="font-display text-lg font-medium text-bone">{c.title}</h3>
+                    <p className="font-body text-sm leading-relaxed text-bone/55">{c.body}</p>
                   </div>
                 ))}
               </div>
-            </div>
-
-            <div className="grid gap-px overflow-hidden rounded-2xl border border-[var(--color-line-inv)] bg-[var(--color-line-inv)] sm:grid-cols-2">
-              {d.highlights.cards.map((c) => (
-                <div key={c.title} className="flex flex-col gap-2.5 bg-ink p-7">
-                  <h3 className="font-display text-lg font-medium text-bone">{c.title}</h3>
-                  <p className="font-body text-sm leading-relaxed text-bone/55">{c.body}</p>
-                </div>
-              ))}
-            </div>
+            )}
           </div>
         </section>
       )}
 
       {/* ── Floor plans ──────────────────────────────────────── */}
-      {d?.floorPlans && (
+      {d?.floorPlans?.buildings?.length > 0 && (
         <section className="bg-ink px-6 py-20 text-bone md:px-[75px] md:py-28">
           <SectionTag>Floor Plans</SectionTag>
           <h2 className="mt-6 max-w-[20ch] font-display text-h2 font-light leading-[1.05] tracking-[-0.02em]">
@@ -232,31 +301,33 @@ export default function ProjectDetailPage() {
       )}
 
       {/* ── Gateway for growth — light intermission ──────────── */}
-      {d?.location && (
+      {d?.location?.heading && (
         <section data-band="light" className="bg-bone px-6 py-20 text-ink md:px-[75px] md:py-28">
           <div className="grid gap-12 lg:grid-cols-[1.1fr_1fr] lg:gap-20">
             {/* Image + thumbnails */}
-            <div>
-              <img
-                src={project.gallery[galleryMain]}
-                alt=""
-                className="h-[300px] w-full rounded-2xl object-cover md:h-[420px]"
-              />
-              <div className="mt-4 flex gap-3">
-                {project.gallery.slice(0, 5).map((src, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => setGalleryMain(i)}
-                    className={`h-16 w-20 shrink-0 overflow-hidden rounded-lg border transition-colors ${
-                      i === galleryMain ? 'border-accent' : 'border-transparent opacity-60 hover:opacity-100'
-                    }`}
-                  >
-                    <img src={src} alt="" className="h-full w-full object-cover" />
-                  </button>
-                ))}
+            {gallery.length > 0 && (
+              <div>
+                <img
+                  src={gallery[galleryMain]}
+                  alt=""
+                  className="h-[300px] w-full rounded-2xl object-cover md:h-[420px]"
+                />
+                <div className="mt-4 flex gap-3">
+                  {gallery.slice(0, 5).map((src, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setGalleryMain(i)}
+                      className={`h-16 w-20 shrink-0 overflow-hidden rounded-lg border transition-colors ${
+                        i === galleryMain ? 'border-accent' : 'border-transparent opacity-60 hover:opacity-100'
+                      }`}
+                    >
+                      <img src={src} alt="" className="h-full w-full object-cover" />
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="flex flex-col justify-center">
               <SectionTag tone="ink">{d.location.eyebrow}</SectionTag>
@@ -273,14 +344,14 @@ export default function ProjectDetailPage() {
       )}
 
       {/* ── Established sites gallery — light intermission ────── */}
-      {d?.establishedSites && (
+      {d?.establishedSites?.heading && gallery.length > 0 && (
         <section data-band="light" className="bg-bone px-6 pb-20 text-ink md:px-[75px] md:pb-28">
           <SectionTag tone="ink">Established Sites</SectionTag>
           <h2 className="mt-6 max-w-[24ch] font-display text-h2 font-light leading-[1.05] tracking-[-0.02em] text-ink">
             {d.establishedSites.heading}
           </h2>
           <div className="mt-12 grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-5">
-            {project.gallery.slice(0, 4).map((src, i) => (
+            {gallery.slice(0, 4).map((src, i) => (
               <div key={i} className="group overflow-hidden rounded-2xl bg-bone-deep">
                 <img
                   src={src}
@@ -293,8 +364,25 @@ export default function ProjectDetailPage() {
         </section>
       )}
 
+      {/* ── Ext. Facade photo strip ──────────────────────────── */}
+      {d?.extFacade?.length > 0 && (
+        <section className="bg-void px-6 py-20 text-bone md:px-[75px] md:py-28">
+          <SectionTag>Ext. Facade</SectionTag>
+          <div className="mt-10 grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-5">
+            {d.extFacade.map(
+              (src, i) =>
+                src && (
+                  <div key={i} className="overflow-hidden rounded-2xl bg-carbon">
+                    <img src={src} alt="" className="h-48 w-full object-cover md:h-56" />
+                  </div>
+                )
+            )}
+          </div>
+        </section>
+      )}
+
       {/* ── Neighborhoods + map ──────────────────────────────── */}
-      {d?.neighborhoods && (
+      {d?.neighborhoods?.items?.length > 0 && (
         <section className="bg-ink px-6 py-20 text-bone md:px-[75px] md:py-28">
           <SectionTag>Head by Areas</SectionTag>
           <h2 className="mt-6 font-display text-h2 font-light tracking-[-0.02em]">Neighborhoods</h2>
@@ -328,42 +416,46 @@ export default function ProjectDetailPage() {
             </div>
 
             {/* Map */}
-            <div className="h-[300px] overflow-hidden rounded-2xl border border-[var(--color-line-inv)] md:h-[380px]">
-              <iframe
-                title="Location map"
-                src={`https://www.google.com/maps?q=${encodeURIComponent(d.neighborhoods.mapQuery)}&output=embed`}
-                className="h-full w-full grayscale invert-[0.92]"
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-              />
-            </div>
+            {d.neighborhoods.mapQuery && (
+              <div className="h-[300px] overflow-hidden rounded-2xl border border-[var(--color-line-inv)] md:h-[380px]">
+                <iframe
+                  title="Location map"
+                  src={`https://www.google.com/maps?q=${encodeURIComponent(d.neighborhoods.mapQuery)}&output=embed`}
+                  className="h-full w-full grayscale invert-[0.92]"
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                />
+              </div>
+            )}
           </div>
         </section>
       )}
 
       {/* ── Videos ───────────────────────────────────────────── */}
-      {d?.videos > 0 && (
+      {d?.videos?.length > 0 && (
         <section className="bg-void px-6 py-20 text-bone md:px-[75px] md:py-28">
           <SectionTag>YouTube</SectionTag>
           <h2 className="mt-6 font-display text-h2 font-light tracking-[-0.02em]">Videos</h2>
           <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2">
-            {Array.from({ length: d.videos }).map((_, i) => (
-              <div
-                key={i}
-                className="group relative flex aspect-video items-center justify-center overflow-hidden rounded-2xl border border-[var(--color-line-inv)] bg-ink"
-              >
-                <img
-                  src={project.gallery[i % project.gallery.length]}
-                  alt=""
-                  className="absolute inset-0 h-full w-full object-cover opacity-35 grayscale"
-                />
-                <span className="relative flex size-16 items-center justify-center rounded-full bg-accent text-void shadow-lg transition-transform group-hover:scale-110">
-                  <span className="ml-1 text-xl leading-none">▶</span>
-                </span>
-              </div>
-            ))}
+            {d.videos.map(
+              (v, i) =>
+                v.url && (
+                  <div
+                    key={i}
+                    className="relative aspect-video overflow-hidden rounded-2xl border border-[var(--color-line-inv)] bg-ink"
+                  >
+                    <iframe
+                      title={`Project video ${i + 1}`}
+                      src={youtubeEmbedUrl(v.url)}
+                      className="h-full w-full"
+                      loading="lazy"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  </div>
+                )
+            )}
           </div>
-          <p className="eyebrow mt-6 text-bone/40">Add YouTube links to enable playback.</p>
         </section>
       )}
 

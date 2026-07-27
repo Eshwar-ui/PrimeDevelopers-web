@@ -5,46 +5,9 @@ import { useGSAP } from '@gsap/react'
 import MagneticButton from './MagneticButton'
 import ArrowRight from './ArrowRight'
 import { useSectionNav } from '../hooks/useSectionNav'
+import { useSection, useProjects } from '../context/ContentContext'
+import { renderEmphasis } from '../lib/emphasis'
 import logo from '../assets/prime-logo.svg'
-
-const details = [
-  { label: 'Email', value: 'hello@primedevelopers.com', href: 'mailto:hello@primedevelopers.com' },
-  { label: 'Phone', value: '+1 (512) 419-2837', href: 'tel:+15124192837' },
-  { label: 'Studio', value: 'East 6th Street, Austin, TX', href: null },
-]
-
-const columns = [
-  {
-    title: 'Quick Links',
-    align: 'left',
-    links: [
-      { label: 'Home', href: '/' },
-      { label: 'About', href: '/about' },
-      { label: 'Projects', href: '/projects' },
-      { label: 'Contact', href: '/contact' },
-    ],
-  },
-  {
-    title: 'Projects',
-    align: 'center',
-    links: [
-      { label: 'Cedar Grove Residences', href: '/projects' },
-      { label: 'Sunnyvale Estates', href: '/projects' },
-      { label: 'Riverside Villas', href: '/projects' },
-      { label: 'Oakridge Meadows', href: '/projects' },
-    ],
-  },
-  {
-    title: 'Socials',
-    align: 'right',
-    links: [
-      { label: 'Instagram', href: '#' },
-      { label: 'LinkedIn', href: '#' },
-      { label: 'X', href: '#' },
-      { label: 'Facebook', href: '#' },
-    ],
-  },
-]
 
 const alignCls = {
   left: 'md:items-start md:text-left',
@@ -53,8 +16,22 @@ const alignCls = {
 }
 
 export default function Footer() {
+  const { email, phone, studio, ctaHeading, quickLinks, socials, copyrightLeft, copyrightRight } = useSection('footer')
+  const projects = useProjects().slice(0, 4)
   const scope = useRef(null)
   const go = useSectionNav()
+
+  const details = [
+    { label: 'Email', value: email, href: email ? `mailto:${email}` : null },
+    { label: 'Phone', value: phone, href: phone ? `tel:${phone.replace(/[^\d+]/g, '')}` : null },
+    { label: 'Studio', value: studio, href: null },
+  ]
+
+  const columns = [
+    { title: 'Quick Links', align: 'left', links: quickLinks },
+    { title: 'Projects', align: 'center', links: projects.map((p) => ({ label: p.name, href: `/projects/${p.slug}` })) },
+    { title: 'Socials', align: 'right', links: socials },
+  ]
 
   const handleNav = (e, href) => {
     if (href === '#') return // placeholder social links
@@ -99,14 +76,12 @@ export default function Footer() {
           className="font-display font-light leading-[0.98] tracking-[-0.02em]"
           style={{ fontSize: 'clamp(2.5rem, 6vw, 5.5rem)' }}
         >
-          Let&apos;s build
-          <br />
-          something <span className="italic text-accent-soft">lasting.</span>
+          {renderEmphasis(ctaHeading)}
         </h2>
 
         <div data-foot className="self-center">
           <MagneticButton
-            href="mailto:hello@primedevelopers.com"
+            href={email ? `mailto:${email}` : undefined}
             className="group relative flex size-40 shrink-0 flex-col items-center justify-center gap-2 rounded-full bg-accent text-center text-void md:size-48"
           >
             <span className="font-body text-sm font-bold uppercase tracking-[0.1em]">
@@ -175,8 +150,8 @@ export default function Footer() {
 
       {/* Copyright bar */}
       <div className="relative mt-12 flex flex-col gap-2 text-bone/45 md:flex-row md:justify-between">
-        <p className="eyebrow">© 2026 Prime Developers</p>
-        <p className="eyebrow">Austin · Texas</p>
+        <p className="eyebrow">{copyrightLeft}</p>
+        <p className="eyebrow">{copyrightRight}</p>
       </div>
     </footer>
   )

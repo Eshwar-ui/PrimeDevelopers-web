@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'motion/react'
-import { projects, categories } from '../data/projects'
+import { useSection, useProjects, useCategories } from '../context/ContentContext'
+import { renderEmphasis } from '../lib/emphasis'
 
 function Stat({ label, value }) {
   return (
@@ -13,9 +14,12 @@ function Stat({ label, value }) {
 }
 
 export default function ProjectsPage() {
+  const p = useSection('projects_page')
+  const projects = useProjects()
+  const categories = useCategories()
   const [filter, setFilter] = useState('All')
   const navigate = useNavigate()
-  const list = filter === 'All' ? projects : projects.filter((p) => p.category === filter)
+  const list = filter === 'All' ? projects : projects.filter((pr) => pr.category === filter)
 
   return (
     <div>
@@ -35,17 +39,12 @@ export default function ProjectsPage() {
         <div className="relative">
           <span className="eyebrow mb-6 flex items-center gap-4 text-bone/70">
             <span className="h-px w-10 bg-accent-soft" />
-            Our Portfolio — Texas
+            {p.heroEyebrow}
           </span>
           <h1 className="font-display text-display font-light leading-[0.98] tracking-[-0.02em]">
-            Iconic properties,
-            <br />
-            built to <span className="italic text-accent-soft">last.</span>
+            {renderEmphasis(p.heroHeading)}
           </h1>
-          <p className="mt-8 max-w-[52ch] font-body text-lg leading-relaxed text-bone/65">
-            In Texas, we own and manage iconic properties in a dynamic market. With a skilled team,
-            we excel in large-scale property development and investment.
-          </p>
+          <p className="mt-8 max-w-[52ch] font-body text-lg leading-relaxed text-bone/65">{p.heroParagraph}</p>
         </div>
       </section>
 
@@ -80,7 +79,7 @@ export default function ProjectsPage() {
               const soldOut = p.available === 0
               return (
                 <motion.article
-                  key={p.name}
+                  key={p.slug}
                   layout
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -90,11 +89,13 @@ export default function ProjectsPage() {
                   className="group flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-[var(--color-line-inv)] bg-ink transition-colors duration-300 hover:border-bone/25"
                 >
                   <div className="relative h-56 overflow-hidden bg-void">
-                    <img
-                      src={p.image}
-                      alt={p.name}
-                      className="h-full w-full object-cover grayscale transition-all duration-700 ease-out group-hover:scale-[1.04] group-hover:grayscale-0"
-                    />
+                    {p.image && (
+                      <img
+                        src={p.image}
+                        alt={p.name}
+                        className="h-full w-full object-cover grayscale transition-all duration-700 ease-out group-hover:scale-[1.04] group-hover:grayscale-0"
+                      />
+                    )}
                     <span className="absolute left-4 top-4 rounded-full bg-void/70 px-3 py-1 font-body text-[0.66rem] font-bold uppercase tracking-[0.16em] text-bone backdrop-blur-sm">
                       {p.category}
                     </span>

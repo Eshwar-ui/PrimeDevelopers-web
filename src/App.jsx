@@ -15,6 +15,19 @@ import AboutPage from './pages/AboutPage'
 import ProjectsPage from './pages/ProjectsPage'
 import ProjectDetailPage from './pages/ProjectDetailPage'
 import ContactPage from './pages/ContactPage'
+import BlogPage from './pages/BlogPage'
+import BlogPostPage from './pages/BlogPostPage'
+import LoginPage from './admin/LoginPage'
+import RequireAuth from './admin/RequireAuth'
+import AdminLayout from './admin/AdminLayout'
+import DashboardPage from './admin/DashboardPage'
+import ProjectsListPage from './admin/ProjectsListPage'
+import ProjectEditPage from './admin/ProjectEditPage'
+import ContentIndexPage from './admin/ContentIndexPage'
+import ContentSectionPage from './admin/ContentSectionPage'
+import LeadsPage from './admin/LeadsPage'
+import BlogListPage from './admin/BlogListPage'
+import BlogEditPage from './admin/BlogEditPage'
 
 function Home() {
   return (
@@ -41,7 +54,7 @@ function ScrollManager() {
   return null
 }
 
-function App() {
+function PublicSite() {
   useSmoothScroll() // Lenis + GSAP ScrollTrigger, mounted once at the root
 
   return (
@@ -55,11 +68,39 @@ function App() {
           <Route path="/about" element={<AboutPage />} />
           <Route path="/projects" element={<ProjectsPage />} />
           <Route path="/projects/:slug" element={<ProjectDetailPage />} />
+          <Route path="/blog" element={<BlogPage />} />
+          <Route path="/blog/:slug" element={<BlogPostPage />} />
           <Route path="/contact" element={<ContactPage />} />
         </Routes>
       </main>
       <Footer />
     </>
+  )
+}
+
+function App() {
+  return (
+    <Routes>
+      <Route path="/admin/login" element={<LoginPage />} />
+      <Route
+        path="/admin"
+        element={
+          <RequireAuth>
+            <AdminLayout />
+          </RequireAuth>
+        }
+      >
+        <Route index element={<DashboardPage />} />
+        <Route path="projects" element={<ProjectsListPage />} />
+        <Route path="projects/:id" element={<ProjectEditPage />} />
+        <Route path="content" element={<ContentIndexPage />} />
+        <Route path="content/:section" element={<ContentSectionPage />} />
+        <Route path="blog" element={<BlogListPage />} />
+        <Route path="blog/:id" element={<BlogEditPage />} />
+        <Route path="leads" element={<LeadsPage />} />
+      </Route>
+      <Route path="/*" element={<PublicSite />} />
+    </Routes>
   )
 }
 

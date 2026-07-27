@@ -2,17 +2,15 @@ import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { lenis } from '../hooks/useSmoothScroll'
+import { useSection } from '../context/ContentContext'
 import logo from '../assets/prime-logo.svg'
 
-// `to` → a route; `section` → an anchor on the home page.
-const links = [
-  { label: 'About', to: '/about' },
-  { label: 'Projects', to: '/projects' },
-  { label: 'Contact', to: '/contact' },
-]
+// Homepage section ids tracked for the scroll-spy active-link highlight —
+// structural, tied to actual DOM ids on the homepage, not admin-editable.
 const sections = ['about', 'projects']
 
 export default function Navbar() {
+  const { links } = useSection('navbar')
   const [active, setActive] = useState(null)
   const [onLight, setOnLight] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -116,12 +114,12 @@ export default function Navbar() {
         <a
           href="/"
           onClick={goHome}
-          className={`flex h-[46px] items-center justify-center rounded-full border px-5 backdrop-blur-xl transition-colors duration-500 ${chrome}`}
+          className={`flex h-[58px] items-center justify-center rounded-full border px-6 backdrop-blur-xl transition-colors duration-500 ${chrome}`}
         >
           <img
             src={logo}
             alt="Prime Developers"
-            className={`h-5 w-auto transition-[filter,opacity] duration-500 md:h-6 ${logoTone}`}
+            className={`h-8 w-auto transition-[filter,opacity] duration-500 md:h-10 ${logoTone}`}
           />
         </a>
 

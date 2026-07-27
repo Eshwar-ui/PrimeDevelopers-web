@@ -5,16 +5,12 @@ import { useGSAP } from '@gsap/react'
 import PillButton from './PillButton'
 import SectionHeader from './SectionHeader'
 import { useSectionNav } from '../hooks/useSectionNav'
+import { useSection } from '../context/ContentContext'
+import { renderEmphasis } from '../lib/emphasis'
 import watermark from '../assets/watermark-p.svg'
 
-const stats = [
-  { value: 9, label: 'Years of Experience' },
-  { value: 10, label: 'Projects Completed' },
-  { value: 5, label: 'Team Collaborations' },
-  { value: 3, label: 'Industry Awards Won' },
-]
-
 export default function About() {
+  const { heading, paragraph1, paragraph2, ctaLabel, stats } = useSection('about_home')
   const scope = useRef(null)
   const go = useSectionNav()
 
@@ -115,24 +111,15 @@ export default function About() {
           data-fade
           className="font-display text-[2rem] font-light leading-[1.08] tracking-[-0.015em] text-bone md:text-h2"
         >
-          Experienced professionals turning raw land into{' '}
-          <span className="italic text-accent-soft">finished Texas developments</span>.
+          {renderEmphasis(heading)}
         </h3>
 
         <div
           data-fade
           className="flex max-w-[540px] flex-col gap-6 font-body text-base leading-relaxed text-bone/60"
         >
-          <p>
-            Since 2017, Prime Developers has grown into one of Texas&apos;s most active
-            developers — owning and operating retail, flex, and residential properties across
-            Dallas–Fort Worth and Austin.
-          </p>
-          <p>
-            Our team pairs a proven track record in large-scale, complex development with a
-            hands-on approach to investment — from permitting through handover, every detail
-            engineered to last.
-          </p>
+          <p>{paragraph1}</p>
+          <p>{paragraph2}</p>
         </div>
 
         <div data-fade className="w-fit">
@@ -144,7 +131,7 @@ export default function About() {
               go('/about')
             }}
           >
-            About Prime Developers
+            {ctaLabel}
           </PillButton>
         </div>
       </div>

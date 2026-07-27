@@ -1,44 +1,21 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'motion/react'
 import SectionHeader from './SectionHeader'
-
-const testimonials = [
-  {
-    quote:
-      'Prime carried our mixed-use development from permitting through handover without a single missed milestone. The build quality speaks for itself.',
-    name: 'Marisol Treviño',
-    role: 'Managing Partner · Balcones Capital',
-  },
-  {
-    quote:
-      'We have co-developed three properties with Prime. They underwrite conservatively and execute aggressively — a rare combination in this market.',
-    name: 'Dov Ackerman',
-    role: 'Principal · Lometa Holdings',
-  },
-  {
-    quote:
-      'Their team treated our retail center like their own asset. We reached 94% occupancy within eight months of delivery.',
-    name: 'Priya Raghunathan',
-    role: 'Director of Development · Verdanta Group',
-  },
-  {
-    quote:
-      'Straight-talking, detail-obsessed, dependable. Prime is the first call we make for ground-up commercial work in Central Texas.',
-    name: 'Cael Ferro',
-    role: 'VP Acquisitions · Hillstead Partners',
-  },
-]
+import { useSection } from '../context/ContentContext'
 
 const ROTATE_MS = 6500
 
 export default function Testimonials() {
+  const { items: testimonials } = useSection('testimonials')
   const [index, setIndex] = useState(0)
 
   useEffect(() => {
+    if (testimonials.length < 2) return
     const id = setInterval(() => setIndex((i) => (i + 1) % testimonials.length), ROTATE_MS)
     return () => clearInterval(id)
-  }, [index])
+  }, [index, testimonials.length])
 
+  if (testimonials.length === 0) return null
   const active = testimonials[index]
 
   return (

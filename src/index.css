@@ -7,11 +7,13 @@
    Rubik (primary display) against Arimo (secondary body).
    ───────────────────────────────────────────────────────────── */
 @theme {
-  /* Dark canvas family — charcoal/independence based */
-  --color-void: #1a1a1a; /* deepest ground */
-  --color-ink: #202020; /* independence — standard dark section */
-  --color-carbon: #2f2f2f; /* dark charcoal — raised dark surface / cards */
-  --color-carbon-2: #3a3a3a; /* card hover */
+  /* Dark canvas family — same lightness steps as the brand's neutral darks,
+     but hue-shifted toward CG Blue (~200°) instead of true neutral gray, so
+     the cinematic grounds read as branded rather than generic dark-mode. */
+  --color-void: #141c21; /* deepest ground */
+  --color-ink: #182328; /* standard dark section */
+  --color-carbon: #23333b; /* raised dark surface / cards */
+  --color-carbon-2: #2b3f48; /* card hover */
 
   /* Light family — white / bright-gray */
   --color-bone: #ffffff; /* white — text on dark, light bands */

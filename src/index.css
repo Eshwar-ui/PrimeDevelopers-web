@@ -25,6 +25,12 @@
   --color-ember: #fca42e; /* deep saffron — stats, energy, data */
   --color-ember-soft: #fdbe66;
 
+  /* Unit-status semantics (leasing map) — real-estate convention overrides
+     brand-only palette; available/leased need dedicated green/red, while
+     coming-soon and sold reuse existing brand accents. */
+  --color-status-available: #3ecf7e;
+  --color-status-leased: #e2665c;
+
   /* Text tones */
   --color-muted: #4a4f66; /* independence slate — secondary text on bone */
 

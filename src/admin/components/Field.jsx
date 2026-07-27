@@ -30,6 +30,7 @@ export function TextAreaField({ label, value, onChange, rows = 3, placeholder })
 }
 
 export function SelectField({ label, value, onChange, options }) {
+  const normalized = options.map((o) => (typeof o === 'string' ? { value: o, label: o } : o))
   return (
     <label className="flex flex-col gap-1.5">
       {label && <span className="text-xs font-bold uppercase tracking-wide text-bone/45">{label}</span>}
@@ -38,9 +39,9 @@ export function SelectField({ label, value, onChange, options }) {
         onChange={(e) => onChange(e.target.value)}
         className="rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-sm text-bone outline-none focus:border-ember"
       >
-        {options.map((o) => (
-          <option key={o} value={o} className="bg-carbon">
-            {o}
+        {normalized.map((o) => (
+          <option key={o.value} value={o.value} className="bg-carbon">
+            {o.label}
           </option>
         ))}
       </select>

@@ -4,6 +4,7 @@ import { useProject } from '../context/ContentContext'
 import { useSectionNav } from '../hooks/useSectionNav'
 import PillButton from '../components/PillButton'
 import SocialIcon from '../components/SocialIcon'
+import FloorPlanInteractive from '../components/FloorPlanInteractive'
 
 // Eyebrow section label with the accent dash, matching the site system.
 function SectionTag({ children, tone = 'inv' }) {
@@ -193,14 +194,14 @@ export default function ProjectDetailPage() {
 
       {/* ── Tenants ──────────────────────────────────────────── */}
       {d?.tenants?.length > 0 && (
-        <section className="border-y border-[var(--color-line-inv)] bg-carbon px-6 py-12 md:px-[75px]">
+        <section data-band="light" className="border-y border-[var(--color-line)] bg-bone px-6 py-12 md:px-[75px]">
           <div className="flex flex-wrap items-center justify-center gap-x-16 gap-y-8">
             {d.tenants.map((logo, i) => (
               <img
                 key={i}
                 src={logo}
                 alt=""
-                className="h-10 w-auto object-contain opacity-55 grayscale transition-all duration-300 hover:opacity-100 hover:grayscale-0 md:h-12"
+                className="h-10 w-auto object-contain transition-transform duration-300 hover:scale-105 md:h-12"
               />
             ))}
           </div>
@@ -245,6 +246,19 @@ export default function ProjectDetailPage() {
         </section>
       )}
 
+      {/* ── Site plan ────────────────────────────────────────── */}
+      {d?.sitePlan?.image && (
+        <section className="bg-carbon px-6 py-20 text-bone md:px-[75px] md:py-28">
+          <SectionTag>Site Plan</SectionTag>
+          <div className="mt-8 overflow-hidden rounded-2xl border border-[var(--color-line-inv)]">
+            <img src={d.sitePlan.image} alt="Site plan" className="w-full object-contain" />
+          </div>
+          {d.sitePlan.caption && (
+            <p className="mt-4 font-body text-sm text-bone/45">{d.sitePlan.caption}</p>
+          )}
+        </section>
+      )}
+
       {/* ── Floor plans ──────────────────────────────────────── */}
       {d?.floorPlans?.buildings?.length > 0 && (
         <section className="bg-ink px-6 py-20 text-bone md:px-[75px] md:py-28">
@@ -273,29 +287,37 @@ export default function ProjectDetailPage() {
             ))}
           </div>
 
-          <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_1.4fr] lg:gap-12">
-            {/* Spec table */}
-            <div className="divide-y divide-[var(--color-line-inv)] rounded-2xl border border-[var(--color-line-inv)]">
-              {[
-                ['Total Area', `${d.floorPlans.buildings[tab].area} sq ft`],
-                ['Building No.', d.floorPlans.buildings[tab].number],
-                ['Total Units', d.floorPlans.buildings[tab].units],
-                ['Available Units', d.floorPlans.buildings[tab].available],
-                ['Parking Available', d.floorPlans.buildings[tab].parking],
-              ].map(([label, value]) => (
-                <div key={label} className="flex items-center justify-between px-6 py-4">
-                  <span className="font-body text-sm text-bone/50">{label}</span>
-                  <span className="font-display text-base font-medium text-bone">{value}</span>
-                </div>
-              ))}
-            </div>
+          {/* Spec strip */}
+          <div className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-[var(--color-line-inv)] bg-[var(--color-line-inv)] sm:grid-cols-5">
+            {[
+              ['Total Area', `${d.floorPlans.buildings[tab].area} sq ft`],
+              ['Building No.', d.floorPlans.buildings[tab].number],
+              ['Total Units', d.floorPlans.buildings[tab].units],
+              ['Available Units', d.floorPlans.buildings[tab].available],
+              ['Parking', d.floorPlans.buildings[tab].parking],
+            ].map(([label, value]) => (
+              <div key={label} className="flex flex-col gap-1.5 bg-ink px-5 py-4">
+                <span className="eyebrow text-bone/40">{label}</span>
+                <span className="font-display text-base font-medium text-bone">{value}</span>
+              </div>
+            ))}
+          </div>
 
-            {/* Plan image placeholder */}
-            <div className="flex h-[280px] items-center justify-center rounded-2xl border border-[var(--color-line-inv)] bg-void md:h-[380px]">
-              <span className="eyebrow text-bone/35">
-                Floor plan — {d.floorPlans.buildings[tab].building}
-              </span>
-            </div>
+          {/* Interactive floor plan, or a placeholder until one is uploaded */}
+          <div className="mt-8">
+            {d.floorPlans.buildings[tab].planImage ? (
+              <FloorPlanInteractive
+                key={tab}
+                image={d.floorPlans.buildings[tab].planImage}
+                units={d.floorPlans.buildings[tab].unitList ?? []}
+              />
+            ) : (
+              <div className="flex h-[280px] items-center justify-center rounded-2xl border border-[var(--color-line-inv)] bg-void md:h-[380px]">
+                <span className="eyebrow text-bone/35">
+                  Floor plan — {d.floorPlans.buildings[tab].building}
+                </span>
+              </div>
+            )}
           </div>
         </section>
       )}

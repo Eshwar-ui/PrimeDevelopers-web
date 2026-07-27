@@ -6,6 +6,7 @@ import { slugify } from '../lib/slugify'
 import { Section, TextField, TextAreaField } from './components/Field'
 import ImageUploader from './components/ImageUploader'
 import RepeatableList from './components/RepeatableList'
+import BuildingBlock from './components/BuildingBlock'
 
 const emptyDetail = () => ({
   tagline: '',
@@ -13,6 +14,7 @@ const emptyDetail = () => ({
   tenants: [],
   highlights: { heading: '', body: '', bigStats: [], cards: [] },
   floorPlans: { heading: '', body: '', buildings: [] },
+  sitePlan: { image: '', caption: '' },
   location: { eyebrow: '', heading: '', sub: '', body: '' },
   establishedSites: { heading: '' },
   neighborhoods: { mapQuery: '', items: [] },
@@ -265,21 +267,37 @@ export default function ProjectEditPage() {
               <RepeatableList
                 items={form.detail.floorPlans.buildings}
                 onChange={(buildings) => patchDetail('floorPlans', { buildings })}
-                makeItem={() => ({ building: '', area: '', number: '', units: '', available: '', parking: 'Yes' })}
+                makeItem={() => ({
+                  building: '',
+                  area: '',
+                  number: '',
+                  units: '',
+                  available: '',
+                  parking: 'Yes',
+                  planImage: '',
+                  unitList: [],
+                })}
                 addLabel="Add building"
-                renderItem={(item, set) => (
-                  <div className="grid grid-cols-3 gap-3">
-                    <TextField label="Building" value={item.building} onChange={(building) => set({ ...item, building })} />
-                    <TextField label="Area (sq ft)" value={item.area} onChange={(area) => set({ ...item, area })} />
-                    <TextField label="Number" value={item.number} onChange={(number) => set({ ...item, number })} />
-                    <TextField label="Units" value={item.units} onChange={(units) => set({ ...item, units })} />
-                    <TextField label="Available" value={item.available} onChange={(available) => set({ ...item, available })} />
-                    <TextField label="Parking" value={item.parking} onChange={(parking) => set({ ...item, parking })} />
-                  </div>
+                renderItem={(item, set, i) => (
+                  <BuildingBlock building={item} onChange={set} folder={`projects/${form.slug}/building-${i}`} />
                 )}
               />
             </div>
           </div>
+        </Section>
+
+        <Section title="Site plan" description="Uploaded site-plan / colored floor-layout image shown alongside the interactive unit grid.">
+          <ImageUploader
+            label="Site plan image"
+            value={form.detail.sitePlan.image}
+            onChange={(image) => patchDetail('sitePlan', { image })}
+            folder={`projects/${form.slug}/site-plan`}
+          />
+          <TextField
+            label="Caption"
+            value={form.detail.sitePlan.caption}
+            onChange={(caption) => patchDetail('sitePlan', { caption })}
+          />
         </Section>
 
         <Section title="Location">

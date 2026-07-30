@@ -1,3 +1,13 @@
 packages:
   - apps/*
   - packages/*
+
+# pnpm 10 blocks dependency build scripts unless a package is listed here.
+# Prisma's postinstall downloads its query engine — without it, the client is
+# never generated and the API cannot start. Kept to an explicit allowlist so
+# adding a dependency never silently gains the right to run code on install.
+onlyBuiltDependencies:
+  - '@nestjs/core'
+  - '@prisma/client'
+  - '@prisma/engines'
+  - prisma

@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import ArrowRight from '../components/ArrowRight'
 import { useSection } from '../context/ContentContext'
 import { renderEmphasis } from '../lib/emphasis'
-import { supabase } from '../lib/supabase'
+import { api } from '../lib/api'
 
 const fields = [
   { name: 'name', label: 'Full name', type: 'text', placeholder: 'Jane Doe' },
@@ -38,48 +38,40 @@ export default function ContactPage() {
     setStatus('sending')
     const fd = new FormData(e.currentTarget)
 
-    // `website_leads` (supabase/migrations/00000000000006_production_cms_setup.sql)
-    // only has name/email/phone/message/status/created_at — this project's
-    // Supabase instance is shared with another application, and unit
-    // attribution lives in a separate website_lead_unit_attributions join
-    // table rather than as columns on the lead itself. There is no column for
-    // "status at time of enquiry" or a source link, so both are folded into
-    // the stored message instead of being dropped.
+    // `website_leads` has no column for "status at time of enquiry" or a
+    // source link — this project's Supabase instance is shared with another
+    // application and the table is deliberately narrow — so both are folded
+    // into the stored message rather than being dropped. The unit itself is
+    // attributed properly, via website_lead_unit_attributions.
     const context = unitLabel
       ? `\n\n[Unit ${unitLabel}${unitBuilding ? ` · ${unitBuilding}` : ''} — ${unitStatus || 'status unknown'} at time of enquiry${sourcePath ? ` · ${window.location.origin}${sourcePath}` : ''}]`
       : ''
 
-    const { data: lead, error } = await supabase
-      .from('website_leads')
-      .insert({
+    // One request: the API writes the lead and its unit attribution in a single
+    // transaction. This used to be two independent inserts, so a failed
+    // attribution left a lead with no record of what it was about — and the
+    // failure was only visible in the browser console.
+    const form = e.currentTarget
+    try {
+      await api.post('/leads', {
         name: fd.get('name'),
         email: fd.get('email'),
-        phone: fd.get('phone') || null,
+        phone: fd.get('phone') || undefined,
         message: `${fd.get('message')}${context}`,
+        // Both or neither — the API rejects a half-specified attribution.
+        ...(unitLabel && propertyId && {
+          propertyId,
+          unitLabel,
+          buildingLabel: unitBuilding || undefined,
+        }),
       })
-      .select('id')
-      .single()
-
-    if (error) {
+    } catch {
       setStatus('error')
       return
     }
 
-    if (unitLabel && propertyId) {
-      // Best-effort: the enquiry itself already succeeded above, so a failure
-      // here (e.g. a stale/unknown property id) shouldn't be shown to the
-      // visitor as an error — the message they sent was received either way.
-      const { error: attrError } = await supabase.from('website_lead_unit_attributions').insert({
-        lead_id: lead.id,
-        property_id: propertyId,
-        unit_label: unitLabel,
-        building_label: unitBuilding || null,
-      })
-      if (attrError) console.error('Unit attribution not saved:', attrError.message)
-    }
-
     setStatus('sent')
-    e.currentTarget.reset()
+    form.reset()
   }
 
   return (

@@ -18,6 +18,13 @@ chk() { # chk <label> <expected> <actual>
 }
 code() { curl -s -o /dev/null -w "%{http_code}" "$@"; }
 
+echo "── health probes must be reachable without a token ──"
+# Render polls healthCheckPath unauthenticated. A 401 here means the service
+# never reports healthy and the deploy restart-loops — which is exactly what
+# happened once, when the global JWT guard silently captured this controller.
+chk "GET /health"                 200 "$(code $B/health)"
+chk "GET /health/ready"           200 "$(code $B/health/ready)"
+
 echo "── public reads (no token) ──"
 chk "GET /content"                200 "$(code $B/content)"
 chk "GET /properties"             200 "$(code $B/properties)"

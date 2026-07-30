@@ -2,6 +2,7 @@ import { Controller, Get, HttpStatus, HttpCode } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import { PrismaService } from '../../prisma/prisma.service';
+import { Public } from '../decorators/public.decorator';
 
 /**
  * Health check endpoint for Render, uptime monitors, and CI smoke tests.
@@ -10,8 +11,14 @@ import { PrismaService } from '../../prisma/prisma.service';
  * - GET /api/health/ready  — readiness (reports whether the DB is reachable)
  *
  * No auth required. Returns minimal info on purpose — don't leak deployment internals.
+ *
+ * @Public() is load-bearing: the JWT guard is global, so without it Render's
+ * health check gets a 401, the service never reports healthy, and the deploy
+ * restart-loops. This controller predates the guard and silently became
+ * authenticated when the guard was made global.
  */
 @ApiTags('Health')
+@Public()
 @SkipThrottle()
 @Controller('health')
 export class HealthController {

@@ -26,8 +26,16 @@ async function main() {
   if (!email || !password) {
     throw new Error('ADMIN_EMAIL and ADMIN_PASSWORD are both required.');
   }
-  if (password.length < 12) {
-    throw new Error('ADMIN_PASSWORD must be at least 12 characters.');
+  // Matches LoginDto's floor. These were inconsistent — the seed refused
+  // passwords the login endpoint would happily accept, which just meant
+  // provisioning failed for accounts that would have worked fine.
+  if (password.length < 8) {
+    throw new Error('ADMIN_PASSWORD must be at least 8 characters.');
+  }
+  if (email.split('@')[0] && password.toLowerCase().includes(email.split('@')[0])) {
+    console.warn(
+      `WARNING: this password contains the email's local part ("${email.split('@')[0]}"), which makes it guessable from the login address alone. Consider changing it.`,
+    );
   }
 
   const prisma = new PrismaClient();

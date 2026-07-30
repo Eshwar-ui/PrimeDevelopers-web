@@ -10,10 +10,19 @@
 | 1 · pnpm monorepo | ✅ |
 | 2 · API scaffold | ✅ schema verified against the live DB; `news` conflict **resolved** |
 | 3 · API modules | ✅ all six, **uploads now verified** against production storage |
-| 4 · Frontend cutover | ⚠️ lead submission live; the rest is one atomic change, see below |
+| 4 · Frontend cutover | ✅ **complete** — Supabase is gone from the browser |
 | 5 · Render deploy | ✅ **live** — `prime-developers-api.onrender.com`, on the **free** plan |
-| 6 · Ship frontend | ✅ **deployed** — `theprime-construction.web.app` |
-| 7 · Lock down access | ⛔ not started — far simpler than planned, see below |
+| 6 · Ship frontend | ⚠️ lead-submission build is live; **the full cutover is built but NOT deployed** |
+| 7 · Lock down access | ⛔ not started — now safe to do, see below |
+
+> ### ⛔ Blocked on the Render plan, not on code
+> The cutover is committed and verified, but **must not be deployed while the
+> API is on Render's free plan**. The homepage now fetches its content from the
+> API; free instances sleep after 15 minutes, so the first visitor after a quiet
+> spell would sit on a blank page for ~50 seconds.
+>
+> Add a card to the Render account, switch `prime-developers-api` to **starter**,
+> then `pnpm run deploy:web`. Nothing else is outstanding.
 
 ### Live as of 30 Jul 2026
 
@@ -345,7 +354,29 @@ success state shown, no console errors. It also fixed a latent bug: the old
 handler called `e.currentTarget.reset()` after two awaits, by which point React
 has nulled `currentTarget`.
 
-### Why the rest can't be done piecemeal
+### ✅ Completed — `2401ba9`
+
+`lib/supabase.js` is deleted and `@supabase/supabase-js` is out of the web app.
+**The browser now holds no Supabase credential**; the anon key is not in the
+bundle. Image and model URLs still point at the public buckets, but those are
+plain URLs needing no key.
+
+That is what makes **Phase 7 safe to do**: nothing in the browser depends on
+anon access any more, so revoking it can't break the site.
+
+Verified against the production database through the real UI — public site
+loads, login, session surviving a reload via refresh-token restore, a draft
+created and edited with the save reaching the database, the draft visible to
+the admin but 404 to the public, an image uploaded through the API to Supabase
+Storage and rendered back, and logout clearing the token. All test artifacts
+removed; production is back to 9 published properties.
+
+Two bugs surfaced while wiring it up: the lead status allow-list was missing
+`read` (what the mark-read toggle writes — that button would have 400'd), and
+`NewsEditPage` sent `publishedAt: ''` when the date was cleared, failing
+ISO-8601 validation.
+
+### Why it couldn't be done piecemeal
 
 The plan assumed the frontend could be migrated file by file. It can't, and the
 reason is worth recording because it also sets the order of everything left.

@@ -1,7 +1,7 @@
 # Deployment Plan — Frontend on Firebase, Backend on Render
 
-**Written:** 30 Jul 2026 · **Phases 0–2 complete** (branch
-`chore/monorepo-restructure`), Phase 3 next
+**Written:** 30 Jul 2026 · **Phases 0–3 complete** except uploads (branch
+`chore/monorepo-restructure`), Phase 4 next
 
 ## Context
 
@@ -167,7 +167,45 @@ One query does it:
 select column_name from information_schema.columns where table_name = 'news';
 ```
 
-## Phase 3 — API modules
+## Phase 3 — API modules ✅ *(done — `5953b4f`, except uploads)*
+
+Built: `auth`, `content`, `properties`, `news`, `leads`.
+**Not built: `uploads`** — it needs the Supabase service-role key, which isn't
+available yet, and shipping an upload path that can't be exercised would be
+guessing. It is the one remaining piece of Phase 3.
+
+Admin surfaces live under `admin/*` in their own controllers rather than as
+decorated handlers on the public ones. That keeps the authentication boundary
+visible in the URL and makes it impossible for a `:slug` route to shadow an
+admin path.
+
+**Verified end to end** — 34 checks in [`apps/api/test/smoke.sh`](../apps/api/test/smoke.sh),
+run against a scratch Postgres: public reads, anonymous rejection on every
+admin route, login failure modes, validation rejecting unknown fields, drafts
+404ing publicly while visible to admins, refresh rotation invalidating the old
+token, logout revoking, and login rate-limiting at 5/min. Confirmed separately
+that a stale `propertyId` rolls the whole lead back rather than orphaning it.
+
+Run it against a live API with:
+
+```bash
+bash apps/api/test/smoke.sh
+```
+
+### What changed from the plan
+
+- **Auth uses opaque refresh tokens, not a second JWT.** They're stored as
+  SHA-256 hashes, so the database row is the source of truth for validity and
+  there's no second signing secret to manage. `JWT_REFRESH_SECRET` is therefore
+  not a thing — `.env.example` was corrected.
+- **The JWT guard is global**, with routes opting out via `@Public()`, so a new
+  admin route that forgets to declare its auth fails closed rather than open.
+- **`news` was built against the migration's column names** (`summary`/`image`),
+  with the conflict isolated to the Prisma model and the DTO. If the live
+  database turns out to use the frontend's names, the fix is those two files
+  and nothing else — the services never name those fields individually.
+
+### Original module table
 
 One module per resource, following prime-tracker's
 `*.controller.ts` / `*.service.ts` / `*.module.ts` shape:

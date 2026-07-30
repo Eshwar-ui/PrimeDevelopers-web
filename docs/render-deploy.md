@@ -12,9 +12,11 @@ the Firebase origin through CORS, and served Swagger nowhere.
 
 ## 1. Create the Blueprint
 
-Render dashboard → **New → Blueprint** → pick this repository → branch
-`chore/monorepo-restructure` (or `main` once merged). Render reads
-`render.yaml` and proposes one service, `prime-developers-api`.
+Render dashboard → **New → Blueprint** → pick this repository → branch `main`.
+Render reads `render.yaml` and proposes one service, `prime-developers-api`.
+
+> Already done — the service exists and tracks `main`. This section is here for
+> rebuilding it from scratch.
 
 ## 2. Fill in the five secrets
 

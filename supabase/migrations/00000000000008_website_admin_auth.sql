@@ -6,9 +6,10 @@
 -- an auth migration. Nothing else in this database uses Supabase Auth for the
 -- website.
 --
--- Both tables follow the `website_` prefix convention from migration 6, since
--- this Supabase project is shared with the construction-management
--- application and `admin_users` is too generic a name to claim.
+-- Both tables follow the `website_` prefix convention that migrations 6 and 7
+-- established. That convention rests on a premise that turned out to be false
+-- — see migration 9 — but the prefix is kept anyway for consistency with the
+-- four tables that already carry it and hold live data.
 --
 -- Deliberately NOT granted to `anon` or `authenticated`, and RLS is enabled
 -- with no policies at all. Nothing reachable from a browser should ever read

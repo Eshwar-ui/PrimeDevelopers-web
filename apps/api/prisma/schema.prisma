@@ -97,24 +97,18 @@ model Property {
 
 /// Company news/articles.
 ///
-/// ⚠️ UNRESOLVED: the column names below follow migration 6, which is the DDL
-/// that was applied to production. The frontend disagrees — NewsEditPage and
-/// NewsPage read and write `excerpt` and `cover_image` (the shape from
-/// migrations 2 and 5), never `summary`/`image`. Both cannot be right.
-///
-/// If production really has `summary`/`image`, then saving a news post is
-/// currently broken in production: NewsEditPage spreads the whole form into
-/// `.update()`, so Postgres would reject the unknown `excerpt` column.
-///
-/// Settle this by introspecting the live database before building the news
-/// module, and correct whichever side is wrong. Do not guess.
+/// The columns are `excerpt` and `cover_image`, verified against the live
+/// database on 30 Jul 2026. Migration 6 declares them as `summary`/`image`,
+/// which is wrong — its `create table if not exists news` was a no-op against
+/// the table migration 5 had already renamed into place, so the earlier shape
+/// survived. The frontend was right all along.
 model News {
   id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   slug        String    @unique
   title       String
-  summary     String    @default("")
+  excerpt     String    @default("")
   body        String    @default("")
-  image       String?
+  coverImage  String?   @map("cover_image")
   sortOrder   Int       @default(0) @map("sort_order")
   published   Boolean   @default(false)
   publishedAt DateTime? @map("published_at") @db.Timestamptz(6)

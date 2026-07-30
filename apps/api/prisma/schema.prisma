@@ -27,6 +27,38 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+/// CMS admin accounts. Replaces Supabase Auth — see
+/// supabase/migrations/00000000000008_website_admin_auth.sql for why.
+model WebsiteAdminUser {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String?
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  refreshTokens WebsiteAdminRefreshToken[]
+
+  @@map("website_admin_users")
+}
+
+/// Refresh tokens, stored as SHA-256 hashes so a database dump doesn't hand
+/// out live sessions. Persisting them is what makes logout revoke rather than
+/// merely ask the client to forget.
+model WebsiteAdminRefreshToken {
+  tokenHash String    @id @map("token_hash")
+  userId    String    @map("user_id") @db.Uuid
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user WebsiteAdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("website_admin_refresh_tokens")
+}
+
 /// One row per editable site section (hero, about, footer, ...).
 /// `data` is an untyped jsonb payload shaped by the admin section editors.
 model Content {

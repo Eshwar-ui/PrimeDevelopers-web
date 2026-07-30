@@ -38,11 +38,9 @@ export default function ContactPage() {
     setStatus('sending')
     const fd = new FormData(e.currentTarget)
 
-    // `website_leads` has no column for "status at time of enquiry" or a
-    // source link — this project's Supabase instance is shared with another
-    // application and the table is deliberately narrow — so both are folded
-    // into the stored message rather than being dropped. The unit itself is
-    // attributed properly, via website_lead_unit_attributions.
+    // The leads table has no column for "status at time of enquiry" or a
+    // source link, so both are folded into the stored message rather than
+    // being dropped. The unit itself is attributed properly, as its own row.
     const context = unitLabel
       ? `\n\n[Unit ${unitLabel}${unitBuilding ? ` · ${unitBuilding}` : ''} — ${unitStatus || 'status unknown'} at time of enquiry${sourcePath ? ` · ${window.location.origin}${sourcePath}` : ''}]`
       : ''

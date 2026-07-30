@@ -48,18 +48,18 @@ export default function NewsPage() {
                 className="group flex flex-col overflow-hidden rounded-2xl border border-[var(--color-line-inv)] bg-ink transition-colors duration-300 hover:border-bone/25"
               >
                 <div className="relative h-56 overflow-hidden bg-void">
-                  {post.cover_image && (
+                  {post.coverImage && (
                     <img
-                      src={post.cover_image}
+                      src={post.coverImage}
                       alt={post.title}
                       className="h-full w-full object-cover grayscale transition-all duration-700 ease-out group-hover:scale-[1.04] group-hover:grayscale-0"
                     />
                   )}
                 </div>
                 <div className="flex flex-1 flex-col p-6 text-bone">
-                  {post.published_at && (
+                  {post.publishedAt && (
                     <span className="eyebrow text-bone/40">
-                      {new Date(post.published_at).toLocaleDateString(undefined, {
+                      {new Date(post.publishedAt).toLocaleDateString(undefined, {
                         year: 'numeric',
                         month: 'long',
                         day: 'numeric',

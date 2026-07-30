@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useNews, useContentRefetch } from '../context/ContentContext'
-import { supabase } from '../lib/supabase'
+import { api } from '../lib/api'
 import { slugify } from '../lib/slugify'
 import { Section, TextField, TextAreaField } from './components/Field'
 import ImageUploader from './components/ImageUploader'
@@ -40,14 +40,23 @@ export default function NewsEditPage() {
   const save = async () => {
     setSaving(true)
     setError(null)
-    const { id: _id, created_at: _createdAt, updated_at: _updatedAt, _slugTouched, ...rest } = form
-    const payload = { ...rest, published_at: form.published_at ? new Date(form.published_at).toISOString() : null }
-    const { error } = await supabase.from('news').update(payload).eq('id', id)
-    setSaving(false)
-    if (error) {
-      setError(error.message)
+    const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, _slugTouched, ...rest } = form
+    const payload = {
+      ...rest,
+      // The date input yields '' when cleared, which the API rejects as an
+      // invalid ISO-8601 string. Omit the field entirely in that case.
+      ...(form.publishedAt
+        ? { publishedAt: new Date(form.publishedAt).toISOString() }
+        : {}),
+    }
+    try {
+      await api.patch(`/admin/news/${id}`, payload)
+    } catch (err) {
+      setSaving(false)
+      setError(err.message)
       return
     }
+    setSaving(false)
     setSavedAt(Date.now())
     refetch()
   }
@@ -104,10 +113,10 @@ export default function NewsEditPage() {
             onChange={(body) => patch({ body })}
           />
           <p className="-mt-3 text-[11px] text-bone/35">Separate paragraphs with a blank line.</p>
-          <ImageUploader label="Cover image" value={form.cover_image} onChange={(cover_image) => patch({ cover_image })} folder="blog" />
+          <ImageUploader label="Cover image" value={form.coverImage} onChange={(coverImage) => patch({ coverImage })} folder="blog" />
           <div className="grid grid-cols-2 gap-5">
-            <TextField label="Published date" type="date" value={toDateInput(form.published_at)} onChange={(v) => patch({ published_at: v })} />
-            <TextField label="Sort order" type="number" value={form.sort_order} onChange={(sort_order) => patch({ sort_order })} />
+            <TextField label="Published date" type="date" value={toDateInput(form.publishedAt)} onChange={(v) => patch({ publishedAt: v })} />
+            <TextField label="Sort order" type="number" value={form.sortOrder} onChange={(sortOrder) => patch({ sortOrder })} />
           </div>
           <label className="flex w-fit items-center gap-2.5">
             <input

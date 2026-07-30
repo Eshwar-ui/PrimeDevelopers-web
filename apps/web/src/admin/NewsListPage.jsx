@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useNews, useContentRefetch } from '../context/ContentContext'
-import { supabase } from '../lib/supabase'
+import { api } from '../lib/api'
 import { slugify } from '../lib/slugify'
 
 export default function NewsListPage() {
@@ -11,21 +11,28 @@ export default function NewsListPage() {
   const createPost = async () => {
     const title = 'New Post'
     const slug = `${slugify(title)}-${Date.now().toString(36)}`
-    const { data, error } = await supabase
-      .from('news')
-      .insert({ title, slug, sort_order: posts.length, published: false })
-      .select()
-      .single()
-    if (error) return alert(error.message)
-    await refetch()
-    navigate(`/admin/news/${data.id}`)
+    try {
+      const created = await api.post('/admin/news', {
+        title,
+        slug,
+        sortOrder: posts.length,
+        published: false,
+      })
+      await refetch()
+      navigate(`/admin/news/${created.id}`)
+    } catch (err) {
+      alert(err.message)
+    }
   }
 
   const remove = async (id) => {
     if (!confirm('Delete this post? This cannot be undone.')) return
-    const { error } = await supabase.from('news').delete().eq('id', id)
-    if (error) return alert(error.message)
-    refetch()
+    try {
+      await api.del(`/admin/news/${id}`)
+      refetch()
+    } catch (err) {
+      alert(err.message)
+    }
   }
 
   return (
@@ -48,7 +55,7 @@ export default function NewsListPage() {
         {posts.map((post) => (
           <div key={post.id} className="flex items-center gap-4 rounded-2xl border border-white/10 bg-carbon p-4">
             <div className="h-14 w-20 shrink-0 overflow-hidden rounded-lg bg-black/20">
-              {post.cover_image && <img src={post.cover_image} alt="" className="h-full w-full object-cover" />}
+              {post.coverImage && <img src={post.coverImage} alt="" className="h-full w-full object-cover" />}
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2">

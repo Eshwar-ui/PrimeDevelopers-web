@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useSection, useContentRefetch } from '../context/ContentContext'
-import { supabase } from '../lib/supabase'
+import { api } from '../lib/api'
 import { SECTIONS } from './content/sectionEditors'
 
 export default function ContentSectionPage() {
@@ -34,12 +34,14 @@ export default function ContentSectionPage() {
   const save = async () => {
     setSaving(true)
     setError(null)
-    const { error } = await supabase.from('content').upsert({ section, data: value })
-    setSaving(false)
-    if (error) {
-      setError(error.message)
+    try {
+      await api.put(`/content/${section}`, { data: value })
+    } catch (err) {
+      setSaving(false)
+      setError(err.message)
       return
     }
+    setSaving(false)
     setSavedAt(Date.now())
     refetch()
   }

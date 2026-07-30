@@ -1,36 +1,28 @@
-import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { useEffect, useMemo, useState } from 'react'
+import { api } from '../lib/api'
+import { useProperties } from '../context/ContentContext'
 
-// This Supabase project is shared with another application (see
-// supabase/migrations/00000000000006_production_cms_setup.sql) — unit
-// attribution is a separate website_lead_unit_attributions row rather than
-// columns on website_leads itself, so it's fetched and joined client-side
-// here instead of being selected directly off the lead.
+// Unit attribution lives in its own table rather than as columns on the lead,
+// so it used to be fetched separately and joined here. The API now returns each
+// lead with its attributions embedded, and property slugs come from content
+// context — three requests became one.
 export default function LeadsPage() {
   const [leads, setLeads] = useState(null)
-  const [attributionsByLead, setAttributionsByLead] = useState({})
-  const [slugsByProperty, setSlugsByProperty] = useState({})
   const [error, setError] = useState(null)
+  const properties = useProperties()
+
+  const slugsByProperty = useMemo(
+    () => Object.fromEntries(properties.map((p) => [p.id, p.slug])),
+    [properties],
+  )
 
   const load = async () => {
-    const [leadsRes, attrRes, propsRes] = await Promise.all([
-      supabase.from('website_leads').select('*').order('created_at', { ascending: false }),
-      supabase.from('website_lead_unit_attributions').select('*'),
-      supabase.from('properties').select('id, slug'),
-    ])
-    if (leadsRes.error) {
-      setError(leadsRes.error.message)
-      return
+    try {
+      setLeads(await api.get('/admin/leads'))
+      setError(null)
+    } catch (err) {
+      setError(err.message)
     }
-    setLeads(leadsRes.data)
-
-    const byLead = {}
-    for (const a of attrRes.data ?? []) byLead[a.lead_id] = a
-    setAttributionsByLead(byLead)
-
-    const bySlug = {}
-    for (const p of propsRes.data ?? []) bySlug[p.id] = p.slug
-    setSlugsByProperty(bySlug)
   }
 
   useEffect(() => {
@@ -38,14 +30,22 @@ export default function LeadsPage() {
   }, [])
 
   const markRead = async (id, status) => {
-    await supabase.from('website_leads').update({ status }).eq('id', id)
-    load()
+    try {
+      await api.patch(`/admin/leads/${id}`, { status })
+      load()
+    } catch (err) {
+      setError(err.message)
+    }
   }
 
   const remove = async (id) => {
     if (!confirm('Delete this lead?')) return
-    await supabase.from('website_leads').delete().eq('id', id)
-    load()
+    try {
+      await api.del(`/admin/leads/${id}`)
+      load()
+    } catch (err) {
+      setError(err.message)
+    }
   }
 
   return (
@@ -58,8 +58,8 @@ export default function LeadsPage() {
       <div className="mt-8 flex flex-col gap-3">
         {leads?.length === 0 && <p className="text-sm text-bone/40">No submissions yet.</p>}
         {leads?.map((l) => {
-          const attribution = attributionsByLead[l.id]
-          const unitSlug = attribution ? slugsByProperty[attribution.property_id] : null
+          const attribution = l.unitAttributions?.[0] ?? null
+          const unitSlug = attribution ? slugsByProperty[attribution.propertyId] : null
           return (
             <div
               key={l.id}
@@ -76,10 +76,10 @@ export default function LeadsPage() {
                   {attribution && (
                     <div className="mb-2 flex flex-wrap items-center gap-2">
                       <span className="rounded-full bg-accent/20 px-2.5 py-0.5 font-body text-[11px] font-bold uppercase tracking-wide text-accent-soft">
-                        Unit {attribution.unit_label}
+                        Unit {attribution.unitLabel}
                       </span>
-                      {attribution.building_label && (
-                        <span className="text-xs text-bone/40">{attribution.building_label}</span>
+                      {attribution.buildingLabel && (
+                        <span className="text-xs text-bone/40">{attribution.buildingLabel}</span>
                       )}
                     </div>
                   )}
@@ -90,7 +90,7 @@ export default function LeadsPage() {
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-3 text-xs font-bold uppercase tracking-wide">
-                  <span className="text-bone/35">{new Date(l.created_at).toLocaleString()}</span>
+                  <span className="text-bone/35">{new Date(l.createdAt).toLocaleString()}</span>
                   <button
                     type="button"
                     onClick={() => markRead(l.id, l.status === 'new' ? 'read' : 'new')}
@@ -109,7 +109,7 @@ export default function LeadsPage() {
               {l.message && <p className="mt-4 whitespace-pre-wrap text-sm text-bone/70">{l.message}</p>}
               {attribution && unitSlug && (
                 <a
-                  href={`/properties/${unitSlug}?unit=${encodeURIComponent(attribution.unit_label)}`}
+                  href={`/properties/${unitSlug}?unit=${encodeURIComponent(attribution.unitLabel)}`}
                   target="_blank"
                   rel="noreferrer"
                   className="mt-3 inline-block text-xs text-accent-soft hover:text-bone"

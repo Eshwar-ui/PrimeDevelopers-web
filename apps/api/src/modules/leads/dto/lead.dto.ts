@@ -8,7 +8,10 @@ import {
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-export const LEAD_STATUSES = ['new', 'contacted', 'qualified', 'closed'] as const;
+// `read` is what the admin's mark-read toggle writes; the rest are for a sales
+// pipeline the CMS doesn't expose yet. Omitting `read` would have made that
+// button 400 — the column had no constraint before, so nothing caught it.
+export const LEAD_STATUSES = ['new', 'read', 'contacted', 'qualified', 'closed'] as const;
 
 /**
  * The public lead submission. This is the only unauthenticated write in the

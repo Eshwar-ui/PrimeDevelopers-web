@@ -78,10 +78,8 @@ export default function FloorPlanSection({ building, propertyId }) {
 
   // Status travels with the enquiry so sales can tell a genuine enquiry from
   // one made against data that has since changed. `property` carries the
-  // property's row id — needed to write a website_lead_unit_attributions row
-  // (lead_id, property_id, unit_label, building_label), which is how unit
-  // attribution is modelled on the shared production database (see
-  // supabase/migrations/00000000000006_production_cms_setup.sql). Without it
+  // property's row id — the API requires propertyId and unitLabel together to
+  // attribute a lead to a unit, and rejects a half-specified pair. Without it
   // the contact page has no way to attribute the enquiry to a unit at all.
   const enquire = (unit) =>
     navigate(

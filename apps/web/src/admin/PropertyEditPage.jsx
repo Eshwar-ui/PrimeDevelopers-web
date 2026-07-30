@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useCategories, useContentRefetch, useProperties } from '../context/ContentContext'
-import { supabase } from '../lib/supabase'
+import { api } from '../lib/api'
 import { slugify } from '../lib/slugify'
 import { Section, TextField, TextAreaField } from './components/Field'
 import ImageUploader from './components/ImageUploader'
@@ -64,13 +64,15 @@ export default function PropertyEditPage() {
   const save = async () => {
     setSaving(true)
     setError(null)
-    const { id: _id, created_at: _createdAt, updated_at: _updatedAt, _slugTouched, ...payload } = form
-    const { error } = await supabase.from('properties').update(payload).eq('id', id)
-    setSaving(false)
-    if (error) {
-      setError(error.message)
+    const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, _slugTouched, ...payload } = form
+    try {
+      await api.patch(`/admin/properties/${id}`, payload)
+    } catch (err) {
+      setSaving(false)
+      setError(err.message)
       return
     }
+    setSaving(false)
     setSavedAt(Date.now())
     refetch()
   }
@@ -143,8 +145,8 @@ export default function PropertyEditPage() {
             <TextField
               label="Sort order (lower shows first)"
               type="number"
-              value={form.sort_order}
-              onChange={(sort_order) => patch({ sort_order })}
+              value={form.sortOrder}
+              onChange={(sortOrder) => patch({ sortOrder })}
             />
           </div>
           <label className="flex w-fit items-center gap-2.5">

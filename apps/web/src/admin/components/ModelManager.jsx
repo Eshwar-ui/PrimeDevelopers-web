@@ -1,5 +1,5 @@
 import { Suspense, lazy, useCallback, useMemo, useRef, useState } from 'react'
-import { uploadImage, uploadModel } from '../../lib/supabase'
+import { uploadImage, uploadModel } from '../../lib/uploads'
 import { inspectGlb, triangleWarning, validateModelFile } from '../../lib/glbInspect'
 import { diffModels, formatBytes, getUnits, pruneBindings, reconcile } from '../../lib/units'
 

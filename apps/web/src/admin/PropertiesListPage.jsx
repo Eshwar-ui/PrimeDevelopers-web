@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useProperties, useContentRefetch } from '../context/ContentContext'
-import { supabase } from '../lib/supabase'
+import { api } from '../lib/api'
 import { slugify } from '../lib/slugify'
 
 export default function PropertiesListPage() {
@@ -11,21 +11,28 @@ export default function PropertiesListPage() {
   const createProperty = async () => {
     const name = 'New Property'
     const slug = `${slugify(name)}-${Date.now().toString(36)}`
-    const { data, error } = await supabase
-      .from('properties')
-      .insert({ name, slug, sort_order: properties.length, published: false })
-      .select()
-      .single()
-    if (error) return alert(error.message)
-    await refetch()
-    navigate(`/admin/properties/${data.id}`)
+    try {
+      const created = await api.post('/admin/properties', {
+        name,
+        slug,
+        sortOrder: properties.length,
+        published: false,
+      })
+      await refetch()
+      navigate(`/admin/properties/${created.id}`)
+    } catch (err) {
+      alert(err.message)
+    }
   }
 
   const remove = async (id) => {
     if (!confirm('Delete this property? This cannot be undone.')) return
-    const { error } = await supabase.from('properties').delete().eq('id', id)
-    if (error) return alert(error.message)
-    refetch()
+    try {
+      await api.del(`/admin/properties/${id}`)
+      refetch()
+    } catch (err) {
+      alert(err.message)
+    }
   }
 
   return (

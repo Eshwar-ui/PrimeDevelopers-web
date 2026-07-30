@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { uploadImage } from '../../lib/supabase'
+import { uploadImage } from '../../lib/uploads'
 
 export default function ImageUploader({ value, onChange, folder, label }) {
   const inputRef = useRef(null)

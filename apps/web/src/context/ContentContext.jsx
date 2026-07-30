@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { api } from '../lib/api'
+import { useAuth } from './AuthContext'
 
 // Fallback shape per section so a missing/not-yet-seeded row never crashes a
 // component — every field a component reads is guaranteed to exist.
@@ -53,31 +54,40 @@ const DEFAULTS = {
 const ContentContext = createContext(null)
 
 export function ContentProvider({ children }) {
+  const { session, loading: authLoading } = useAuth()
   const [content, setContent] = useState(null)
   const [properties, setProperties] = useState(null)
   const [news, setNews] = useState(null)
   const [error, setError] = useState(null)
 
-  const load = useCallback(async () => {
-    const [contentRes, propertiesRes, newsRes] = await Promise.all([
-      supabase.from('content').select('section, data'),
-      supabase.from('properties').select('*').order('sort_order', { ascending: true }),
-      supabase.from('news').select('*').order('sort_order', { ascending: true }),
-    ])
-    if (contentRes.error) throw contentRes.error
-    if (propertiesRes.error) throw propertiesRes.error
-    if (newsRes.error) throw newsRes.error
+  // Signed-in admins read the admin endpoints, which include unpublished
+  // drafts; everyone else reads the public ones, which don't. Under Supabase
+  // this distinction was invisible — the same query returned different rows
+  // depending on the caller's RLS role. Making it explicit is the point: the
+  // admin list would otherwise silently lose its drafts, leaving unpublished
+  // properties uneditable.
+  const isAdmin = Boolean(session)
 
-    const bySection = {}
-    for (const row of contentRes.data) bySection[row.section] = row.data
-    setContent(bySection)
-    setProperties(propertiesRes.data)
-    setNews(newsRes.data)
-  }, [])
+  const load = useCallback(async () => {
+    const prefix = isAdmin ? '/admin' : ''
+    const [contentRes, propertiesRes, newsRes] = await Promise.all([
+      api.get('/content'),
+      api.get(`${prefix}/properties`),
+      api.get(`${prefix}/news`),
+    ])
+    setContent(contentRes)
+    setProperties(propertiesRes)
+    setNews(newsRes)
+  }, [isAdmin])
 
   useEffect(() => {
+    // Wait for auth to resolve first. Loading as anonymous and then reloading
+    // as admin would flash a draft-less list and double every request on the
+    // one page that cares.
+    if (authLoading) return
+    setError(null)
     load().catch((err) => setError(err))
-  }, [load])
+  }, [load, authLoading])
 
   const value = useMemo(() => {
     const getSection = (section) => ({ ...DEFAULTS[section], ...(content?.[section] ?? {}) })

@@ -25,9 +25,9 @@ export default function NewsPostPage() {
           <Link to="/news" className="eyebrow mb-8 inline-block text-bone/50 hover:text-bone">
             ← All posts
           </Link>
-          {post.published_at && (
+          {post.publishedAt && (
             <span className="eyebrow mb-5 block text-accent-soft">
-              {new Date(post.published_at).toLocaleDateString(undefined, {
+              {new Date(post.publishedAt).toLocaleDateString(undefined, {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',
@@ -37,9 +37,9 @@ export default function NewsPostPage() {
           <h1 className="font-display text-h2 font-light leading-[1.05] tracking-[-0.02em]">{post.title}</h1>
         </div>
 
-        {post.cover_image && (
+        {post.coverImage && (
           <div className="relative mt-14 h-[300px] overflow-hidden rounded-3xl border border-[var(--color-line-inv)] md:h-[460px]">
-            <img src={post.cover_image} alt={post.title} className="h-full w-full object-cover" />
+            <img src={post.coverImage} alt={post.title} className="h-full w-full object-cover" />
           </div>
         )}
       </section>

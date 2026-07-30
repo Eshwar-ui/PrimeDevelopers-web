@@ -6,19 +6,46 @@
 
 | Phase | State |
 |---|---|
-| 0 · Prerequisites | ✅ except **prod credentials** — still needed, blocks 4 and 5 |
+| 0 · Prerequisites | ✅ credentials received 30 Jul |
 | 1 · pnpm monorepo | ✅ |
-| 2 · API scaffold | ✅ — one open question: the **`news` column conflict** |
-| 3 · API modules | ✅ all six, uploads' storage call unverified |
-| 4 · Frontend cutover | ⚠️ lead submission done; **the rest is blocked** |
-| 5 · Render deploy | ⚠️ `render.yaml` written; **the deploy itself is yours to run** |
+| 2 · API scaffold | ✅ schema verified against the live DB; `news` conflict **resolved** |
+| 3 · API modules | ✅ all six; uploads' storage call still unverified |
+| 4 · Frontend cutover | ⚠️ lead submission done; the rest needs migrations 8–9 applied first |
+| 5 · Render deploy | ⚠️ `render.yaml` written; **the deploy is yours to run** |
 | 6 · Ship frontend | ⛔ not started — must not go before Render is live |
-| 7 · Lock down access | ⛔ not started |
+| 7 · Lock down access | ⛔ not started — but far simpler than planned, see below |
 
-**Everything still blocked comes down to one thing: the Supabase credentials
-in `apps/api/.env`** (connection strings + service-role key). That single
-unblock covers the `news` question, the uploads verification, and the whole
-remaining frontend cutover.
+### Two corrections from inspecting the live database (30 Jul 2026)
+
+**1. `news` uses `excerpt` and `cover_image`.** The frontend was right and
+migration 6 was wrong — its `create table if not exists news` was a no-op
+against the table migration 5 had already renamed into place, so the earlier
+column names survived. Fixed in `e0ee37f`. Nothing in production was broken;
+the API had been modelled on a DDL that never took effect.
+
+**2. This database is not shared.** Migrations 6 and 7 both say it is. It
+isn't. The `public` schema holds exactly five tables, all this website's —
+`content`, `properties`, `news`, `website_leads`,
+`website_lead_unit_attributions` — and every other schema present (`auth`,
+`storage`, `realtime`, `vault`, `graphql`, `extensions`) is a Supabase
+built-in. The construction-management application lives in a **different
+Supabase project**.
+
+This makes **Phase 7 much simpler than planned**: tightening grants and RLS on
+these tables cannot affect another application, because there isn't one here.
+The `website_` prefix is now just a name, and not worth renaming given the live
+data behind it. It also means the "one database for both products" goal is
+entirely ahead of us, not partly done — the two projects are separate.
+
+**Live data as of 30 Jul:** 12 content sections, 9 properties, 1 news post, 0
+leads. Backed up to CSV before any write.
+
+### Blocked on a permission, not a credential
+
+Applying migrations 8 and 9 to production, and loading production data into the
+local scratch DB, were both **refused by the sandbox's permission classifier** —
+correctly, since one writes schema to a live database and the other runs a
+`truncate`. These need to be run by hand; see Phase 5 step 4.
 
 ## Context
 
@@ -321,11 +348,20 @@ needs your Render account, so the remaining steps are:
 3. **Check the region.** It's set to `singapore`; if the Supabase project lives
    elsewhere, change it — every request makes a database round trip and a
    cross-region hop taxes all of them.
-4. Apply `supabase/migrations/00000000000008_website_admin_auth.sql` to the
-   database, then seed an admin:
+4. **Apply migrations 8 and 9**, then seed an admin. Both are additive/tightening
+   and were verified safe against the live database (the attribution table is
+   empty, so the NOT NULL is instant); a CSV backup of all five CMS tables was
+   taken first. Run from the repo root with `DIRECT_URL` set to the direct
+   (5432) connection string:
    ```bash
-   cd apps/api && ADMIN_EMAIL=you@primedevelopers.com ADMIN_PASSWORD='...' pnpm exec ts-node prisma/seed-admin.ts
+   psql "$DIRECT_URL" -v ON_ERROR_STOP=1 --single-transaction -f supabase/migrations/00000000000008_website_admin_auth.sql -f supabase/migrations/00000000000009_attribution_property_required.sql
    ```
+   ```bash
+   cd apps/api && ADMIN_EMAIL=you@primedevelopers.com ADMIN_PASSWORD='at-least-12-chars' pnpm exec ts-node prisma/seed-admin.ts
+   ```
+   Note `DATABASE_URL` for Render should be the **pooler** (port 6543) with
+   `?pgbouncer=true&connection_limit=1`; only `DIRECT_URL` uses 5432. The
+   credential supplied so far is the direct one.
 5. Verify: `curl https://prime-developers-api.onrender.com/api/health/ready`
    should report the database reachable. Then run the smoke suite against it by
    editing `B=` at the top of `apps/api/test/smoke.sh`.

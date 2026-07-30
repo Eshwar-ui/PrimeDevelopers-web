@@ -1,7 +1,8 @@
 # Deployment Plan — Frontend on Firebase, Backend on Render
 
-**Written:** 30 Jul 2026 · **Phases 0–3 complete** except uploads (branch
-`chore/monorepo-restructure`), Phase 4 next
+**Written:** 30 Jul 2026 · **Phases 0–3 complete** except uploads; **Phase 4
+part-done** (branch `chore/monorepo-restructure`). The remainder is blocked on
+the Supabase service-role key — see Phase 4.
 
 ## Context
 
@@ -233,7 +234,44 @@ every existing `<img>` and `.glb` URL keeps working untouched.
 database with whatever shape the client sends. class-validator DTOs make that a
 400.
 
-## Phase 4 — Frontend cutover
+## Phase 4 — Frontend cutover ⚠️ *(part-done — `8415afd`)*
+
+**Done:** [`lib/api.js`](../apps/web/src/lib/api.js) and the contact form's lead
+submission. Verified through the running UI — CORS preflight passes, 201
+returned, both rows written with unit and building labels, fields cleared,
+success state shown, no console errors. It also fixed a latent bug: the old
+handler called `e.currentTarget.reset()` after two awaits, by which point React
+has nulled `currentTarget`.
+
+### Why the rest can't be done piecemeal
+
+The plan assumed the frontend could be migrated file by file. It can't, and the
+reason is worth recording because it also sets the order of everything left.
+
+**`ContentContext` serves both the public site and the admin CMS.** Its
+`supabase.from('properties').select('*')` returns different rows depending on
+who's asking — RLS gives anonymous visitors published rows only, and
+authenticated admins everything. Point it at the public API and the admin list
+silently loses its drafts, so unpublished properties become uneditable. Point it
+at the admin API and it needs a JWT, which means auth must already be cut over.
+
+**Cutting auth over breaks uploads.** The storage policies are
+`bucket_id = 'images' and auth.role() = 'authenticated'`. Drop Supabase Auth and
+nobody is `authenticated` any more, so image and `.glb` uploads fail — and the
+fix (routing uploads through the API) needs the service-role key, which is also
+what Phase 3's uploads module is waiting on.
+
+So the remainder — `ContentContext`, all six admin pages, `AuthContext`,
+`RequireAuth`, and the storage helpers in `lib/supabase.js` — has to land as one
+change, together with the API's uploads module and a storage-policy migration.
+Anything less leaves the client's CMS half-broken.
+
+**Unblocked by:** the Supabase service-role key in `apps/api/.env`.
+
+**Note for Phase 6:** the contact form now depends on the API, so the frontend
+must not be deployed to Firebase before the Render service is live.
+
+### Original plan for this phase
 
 Add a thin `apps/web/src/lib/api.js` (fetch wrapper, `VITE_API_BASE_URL`, bearer
 token, error normalisation) and replace Supabase table calls. All paths below are

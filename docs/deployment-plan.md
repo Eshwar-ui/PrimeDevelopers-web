@@ -10,10 +10,33 @@
 | 1 · pnpm monorepo | ✅ |
 | 2 · API scaffold | ✅ schema verified against the live DB; `news` conflict **resolved** |
 | 3 · API modules | ✅ all six, **uploads now verified** against production storage |
-| 4 · Frontend cutover | ⚠️ lead submission done; the rest is one atomic change, see below |
-| 5 · Render deploy | ⚠️ config **verified end to end**; creating the service is yours — [runbook](render-deploy.md) |
-| 6 · Ship frontend | ⛔ deliberately held until Render is live |
+| 4 · Frontend cutover | ⚠️ lead submission live; the rest is one atomic change, see below |
+| 5 · Render deploy | ✅ **live** — `prime-developers-api.onrender.com`, on the **free** plan |
+| 6 · Ship frontend | ✅ **deployed** — `theprime-construction.web.app` |
 | 7 · Lock down access | ⛔ not started — far simpler than planned, see below |
+
+### Live as of 30 Jul 2026
+
+- **API** — `https://prime-developers-api.onrender.com`, Singapore, branch
+  `chore/monorepo-restructure`, autoDeploy on. Verified in production: health,
+  DB reachable (195ms Singapore→Mumbai), 9 properties and 1 news post serving,
+  admin routes 401 to anonymous, Swagger absent, real admin login, refresh
+  rotation invalidating the old token, CORS allowing only the Firebase origins.
+- **Site** — `https://theprime-construction.web.app`. A real lead submitted
+  through the live contact form reached Supabase via the API, and was then
+  deleted through the admin endpoint (also verifying that). The 3D floor plan
+  mounts and renders, units colour-coded by status.
+
+> **⚠️ The API is on Render's free plan.** Adding the `starter` plan needs a card
+> on the Render account, and the API returned *"Payment information is
+> required"*. Free services sleep after 15 minutes idle and cold-start in
+> ~50 seconds.
+>
+> Today the blast radius is small — only the contact form calls the API, so a
+> stale visitor may wait on submit. **This becomes unacceptable the moment
+> Phase 4's remaining cutover lands**, because `ContentContext` will fetch the
+> homepage's content from the API and every cold visitor would face a blank page
+> for the better part of a minute. Upgrade to starter before that ships.
 
 ### Applied to production on 30 Jul 2026
 

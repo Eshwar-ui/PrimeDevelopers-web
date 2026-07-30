@@ -10,6 +10,7 @@ import { ContentModule } from './modules/content/content.module';
 import { PropertiesModule } from './modules/properties/properties.module';
 import { NewsModule } from './modules/news/news.module';
 import { LeadsModule } from './modules/leads/leads.module';
+import { UploadsModule } from './modules/uploads/uploads.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { LeadsModule } from './modules/leads/leads.module';
     PropertiesModule,
     NewsModule,
     LeadsModule,
+    UploadsModule,
   ],
   providers: [
     // Order matters: throttle before authenticating, so a flood of bad

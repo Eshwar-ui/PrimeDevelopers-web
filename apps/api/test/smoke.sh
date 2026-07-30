@@ -1,8 +1,17 @@
 #!/usr/bin/env bash
-# End-to-end smoke test for the Phase 3 API surface.
+# End-to-end smoke test for the API.
+#
+#   bash apps/api/test/smoke.sh      (with the API running on :3001)
+#
+# Requires a seeded admin — see prisma/seed-admin.ts — with the credentials
+# below. Leave ~60s between consecutive runs: the last block deliberately trips
+# the 5/min login limit, so an immediate re-run can't authenticate.
 set -uo pipefail
 B=http://localhost:3001/api
 pass=0; fail=0
+# Slugs are unique, so a fixed one would collide on the second run and the
+# suite would only pass against a fresh database.
+RUN=$(date +%s)
 chk() { # chk <label> <expected> <actual>
   if [ "$2" = "$3" ]; then echo "  ✓ $1 ($3)"; pass=$((pass+1));
   else echo "  ✗ $1 — expected $2, got $3"; fail=$((fail+1)); fi
@@ -47,16 +56,16 @@ chk "bad uuid path → 400"         400 "$(code "${A[@]}" -X DELETE $B/admin/pro
 
 echo "── create a property (admin) ──"
 P=$(curl -s "${A[@]}" -X POST -H 'Content-Type: application/json' \
-  -d '{"name":"Smoke Plaza","slug":"smoke-plaza","published":true,"detail":{"units":[]}}' $B/admin/properties)
+  -d "{\"name\":\"Smoke Plaza\",\"slug\":\"smoke-plaza-$RUN\",\"published\":true,\"detail\":{\"units\":[]}}" $B/admin/properties)
 PID=$(echo "$P" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')
 [ -n "$PID" ] && { echo "  ✓ created ($PID)"; pass=$((pass+1)); } || { echo "  ✗ create failed: $P"; fail=$((fail+1)); }
-chk "now visible publicly"        200 "$(code $B/properties/smoke-plaza)"
+chk "now visible publicly"        200 "$(code $B/properties/smoke-plaza-$RUN)"
 
 echo "── draft is hidden from the public ──"
 curl -s "${A[@]}" -X POST -H 'Content-Type: application/json' \
-  -d '{"name":"Draft","slug":"draft-prop","published":false}' $B/admin/properties > /dev/null
-chk "public GET draft → 404"      404 "$(code $B/properties/draft-prop)"
-chk "admin GET draft → 200"       200 "$(code "${A[@]}" $B/admin/properties/draft-prop)"
+  -d "{\"name\":\"Draft\",\"slug\":\"draft-prop-$RUN\",\"published\":false}" $B/admin/properties > /dev/null
+chk "public GET draft → 404"      404 "$(code $B/properties/draft-prop-$RUN)"
+chk "admin GET draft → 200"       200 "$(code "${A[@]}" $B/admin/properties/draft-prop-$RUN)"
 
 echo "── public lead submission ──"
 chk "valid lead → 201"            201 "$(code -X POST -H 'Content-Type: application/json' -d '{"name":"Jo","email":"jo@example.com","message":"hi"}' $B/leads)"
@@ -81,6 +90,28 @@ chk "logout → 204"                204 "$(code -X POST -H 'Content-Type: applic
 chk "refresh after logout → 401"  401 "$(code -X POST -H 'Content-Type: application/json' -d "{\"refreshToken\":\"$RT2\"}" $B/auth/refresh)"
 chk "logout is idempotent → 204"  204 "$(code -X POST -H 'Content-Type: application/json' -d "{\"refreshToken\":\"$RT2\"}" $B/auth/logout)"
 
+echo "── uploads: auth and validation ──"
+# Fixtures are generated here so the test stays self-contained.
+TMP=$(mktemp -d)
+printf '\x89PNG\r\n\x1a\n' > "$TMP/px.png"
+echo hello > "$TMP/notes.txt"
+chk "anonymous upload → 401"      401 "$(code -X POST -F "file=@$TMP/px.png" -F 'folder=x/y' $B/uploads/image)"
+chk "no file → 400"               400 "$(code "${A[@]}" -X POST -F 'folder=x/y' $B/uploads/image)"
+chk ".txt as image → 400"         400 "$(code "${A[@]}" -X POST -F "file=@$TMP/notes.txt" -F 'folder=x/y' $B/uploads/image)"
+chk ".txt as model → 400"         400 "$(code "${A[@]}" -X POST -F "file=@$TMP/notes.txt;type=text/plain" -F 'folder=x/y' $B/uploads/model)"
+chk "missing folder → 400"        400 "$(code "${A[@]}" -X POST -F "file=@$TMP/px.png" $B/uploads/image)"
+# A valid file gets past validation. With storage configured that's a 201; with
+# SUPABASE_SERVICE_ROLE_KEY unset it's a 500 naming the missing variables.
+# Either proves validation passed — a 400 here would mean it didn't.
+UP=$(code "${A[@]}" -X POST -F "file=@$TMP/px.png" -F 'folder=x/y' $B/uploads/image)
+case "$UP" in
+  201|500) echo "  ✓ valid image passes validation ($UP)"; pass=$((pass+1));;
+  *)       echo "  ✗ valid image rejected ($UP)"; fail=$((fail+1));;
+esac
+rm -rf "$TMP"
+
+# Last, because it deliberately exhausts the login budget: the limit is 5/min
+# per IP, so anything needing a fresh token after this point would fail.
 echo "── login rate limit (6th attempt in a minute) ──"
 for _ in 1 2 3 4 5; do
   curl -s -o /dev/null -X POST -H 'Content-Type: application/json' \

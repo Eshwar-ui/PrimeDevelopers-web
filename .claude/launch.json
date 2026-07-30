@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "prime-dev",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@prime-developers/web", "dev"],
       "port": 5173,
       "autoPort": true
     }

@@ -12,17 +12,21 @@
 | 3 · API modules | ✅ all six, **uploads now verified** against production storage |
 | 4 · Frontend cutover | ✅ **complete** — Supabase is gone from the browser |
 | 5 · Render deploy | ✅ **live** — `prime-developers-api.onrender.com`, on the **free** plan |
-| 6 · Ship frontend | ⚠️ lead-submission build is live; **the full cutover is built but NOT deployed** |
+| 6 · Ship frontend | ✅ **live** — the full cutover is deployed |
 | 7 · Lock down access | ⛔ not started — now safe to do, see below |
 
-> ### ⛔ Blocked on the Render plan, not on code
-> The cutover is committed and verified, but **must not be deployed while the
-> API is on Render's free plan**. The homepage now fetches its content from the
-> API; free instances sleep after 15 minutes, so the first visitor after a quiet
-> spell would sit on a blank page for ~50 seconds.
+Admin login is **`akhil@gmail.com`**. The previous `admin@prime.com` account was
+removed when it was replaced, so there is exactly one admin.
+
+> ### ⚠️ Upgrade Render to `starter`
+> The homepage now fetches its content from the API, and the API is on Render's
+> **free** plan. Free instances sleep after 15 minutes idle, so the first
+> visitor after a quiet spell waits out a ~50 second cold start on a loading
+> spinner — on the homepage, not just a form.
 >
-> Add a card to the Render account, switch `prime-developers-api` to **starter**,
-> then `pnpm run deploy:web`. Nothing else is outstanding.
+> This was deployed at the client's explicit instruction with that tradeoff
+> stated. Add a card to the Render account and switch `prime-developers-api` to
+> **starter** (~$7/mo) to remove it. No redeploy is needed afterwards.
 
 ### Live as of 30 Jul 2026
 

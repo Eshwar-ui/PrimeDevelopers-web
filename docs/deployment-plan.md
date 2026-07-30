@@ -9,11 +9,43 @@
 | 0 · Prerequisites | ✅ credentials received 30 Jul |
 | 1 · pnpm monorepo | ✅ |
 | 2 · API scaffold | ✅ schema verified against the live DB; `news` conflict **resolved** |
-| 3 · API modules | ✅ all six; uploads' storage call still unverified |
-| 4 · Frontend cutover | ⚠️ lead submission done; the rest needs migrations 8–9 applied first |
-| 5 · Render deploy | ⚠️ `render.yaml` written; **the deploy is yours to run** |
-| 6 · Ship frontend | ⛔ not started — must not go before Render is live |
-| 7 · Lock down access | ⛔ not started — but far simpler than planned, see below |
+| 3 · API modules | ✅ all six, **uploads now verified** against production storage |
+| 4 · Frontend cutover | ⚠️ lead submission done; the rest is one atomic change, see below |
+| 5 · Render deploy | ⚠️ config **verified end to end**; creating the service is yours — [runbook](render-deploy.md) |
+| 6 · Ship frontend | ⛔ deliberately held until Render is live |
+| 7 · Lock down access | ⛔ not started — far simpler than planned, see below |
+
+### Applied to production on 30 Jul 2026
+
+Migrations **8, 9 and 10**, after a CSV backup of all five CMS tables:
+
+- **8** — `website_admin_users` + `website_admin_refresh_tokens`, RLS on, no policies.
+- **9** — `property_id` on the attribution table is now `NOT NULL`, and the
+  record is corrected: this database is **not** shared.
+- **10** — revokes the grants Supabase's default privileges silently handed
+  `anon`/`authenticated` on the two new auth tables. Migration 8 *intended* them
+  ungranted; Supabase's `ALTER DEFAULT PRIVILEGES` overrode that. RLS was still
+  denying access, so nothing was exposed, but password hashes and live session
+  tokens shouldn't rest on a single control.
+
+Admin account seeded as `admin@prime.com`. **The password contains the email's
+local part**, which makes it guessable from the login address alone — change it
+by re-running `prisma/seed-admin.ts` with a stronger `ADMIN_PASSWORD`.
+
+**Everything else was already seeded.** All 12 content sections, 9 properties, 1
+news post, and a 3D model on `pow-lewisville-phase-i` building 0 — the `.glb`
+serves at HTTP 200 with 9 of its 10 units mesh-matched (`unit-410` has no mesh
+and degrades to the 2D plan, exactly as `reconcile()` intends). The only gap is
+2D hotspot coordinates: every unit has `x: null, y: null`, so the pins need
+placing by hand in the admin.
+
+### A bug this turn's verification caught
+
+`/api/health` and `/api/health/ready` both returned **401**. `HealthController`
+predates the global JWT guard and was silently captured when Phase 3 made that
+guard global. Render polls `healthCheckPath` unauthenticated, so **the deploy
+would have restart-looped**, presenting as a broken build rather than a missing
+decorator. Fixed in `c012525`; the smoke suite now asserts 200 on both.
 
 ### Two corrections from inspecting the live database (30 Jul 2026)
 

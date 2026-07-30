@@ -17,10 +17,10 @@ services:
     # page. Starter is the real cost of putting a marketing site behind an API.
     plan: starter
 
-    # Must match the Supabase project's region — every request makes at least
-    # one round trip to the database, and a cross-region hop is a fixed tax on
-    # all of them. CONFIRM the project's actual region before the first deploy
-    # and change this if it isn't Singapore.
+    # The Supabase project is in ap-south-1 (Mumbai) — confirmed from the pooler
+    # hostname. Render has no Mumbai region, and Singapore is its nearest, so
+    # this is the right choice rather than merely a default. Expect ~50-80ms per
+    # database round trip; measured 76ms from here during verification.
     region: singapore
 
     # Repo root, not apps/api — the pnpm workspace and its lockfile live here,

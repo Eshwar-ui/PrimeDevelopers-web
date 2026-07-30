@@ -1,7 +1,7 @@
 # Deployment Plan — Frontend on Firebase, Backend on Render
 
-**Written:** 30 Jul 2026 · **Phases 0–1 complete** (branch
-`chore/monorepo-restructure`), Phase 2 next
+**Written:** 30 Jul 2026 · **Phases 0–2 complete** (branch
+`chore/monorepo-restructure`), Phase 3 next
 
 ## Context
 
@@ -127,18 +127,45 @@ Two deviations from what was planned:
 the site with no console errors. `firebase deploy` has *not* been run — the
 first deploy from the new layout should be a deliberate, watched one.
 
-## Phase 2 — Scaffold the API
+## Phase 2 — Scaffold the API ✅ *(done — `7bbe12b`)*
 
-`apps/api` with NestJS 10 + Prisma 5, pinned to `prime-tracker-main`'s versions.
-Copy rather than reinvent:
+`apps/api` on NestJS 10 + Prisma 5, matching `prime-tracker-main`'s versions.
+`main.ts`, `PrismaService` and the health controller were lifted from there
+verbatim, so the two services stay mergeable.
 
-- `src/main.ts` — global prefix `/api`, `helmet()`, CORS from `CORS_ORIGINS`,
-  `ValidationPipe({ whitelist, forbidNonWhitelisted, transform })`, Swagger in
-  non-prod. Mirror [`prime-tracker-main/apps/api/src/main.ts`](../../prime-tracker-main/apps/api/src/main.ts).
-- `src/prisma/prisma.service.ts` and `common/health/health.controller.ts` — lift as-is.
+**The plan's `prisma db pull` step was abandoned, and the schema hand-written
+instead.** Prisma 5 cannot restrict introspection to a subset of tables, and the
+database is shared — a `db pull` would pull the construction-management
+application's entire schema into `schema.prisma`. The five CMS models are
+transcribed from migrations 6 and 7 instead, with the diff-against-live
+procedure documented at the top of the file.
 
-Then `prisma db pull` against `DIRECT_URL` to generate `schema.prisma` from the
-live database, and hand-tidy the model names to PascalCase with `@@map`.
+**Verified** against a scratch Postgres (`prime_developers_cms_scratch` on the
+local PG14 — Docker was down, so the Supabase local stack wasn't available):
+schema pushes cleanly, all five tables materialise, the service boots,
+`/api/health/ready` reports the DB reachable, CORS rejects an unlisted origin,
+and helmet headers are present. `pnpm run build` from the root builds both apps
+— the same path Render will take.
+
+### ⚠️ Open: the `news` column conflict
+
+Migration 6 declares `news.summary` and `news.image`. The frontend reads and
+writes `excerpt` and `cover_image` throughout — 15 references, zero to
+`summary`. Both cannot be true.
+
+If production matches the migration, **saving a news post is already broken in
+production**: `NewsEditPage` spreads the whole form into `.update()`, so
+Postgres would reject the unknown `excerpt` column. The likely history is that
+migration 6's `create table if not exists news` was a no-op against a table
+migration 5 had already renamed into place — but that is a guess, and the
+schema currently follows the migration rather than the frontend.
+
+**Settle this against the live database before building the news module.**
+One query does it:
+
+```sql
+select column_name from information_schema.columns where table_name = 'news';
+```
 
 ## Phase 3 — API modules
 

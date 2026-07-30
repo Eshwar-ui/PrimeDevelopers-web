@@ -1,8 +1,24 @@
 # Deployment Plan — Frontend on Firebase, Backend on Render
 
-**Written:** 30 Jul 2026 · **Phases 0–3 complete** except uploads; **Phase 4
-part-done** (branch `chore/monorepo-restructure`). The remainder is blocked on
-the Supabase service-role key — see Phase 4.
+**Written:** 30 Jul 2026 · branch `chore/monorepo-restructure`
+
+## Status at a glance
+
+| Phase | State |
+|---|---|
+| 0 · Prerequisites | ✅ except **prod credentials** — still needed, blocks 4 and 5 |
+| 1 · pnpm monorepo | ✅ |
+| 2 · API scaffold | ✅ — one open question: the **`news` column conflict** |
+| 3 · API modules | ✅ all six, uploads' storage call unverified |
+| 4 · Frontend cutover | ⚠️ lead submission done; **the rest is blocked** |
+| 5 · Render deploy | ⚠️ `render.yaml` written; **the deploy itself is yours to run** |
+| 6 · Ship frontend | ⛔ not started — must not go before Render is live |
+| 7 · Lock down access | ⛔ not started |
+
+**Everything still blocked comes down to one thing: the Supabase credentials
+in `apps/api/.env`** (connection strings + service-role key). That single
+unblock covers the `news` question, the uploads verification, and the whole
+remaining frontend cutover.
 
 ## Context
 
@@ -170,10 +186,14 @@ select column_name from information_schema.columns where table_name = 'news';
 
 ## Phase 3 — API modules ✅ *(done — `5953b4f`, except uploads)*
 
-Built: `auth`, `content`, `properties`, `news`, `leads`.
-**Not built: `uploads`** — it needs the Supabase service-role key, which isn't
-available yet, and shipping an upload path that can't be exercised would be
-guessing. It is the one remaining piece of Phase 3.
+Built: `auth`, `content`, `properties`, `news`, `leads`, and — since `d78f39f`
+— `uploads`.
+
+**`uploads` is written but its storage write is unverified.** The auth
+boundary, every validation path, and folder sanitising (traversal stripped,
+leading slashes removed, pure-traversal rejected) are all covered by the smoke
+suite. What is *not* exercised is the single `supabase.storage.upload()` call,
+because that needs the service-role key. Treat the first real upload as a test.
 
 Admin surfaces live under `admin/*` in their own controllers rather than as
 decorated handlers on the public ones. That keeps the authentication boundary
@@ -288,7 +308,37 @@ The 3D and floor-plan components need no changes — they read from context and
 props, never Supabase. The PRD's instruction to funnel unit access through
 `src/lib/units.js` pays off exactly here.
 
-## Phase 5 — Deploy the API to Render
+## Phase 5 — Deploy the API to Render ⚠️ *(config done — `d78f39f`; deploy is yours to run)*
+
+[`render.yaml`](../render.yaml) is written and committed. Creating the service
+needs your Render account, so the remaining steps are:
+
+1. Render dashboard → **New → Blueprint**, point it at this repo. It reads
+   `render.yaml` and creates `prime-developers-api`.
+2. Fill the five `sync: false` secrets when prompted: `DATABASE_URL`,
+   `DIRECT_URL`, `JWT_ACCESS_SECRET` (`openssl rand -hex 64`), `SUPABASE_URL`,
+   `SUPABASE_SERVICE_ROLE_KEY`.
+3. **Check the region.** It's set to `singapore`; if the Supabase project lives
+   elsewhere, change it — every request makes a database round trip and a
+   cross-region hop taxes all of them.
+4. Apply `supabase/migrations/00000000000008_website_admin_auth.sql` to the
+   database, then seed an admin:
+   ```bash
+   cd apps/api && ADMIN_EMAIL=you@primedevelopers.com ADMIN_PASSWORD='...' pnpm exec ts-node prisma/seed-admin.ts
+   ```
+5. Verify: `curl https://prime-developers-api.onrender.com/api/health/ready`
+   should report the database reachable. Then run the smoke suite against it by
+   editing `B=` at the top of `apps/api/test/smoke.sh`.
+
+Two departures from prime-tracker's version, both deliberate:
+
+- **No `prisma migrate deploy` in the build.** This project has no Prisma
+  migration history — the schema is owned by `supabase/migrations/*.sql` — and
+  the database is shared, so a migration runner let loose on it could touch
+  tables that aren't ours.
+- **`plan: starter`, not `free`.** See the cost note under Decisions.
+
+### Original render.yaml sketch
 
 `render.yaml` at the repo root, adapted from prime-tracker's:
 

@@ -1,4 +1,4 @@
-// One-time update: adds social links (site-wide accounts) to every project,
+// One-time update: adds social links (site-wide accounts) to every property,
 // and real resource links for Centro Plaza, sourced from the client's
 // existing per-property page at theprimedeveloper.info/m/Centro-Plaza.
 //
@@ -34,15 +34,15 @@ const CENTRO_PLAZA_LINKS = [
 ]
 
 async function main() {
-  const { data: projects, error } = await supabase.from('projects').select('id, slug, detail')
+  const { data: properties, error } = await supabase.from('properties').select('id, slug, detail')
   if (error) throw error
 
-  for (const p of projects) {
+  for (const p of properties) {
     const detail = { ...p.detail, socials: SOCIALS }
     if (p.slug === 'centro-plaza') {
       detail.resourceLinks = CENTRO_PLAZA_LINKS
     }
-    const { error: updateError } = await supabase.from('projects').update({ detail }).eq('id', p.id)
+    const { error: updateError } = await supabase.from('properties').update({ detail }).eq('id', p.id)
     if (updateError) throw updateError
     console.log(`Updated ${p.slug}`)
   }

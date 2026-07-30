@@ -145,11 +145,11 @@ export default function AboutPage() {
             <p>{p.firmParagraph2}</p>
             <div className="mt-2 w-fit">
               <PillButton
-                href="/#projects"
+                href="/#properties"
                 variant="bone"
                 onClick={(e) => {
                   e.preventDefault()
-                  go('#projects')
+                  go('#properties')
                 }}
               >
                 {p.ctaLabel}

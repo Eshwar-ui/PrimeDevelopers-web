@@ -1,33 +1,33 @@
 import { useEffect } from 'react'
-import { Routes, Route, useLocation } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useSmoothScroll, lenis } from './hooks/useSmoothScroll'
 import Navbar from './components/Navbar'
 import Hero from './components/Hero'
 import Marquee from './components/Marquee'
 import About from './components/About'
-import Projects from './components/Projects'
+import Properties from './components/Properties'
 import Gallery from './components/Gallery'
 import Testimonials from './components/Testimonials'
 import Footer from './components/Footer'
 import CinematicLayer from './components/CinematicLayer'
 import AboutPage from './pages/AboutPage'
-import ProjectsPage from './pages/ProjectsPage'
-import ProjectDetailPage from './pages/ProjectDetailPage'
+import PropertiesPage from './pages/PropertiesPage'
+import PropertyDetailPage from './pages/PropertyDetailPage'
 import ContactPage from './pages/ContactPage'
-import BlogPage from './pages/BlogPage'
-import BlogPostPage from './pages/BlogPostPage'
+import NewsPage from './pages/NewsPage'
+import NewsPostPage from './pages/NewsPostPage'
 import LoginPage from './admin/LoginPage'
 import RequireAuth from './admin/RequireAuth'
 import AdminLayout from './admin/AdminLayout'
 import DashboardPage from './admin/DashboardPage'
-import ProjectsListPage from './admin/ProjectsListPage'
-import ProjectEditPage from './admin/ProjectEditPage'
+import PropertiesListPage from './admin/PropertiesListPage'
+import PropertyEditPage from './admin/PropertyEditPage'
 import ContentIndexPage from './admin/ContentIndexPage'
 import ContentSectionPage from './admin/ContentSectionPage'
 import LeadsPage from './admin/LeadsPage'
-import BlogListPage from './admin/BlogListPage'
-import BlogEditPage from './admin/BlogEditPage'
+import NewsListPage from './admin/NewsListPage'
+import NewsEditPage from './admin/NewsEditPage'
 
 function Home() {
   return (
@@ -35,7 +35,7 @@ function Home() {
       <Hero />
       <Marquee />
       <About />
-      <Projects />
+      <Properties />
       <Gallery />
       <Testimonials />
     </>
@@ -54,6 +54,18 @@ function ScrollManager() {
   return null
 }
 
+// Preserves any bookmark or external link to the old /projects and /blog
+// paths from before the Properties/News rename, rather than letting them 404.
+function RedirectSlug({ to }) {
+  const { slug } = useParams()
+  return <Navigate to={`${to}/${slug}`} replace />
+}
+
+function RedirectId({ to }) {
+  const { id } = useParams()
+  return <Navigate to={`${to}/${id}`} replace />
+}
+
 function PublicSite() {
   useSmoothScroll() // Lenis + GSAP ScrollTrigger, mounted once at the root
 
@@ -66,11 +78,17 @@ function PublicSite() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<AboutPage />} />
-          <Route path="/projects" element={<ProjectsPage />} />
-          <Route path="/projects/:slug" element={<ProjectDetailPage />} />
-          <Route path="/blog" element={<BlogPage />} />
-          <Route path="/blog/:slug" element={<BlogPostPage />} />
+          <Route path="/properties" element={<PropertiesPage />} />
+          <Route path="/properties/:slug" element={<PropertyDetailPage />} />
+          <Route path="/news" element={<NewsPage />} />
+          <Route path="/news/:slug" element={<NewsPostPage />} />
           <Route path="/contact" element={<ContactPage />} />
+
+          {/* Legacy routes — pre-rename links keep working */}
+          <Route path="/projects" element={<Navigate to="/properties" replace />} />
+          <Route path="/projects/:slug" element={<RedirectSlug to="/properties" />} />
+          <Route path="/blog" element={<Navigate to="/news" replace />} />
+          <Route path="/blog/:slug" element={<RedirectSlug to="/news" />} />
         </Routes>
       </main>
       <Footer />
@@ -91,13 +109,19 @@ function App() {
         }
       >
         <Route index element={<DashboardPage />} />
-        <Route path="projects" element={<ProjectsListPage />} />
-        <Route path="projects/:id" element={<ProjectEditPage />} />
+        <Route path="properties" element={<PropertiesListPage />} />
+        <Route path="properties/:id" element={<PropertyEditPage />} />
         <Route path="content" element={<ContentIndexPage />} />
         <Route path="content/:section" element={<ContentSectionPage />} />
-        <Route path="blog" element={<BlogListPage />} />
-        <Route path="blog/:id" element={<BlogEditPage />} />
+        <Route path="news" element={<NewsListPage />} />
+        <Route path="news/:id" element={<NewsEditPage />} />
         <Route path="leads" element={<LeadsPage />} />
+
+        {/* Legacy admin routes — old bookmarks to the admin panel still land */}
+        <Route path="projects" element={<Navigate to="/admin/properties" replace />} />
+        <Route path="projects/:id" element={<RedirectId to="/admin/properties" />} />
+        <Route path="blog" element={<Navigate to="/admin/news" replace />} />
+        <Route path="blog/:id" element={<RedirectId to="/admin/news" />} />
       </Route>
       <Route path="/*" element={<PublicSite />} />
     </Routes>

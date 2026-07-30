@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'motion/react'
-import { useSection, useProjects, useCategories } from '../context/ContentContext'
+import { useSection, useProperties, useCategories } from '../context/ContentContext'
 import { renderEmphasis } from '../lib/emphasis'
 
 function Stat({ label, value }) {
@@ -13,19 +13,19 @@ function Stat({ label, value }) {
   )
 }
 
-export default function ProjectsPage() {
-  const p = useSection('projects_page')
-  const projects = useProjects()
+export default function PropertiesPage() {
+  const p = useSection('properties_page')
+  const properties = useProperties()
   const categories = useCategories()
   const [filter, setFilter] = useState('All')
   const navigate = useNavigate()
-  const list = filter === 'All' ? projects : projects.filter((pr) => pr.category === filter)
+  const list = filter === 'All' ? properties : properties.filter((pr) => pr.category === filter)
 
   return (
     <div>
       {/* ── Hero ─────────────────────────────────────────────── */}
       <section
-        id="projects-hero"
+        id="properties-hero"
         className="relative overflow-hidden bg-void px-6 pb-16 pt-36 text-bone md:px-[75px] md:pb-20 md:pt-48"
       >
         <div
@@ -85,7 +85,7 @@ export default function ProjectsPage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.96 }}
                   transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-                  onClick={() => navigate(`/projects/${p.slug}`)}
+                  onClick={() => navigate(`/properties/${p.slug}`)}
                   className="group flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-[var(--color-line-inv)] bg-ink transition-colors duration-300 hover:border-bone/25"
                 >
                   <div className="relative h-56 overflow-hidden bg-void">

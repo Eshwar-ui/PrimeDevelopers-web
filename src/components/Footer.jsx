@@ -5,7 +5,7 @@ import { useGSAP } from '@gsap/react'
 import MagneticButton from './MagneticButton'
 import ArrowRight from './ArrowRight'
 import { useSectionNav } from '../hooks/useSectionNav'
-import { useSection, useProjects } from '../context/ContentContext'
+import { useSection, useProperties } from '../context/ContentContext'
 import { renderEmphasis } from '../lib/emphasis'
 import logo from '../assets/prime-logo.svg'
 
@@ -17,7 +17,7 @@ const alignCls = {
 
 export default function Footer() {
   const { email, phone, studio, ctaHeading, quickLinks, socials, copyrightLeft, copyrightRight } = useSection('footer')
-  const projects = useProjects().slice(0, 4)
+  const properties = useProperties().slice(0, 4)
   const scope = useRef(null)
   const go = useSectionNav()
 
@@ -29,7 +29,7 @@ export default function Footer() {
 
   const columns = [
     { title: 'Quick Links', align: 'left', links: quickLinks },
-    { title: 'Projects', align: 'center', links: projects.map((p) => ({ label: p.name, href: `/projects/${p.slug}` })) },
+    { title: 'Properties', align: 'center', links: properties.map((p) => ({ label: p.name, href: `/properties/${p.slug}` })) },
     { title: 'Socials', align: 'right', links: socials },
   ]
 
@@ -85,7 +85,7 @@ export default function Footer() {
             className="group relative flex size-40 shrink-0 flex-col items-center justify-center gap-2 rounded-full bg-accent text-center text-void md:size-48"
           >
             <span className="font-body text-sm font-bold uppercase tracking-[0.1em]">
-              Start a project
+              Start a property
             </span>
             <ArrowRight className="size-6 -rotate-45 transition-transform duration-300 group-hover:rotate-0" />
           </MagneticButton>

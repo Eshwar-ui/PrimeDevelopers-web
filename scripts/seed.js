@@ -1,5 +1,5 @@
 // One-time local seed: uploads today's hardcoded site assets to Supabase
-// Storage and inserts the equivalent `content` + `projects` rows, so the
+// Storage and inserts the equivalent `content` + `properties` rows, so the
 // site keeps working immediately after cutover to the CMS.
 //
 // Run with: node --env-file=.env.seed scripts/seed.js
@@ -54,8 +54,8 @@ async function main() {
       heading: 'We build the *landmarks* of Texas',
       paragraph:
         'Retail in Cedar Park. Flex space in Leander. Open lots in Liberty Hill. One team, start to finish — acquisition, design, and handover.',
-      ctaLabel: 'View Projects',
-      ctaHref: '#projects',
+      ctaLabel: 'View Properties',
+      ctaHref: '#properties',
       slides: [
         { image: hero.s1, place: 'Lewisville', kind: 'Mixed-use' },
         { image: hero.s2, place: 'Leander', kind: 'Residential' },
@@ -84,12 +84,12 @@ async function main() {
       ctaLabel: 'About Prime Developers',
       stats: [
         { value: 9, label: 'Years of Experience' },
-        { value: 10, label: 'Projects Completed' },
+        { value: 10, label: 'Properties Completed' },
         { value: 5, label: 'Team Collaborations' },
         { value: 3, label: 'Industry Awards Won' },
       ],
     },
-    projects_home: { heading: 'Developments that *hold the line.*' },
+    properties_home: { heading: 'Developments that *hold the line.*' },
     gallery: { heading: "Places we've *brought to life.*" },
     testimonials: {
       items: [
@@ -122,7 +122,7 @@ async function main() {
     navbar: {
       links: [
         { label: 'About', to: '/about' },
-        { label: 'Projects', to: '/projects' },
+        { label: 'Properties', to: '/properties' },
         { label: 'Contact', to: '/contact' },
       ],
     },
@@ -134,7 +134,7 @@ async function main() {
       quickLinks: [
         { label: 'Home', href: '/' },
         { label: 'About', href: '/about' },
-        { label: 'Projects', href: '/projects' },
+        { label: 'Properties', href: '/properties' },
         { label: 'Contact', href: '/contact' },
       ],
       socials: [
@@ -157,7 +157,7 @@ async function main() {
         'Prime Developers, a rapidly expanding real estate developer, has been offering services since 2017. Specializing in iconic commercial and residential properties, we own and operate in the vibrant Texas market.',
       firmParagraph2:
         'Our team comprises dedicated and experienced professionals with a proven track record in large-scale, intricate property development and investment — from land acquisition through design and sales.',
-      ctaLabel: 'Explore our projects',
+      ctaLabel: 'Explore our properties',
       stats: [
         { value: 9, label: 'Years in Texas' },
         { value: 10, label: 'Iconic Properties' },
@@ -201,7 +201,7 @@ async function main() {
         { label: 'Facebook', href: '#' },
       ],
     },
-    projects_page: {
+    properties_page: {
       heroEyebrow: 'Our Portfolio — Texas',
       heroHeading: 'Iconic properties,\nbuilt to *last.*',
       heroParagraph:
@@ -215,7 +215,7 @@ async function main() {
     if (error) throw error
   }
 
-  // ── projects ─────────────────────────────────────────────────────────
+  // ── properties ───────────────────────────────────────────────────────
   const galleryUrls = [hero.s1, hero.s2, hero.s3, hero.s4, hero.s5, hero.s6, propertyImg]
   const imgs = [propertyImg, hero.s1, hero.s2, hero.s3, hero.s4, hero.s5, hero.s6]
   const slugify = (n) =>
@@ -224,7 +224,7 @@ async function main() {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '')
 
-  const projects = [
+  const properties = [
     {
       name: 'POW Lewisville Phase I',
       address: '2601 State Hwy 121, Lewisville, TX 75067',
@@ -240,7 +240,7 @@ async function main() {
           body: 'Offering a distinctive fusion of warehouse, retail, and office space. Each unit boasts a welcoming storefront design, inviting customers to enter as if it were a retail store. Additionally, each unit can be tailored to serve as either traditional office space or warehouse, with flexible open floor plans to accommodate various business needs.',
           flyer: '#',
           stats: [
-            { value: '185,238', label: 'SFT Project Size' },
+            { value: '185,238', label: 'SFT Property Size' },
             { value: '77', label: 'Total Units' },
             { value: '14', label: 'Available Units' },
           ],
@@ -254,7 +254,7 @@ async function main() {
             { value: '2,607+', label: 'SFT Floor Size' },
           ],
           cards: [
-            { title: 'Expansive Project', body: 'Spans from 294,512 square feet on 21 E State HWY.' },
+            { title: 'Expansive Property', body: 'Spans from 294,512 square feet on 21 E State HWY.' },
             { title: 'Mezzanine Allowance', body: '50% base floor plan for versatile layouts.' },
             { title: 'Premium Features', body: 'Private balconies, restrooms, and glass entrance doors.' },
             { title: 'High Traffic Location', body: 'Exceeds 90,000 vehicles per day on US Road.' },
@@ -300,8 +300,8 @@ async function main() {
     { name: 'CAP Rate Projects', address: 'Austin, TX', category: 'Office', buildings: 12, sold: 7, available: 5 },
   ]
 
-  console.log('Seeding projects…')
-  for (const [i, p] of projects.entries()) {
+  console.log('Seeding properties…')
+  for (const [i, p] of properties.entries()) {
     const row = {
       slug: slugify(p.name),
       name: p.name,
@@ -316,11 +316,11 @@ async function main() {
       sort_order: i,
       published: true,
     }
-    const { error } = await supabase.from('projects').upsert(row, { onConflict: 'slug' })
+    const { error } = await supabase.from('properties').upsert(row, { onConflict: 'slug' })
     if (error) throw error
   }
 
-  console.log('Done. Seeded content + projects.')
+  console.log('Done. Seeded content + properties.')
 }
 
 main().catch((err) => {

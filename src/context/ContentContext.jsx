@@ -4,10 +4,10 @@ import { supabase } from '../lib/supabase'
 // Fallback shape per section so a missing/not-yet-seeded row never crashes a
 // component — every field a component reads is guaranteed to exist.
 const DEFAULTS = {
-  hero: { eyebrow: '', heading: '', paragraph: '', ctaLabel: 'View Projects', ctaHref: '#projects', slides: [] },
+  hero: { eyebrow: '', heading: '', paragraph: '', ctaLabel: 'View Properties', ctaHref: '#properties', slides: [] },
   marquee: { eyebrow: '', logos: [] },
   about_home: { heading: '', paragraph1: '', paragraph2: '', ctaLabel: 'About Prime Developers', stats: [] },
-  projects_home: { heading: '' },
+  properties_home: { heading: '' },
   gallery: { heading: '' },
   testimonials: { items: [] },
   footer: {
@@ -29,7 +29,7 @@ const DEFAULTS = {
     firmHeading: '',
     firmParagraph1: '',
     firmParagraph2: '',
-    ctaLabel: 'Explore our projects',
+    ctaLabel: 'Explore our properties',
     stats: [],
     principles: [],
     founders: [],
@@ -46,33 +46,33 @@ const DEFAULTS = {
     location: '',
     socials: [],
   },
-  projects_page: { heroEyebrow: '', heroHeading: '', heroParagraph: '' },
-  blog_page: { heroEyebrow: '', heroHeading: '', heroParagraph: '' },
+  properties_page: { heroEyebrow: '', heroHeading: '', heroParagraph: '' },
+  news_page: { heroEyebrow: '', heroHeading: '', heroParagraph: '' },
 }
 
 const ContentContext = createContext(null)
 
 export function ContentProvider({ children }) {
   const [content, setContent] = useState(null)
-  const [projects, setProjects] = useState(null)
-  const [posts, setPosts] = useState(null)
+  const [properties, setProperties] = useState(null)
+  const [news, setNews] = useState(null)
   const [error, setError] = useState(null)
 
   const load = useCallback(async () => {
-    const [contentRes, projectsRes, postsRes] = await Promise.all([
+    const [contentRes, propertiesRes, newsRes] = await Promise.all([
       supabase.from('content').select('section, data'),
-      supabase.from('projects').select('*').order('sort_order', { ascending: true }),
-      supabase.from('blog_posts').select('*').order('sort_order', { ascending: true }),
+      supabase.from('properties').select('*').order('sort_order', { ascending: true }),
+      supabase.from('news').select('*').order('sort_order', { ascending: true }),
     ])
     if (contentRes.error) throw contentRes.error
-    if (projectsRes.error) throw projectsRes.error
-    if (postsRes.error) throw postsRes.error
+    if (propertiesRes.error) throw propertiesRes.error
+    if (newsRes.error) throw newsRes.error
 
     const bySection = {}
     for (const row of contentRes.data) bySection[row.section] = row.data
     setContent(bySection)
-    setProjects(projectsRes.data)
-    setPosts(postsRes.data)
+    setProperties(propertiesRes.data)
+    setNews(newsRes.data)
   }, [])
 
   useEffect(() => {
@@ -81,19 +81,19 @@ export function ContentProvider({ children }) {
 
   const value = useMemo(() => {
     const getSection = (section) => ({ ...DEFAULTS[section], ...(content?.[section] ?? {}) })
-    const categories = ['All', ...new Set((projects ?? []).map((p) => p.category))]
+    const categories = ['All', ...new Set((properties ?? []).map((p) => p.category))]
     return {
-      ready: content !== null && projects !== null && posts !== null,
+      ready: content !== null && properties !== null && news !== null,
       error,
-      projects: projects ?? [],
+      properties: properties ?? [],
       categories,
-      getProject: (slug) => (projects ?? []).find((p) => p.slug === slug),
-      posts: posts ?? [],
-      getPost: (slug) => (posts ?? []).find((p) => p.slug === slug),
+      getProperty: (slug) => (properties ?? []).find((p) => p.slug === slug),
+      news: news ?? [],
+      getNewsPost: (slug) => (news ?? []).find((p) => p.slug === slug),
       getSection,
       refetch: load,
     }
-  }, [content, projects, posts, error, load])
+  }, [content, properties, news, error, load])
 
   if (error) {
     return (
@@ -122,9 +122,9 @@ function useContentContext() {
 }
 
 export const useSection = (section) => useContentContext().getSection(section)
-export const useProjects = () => useContentContext().projects
+export const useProperties = () => useContentContext().properties
 export const useCategories = () => useContentContext().categories
-export const useProject = (slug) => useContentContext().getProject(slug)
-export const useBlogPosts = () => useContentContext().posts
-export const useBlogPost = (slug) => useContentContext().getPost(slug)
+export const useProperty = (slug) => useContentContext().getProperty(slug)
+export const useNews = () => useContentContext().news
+export const useNewsPost = (slug) => useContentContext().getNewsPost(slug)
 export const useContentRefetch = () => useContentContext().refetch

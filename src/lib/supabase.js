@@ -10,6 +10,7 @@ if (!url || !anonKey) {
 export const supabase = createClient(url, anonKey)
 
 const IMAGES_BUCKET = 'images'
+const MODELS_BUCKET = 'models'
 
 export function publicImageUrl(path) {
   if (!path) return null
@@ -25,4 +26,18 @@ export async function uploadImage(file, folder) {
   })
   if (error) throw error
   return publicImageUrl(path)
+}
+
+// 3D models get a content-hashed name and a year-long cache. Geometry never
+// changes in place — a revised building is a new upload — so the heavy asset
+// can be cached hard. Unit data, which does change, is never cached.
+export async function uploadModel(file, folder) {
+  const path = `${folder}/${crypto.randomUUID()}.glb`
+  const { error } = await supabase.storage.from(MODELS_BUCKET).upload(path, file, {
+    cacheControl: '31536000',
+    contentType: 'model/gltf-binary',
+    upsert: false,
+  })
+  if (error) throw error
+  return supabase.storage.from(MODELS_BUCKET).getPublicUrl(path).data.publicUrl
 }

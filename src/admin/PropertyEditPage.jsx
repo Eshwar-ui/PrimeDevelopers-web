@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { useCategories, useContentRefetch, useProjects } from '../context/ContentContext'
+import { useCategories, useContentRefetch, useProperties } from '../context/ContentContext'
 import { supabase } from '../lib/supabase'
 import { slugify } from '../lib/slugify'
 import { Section, TextField, TextAreaField } from './components/Field'
@@ -14,7 +14,6 @@ const emptyDetail = () => ({
   tenants: [],
   highlights: { heading: '', body: '', bigStats: [], cards: [] },
   floorPlans: { heading: '', body: '', buildings: [] },
-  sitePlan: { image: '', caption: '' },
   location: { eyebrow: '', heading: '', sub: '', body: '' },
   establishedSites: { heading: '' },
   neighborhoods: { mapQuery: '', items: [] },
@@ -24,13 +23,13 @@ const emptyDetail = () => ({
   extFacade: [],
 })
 
-export default function ProjectEditPage() {
+export default function PropertyEditPage() {
   const { id } = useParams()
-  const projects = useProjects()
+  const properties = useProperties()
   const categories = useCategories()
   const refetch = useContentRefetch()
 
-  const original = useMemo(() => projects.find((p) => p.id === id), [projects, id])
+  const original = useMemo(() => properties.find((p) => p.id === id), [properties, id])
   const [form, setForm] = useState(null)
   const [saving, setSaving] = useState(false)
   const [savedAt, setSavedAt] = useState(null)
@@ -49,9 +48,9 @@ export default function ProjectEditPage() {
   if (!original) {
     return (
       <div>
-        <p className="text-bone/60">Project not found.</p>
-        <Link to="/admin/projects" className="text-ember">
-          ← Back to projects
+        <p className="text-bone/60">Property not found.</p>
+        <Link to="/admin/properties" className="text-ember">
+          ← Back to properties
         </Link>
       </div>
     )
@@ -66,7 +65,7 @@ export default function ProjectEditPage() {
     setSaving(true)
     setError(null)
     const { id: _id, created_at: _createdAt, updated_at: _updatedAt, _slugTouched, ...payload } = form
-    const { error } = await supabase.from('projects').update(payload).eq('id', id)
+    const { error } = await supabase.from('properties').update(payload).eq('id', id)
     setSaving(false)
     if (error) {
       setError(error.message)
@@ -80,16 +79,16 @@ export default function ProjectEditPage() {
     <div className="pb-24">
       <div className="flex items-center justify-between">
         <div>
-          <Link to="/admin/projects" className="text-xs font-bold uppercase tracking-wide text-bone/40 hover:text-bone/70">
-            ← All projects
+          <Link to="/admin/properties" className="text-xs font-bold uppercase tracking-wide text-bone/40 hover:text-bone/70">
+            ← All properties
           </Link>
-          <h1 className="mt-2 font-display text-2xl font-medium">{form.name || 'Untitled project'}</h1>
+          <h1 className="mt-2 font-display text-2xl font-medium">{form.name || 'Untitled property'}</h1>
         </div>
         <div className="flex items-center gap-4">
           {savedAt && <span className="text-xs text-bone/40">Saved</span>}
           {form.published && (
             <a
-              href={`/projects/${form.slug}`}
+              href={`/properties/${form.slug}`}
               target="_blank"
               rel="noreferrer"
               className="text-xs font-bold uppercase tracking-wide text-bone/50 hover:text-bone"
@@ -286,19 +285,10 @@ export default function ProjectEditPage() {
           </div>
         </Section>
 
-        <Section title="Site plan" description="Uploaded site-plan / colored floor-layout image shown alongside the interactive unit grid.">
-          <ImageUploader
-            label="Site plan image"
-            value={form.detail.sitePlan.image}
-            onChange={(image) => patchDetail('sitePlan', { image })}
-            folder={`projects/${form.slug}/site-plan`}
-          />
-          <TextField
-            label="Caption"
-            value={form.detail.sitePlan.caption}
-            onChange={(caption) => patchDetail('sitePlan', { caption })}
-          />
-        </Section>
+        {/* The Site Plan section was removed from the public page — the 3D
+            model's own plan view replaces it — so its editor is gone too
+            rather than left as controls that change nothing. Existing
+            `detail.sitePlan` data is left untouched in the database. */}
 
         <Section title="Location">
           <TextField label="Eyebrow" value={form.detail.location.eyebrow} onChange={(eyebrow) => patchDetail('location', { eyebrow })} />
@@ -340,7 +330,7 @@ export default function ProjectEditPage() {
           </div>
         </Section>
 
-        <Section title="Videos" description="YouTube links shown on the project's detail page.">
+        <Section title="Videos" description="YouTube links shown on the property's detail page.">
           <RepeatableList
             items={form.detail.videos}
             onChange={(videos) => setForm((f) => ({ ...f, detail: { ...f.detail, videos } }))}
@@ -352,7 +342,7 @@ export default function ProjectEditPage() {
           />
         </Section>
 
-        <Section title="Ext. Facade" description="Exterior photo strip shown on the project's detail page.">
+        <Section title="Ext. Facade" description="Exterior photo strip shown on the property's detail page.">
           <RepeatableList
             items={form.detail.extFacade}
             onChange={(extFacade) => setForm((f) => ({ ...f, detail: { ...f.detail, extFacade } }))}
@@ -382,7 +372,7 @@ export default function ProjectEditPage() {
           />
         </Section>
 
-        <Section title="Social links" description="Social icons shown on the project's detail page.">
+        <Section title="Social links" description="Social icons shown on the property's detail page.">
           <RepeatableList
             items={form.detail.socials}
             onChange={(socials) => setForm((f) => ({ ...f, detail: { ...f.detail, socials } }))}

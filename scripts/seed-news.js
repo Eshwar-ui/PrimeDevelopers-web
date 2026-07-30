@@ -1,7 +1,7 @@
-// One-time update: adds "Blog" to the nav, seeds blog_page hero copy, and
+// One-time update: adds "News" to the nav, seeds news_page hero copy, and
 // creates one sample published post so the feature is visibly working.
 //
-// Run with: node --env-file=.env.seed scripts/seed-blog.js
+// Run with: node --env-file=.env.seed scripts/seed-news.js
 
 import { createClient } from '@supabase/supabase-js'
 
@@ -19,29 +19,29 @@ async function main() {
     data: {
       links: [
         { label: 'About', to: '/about' },
-        { label: 'Projects', to: '/projects' },
-        { label: 'Blog', to: '/blog' },
+        { label: 'Properties', to: '/properties' },
+        { label: 'News', to: '/news' },
         { label: 'Contact', to: '/contact' },
       ],
     },
   })
   if (navError) throw navError
 
-  const { error: blogPageError } = await supabase.from('content').upsert({
-    section: 'blog_page',
+  const { error: newsPageError } = await supabase.from('content').upsert({
+    section: 'news_page',
     data: {
       heroEyebrow: 'Journal — Prime Developers',
       heroHeading: 'News and *notes* from the field.',
-      heroParagraph: 'Project milestones, market notes, and updates from our team across Texas.',
+      heroParagraph: 'Property milestones, market notes, and updates from our team across Texas.',
     },
   })
-  if (blogPageError) throw blogPageError
+  if (newsPageError) throw newsPageError
 
-  const { error: postError } = await supabase.from('blog_posts').upsert(
+  const { error: postError } = await supabase.from('news').upsert(
     {
       slug: 'welcome-to-the-prime-developers-journal',
       title: 'Welcome to the Prime Developers Journal',
-      excerpt: 'A new home for project milestones, market notes, and updates from our team.',
+      excerpt: 'A new home for property milestones, market notes, and updates from our team.',
       body: "We're launching this journal to share what we're building across Texas — from groundbreakings to grand openings, market notes, and the occasional look behind the scenes.\n\nCheck back regularly for updates on our active developments in Dallas-Fort Worth, Austin, and beyond.",
       published: true,
       published_at: new Date(2026, 0, 15).toISOString(),

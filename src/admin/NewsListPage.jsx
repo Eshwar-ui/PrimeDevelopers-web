@@ -1,10 +1,10 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { useBlogPosts, useContentRefetch } from '../context/ContentContext'
+import { useNews, useContentRefetch } from '../context/ContentContext'
 import { supabase } from '../lib/supabase'
 import { slugify } from '../lib/slugify'
 
-export default function BlogListPage() {
-  const posts = useBlogPosts()
+export default function NewsListPage() {
+  const posts = useNews()
   const refetch = useContentRefetch()
   const navigate = useNavigate()
 
@@ -12,18 +12,18 @@ export default function BlogListPage() {
     const title = 'New Post'
     const slug = `${slugify(title)}-${Date.now().toString(36)}`
     const { data, error } = await supabase
-      .from('blog_posts')
+      .from('news')
       .insert({ title, slug, sort_order: posts.length, published: false })
       .select()
       .single()
     if (error) return alert(error.message)
     await refetch()
-    navigate(`/admin/blog/${data.id}`)
+    navigate(`/admin/news/${data.id}`)
   }
 
   const remove = async (id) => {
     if (!confirm('Delete this post? This cannot be undone.')) return
-    const { error } = await supabase.from('blog_posts').delete().eq('id', id)
+    const { error } = await supabase.from('news').delete().eq('id', id)
     if (error) return alert(error.message)
     refetch()
   }
@@ -32,7 +32,7 @@ export default function BlogListPage() {
     <div>
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-2xl font-medium">Blog</h1>
+          <h1 className="font-display text-2xl font-medium">News</h1>
           <p className="mt-1 text-sm text-bone/50">{posts.length} posts</p>
         </div>
         <button
@@ -62,7 +62,7 @@ export default function BlogListPage() {
               <p className="text-xs text-bone/45">{post.excerpt}</p>
             </div>
             <div className="flex shrink-0 items-center gap-4 text-xs font-bold uppercase tracking-wide">
-              <Link to={`/admin/blog/${post.id}`} className="text-bone/60 hover:text-bone">
+              <Link to={`/admin/news/${post.id}`} className="text-bone/60 hover:text-bone">
                 Edit
               </Link>
               <button type="button" onClick={() => remove(post.id)} className="text-red-400/70 hover:text-red-400">

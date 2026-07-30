@@ -3,7 +3,7 @@ import { lenis } from './useSmoothScroll'
 
 // Unified internal navigation:
 //   '/about', '/'        → route (with '/' also scrolling to top when already home)
-//   '#projects', '#…'    → smooth-scroll to a home-page section, navigating home first
+//   '#properties', '#…'    → smooth-scroll to a home-page section, navigating home first
 export function useSectionNav() {
   const navigate = useNavigate()
   const { pathname } = useLocation()

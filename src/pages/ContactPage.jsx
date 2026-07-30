@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import ArrowRight from '../components/ArrowRight'
 import { useSection } from '../context/ContentContext'
 import { renderEmphasis } from '../lib/emphasis'
@@ -13,6 +14,18 @@ const fields = [
 export default function ContactPage() {
   const c = useSection('contact_page')
   const [status, setStatus] = useState('idle') // idle | sending | sent | error
+  const [searchParams] = useSearchParams()
+
+  // Arrives from a unit's detail panel on a property page. The lead is stored
+  // with the unit it came from, so sales opens the call already knowing what
+  // is being asked about.
+  const unitLabel = searchParams.get('unit')
+  const unitBuilding = searchParams.get('building')
+  const unitStatus = searchParams.get('status')
+  const propertyId = searchParams.get('property') || null
+  // Only ever an internal path we wrote ourselves — never echoed back into a
+  // link, only folded into the stored message text (see onSubmit).
+  const sourcePath = searchParams.get('from')?.startsWith('/') ? searchParams.get('from') : null
 
   const details = [
     { label: 'Email', value: c.email, href: c.email ? `mailto:${c.email}` : null },
@@ -24,16 +37,47 @@ export default function ContactPage() {
     e.preventDefault()
     setStatus('sending')
     const fd = new FormData(e.currentTarget)
-    const { error } = await supabase.from('leads').insert({
-      name: fd.get('name'),
-      email: fd.get('email'),
-      phone: fd.get('phone') || null,
-      message: fd.get('message'),
-    })
+
+    // `website_leads` (supabase/migrations/00000000000006_production_cms_setup.sql)
+    // only has name/email/phone/message/status/created_at — this project's
+    // Supabase instance is shared with another application, and unit
+    // attribution lives in a separate website_lead_unit_attributions join
+    // table rather than as columns on the lead itself. There is no column for
+    // "status at time of enquiry" or a source link, so both are folded into
+    // the stored message instead of being dropped.
+    const context = unitLabel
+      ? `\n\n[Unit ${unitLabel}${unitBuilding ? ` · ${unitBuilding}` : ''} — ${unitStatus || 'status unknown'} at time of enquiry${sourcePath ? ` · ${window.location.origin}${sourcePath}` : ''}]`
+      : ''
+
+    const { data: lead, error } = await supabase
+      .from('website_leads')
+      .insert({
+        name: fd.get('name'),
+        email: fd.get('email'),
+        phone: fd.get('phone') || null,
+        message: `${fd.get('message')}${context}`,
+      })
+      .select('id')
+      .single()
+
     if (error) {
       setStatus('error')
       return
     }
+
+    if (unitLabel && propertyId) {
+      // Best-effort: the enquiry itself already succeeded above, so a failure
+      // here (e.g. a stale/unknown property id) shouldn't be shown to the
+      // visitor as an error — the message they sent was received either way.
+      const { error: attrError } = await supabase.from('website_lead_unit_attributions').insert({
+        lead_id: lead.id,
+        property_id: propertyId,
+        unit_label: unitLabel,
+        building_label: unitBuilding || null,
+      })
+      if (attrError) console.error('Unit attribution not saved:', attrError.message)
+    }
+
     setStatus('sent')
     e.currentTarget.reset()
   }
@@ -114,6 +158,15 @@ export default function ContactPage() {
             className="rounded-3xl border border-[var(--color-line-inv)] bg-carbon p-8 md:p-10"
           >
             <div className="flex flex-col gap-6">
+              {unitLabel && (
+                <div className="rounded-xl border border-accent/40 bg-accent/10 px-4 py-3">
+                  <span className="eyebrow text-accent-soft">Enquiring about</span>
+                  <p className="mt-1 font-display text-base font-medium text-bone">
+                    Unit {unitLabel}
+                    {unitBuilding ? ` · ${unitBuilding}` : ''}
+                  </p>
+                </div>
+              )}
               {fields.map((f) => (
                 <label key={f.name} className="flex flex-col gap-2">
                   <span className="eyebrow text-bone/40">{f.label}</span>
@@ -132,7 +185,8 @@ export default function ContactPage() {
                   name="message"
                   rows={4}
                   required
-                  placeholder="Tell us about your project or enquiry…"
+                  defaultValue={unitLabel ? `I'd like more information about Unit ${unitLabel}.` : ''}
+                  placeholder="Tell us about your property or enquiry…"
                   className="resize-none border-b border-[var(--color-line-inv)] bg-transparent pb-2.5 font-body text-base text-bone outline-none transition-colors placeholder:text-bone/25 focus:border-accent"
                 />
               </label>

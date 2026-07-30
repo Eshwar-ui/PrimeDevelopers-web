@@ -4,7 +4,7 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import SectionHeader from './SectionHeader'
-import { useSection, useProjects } from '../context/ContentContext'
+import { useSection, useProperties } from '../context/ContentContext'
 import { renderEmphasis } from '../lib/emphasis'
 
 // Asymmetric two-row layout (7/5 then 5/7) — not a generic equal-column grid.
@@ -13,7 +13,7 @@ const SPANS = ['md:col-span-7', 'md:col-span-5', 'md:col-span-5', 'md:col-span-7
 // A deliberate bright "intermission" band between the dark cinematic sections.
 export default function Gallery() {
   const { heading } = useSection('gallery')
-  const projects = useProjects().slice(0, 4)
+  const properties = useProperties().slice(0, 4)
   const scope = useRef(null)
   const navigate = useNavigate()
 
@@ -31,7 +31,7 @@ export default function Gallery() {
     { scope }
   )
 
-  if (projects.length === 0) return null
+  if (properties.length === 0) return null
 
   return (
     <section
@@ -48,14 +48,14 @@ export default function Gallery() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-12 md:gap-5">
-        {projects.map((p, i) => (
+        {properties.map((p, i) => (
           <figure
             key={p.slug}
             data-gitem
             role="link"
             tabIndex={0}
-            onClick={() => navigate(`/projects/${p.slug}`)}
-            onKeyDown={(e) => e.key === 'Enter' && navigate(`/projects/${p.slug}`)}
+            onClick={() => navigate(`/properties/${p.slug}`)}
+            onKeyDown={(e) => e.key === 'Enter' && navigate(`/properties/${p.slug}`)}
             className={`group cursor-pointer ${SPANS[i % SPANS.length]}`}
           >
             <div className="relative h-[300px] overflow-hidden rounded-2xl md:h-[460px]">

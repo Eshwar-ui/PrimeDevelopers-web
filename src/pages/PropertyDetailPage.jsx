@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { useProject } from '../context/ContentContext'
+import { useProperty } from '../context/ContentContext'
 import { useSectionNav } from '../hooks/useSectionNav'
 import PillButton from '../components/PillButton'
 import SocialIcon from '../components/SocialIcon'
-import FloorPlanInteractive from '../components/FloorPlanInteractive'
+import FloorPlanSection from '../components/FloorPlanSection'
 
 // Eyebrow section label with the accent dash, matching the site system.
 function SectionTag({ children, tone = 'inv' }) {
@@ -28,34 +28,34 @@ function youtubeEmbedUrl(url) {
   return match ? `https://www.youtube.com/embed/${match[1]}` : url
 }
 
-export default function ProjectDetailPage() {
+export default function PropertyDetailPage() {
   const { slug } = useParams()
-  const project = useProject(slug)
+  const property = useProperty(slug)
   const go = useSectionNav()
   const [tab, setTab] = useState(0)
   const [galleryMain, setGalleryMain] = useState(0)
   const [openArea, setOpenArea] = useState(0)
 
-  if (!project) {
+  if (!property) {
     return (
       <section className="flex min-h-[70vh] flex-col items-center justify-center gap-6 bg-void px-6 text-center">
-        <h1 className="font-display text-3xl font-medium text-bone">Project not found</h1>
-        <Link to="/projects" className="eyebrow text-accent-soft">
-          ← Back to all projects
+        <h1 className="font-display text-3xl font-medium text-bone">Property not found</h1>
+        <Link to="/properties" className="eyebrow text-accent-soft">
+          ← Back to all properties
         </Link>
       </section>
     )
   }
 
-  const d = project.detail
-  const gallery = project.gallery ?? []
-  const soldPct = Math.round((project.sold / project.buildings) * 100)
+  const d = property.detail
+  const gallery = property.gallery ?? []
+  const soldPct = Math.round((property.sold / property.buildings) * 100)
 
   return (
     <div>
       {/* ── Hero ─────────────────────────────────────────────── */}
       <section
-        id="projects-hero"
+        id="properties-hero"
         className="relative overflow-hidden bg-void px-6 pb-16 pt-32 text-bone md:px-[75px] md:pb-20 md:pt-44"
       >
         <div
@@ -67,14 +67,14 @@ export default function ProjectDetailPage() {
           }}
         />
         <div className="relative">
-          <Link to="/projects" className="eyebrow mb-8 inline-block text-bone/50 hover:text-bone">
-            ← All projects
+          <Link to="/properties" className="eyebrow mb-8 inline-block text-bone/50 hover:text-bone">
+            ← All properties
           </Link>
           <span className="eyebrow mb-5 block text-accent-soft">
-            {project.category} · {project.address}
+            {property.category} · {property.address}
           </span>
           <h1 className="font-display text-h2 font-light leading-[1.0] tracking-[-0.02em]">
-            {project.name}
+            {property.name}
           </h1>
           {d?.tagline && (
             <p className="mt-6 max-w-[52ch] font-body text-lg leading-relaxed text-bone/65">
@@ -102,9 +102,9 @@ export default function ProjectDetailPage() {
           )}
         </div>
 
-        {project.image && (
+        {property.image && (
           <div className="relative mt-14 h-[300px] overflow-hidden rounded-3xl border border-[var(--color-line-inv)] md:h-[460px]">
-            <img src={project.image} alt={project.name} className="h-full w-full object-cover" />
+            <img src={property.image} alt={property.name} className="h-full w-full object-cover" />
             <div
               aria-hidden
               className="absolute inset-0"
@@ -208,12 +208,12 @@ export default function ProjectDetailPage() {
         </section>
       )}
 
-      {/* ── Project highlights ───────────────────────────────── */}
+      {/* ── Property highlights ───────────────────────────────── */}
       {d?.highlights?.heading && (
         <section className="bg-void px-6 py-20 text-bone md:px-[75px] md:py-28">
           <div className="grid gap-12 lg:grid-cols-[1fr_1.1fr] lg:gap-20">
             <div>
-              <SectionTag>Project Highlights</SectionTag>
+              <SectionTag>Property Highlights</SectionTag>
               <h2 className="mt-6 font-display text-h2 font-light leading-[1.05] tracking-[-0.02em]">
                 {d.highlights.heading}
               </h2>
@@ -243,19 +243,6 @@ export default function ProjectDetailPage() {
               </div>
             )}
           </div>
-        </section>
-      )}
-
-      {/* ── Site plan ────────────────────────────────────────── */}
-      {d?.sitePlan?.image && (
-        <section className="bg-carbon px-6 py-20 text-bone md:px-[75px] md:py-28">
-          <SectionTag>Site Plan</SectionTag>
-          <div className="mt-8 overflow-hidden rounded-2xl border border-[var(--color-line-inv)]">
-            <img src={d.sitePlan.image} alt="Site plan" className="w-full object-contain" />
-          </div>
-          {d.sitePlan.caption && (
-            <p className="mt-4 font-body text-sm text-bone/45">{d.sitePlan.caption}</p>
-          )}
         </section>
       )}
 
@@ -305,12 +292,10 @@ export default function ProjectDetailPage() {
 
           {/* Interactive floor plan, or a placeholder until one is uploaded */}
           <div className="mt-8">
-            {d.floorPlans.buildings[tab].planImage ? (
-              <FloorPlanInteractive
-                key={tab}
-                image={d.floorPlans.buildings[tab].planImage}
-                units={d.floorPlans.buildings[tab].unitList ?? []}
-              />
+            {d.floorPlans.buildings[tab].planImage ||
+            d.floorPlans.buildings[tab].model?.url ||
+            d.floorPlans.buildings[tab].unitList?.length ? (
+              <FloorPlanSection key={tab} building={d.floorPlans.buildings[tab]} propertyId={property.id} />
             ) : (
               <div className="flex h-[280px] items-center justify-center rounded-2xl border border-[var(--color-line-inv)] bg-void md:h-[380px]">
                 <span className="eyebrow text-bone/35">
@@ -467,7 +452,7 @@ export default function ProjectDetailPage() {
                     className="relative aspect-video overflow-hidden rounded-2xl border border-[var(--color-line-inv)] bg-ink"
                   >
                     <iframe
-                      title={`Project video ${i + 1}`}
+                      title={`Property video ${i + 1}`}
                       src={youtubeEmbedUrl(v.url)}
                       className="h-full w-full"
                       loading="lazy"
@@ -486,7 +471,7 @@ export default function ProjectDetailPage() {
         <div className="flex flex-col items-start gap-8 rounded-3xl border border-[var(--color-line-inv)] bg-carbon p-10 text-bone md:flex-row md:items-center md:justify-between md:p-14">
           <div>
             <h3 className="font-display text-3xl font-medium leading-[1.05] tracking-[-0.01em] md:text-4xl">
-              Interested in {project.name}?
+              Interested in {property.name}?
             </h3>
             <p className="mt-3 font-body text-base text-bone/60">
               Talk to our team about availability, pricing, and tours. ({soldPct}% currently reserved.)

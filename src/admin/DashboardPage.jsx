@@ -1,19 +1,19 @@
 import { Link } from 'react-router-dom'
-import { useProjects } from '../context/ContentContext'
+import { useProperties } from '../context/ContentContext'
 
 export default function DashboardPage() {
-  const projects = useProjects()
+  const properties = useProperties()
 
   const cards = [
-    { label: 'Projects', value: projects.length, to: '/admin/projects' },
-    { label: 'Available units', value: projects.reduce((n, p) => n + p.available, 0), to: '/admin/projects' },
+    { label: 'Properties', value: properties.length, to: '/admin/properties' },
+    { label: 'Available units', value: properties.reduce((n, p) => n + p.available, 0), to: '/admin/properties' },
     { label: 'Site content sections', value: 11, to: '/admin/content' },
   ]
 
   return (
     <div>
       <h1 className="font-display text-2xl font-medium">Dashboard</h1>
-      <p className="mt-1 text-sm text-bone/50">Manage your projects, site text, images, and leads.</p>
+      <p className="mt-1 text-sm text-bone/50">Manage your properties, site text, images, and leads.</p>
 
       <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
         {cards.map((c) => (

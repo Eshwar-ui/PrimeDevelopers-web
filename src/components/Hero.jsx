@@ -207,7 +207,7 @@ export default function Hero() {
         </span>
 
         <div className="flex items-center justify-between gap-6 px-6 py-5 sm:px-10 lg:px-16">
-          {/* current project */}
+          {/* current property */}
           <span className="flex items-baseline gap-3">
             <span className="truncate font-rubik text-xl font-bold text-bone md:text-2xl">
               {active.place}
@@ -226,7 +226,7 @@ export default function Hero() {
               <button
                 type="button"
                 onClick={prev}
-                aria-label="Previous project"
+                aria-label="Previous property"
                 className="flex size-11 shrink-0 items-center justify-center rounded-full border border-white/20 text-bone transition-colors hover:border-ember/70 hover:text-ember"
               >
                 <ArrowRight className="size-4 rotate-180" />
@@ -234,7 +234,7 @@ export default function Hero() {
               <button
                 type="button"
                 onClick={next}
-                aria-label="Next project"
+                aria-label="Next property"
                 className="flex size-11 shrink-0 items-center justify-center rounded-full border border-white/20 text-bone transition-colors hover:border-ember/70 hover:text-ember"
               >
                 <ArrowRight className="size-4" />

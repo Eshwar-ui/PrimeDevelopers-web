@@ -7,7 +7,7 @@ import logo from '../assets/prime-logo.svg'
 
 // Homepage section ids tracked for the scroll-spy active-link highlight —
 // structural, tied to actual DOM ids on the homepage, not admin-editable.
-const sections = ['about', 'projects']
+const sections = ['about', 'properties']
 
 export default function Navbar() {
   const { links } = useSection('navbar')

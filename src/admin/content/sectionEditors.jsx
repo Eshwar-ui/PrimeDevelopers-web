@@ -100,9 +100,9 @@ export const SECTIONS = [
     ),
   },
   {
-    key: 'projects_home',
-    label: 'Projects (homepage teaser)',
-    description: 'Heading above the homepage project teaser — projects shown there come from the Projects list.',
+    key: 'properties_home',
+    label: 'Properties (homepage teaser)',
+    description: 'Heading above the homepage property teaser — properties shown there come from the Properties list.',
     Editor: ({ value, onChange }) => (
       <Section title="Copy">
         <TextAreaField label="Heading" rows={2} value={value.heading} onChange={(heading) => onChange({ heading })} />
@@ -113,7 +113,7 @@ export const SECTIONS = [
   {
     key: 'gallery',
     label: 'Gallery',
-    description: 'Heading above the homepage photo gallery — photos shown there come from the Projects list.',
+    description: 'Heading above the homepage photo gallery — photos shown there come from the Properties list.',
     Editor: ({ value, onChange }) => (
       <Section title="Copy">
         <TextAreaField label="Heading" rows={2} value={value.heading} onChange={(heading) => onChange({ heading })} />
@@ -331,9 +331,9 @@ export const SECTIONS = [
     ),
   },
   {
-    key: 'projects_page',
-    label: 'Projects page',
-    description: 'Hero copy on the /projects listing page.',
+    key: 'properties_page',
+    label: 'Properties page',
+    description: 'Hero copy on the /properties listing page.',
     Editor: ({ value, onChange }) => (
       <Section title="Hero">
         <TextField label="Eyebrow" value={value.heroEyebrow} onChange={(heroEyebrow) => onChange({ heroEyebrow })} />
@@ -344,9 +344,9 @@ export const SECTIONS = [
     ),
   },
   {
-    key: 'blog_page',
-    label: 'Blog page',
-    description: 'Hero copy on the /blog listing page.',
+    key: 'news_page',
+    label: 'News page',
+    description: 'Hero copy on the /news listing page.',
     Editor: ({ value, onChange }) => (
       <Section title="Hero">
         <TextField label="Eyebrow" value={value.heroEyebrow} onChange={(heroEyebrow) => onChange({ heroEyebrow })} />

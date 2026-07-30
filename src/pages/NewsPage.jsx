@@ -1,16 +1,16 @@
 import { Link } from 'react-router-dom'
-import { useSection, useBlogPosts } from '../context/ContentContext'
+import { useSection, useNews } from '../context/ContentContext'
 import { renderEmphasis } from '../lib/emphasis'
 
-export default function BlogPage() {
-  const p = useSection('blog_page')
-  const posts = useBlogPosts()
+export default function NewsPage() {
+  const p = useSection('news_page')
+  const posts = useNews()
 
   return (
     <div>
       {/* ── Hero ─────────────────────────────────────────────── */}
       <section
-        id="blog-hero"
+        id="news-hero"
         className="relative overflow-hidden bg-void px-6 pb-16 pt-36 text-bone md:px-[75px] md:pb-20 md:pt-48"
       >
         <div
@@ -44,7 +44,7 @@ export default function BlogPage() {
             {posts.map((post) => (
               <Link
                 key={post.slug}
-                to={`/blog/${post.slug}`}
+                to={`/news/${post.slug}`}
                 className="group flex flex-col overflow-hidden rounded-2xl border border-[var(--color-line-inv)] bg-ink transition-colors duration-300 hover:border-bone/25"
               >
                 <div className="relative h-56 overflow-hidden bg-void">

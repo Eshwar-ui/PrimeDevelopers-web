@@ -31,3 +31,7 @@ dist-ssr
 # Supabase local dev
 supabase/.temp
 supabase/.branches
+
+# Generated 3D test fixture — rebuild with scripts/make-test-model.mjs.
+# Kept out of the repo so it never ships to the live site.
+public/test-model.glb

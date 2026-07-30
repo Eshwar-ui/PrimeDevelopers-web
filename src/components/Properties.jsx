@@ -6,22 +6,22 @@ import { useGSAP } from '@gsap/react'
 import ArrowRight from './ArrowRight'
 import SectionHeader from './SectionHeader'
 import { useSectionNav } from '../hooks/useSectionNav'
-import { useSection, useProjects } from '../context/ContentContext'
+import { useSection, useProperties } from '../context/ContentContext'
 import { renderEmphasis } from '../lib/emphasis'
 
 const TEASER_COUNT = 7
 
-export default function Projects() {
-  const { heading } = useSection('projects_home')
-  const allProjects = useProjects()
-  const projects = allProjects.slice(0, TEASER_COUNT)
+export default function Properties() {
+  const { heading } = useSection('properties_home')
+  const allProperties = useProperties()
+  const properties = allProperties.slice(0, TEASER_COUNT)
   const scope = useRef(null)
   const go = useSectionNav()
   const navigate = useNavigate()
   const [active, setActive] = useState(0)
   const prev = useRef(0)
-  const current = projects[active]
-  const previous = projects[prev.current]
+  const current = properties[active]
+  const previous = properties[prev.current]
 
   const select = (i) => {
     if (i !== active) {
@@ -65,11 +65,11 @@ export default function Projects() {
     { scope }
   )
 
-  if (projects.length === 0) return null
+  if (properties.length === 0) return null
 
   return (
     <section
-      id="projects"
+      id="properties"
       ref={scope}
       className="bg-carbon px-6 py-24 text-bone md:px-[134px] md:py-32"
     >
@@ -87,14 +87,14 @@ export default function Projects() {
             data-depth-back
             className="absolute -left-14 top-9 hidden h-[560px] w-[480px] overflow-hidden rounded-[20px] border border-[var(--color-line-inv)] opacity-30 md:block"
           >
-            <img src={projects[0].image} alt="" className="h-full w-full object-cover" />
+            <img src={properties[0].image} alt="" className="h-full w-full object-cover" />
           </div>
           <div
             data-depth-front
             role="link"
             tabIndex={0}
-            onClick={() => navigate(`/projects/${current.slug}`)}
-            onKeyDown={(e) => e.key === 'Enter' && navigate(`/projects/${current.slug}`)}
+            onClick={() => navigate(`/properties/${current.slug}`)}
+            onKeyDown={(e) => e.key === 'Enter' && navigate(`/properties/${current.slug}`)}
             className="group/card relative h-[520px] w-[86vw] max-w-[420px] cursor-pointer overflow-hidden rounded-[24px] border border-bone/10 shadow-[0_50px_100px_-40px_rgba(0,0,0,0.9)] md:h-[560px] md:w-[540px] md:max-w-none"
           >
             <img
@@ -137,10 +137,10 @@ export default function Projects() {
           </div>
         </div>
 
-        {/* Project list + more link */}
+        {/* Property list + more link */}
         <div className="w-full max-w-[520px]">
           <ul data-depth-list>
-            {projects.map((p, i) => {
+            {properties.map((p, i) => {
               const isActive = i === active
               return (
                 <li
@@ -149,8 +149,8 @@ export default function Projects() {
                   role="link"
                   tabIndex={0}
                   onMouseEnter={() => select(i)}
-                  onClick={() => navigate(`/projects/${p.slug}`)}
-                  onKeyDown={(e) => e.key === 'Enter' && navigate(`/projects/${p.slug}`)}
+                  onClick={() => navigate(`/properties/${p.slug}`)}
+                  onKeyDown={(e) => e.key === 'Enter' && navigate(`/properties/${p.slug}`)}
                   className={`group flex cursor-pointer items-center gap-3 border-b py-4 transition-colors duration-300 ${
                     isActive ? 'border-bone/50' : 'border-[var(--color-line-inv)]'
                   }`}
@@ -174,14 +174,14 @@ export default function Projects() {
           </ul>
 
           <a
-            href="/projects"
+            href="/properties"
             onClick={(e) => {
               e.preventDefault()
-              go('/projects')
+              go('/properties')
             }}
             className="group mt-10 inline-flex items-center gap-2.5 font-body text-sm font-bold uppercase tracking-[0.18em] text-bone transition-colors hover:text-accent-soft"
           >
-            More Projects
+            More Properties
             <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-1.5" />
           </a>
         </div>

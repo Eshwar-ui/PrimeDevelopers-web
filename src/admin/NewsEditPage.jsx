@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { useBlogPosts, useContentRefetch } from '../context/ContentContext'
+import { useNews, useContentRefetch } from '../context/ContentContext'
 import { supabase } from '../lib/supabase'
 import { slugify } from '../lib/slugify'
 import { Section, TextField, TextAreaField } from './components/Field'
@@ -8,9 +8,9 @@ import ImageUploader from './components/ImageUploader'
 
 const toDateInput = (iso) => (iso ? new Date(iso).toISOString().slice(0, 10) : '')
 
-export default function BlogEditPage() {
+export default function NewsEditPage() {
   const { id } = useParams()
-  const posts = useBlogPosts()
+  const posts = useNews()
   const refetch = useContentRefetch()
 
   const original = useMemo(() => posts.find((p) => p.id === id), [posts, id])
@@ -27,8 +27,8 @@ export default function BlogEditPage() {
     return (
       <div>
         <p className="text-bone/60">Post not found.</p>
-        <Link to="/admin/blog" className="text-ember">
-          ← Back to blog
+        <Link to="/admin/news" className="text-ember">
+          ← Back to news
         </Link>
       </div>
     )
@@ -42,7 +42,7 @@ export default function BlogEditPage() {
     setError(null)
     const { id: _id, created_at: _createdAt, updated_at: _updatedAt, _slugTouched, ...rest } = form
     const payload = { ...rest, published_at: form.published_at ? new Date(form.published_at).toISOString() : null }
-    const { error } = await supabase.from('blog_posts').update(payload).eq('id', id)
+    const { error } = await supabase.from('news').update(payload).eq('id', id)
     setSaving(false)
     if (error) {
       setError(error.message)
@@ -56,7 +56,7 @@ export default function BlogEditPage() {
     <div className="pb-24">
       <div className="flex items-center justify-between">
         <div>
-          <Link to="/admin/blog" className="text-xs font-bold uppercase tracking-wide text-bone/40 hover:text-bone/70">
+          <Link to="/admin/news" className="text-xs font-bold uppercase tracking-wide text-bone/40 hover:text-bone/70">
             ← All posts
           </Link>
           <h1 className="mt-2 font-display text-2xl font-medium">{form.title || 'Untitled post'}</h1>
@@ -65,7 +65,7 @@ export default function BlogEditPage() {
           {savedAt && <span className="text-xs text-bone/40">Saved</span>}
           {form.published && (
             <a
-              href={`/blog/${form.slug}`}
+              href={`/news/${form.slug}`}
               target="_blank"
               rel="noreferrer"
               className="text-xs font-bold uppercase tracking-wide text-bone/50 hover:text-bone"

@@ -1,16 +1,16 @@
 import { Link, useParams } from 'react-router-dom'
-import { useBlogPost } from '../context/ContentContext'
+import { useNewsPost } from '../context/ContentContext'
 
-export default function BlogPostPage() {
+export default function NewsPostPage() {
   const { slug } = useParams()
-  const post = useBlogPost(slug)
+  const post = useNewsPost(slug)
 
   if (!post) {
     return (
       <section className="flex min-h-[70vh] flex-col items-center justify-center gap-6 bg-void px-6 text-center">
         <h1 className="font-display text-3xl font-medium text-bone">Post not found</h1>
-        <Link to="/blog" className="eyebrow text-accent-soft">
-          ← Back to blog
+        <Link to="/news" className="eyebrow text-accent-soft">
+          ← Back to news
         </Link>
       </section>
     )
@@ -22,7 +22,7 @@ export default function BlogPostPage() {
     <div>
       <section className="relative overflow-hidden bg-void px-6 pb-16 pt-32 text-bone md:px-[75px] md:pb-20 md:pt-44">
         <div className="relative">
-          <Link to="/blog" className="eyebrow mb-8 inline-block text-bone/50 hover:text-bone">
+          <Link to="/news" className="eyebrow mb-8 inline-block text-bone/50 hover:text-bone">
             ← All posts
           </Link>
           {post.published_at && (

@@ -1,5 +1,5 @@
 // Generic add/remove/reorder editor for an array of items, used for every
-// repeatable list in the project detail model (tenants, cards, buildings, ...).
+// repeatable list in the property detail model (tenants, cards, buildings, ...).
 export default function RepeatableList({ items, onChange, makeItem, renderItem, addLabel = 'Add' }) {
   const list = items ?? []
 

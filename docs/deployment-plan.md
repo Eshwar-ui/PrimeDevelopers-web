@@ -1,6 +1,7 @@
 # Deployment Plan — Frontend on Firebase, Backend on Render
 
-**Status:** proposed, not started · **Written:** 30 Jul 2026
+**Written:** 30 Jul 2026 · **Phases 0–1 complete** (branch
+`chore/monorepo-restructure`), Phase 2 next
 
 ## Context
 
@@ -25,25 +26,42 @@ and conventions now, and the merge later becomes a *move*, not a rewrite.
 
 | | Current state |
 |---|---|
-| Frontend | Vite 8 / React 19 SPA → Firebase Hosting, project `prime-developers` |
+| Frontend | Vite 8 / React 19 SPA → Firebase Hosting, project **`theprime-construction`** |
 | Deploy | Manual `firebase deploy`. No CI, no `.github/`, no Dockerfile, no `render.yaml` |
 | Prod database | Supabase project **`knghxhtfkbswzhphhigy`** — found only by grepping `dist/`; it is in no `.env` file in the repo |
-| Local dev | Local Supabase stack (`127.0.0.1:55321`). Both `.env` and `.env.seed` point here |
-| Auth | Supabase Auth — [`src/context/AuthContext.jsx`](src/context/AuthContext.jsx), gated by [`src/admin/RequireAuth.jsx`](src/admin/RequireAuth.jsx) |
-| Tables | `content` (jsonb by section), `properties`, `news`, `leads` — units live as a **jsonb blob** on `properties.detail`, not relational rows |
+| Local dev | Local Supabase stack (`127.0.0.1:55321`), currently not running |
+| Auth | Supabase Auth — [`AuthContext.jsx`](../apps/web/src/context/AuthContext.jsx), gated by [`RequireAuth.jsx`](../apps/web/src/admin/RequireAuth.jsx) |
+| Tables | `content`, `properties`, `news`, `website_leads`, `website_lead_unit_attributions` — units live as a **jsonb blob** on `properties.detail`, but lead→unit attribution is already relational |
 | Storage | Buckets `images` and `models` (public read, 8 MB, glb-only) |
-| Package manager | **Conflicted** — `package.json` declares pnpm 10.33, but a `package-lock.json` is committed |
-| Working tree | ~1,300 lines of uncommitted 3D floor-plan work |
 
-Two of these are blockers rather than notes. **Prod Supabase credentials exist
-nowhere except whoever last ran `vite build`** — the deployed bundle is the only
-record of the project ref. And the **package-manager conflict will break Render
-builds**, which install from whichever lockfile they find.
+**The production database is shared with another application.** Migration 6
+states it plainly: the CMS was applied to "a shared Supabase project that
+already has a construction-mgmt schema", and website tables carry a `website_`
+prefix wherever names collided — `leads` was already taken, so contact
+submissions go to `website_leads`. Migration 7 reinforces it, deliberately
+avoiding `GRANT ... ON ALL TABLES IN SCHEMA public` because that "would silently
+change that application's access model too".
+
+This is the single most important fact for everything downstream, and it cuts
+both ways. It means **the "one database for both products" goal is already
+partly real** — but it also means Phase 7's RLS lockdown is operating on a
+database another live application depends on, so every grant change needs to be
+scoped to the five `website_`/CMS tables and nothing else.
+
+> **Worth confirming before Phase 2:** is `knghxhtfkbswzhphhigy` the same
+> database prime-tracker uses? Its `render.yaml` names a *different* project
+> (`dxkqrwxixjyzxhtxdkht`). If they are already the same DB, the merge is far
+> closer than assumed; if not, there are two construction-management schemas in
+> play and that needs untangling before any consolidation.
 
 > The Supabase MCP connected to this session is authed to a different account
-> (it lists only `maega_marketplace_core`). It cannot manage
-> `knghxhtfkbswzhphhigy`, so the connection strings and service-role key must be
+> (it lists only `maega_marketplace_core`). It cannot reach
+> `knghxhtfkbswzhphhigy`, so connection strings and the service-role key must be
 > collected from the Supabase dashboard by hand.
+
+**Prod Supabase credentials exist nowhere except whoever last ran `vite build`**
+— the deployed bundle is the only record of the project ref. Collecting and
+storing them is the one Phase 0 item still outstanding.
 
 ---
 
@@ -73,13 +91,13 @@ them. No data migration, no downtime, and the schema stays a faithful mirror.
 
 ---
 
-## Phase 0 — Prerequisites (blocking, ~1 hour)
+## Phase 0 — Prerequisites ✅ *(mostly done)*
 
-1. **Commit the working tree.** The 3D floor-plan work is uncommitted and every
-   later phase moves these files. Commit before touching anything.
-2. **Resolve the package manager.** Delete `package-lock.json`, commit
-   `pnpm-lock.yaml`. Render and the monorepo both assume pnpm.
-3. **Collect prod credentials** from the Supabase dashboard for project
+1. ~~**Commit the working tree.**~~ Done — `e3d8e2a`, 56 files.
+2. ~~**Resolve the package manager.**~~ Done — `package-lock.json` removed,
+   `pnpm-lock.yaml` committed.
+3. **Collect prod credentials** — *still outstanding, and blocking Phase 2.*
+   From the Supabase dashboard for project
    `knghxhtfkbswzhphhigy` — Settings → Database, and Settings → API:
    - `DATABASE_URL` — pooler, port **6543**, with `?pgbouncer=true&connection_limit=1`
    - `DIRECT_URL` — direct, port **5432** (migrations only)
@@ -89,16 +107,25 @@ them. No data migration, no downtime, and the schema stays a faithful mirror.
    Store these in a password manager. They are the credentials the project
    currently has no durable record of.
 
-## Phase 1 — Restructure into a pnpm monorepo
+## Phase 1 — Restructure into a pnpm monorepo ✅ *(done — `933e845`)*
 
-`git mv` the SPA into `apps/web/`; add `pnpm-workspace.yaml` (`apps/*`), a root
-`package.json` with `dev`/`build`/`deploy:web` scripts, and `tsconfig.base.json`
-— all copied from `prime-tracker-main` so the layouts are identical.
+SPA moved to `apps/web/` (package `@prime-developers/web`); root now carries
+`pnpm-workspace.yaml` and a workspace `package.json` with
+`dev`/`build:web`/`deploy:web`, mirroring `prime-tracker-main`.
+`firebase.json` publishes `apps/web/dist`.
 
-Update `firebase.json` → `"public": "apps/web/dist"`. `.firebaserc` is unchanged.
+Two deviations from what was planned:
 
-**Checkpoint:** `pnpm build && firebase deploy --only hosting` still ships the
-current site. Nothing has changed functionally yet — verify before proceeding.
+- **`tsconfig.base.json` deferred to Phase 2.** The web app is plain JS and
+  nothing would consume it yet.
+- **Seed scripts stayed at the root** with their own `@supabase/supabase-js`
+  dependency, since the `package.json` they resolved against moved into
+  `apps/web`.
+
+**Checkpoint passed:** build output is byte-identical to the pre-move baseline
+(same chunk hashes), lint is clean of new findings, and the dev server renders
+the site with no console errors. `firebase deploy` has *not* been run — the
+first deploy from the new layout should be a deliberate, watched one.
 
 ## Phase 2 — Scaffold the API
 
@@ -123,7 +150,7 @@ One module per resource, following prime-tracker's
 | `content` | `GET /api/content`, `PUT /api/content/:section` | jsonb passthrough |
 | `properties` | `GET /api/properties`, `GET /api/properties/:slug`, admin CRUD | public GET filters `published = true` |
 | `news` | same shape as properties | |
-| `leads` | `POST /api/leads` (public), admin list/update/delete | rate-limit the public POST |
+| `leads` | `POST /api/leads` (public), admin list/update/delete | table is `website_leads`; writes the `website_lead_unit_attributions` row in the same transaction — today the client fires two independent inserts and only logs a failed attribution. Rate-limit the public POST |
 | `auth` | `POST /api/auth/login`, `/refresh`, `/logout` | |
 | `uploads` | `POST /api/uploads/image`, `/model` | service-role key, server-side |
 
@@ -144,14 +171,15 @@ database with whatever shape the client sends. class-validator DTOs make that a
 ## Phase 4 — Frontend cutover
 
 Add a thin `apps/web/src/lib/api.js` (fetch wrapper, `VITE_API_BASE_URL`, bearer
-token, error normalisation) and replace Supabase table calls. **Only six files
-touch tables** — the surface is small:
+token, error normalisation) and replace Supabase table calls. All paths below are
+under `apps/web/`. The surface is small — the whole app makes **14
+`supabase.from()` calls across 8 files**:
 
-- [`src/context/ContentContext.jsx`](src/context/ContentContext.jsx) — the three public reads, all in one fan-out
-- [`src/pages/ContactPage.jsx`](src/pages/ContactPage.jsx) — lead insert
+- [`src/context/ContentContext.jsx`](../apps/web/src/context/ContentContext.jsx) — the three public reads, in one fan-out
+- [`src/pages/ContactPage.jsx`](../apps/web/src/pages/ContactPage.jsx) — lead insert + unit attribution
 - `src/admin/{LeadsPage,PropertiesListPage,PropertyEditPage,NewsListPage,NewsEditPage,ContentSectionPage}.jsx`
-- [`src/context/AuthContext.jsx`](src/context/AuthContext.jsx) — swap `signInWithPassword` for the JWT endpoints
-- [`src/lib/supabase.js`](src/lib/supabase.js) — keep `publicImageUrl` (pure URL construction, no auth); point `uploadImage`/`uploadModel` at the API
+- [`src/context/AuthContext.jsx`](../apps/web/src/context/AuthContext.jsx) — swap `signInWithPassword` for the JWT endpoints
+- [`src/lib/supabase.js`](../apps/web/src/lib/supabase.js) — keep `publicImageUrl` (pure URL construction, no auth); point `uploadImage`/`uploadModel` at the API
 
 The 3D and floor-plan components need no changes — they read from context and
 props, never Supabase. The PRD's instruction to funnel unit access through
@@ -181,7 +209,7 @@ services:
       - { key: JWT_REFRESH_SECRET, sync: false }
       - { key: SUPABASE_URL, sync: false }
       - { key: SUPABASE_SERVICE_ROLE_KEY, sync: false }
-      - { key: CORS_ORIGINS, value: https://prime-developers.web.app }
+      - { key: CORS_ORIGINS, value: https://theprime-construction.web.app }
 ```
 
 Secrets go in the Render dashboard (`sync: false`), never in the committed file.
@@ -198,11 +226,17 @@ bundle.
 
 ## Phase 7 — Close the direct-write hole
 
-Only after Phase 6 is verified, tighten Supabase RLS so the anon key can no
-longer write. Replace the `auth.role() = 'authenticated'` write policies on
-`content`, `properties`, `news`, and `leads` with service-role-only access. The
-API connects as a privileged role and is unaffected; the browser loses a
-capability it no longer uses.
+Only after Phase 6 is verified, tighten access so the anon key can no longer
+write. Revoke the `authenticated` grants added in migration 7 and drop the
+`auth.role() = 'authenticated'` write policies, leaving service-role-only
+access. The API connects as a privileged role and is unaffected; the browser
+loses a capability it no longer uses.
+
+**Scope every statement to the five CMS tables by name** — `content`,
+`properties`, `news`, `website_leads`, `website_lead_unit_attributions`. The
+database is shared with the construction-management application, and a
+schema-wide `REVOKE` would take its access with it. Migration 7 sets the
+precedent and explains why; follow it exactly.
 
 **This is the phase that makes the whole exercise worth doing** — until it lands,
 the API is an additional path to the data rather than the only one.
@@ -227,7 +261,11 @@ Each phase has a checkpoint; don't proceed past a red one.
    confirm it is rejected; confirm the public site still reads fine.
 
 **Take a database backup before Phase 7**, and ideally before Phase 3 — this is
-live client data with no staging copy.
+live client data, shared with another running application, with no staging copy.
+
+Also worth a smoke test after Phase 5 and again after Phase 7: confirm the
+construction-management application still works. It shares this database, and
+nothing in this plan is supposed to touch it.
 
 ---
 
@@ -248,13 +286,17 @@ Phase 3 onward is real engineering. Sequenced as above, each phase ends with a
 working deployable site, so this can be paused between phases without leaving
 things half-migrated.
 
-**The merge into prime-tracker stays deliberately out of scope.** Everything
-here is shaped to make it cheap later — same framework versions, same module
-layout, same auth mechanism, same `render.yaml` conventions. But the two
-products model the same domain differently: prime-tracker has relational
-`Building`/`Unit`/`Lead` tables, while this site keeps units as a jsonb blob on
-`properties.detail`. Reconciling those two schemas is the actual work of
-merging, and it deserves its own plan rather than being smuggled into this one.
+**The merge into prime-tracker stays deliberately out of scope** — but it may be
+nearer than it looked. Everything here is shaped to make it cheap: same
+framework versions, same module layout, same auth mechanism, same `render.yaml`
+conventions. And the databases may already be one, given migration 6's shared
+project (see the open question above).
+
+What still has to be reconciled is the *schema*, not the server: prime-tracker
+has relational `Building`/`Unit`/`Lead` tables, while this site keeps units as a
+jsonb blob on `properties.detail` and its leads in a parallel `website_leads`
+table. Collapsing those is the real work of merging, and it deserves its own
+plan rather than being smuggled into this one.
 
 **SSR is still unsolved.** Firebase Hosting serves static files, so the floor
 plan PRD's no-JS/SEO criterion (§17) remains unmet regardless of this work. An

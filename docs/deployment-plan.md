@@ -15,8 +15,51 @@
 | 6 · Ship frontend | ✅ **live** — the full cutover is deployed |
 | 7 · Lock down access | ⛔ not started — now safe to do, see below |
 
-Admin login is **`akhil@gmail.com`**. The previous `admin@prime.com` account was
-removed when it was replaced, so there is exactly one admin.
+Admin login is **`admin@gmail.com`** (applied 31 Jul 2026). `akhil@gmail.com`
+was deleted in the same run, so there is exactly one admin. Verified end to end
+against the live API: login, `/auth/me`, a guarded admin route, refresh
+rotation, and the old refresh token failing after rotation.
+
+> ### 🔴 Rotate the production database password
+> The `DATABASE_URL` for project `knghxhtfkbswzhphhigy` — **including its
+> password** — was pasted into a chat transcript on 31 Jul 2026 while debugging
+> the admin seed. Treat it as disclosed: rotate it in Supabase (Settings →
+> Database → Reset password) and update `DATABASE_URL`/`DIRECT_URL` in Render.
+> The role it belongs to is `postgres.<ref>`, which is unrestricted.
+
+> ### ⚠️ The admin password is weak
+> The password set on 31 Jul 2026 contains the email's local part, so it is
+> guessable from the login address alone, on a CMS live at a public URL —
+> `seed-admin.ts` warns about this on every run. It was chosen deliberately
+> after the risk was raised. To change it, re-run the provisioning command with
+> a stronger `ADMIN_PASSWORD`. (The value itself is deliberately not recorded
+> here; live credentials do not belong in the repository.)
+
+### Provisioning an admin
+
+`prisma/seed-admin.ts` is the only way accounts are created; there is no signup
+route. Run it from `apps/api` with the production connection string (it is *not*
+in `apps/api/.env` — see the warning below), taking the value from Render →
+`prime-developers-api` → Environment:
+
+```bash
+DATABASE_URL='<render production DATABASE_URL>' ADMIN_EMAIL='you@example.com' ADMIN_PASSWORD='...' pnpm exec ts-node prisma/seed-admin.ts
+```
+
+Adding `ADMIN_EXCLUSIVE=true` *replaces* the admin list — every other account is
+deleted, leaving exactly one login. The script prints each account it removes,
+and that output is the only record, since the rows are unrecoverable.
+
+> ### ⚠️ `apps/api/.env` points at a local scratch database
+> Not at production. It resolves to `prime_developers_cms_scratch` on localhost,
+> whose contents are smoke-test fixtures (`smoke-plaza`, `draft-prop`) and which
+> holds its own stale admin rows (`admin@prime.test`, `akhil@gmail.com`).
+> **Any seed or migration run without an explicit `DATABASE_URL` override hits
+> that scratch database and reports success**, changing nothing the live API
+> reads. This cost several hours on 31 Jul 2026. A Supabase SQL Editor session
+> used during the same debugging also reported 12 properties where production
+> has 9 (all published), so it too was pointed at something other than
+> production — worth identifying before making further manual edits there.
 
 > ### ⚠️ Upgrade Render to `starter`
 > The homepage now fetches its content from the API, and the API is on Render's

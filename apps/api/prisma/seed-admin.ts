@@ -12,6 +12,12 @@
  *   ADMIN_EMAIL=admin@primedevelopers.com ADMIN_PASSWORD='...' pnpm exec ts-node prisma/seed-admin.ts
  *
  * Re-running with the same email resets that account's password.
+ *
+ * Adding `ADMIN_EXCLUSIVE=true` *replaces* the admin list rather than adding to
+ * it: every other account is deleted, leaving exactly one login. It is opt-in
+ * because the default — provisioning a colleague without disturbing anyone
+ * else — is the common case, and silently deleting coworkers' accounts on a
+ * routine seed would be the wrong default by a wide margin.
  */
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
@@ -56,6 +62,26 @@ async function main() {
 
     console.log(`Admin ready: ${user.email}`);
     if (count > 0) console.log(`Revoked ${count} existing session(s).`);
+
+    if (process.env.ADMIN_EXCLUSIVE === 'true') {
+      // Named before deleting, so the output is a record of what was removed —
+      // these rows are unrecoverable afterwards and the operator should be able
+      // to see, from the log alone, exactly which logins stopped working.
+      const others = await prisma.websiteAdminUser.findMany({
+        where: { id: { not: user.id } },
+        select: { email: true },
+      });
+
+      if (others.length === 0) {
+        console.log('ADMIN_EXCLUSIVE: no other accounts existed.');
+      } else {
+        // Their refresh tokens go with them: the relation is onDelete: Cascade,
+        // so no revocation pass is needed here.
+        await prisma.websiteAdminUser.deleteMany({ where: { id: { not: user.id } } });
+        console.log(`ADMIN_EXCLUSIVE: removed ${others.length} other account(s):`);
+        for (const o of others) console.log(`  - ${o.email}`);
+      }
+    }
   } finally {
     await prisma.$disconnect();
   }

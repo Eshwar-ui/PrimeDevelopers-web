@@ -123,8 +123,11 @@ export default function Footer() {
           <div key={col.title} className={`flex flex-col items-start gap-7 ${alignCls[col.align]}`}>
             <h3 className="eyebrow text-bone/45">{col.title}</h3>
             <ul className="flex flex-col gap-4">
+              {/* Keyed on href *and* label because neither alone is unique:
+                  two properties may legitimately share a name (the label), and
+                  the placeholder social links all share `#` (the href). */}
               {col.links.map((l) => (
-                <li key={l.label}>
+                <li key={`${l.href}|${l.label}`}>
                   <a
                     href={l.href}
                     onClick={(e) => handleNav(e, l.href)}

@@ -5,7 +5,7 @@ import RepeatableList from './RepeatableList'
 import FloorPlanPositionPicker from './FloorPlanPositionPicker'
 import ModelManager from './ModelManager'
 import { UNIT_STATUSES } from '../../lib/unitStatus'
-import { getUnits, meshUnitLabel, reconcile } from '../../lib/units'
+import { getUnits, makeUnit, meshUnitLabel, reconcile, unitFormId } from '../../lib/units'
 
 // One building's full editor.
 //
@@ -118,24 +118,15 @@ export default function BuildingBlock({ building, onChange, folder }) {
           <RepeatableList
             items={units}
             onChange={setUnits}
-            makeItem={() => ({
-              label: '',
-              status: 'available',
-              tenant: '',
-              size: '',
-              floor: '',
-              rate: '',
-              frontage: '',
-              description: '',
-              x: null,
-              y: null,
-            })}
+            makeItem={() => makeUnit()}
             addLabel="Add unit"
             renderItem={(unit, _set, i) => {
               const set = (next) => setUnitAt(i, next)
               const isBound = boundLabels?.has(String(unit.label ?? '').trim().toLowerCase())
               return (
-                <div className="flex flex-col gap-3">
+                // Addressable so tap-to-tag in the model panel above can scroll
+                // a just-created unit into view and focus its Label field.
+                <div id={unitFormId(folder, i)} className="flex flex-col gap-3">
                   <div className="grid grid-cols-2 gap-3">
                     <TextField label="Label" placeholder="Unit 101" value={unit.label} onChange={(label) => set({ ...unit, label })} />
                     <SelectField label="Status" value={unit.status} onChange={(status) => set({ ...unit, status })} options={UNIT_STATUSES} />

@@ -49,7 +49,9 @@ export default function PropertyDetailPage() {
 
   const d = property.detail
   const gallery = property.gallery ?? []
-  const soldPct = Math.round((property.sold / property.buildings) * 100)
+  // Guarded: a property with no buildings yet would divide 0 by 0 and render
+  // "(NaN% currently reserved.)" in the enquiry copy.
+  const soldPct = property.buildings > 0 ? Math.round((property.sold / property.buildings) * 100) : 0
 
   return (
     <div>

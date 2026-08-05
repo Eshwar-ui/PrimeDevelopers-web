@@ -75,7 +75,9 @@ export default function PropertiesPage() {
         <motion.div layout className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           <AnimatePresence mode="popLayout">
             {list.map((p) => {
-              const soldPct = Math.round((p.sold / p.buildings) * 100)
+              // A property with no buildings yet divides 0 by 0, which renders
+              // as "NaN% reserved" and sets the progress bar width to "NaN%".
+              const soldPct = p.buildings > 0 ? Math.round((p.sold / p.buildings) * 100) : 0
               const soldOut = p.available === 0
               return (
                 <motion.article

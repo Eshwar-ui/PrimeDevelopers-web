@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api'
+import { withTransformedImages } from '../lib/images'
 import { useAuth } from './AuthContext'
 
 // Fallback shape per section so a missing/not-yet-seeded row never crashes a
@@ -75,9 +76,15 @@ export function ContentProvider({ children }) {
       api.get(`${prefix}/properties`),
       api.get(`${prefix}/news`),
     ])
-    setContent(contentRes)
-    setProperties(propertiesRes)
-    setNews(newsRes)
+    // Image URLs are rewritten to Supabase's transformer here, at the one point
+    // every image enters the app, rather than at each of the ~30 <img> sites.
+    // The admin is deliberately excluded: it edits the stored URL, and handing
+    // it a derived one would save the transformed URL back into the CMS.
+    const transform = (data) => (isAdmin ? data : withTransformedImages(data))
+
+    setContent(transform(contentRes))
+    setProperties(transform(propertiesRes))
+    setNews(transform(newsRes))
   }, [isAdmin])
 
   useEffect(() => {

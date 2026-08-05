@@ -1,7 +1,17 @@
 import { Suspense, lazy, useCallback, useMemo, useRef, useState } from 'react'
 import { uploadImage, uploadModel } from '../../lib/uploads'
 import { inspectGlb, triangleWarning, validateModelFile } from '../../lib/glbInspect'
-import { diffModels, formatBytes, getUnits, pruneBindings, reconcile } from '../../lib/units'
+import {
+  diffModels,
+  formatBytes,
+  getUnits,
+  makeUnit,
+  meshUnitLabel,
+  nextUnitLabel,
+  pruneBindings,
+  reconcile,
+  unitFormId,
+} from '../../lib/units'
 
 const ModelViewer = lazy(() => import('../../components/floorplan/ModelViewer'))
 
@@ -14,7 +24,10 @@ export default function ModelManager({ building, onChange, folder }) {
   const [pending, setPending] = useState(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
-  const [armedUnit, setArmedUnit] = useState(null)
+  const [armedIndex, setArmedIndex] = useState(null)
+  // Off by default. Tapping creates records, and orbiting a model of hundreds
+  // of polygons would otherwise strew junk units behind every stray click.
+  const [tagMode, setTagMode] = useState(false)
 
   const model = building.model ?? null
   const units = useMemo(() => getUnits(building), [building])
@@ -113,7 +126,80 @@ export default function ModelManager({ building, onChange, folder }) {
     if (unitLabel) next[meshName] = unitLabel
     else delete next[meshName]
     setModel({ ...model, bindings: next })
-    setArmedUnit(null)
+    setArmedIndex(null)
+  }
+
+  /** Arm-then-click binds the whole block too, so both routes to a binding
+   *  produce the same result rather than one tagging a single wall panel. */
+  const bindBlock = (meshNames, unitLabel) => {
+    const next = { ...(model?.bindings ?? {}) }
+    for (const name of meshNames) {
+      if (unitLabel) next[name] = unitLabel
+      else delete next[name]
+    }
+    setModel({ ...model, bindings: next })
+    setArmedIndex(null)
+  }
+
+  // Armed by index, never by label. A label is user-entered and may be blank,
+  // and a blank one is falsy — arming by label meant an unlabelled unit set the
+  // armed state to "", which read as "nothing armed": the prompt never showed,
+  // picking never switched on, and clicking the unit appeared to do nothing at
+  // all. Index is the identity `units.js` already hands out for exactly this.
+  const armedUnit = armedIndex === null ? null : (units.find((u) => u.index === armedIndex) ?? null)
+  // Bindings persist a label, so a unit without one cannot be bound to a shape
+  // however it is armed. Better to say so than to accept a click that silently
+  // does nothing.
+  const armedLabel = armedUnit?.label?.trim() || ''
+  const canPick = armedUnit !== null && armedLabel !== ''
+
+  /**
+   * Tap-to-tag: create a unit straight from a shape.
+   *
+   * The reverse of arming a unit and hunting for its shape, and the better
+   * order when the model is the thing you can actually recognise — converter
+   * output has no names to go on, so the shape is the only handle an admin has.
+   */
+  const tagShape = (meshName, block) => {
+    // Already spoken for? Take them to that unit rather than making a second
+    // one for the same shape.
+    const existing = bindings[meshName] ?? meshUnitLabel(meshName)
+    if (existing) {
+      const found = units.find(
+        (u) => String(u.label ?? '').trim().toLowerCase() === String(existing).trim().toLowerCase(),
+      )
+      if (found) {
+        focusUnitForm(found.index)
+        return
+      }
+    }
+
+    const label = nextUnitLabel(units)
+    // Every panel of the block points at the one unit, which is what the
+    // bindings map already expresses — so a whole shop lights up and responds
+    // to a click, not the single wall the ray hit.
+    const nextBindings = { ...bindings }
+    for (const name of block?.length ? block : [meshName]) nextBindings[name] = label
+
+    const unitList = [...(building.unitList ?? []), makeUnit(label)]
+    onChange({
+      ...building,
+      unitList,
+      model: { ...model, bindings: nextBindings },
+    })
+    focusUnitForm(unitList.length - 1)
+  }
+
+  /** Scrolls the unit's form into view and puts the cursor in its Label field,
+   *  since the auto-assigned number is the first thing worth correcting. */
+  const focusUnitForm = (index) => {
+    // Deferred: the row for a just-created unit has not rendered yet.
+    requestAnimationFrame(() => {
+      const row = document.getElementById(unitFormId(folder, index))
+      if (!row) return
+      row.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      row.querySelector('input')?.focus()
+    })
   }
 
   const pendingReport = pending ? reconcile(pending.meshNames, units, model?.bindings ?? {}) : null
@@ -140,6 +226,21 @@ export default function ModelManager({ building, onChange, folder }) {
               {formatBytes(model.fileSize)} · {Number(model.triangles ?? 0).toLocaleString()} triangles ·{' '}
               {report.matched.length} of {units.length} units bound
             </span>
+            <button
+              type="button"
+              onClick={() => {
+                setTagMode((on) => !on)
+                setArmedIndex(null) // the two picking modes would fight over a click
+              }}
+              aria-pressed={tagMode}
+              className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${
+                tagMode
+                  ? 'border-ember bg-ember text-void'
+                  : 'border-white/20 text-bone/70 hover:border-ember hover:text-ember'
+              }`}
+            >
+              {tagMode ? 'Done tagging' : 'Tag units by tapping'}
+            </button>
             <button
               type="button"
               onClick={() => {
@@ -251,9 +352,9 @@ export default function ModelManager({ building, onChange, folder }) {
                       <button
                         key={unit.index}
                         type="button"
-                        onClick={() => setArmedUnit(armedUnit === unit.label ? null : unit.label)}
+                        onClick={() => setArmedIndex(armedIndex === unit.index ? null : unit.index)}
                         className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${
-                          armedUnit === unit.label
+                          armedIndex === unit.index
                             ? 'border-ember bg-ember text-void'
                             : 'border-white/20 text-bone/70 hover:border-ember hover:text-ember'
                         }`}
@@ -268,9 +369,13 @@ export default function ModelManager({ building, onChange, folder }) {
           )}
 
           <div className="relative mt-4">
-            {armedUnit && (
+            {(armedUnit || tagMode) && (
               <div className="pointer-events-none absolute inset-x-0 top-0 z-20 bg-ember px-3 py-1.5 text-center text-[11px] font-bold uppercase tracking-wide text-void">
-                Click the shape in the model that is unit {armedUnit}
+                {armedUnit
+                  ? canPick
+                    ? `Click the shape in the model that is unit ${armedLabel}`
+                    : 'Give this unit a label before binding it to a shape'
+                  : 'Tap a shape to create a unit for it'}
               </div>
             )}
             <Suspense
@@ -288,7 +393,13 @@ export default function ModelManager({ building, onChange, folder }) {
                 onSelect={() => {}}
                 statusFilter={null}
                 flaggedMeshes={flagged}
-                onMeshClick={armedUnit ? (meshName) => bind(meshName, armedUnit) : undefined}
+                onMeshClick={
+                  canPick
+                    ? (meshName, block) => bindBlock(block ?? [meshName], armedLabel)
+                    : tagMode
+                      ? tagShape
+                      : undefined
+                }
                 onCaptureReady={holdCapture}
                 height="h-64 md:h-80"
               />

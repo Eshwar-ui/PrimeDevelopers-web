@@ -31,6 +31,90 @@ export const getBuildings = (property) => property?.detail?.floorPlans?.building
 export const getUnits = (building) =>
   (building?.unitList ?? []).map((unit, index) => ({ ...unit, index }))
 
+/**
+ * The shape of a new unit, in one place.
+ *
+ * Both the "Add unit" button and tap-to-tag in the 3D model create units, and
+ * a unit missing a field one of them sets would render as a blank row in the
+ * other's form.
+ */
+export const makeUnit = (label = '') => ({
+  label,
+  status: 'available',
+  tenant: '',
+  size: '',
+  floor: '',
+  rate: '',
+  frontage: '',
+  description: '',
+  x: null,
+  y: null,
+})
+
+/**
+ * The lowest unused label at or above 101, matching how the client numbers
+ * retail units.
+ *
+ * Auto-numbering has to avoid collisions rather than just count: bindings are
+ * keyed by label, so two units sharing one would make the second impossible to
+ * bind — the existing duplicate-label warning says as much.
+ */
+export function nextUnitLabel(units) {
+  const taken = new Set(units.map((unit) => norm(unit.label)).filter(Boolean))
+  let n = 101
+  while (taken.has(String(n))) n += 1
+  return String(n)
+}
+
+/**
+ * DOM id of a unit's form row, used by tap-to-tag to scroll the unit it just
+ * created into view.
+ *
+ * Scoped by the building's folder because the admin renders every building on
+ * one page: a bare `unit-form-0` would collide across buildings and
+ * getElementById would land on the first one, sending the admin to a different
+ * building's unit than the shape they tapped.
+ */
+export const unitFormId = (folder, index) =>
+  `unit-form-${String(folder ?? 'b').replace(/[^a-zA-Z0-9]+/g, '-')}-${index}`
+
+/**
+ * Groups meshes that share plan vertices into blocks.
+ *
+ * Converter output has no notion of a unit: a retail block arrives as a dozen
+ * separate wall panels of two triangles each. Binding one of those would tag a
+ * sliver of wall rather than the shop the admin actually clicked, so tapping
+ * has to act on the whole connected block.
+ *
+ * `items` is `[{ name, keys }]` where `keys` is a Set of quantised x|y vertex
+ * strings. Returns mesh name -> group id.
+ *
+ * Panels that belong to no group (the full-footprint floor and ceiling slabs,
+ * which touch every unit and would otherwise fuse the whole building into one
+ * block) are expected to be filtered out by the caller before this is called.
+ */
+export function groupBySharedVertices(items) {
+  const parent = items.map((_, i) => i)
+  const find = (i) => (parent[i] === i ? i : (parent[i] = find(parent[i])))
+  const union = (a, b) => {
+    const ra = find(a)
+    const rb = find(b)
+    if (ra !== rb) parent[ra] = rb
+  }
+
+  const seen = new Map()
+  items.forEach((item, i) => {
+    for (const key of item.keys) {
+      if (seen.has(key)) union(seen.get(key), i)
+      else seen.set(key, i)
+    }
+  })
+
+  const groupOf = new Map()
+  items.forEach((item, i) => groupOf.set(item.name, `g${find(i)}`))
+  return groupOf
+}
+
 export const getModel = (building) => building?.model ?? null
 export const hasModel = (building) => Boolean(building?.model?.url)
 
@@ -61,15 +145,25 @@ export function reconcile(meshNames, units, bindings = {}) {
 
   for (const meshName of meshNames) {
     const claimedLabel = meshUnitLabel(meshName)
-    if (claimedLabel === null) continue // scenery — never interactive
+    const override = overrides.get(norm(meshName))
 
-    const unit = findUnitByLabel(units, overrides.get(norm(meshName)) ?? claimedLabel)
+    // Scenery is not interactive *unless an admin explicitly bound it*. That
+    // exception is what makes models from format converters usable at all:
+    // they arrive with every object called `Node1`, `Node2`… so no mesh can
+    // claim a unit by name, and without this the binding UI would have nothing
+    // to offer and the model could never be made clickable.
+    if (claimedLabel === null && override === undefined) continue
+
+    const unit = findUnitByLabel(units, override ?? claimedLabel)
     if (unit) {
       matched.push({ meshName, unit })
       claimed.add(unit.index)
-    } else {
+    } else if (claimedLabel !== null) {
       unmatched.push(meshName)
     }
+    // A bound scenery mesh whose unit was later deleted simply reverts to
+    // scenery. Listing it as "unmatched" would ask the admin to fix a shape
+    // they never named — the stale binding is pruned on the next upload.
   }
 
   return {

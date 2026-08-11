@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useSection, useNews } from '../context/ContentContext'
+import { sized } from '../lib/images'
 import { renderEmphasis } from '../lib/emphasis'
 
 export default function NewsPage() {
@@ -50,8 +51,10 @@ export default function NewsPage() {
                 <div className="relative h-56 overflow-hidden bg-void">
                   {post.coverImage && (
                     <img
-                      src={post.coverImage}
+                      src={sized(post.coverImage, 'card')}
                       alt={post.title}
+                      loading="lazy"
+                      decoding="async"
                       className="h-full w-full object-cover grayscale transition-all duration-700 ease-out group-hover:scale-[1.04] group-hover:grayscale-0"
                     />
                   )}

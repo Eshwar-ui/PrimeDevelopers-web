@@ -2,6 +2,7 @@ import { Controller, Get, Param } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { PropertiesService } from './properties.service';
 import { Public } from '../../common/decorators/public.decorator';
+import { Cacheable } from '../../common/decorators/cacheable.decorator';
 
 /**
  * Public read surface. Kept in its own controller from the admin routes below
@@ -15,6 +16,7 @@ export class PropertiesController {
   constructor(private properties: PropertiesService) {}
 
   @Public()
+  @Cacheable()
   @Get()
   @ApiOperation({ summary: 'Published properties, in display order' })
   findAll() {
@@ -22,6 +24,7 @@ export class PropertiesController {
   }
 
   @Public()
+  @Cacheable()
   @Get(':slug')
   @ApiOperation({ summary: 'One published property by slug' })
   findOne(@Param('slug') slug: string) {

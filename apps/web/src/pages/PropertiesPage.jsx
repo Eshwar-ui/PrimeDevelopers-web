@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import { useSection, useProperties, useCategories } from '../context/ContentContext'
+import { sized } from '../lib/images'
 import { renderEmphasis } from '../lib/emphasis'
 
 function Stat({ label, value }) {
@@ -93,8 +94,10 @@ export default function PropertiesPage() {
                   <div className="relative h-56 overflow-hidden bg-void">
                     {p.image && (
                       <img
-                        src={p.image}
+                        src={sized(p.image, 'card')}
                         alt={p.name}
+                        loading="lazy"
+                        decoding="async"
                         className="h-full w-full object-cover grayscale transition-all duration-700 ease-out group-hover:scale-[1.04] group-hover:grayscale-0"
                       />
                     )}

@@ -21,14 +21,43 @@ const DEFAULT_WIDTH = 1920
 const DEFAULT_QUALITY = 75
 
 /**
- * Rewrite a Supabase public object URL to its transformed equivalent.
+ * Named widths, so call sites state what the image *is* rather than guessing a
+ * number. Each is roughly 2x the largest CSS size that slot ever renders at,
+ * which is the point at which a retina display stops being able to tell.
  *
- * Anything else — a local `/models/...` path, an external URL, an empty value,
- * or a URL already pointing at the render endpoint — is returned untouched, so
- * this is safe to apply blanket-wise across CMS data.
+ * These matter more than they look: every URL used to carry width=1920, so the
+ * six 78x54 hero thumbnails pulled ~633KB between them, and the client logos
+ * were being *upscaled* from a 150px original to 1920px. Sizing them here is
+ * the single largest saving on the homepage.
+ */
+export const WIDTHS = {
+  thumb: 200, // hero rail thumbnails — 78x54 CSS
+  logo: 400, // marquee client logos — up to 200x48 CSS
+  // Cards top out at ~735px CSS in the gallery, so this stays comfortably
+  // retina. Sized generously on purpose: every card is lazy-loaded now, so the
+  // extra weight lands after first paint rather than competing with it.
+  card: 1200,
+  full: DEFAULT_WIDTH, // full-bleed hero and detail imagery
+}
+
+/**
+ * Rewrite a Supabase public object URL to its transformed equivalent, or resize
+ * one that has already been rewritten.
+ *
+ * Handling the already-transformed case is what lets call sites narrow an image
+ * that `withTransformedImages` has stamped with the default width. Without it
+ * the blanket transform would be a ceiling as well as a floor, and nothing
+ * downstream could ask for the 200px version it actually needs.
+ *
+ * Anything else — a local `/models/...` path, an external URL, an empty value —
+ * is returned untouched, so this is safe to apply blanket-wise across CMS data.
  */
 export function imageUrl(src, { width = DEFAULT_WIDTH, quality = DEFAULT_QUALITY } = {}) {
-  if (typeof src !== 'string' || !src.includes(OBJECT_PATH)) return src
+  if (typeof src !== 'string') return src
+
+  const isObject = src.includes(OBJECT_PATH)
+  const isRendered = src.includes(RENDER_PATH)
+  if (!isObject && !isRendered) return src
 
   // `.glb` models live in a bucket of their own and must never be handed to an
   // image transformer, which would reject them and break the 3D viewer.
@@ -37,6 +66,9 @@ export function imageUrl(src, { width = DEFAULT_WIDTH, quality = DEFAULT_QUALITY
   const [base] = src.split('?')
   return `${base.replace(OBJECT_PATH, RENDER_PATH)}?width=${width}&quality=${quality}`
 }
+
+/** `imageUrl` at a named width — the form nearly every call site wants. */
+export const sized = (src, size) => imageUrl(src, { width: WIDTHS[size] ?? size })
 
 /**
  * Walk CMS data and transform every image URL in it.

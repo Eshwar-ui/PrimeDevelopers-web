@@ -3,6 +3,7 @@ import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import Parallax from './Parallax'
 import { useSection } from '../context/ContentContext'
+import { sized } from '../lib/images'
 
 // Seamless client-logo marquee on carbon. The track holds the set twice; GSAP
 // shifts it left by exactly one set width (-50%) and repeats — no seam. A
@@ -29,11 +30,19 @@ export default function Marquee() {
       </p>
       <Parallax speed={0.15}>
         <div ref={track} className="flex w-max items-center gap-24 pr-24">
+          {/* These render at 48px tall. Asking for the default 1920 made the
+              transformer *upscale* a 150px-wide original, so the logos cost
+              more than the files they came from.
+
+              Deliberately not lazy: they are ~5KB each and `w-auto`, so
+              deferring them would leave the track at the wrong width when GSAP
+              measures it for the -50% loop, and break the seam. */}
           {[...logos, ...logos].map((logo, i) => (
             <img
               key={i}
-              src={logo.image}
+              src={sized(logo.image, 'logo')}
               alt={logo.alt ?? ''}
+              decoding="async"
               className="h-11 w-auto shrink-0 object-contain md:h-12"
             />
           ))}

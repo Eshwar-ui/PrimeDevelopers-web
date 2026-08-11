@@ -7,6 +7,7 @@ import PillButton from '../components/PillButton'
 import Parallax from '../components/Parallax'
 import { useSectionNav } from '../hooks/useSectionNav'
 import { useSection } from '../context/ContentContext'
+import { sized } from '../lib/images'
 import { renderEmphasis } from '../lib/emphasis'
 import watermark from '../assets/watermark-p.svg'
 
@@ -107,7 +108,13 @@ export default function AboutPage() {
             className="relative h-[340px] overflow-hidden rounded-3xl border border-[var(--color-line-inv)] md:h-[480px]"
           >
             {p.heroImage && (
-              <img src={p.heroImage} alt="A Prime Developers property" className="h-full w-full object-cover" />
+              <img
+                src={p.heroImage}
+                alt="A Prime Developers property"
+                fetchPriority="high"
+                decoding="async"
+                className="h-full w-full object-cover"
+              />
             )}
             <div
               aria-hidden
@@ -219,8 +226,10 @@ export default function AboutPage() {
                 </span>
                 {f.image && (
                   <img
-                    src={f.image}
+                    src={sized(f.image, 'card')}
                     alt={f.name}
+                    loading="lazy"
+                    decoding="async"
                     className="relative h-full w-full object-cover object-top grayscale transition-all duration-700 ease-out group-hover:scale-[1.03] group-hover:grayscale-0"
                   />
                 )}
@@ -245,7 +254,13 @@ export default function AboutPage() {
       <section className="relative h-[64vh] min-h-[440px] overflow-hidden bg-void">
         {p.closingImage && (
           <Parallax speed={0.3} className="absolute inset-0 -top-[15%] h-[130%]">
-            <img src={p.closingImage} alt="Prime Developers landmark" className="h-full w-full object-cover" />
+            <img
+              src={p.closingImage}
+              alt="Prime Developers landmark"
+              loading="lazy"
+              decoding="async"
+              className="h-full w-full object-cover"
+            />
           </Parallax>
         )}
         <div

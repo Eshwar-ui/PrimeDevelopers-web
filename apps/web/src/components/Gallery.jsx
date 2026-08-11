@@ -5,6 +5,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import SectionHeader from './SectionHeader'
 import { useSection, useProperties } from '../context/ContentContext'
+import { sized } from '../lib/images'
 import { renderEmphasis } from '../lib/emphasis'
 
 // Asymmetric two-row layout (7/5 then 5/7) — not a generic equal-column grid.
@@ -60,8 +61,10 @@ export default function Gallery() {
           >
             <div className="relative h-[300px] overflow-hidden rounded-2xl md:h-[460px]">
               <img
-                src={p.image}
+                src={sized(p.image, 'card')}
                 alt={p.name}
+                loading="lazy"
+                decoding="async"
                 className="h-full w-full object-cover grayscale transition-all duration-700 ease-out group-hover:scale-[1.04] group-hover:grayscale-0"
               />
               <div

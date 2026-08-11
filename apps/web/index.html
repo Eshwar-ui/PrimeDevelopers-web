@@ -9,13 +9,73 @@
       content="Prime Developers — building the landmarks of Texas since 2017. Iconic commercial and residential real estate across the Dallas–Fort Worth and Austin markets."
     />
     <meta name="theme-color" content="#1a1a1a" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!-- The two remaining third-party origins. Each costs a DNS lookup, TCP
+         handshake and TLS negotiation before its first request can be sent;
+         warming them here overlaps that setup with the HTML parse instead of
+         paying it serially further down. Fonts used to need two more of these
+         and are now served from this origin. -->
+    <link rel="preconnect" href="%VITE_API_BASE_URL%" crossorigin />
+    <link rel="preconnect" href="%VITE_SUPABASE_URL%" />
+
+    <!-- Fonts are discovered inside the CSS, which the browser has to download
+         and parse first — so without these the text has to wait two round
+         trips. Only the two faces the first screen actually paints in are
+         preloaded; the italics and latin-ext subsets stay lazy. -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=Arimo:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap"
-      rel="stylesheet"
+      rel="preload"
+      href="/fonts/rubik-latin-300_800-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
     />
+    <link
+      rel="preload"
+      href="/fonts/arimo-latin-400_700-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+
     <title>Prime Developers — We build the landmarks of Texas</title>
+
+    <script>
+      /**
+       * Start the content requests here, in the <head>, rather than waiting for
+       * React to mount and run an effect.
+       *
+       * The site cannot paint until this data arrives, and it used to be
+       * requested at ~271ms: after the 169KB bundle had downloaded, parsed, and
+       * booted React. Firing it inline moves that to ~10ms and overlaps the
+       * round trip with the bundle download entirely — on a slow connection,
+       * where the bundle takes seconds, that is the whole of the wait.
+       *
+       * Purely an optimisation. If anything here fails, `apiFetch` falls back
+       * to requesting normally, so the worst case is the behaviour we had.
+       */
+      (function () {
+        // Admins read the /admin endpoints, which include unpublished drafts.
+        // Prefetching the public ones for them would be wasted, and worse,
+        // could hand the CMS a draft-less list.
+        if (location.pathname.indexOf('/admin') === 0) return
+
+        var base = '%VITE_API_BASE_URL%'
+        if (!base || base.indexOf('%') === 0) return
+
+        var store = (window.__PD_PREFETCH__ = {})
+        ;['/content', '/properties', '/news'].forEach(function (path) {
+          var pending = fetch(base + '/api' + path).then(function (res) {
+            if (!res.ok) throw new Error('prefetch ' + path + ' → ' + res.status)
+            return res.json()
+          })
+          // The consumer may never arrive (a bot, a fast bounce). Attaching a
+          // sink keeps a rejection from surfacing as an unhandled error while
+          // leaving `pending` itself rejectable for whoever does claim it.
+          pending.catch(function () {})
+          store[path] = pending
+        })
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

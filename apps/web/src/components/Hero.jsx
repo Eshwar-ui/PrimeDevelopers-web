@@ -6,6 +6,7 @@ import PillButton from './PillButton'
 import ArrowRight from './ArrowRight'
 import watermark from '../assets/watermark-p.svg'
 import { useSection } from '../context/ContentContext'
+import { sized } from '../lib/images'
 import { renderEmphasis } from '../lib/emphasis'
 
 const SLIDE_MS = 6000
@@ -74,6 +75,12 @@ export default function Hero() {
           <img
             src={active.image}
             alt=""
+            // The LCP element. `fetchPriority` is what stops the browser from
+            // treating it as one more image among a dozen and scheduling it
+            // behind the thumbnail rail — it used to finish last of the seven
+            // hero requests despite being the only one on screen.
+            fetchPriority={index === 0 ? 'high' : 'auto'}
+            decoding="async"
             className="hero-slide-active absolute inset-0 h-full w-full object-cover"
           />
         )}
@@ -121,7 +128,18 @@ export default function Hero() {
                   : 'border-white/15 opacity-45 hover:opacity-80'
               }`}
             >
-              {slide.image && <img src={slide.image} alt="" className="h-full w-full object-cover" />}
+              {/* 78x54 on screen — `thumb` keeps this a ~11KB request instead
+                  of the ~125KB full-width slide it used to pull. `lazy` drops
+                  it below the hero image in the fetch queue. */}
+              {slide.image && (
+                <img
+                  src={sized(slide.image, 'thumb')}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  className="h-full w-full object-cover"
+                />
+              )}
               <span
                 className={`absolute bottom-1 left-1.5 font-arimo text-[9px] font-bold tabular-nums ${
                   i === index ? 'text-ember' : 'text-bone/80'

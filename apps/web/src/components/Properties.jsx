@@ -7,6 +7,7 @@ import ArrowRight from './ArrowRight'
 import SectionHeader from './SectionHeader'
 import { useSectionNav } from '../hooks/useSectionNav'
 import { useSection, useProperties } from '../context/ContentContext'
+import { sized } from '../lib/images'
 import { renderEmphasis } from '../lib/emphasis'
 
 const TEASER_COUNT = 7
@@ -87,7 +88,13 @@ export default function Properties() {
             data-depth-back
             className="absolute -left-14 top-9 hidden h-[560px] w-[480px] overflow-hidden rounded-[20px] border border-[var(--color-line-inv)] opacity-30 md:block"
           >
-            <img src={properties[0].image} alt="" className="h-full w-full object-cover" />
+            <img
+              src={sized(properties[0].image, 'card')}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              className="h-full w-full object-cover"
+            />
           </div>
           <div
             data-depth-front
@@ -99,14 +106,18 @@ export default function Properties() {
           >
             <img
               key={`back-${active}`}
-              src={previous.image}
+              src={sized(previous.image, 'card')}
               alt=""
+              loading="lazy"
+              decoding="async"
               className="proj-slide-out absolute inset-0 z-10 h-full w-full object-cover"
             />
             <img
               key={`front-${active}`}
-              src={current.image}
+              src={sized(current.image, 'card')}
               alt={current.name}
+              loading="lazy"
+              decoding="async"
               className="proj-slide-in absolute inset-0 z-20 h-full w-full object-cover transition-transform duration-500 ease-out group-hover/card:scale-[1.03]"
             />
 

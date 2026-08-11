@@ -71,20 +71,23 @@ export function ContentProvider({ children }) {
 
   const load = useCallback(async () => {
     const prefix = isAdmin ? '/admin' : ''
-    const [contentRes, propertiesRes, newsRes] = await Promise.all([
-      api.get('/content'),
-      api.get(`${prefix}/properties`),
-      api.get(`${prefix}/news`),
-    ])
     // Image URLs are rewritten to Supabase's transformer here, at the one point
     // every image enters the app, rather than at each of the ~30 <img> sites.
     // The admin is deliberately excluded: it edits the stored URL, and handing
     // it a derived one would save the transformed URL back into the CMS.
     const transform = (data) => (isAdmin ? data : withTransformedImages(data))
 
-    setContent(transform(contentRes))
-    setProperties(transform(propertiesRes))
-    setNews(transform(newsRes))
+    // Each response is applied the moment it lands rather than awaited together.
+    // Under `Promise.all` the header and hero — which only need `/content` —
+    // sat behind `/properties`, the slowest and largest of the three, for no
+    // reason beyond the three having been requested in one statement.
+    const settle = (promise, apply) => promise.then((data) => apply(transform(data)))
+
+    return Promise.all([
+      settle(api.get('/content'), setContent),
+      settle(api.get(`${prefix}/properties`), setProperties),
+      settle(api.get(`${prefix}/news`), setNews),
+    ])
   }, [isAdmin])
 
   useEffect(() => {
@@ -100,7 +103,15 @@ export function ContentProvider({ children }) {
     const getSection = (section) => ({ ...DEFAULTS[section], ...(content?.[section] ?? {}) })
     const categories = ['All', ...new Set((properties ?? []).map((p) => p.category))]
     return {
-      ready: content !== null && properties !== null && news !== null,
+      // `/content` alone is what the shell needs — navbar, hero, footer. The
+      // property and news lists feed sections further down, and every consumer
+      // of them already renders nothing for an empty array, so holding the
+      // whole page behind them bought a blank screen and nothing else.
+      //
+      // The admin still waits for all three: its lists are the entire point of
+      // the screen, and flashing "no properties" at an editor mid-load reads as
+      // data loss rather than as loading.
+      ready: content !== null && (!isAdmin || (properties !== null && news !== null)),
       error,
       properties: properties ?? [],
       categories,
@@ -110,7 +121,7 @@ export function ContentProvider({ children }) {
       getSection,
       refetch: load,
     }
-  }, [content, properties, news, error, load])
+  }, [content, properties, news, error, load, isAdmin])
 
   if (error) {
     return (

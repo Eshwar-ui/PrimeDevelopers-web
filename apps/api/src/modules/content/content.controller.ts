@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Prisma } from '@prisma/client';
 import { ContentService } from './content.service';
 import { Public } from '../../common/decorators/public.decorator';
+import { Cacheable } from '../../common/decorators/cacheable.decorator';
 import { UpdateContentDto } from './dto/content.dto';
 
 @ApiTags('Content')
@@ -11,6 +12,7 @@ export class ContentController {
   constructor(private content: ContentService) {}
 
   @Public()
+  @Cacheable()
   @Get()
   @ApiOperation({ summary: 'All site content, keyed by section' })
   findAll() {

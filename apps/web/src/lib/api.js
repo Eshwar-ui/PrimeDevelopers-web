@@ -116,7 +116,40 @@ async function send(path, { method, body, signal }) {
   })
 }
 
+/**
+ * Claims a response the inline script in index.html started before this bundle
+ * had finished downloading.
+ *
+ * Single-use by design: the entry is removed as soon as it is claimed, so a
+ * later `refetch()` — after an admin publishes a change, say — goes to the
+ * network rather than replaying the page-load snapshot.
+ */
+function claimPrefetched(path) {
+  const store = typeof window !== 'undefined' && window.__PD_PREFETCH__
+  if (!store) return null
+  const pending = store[path]
+  if (!pending) return null
+  delete store[path]
+  return pending
+}
+
 export async function apiFetch(path, { method = 'GET', body, signal, _retried } = {}) {
+  // Anonymous GETs may already be in flight from the <head>. An authenticated
+  // caller is deliberately excluded: the prefetch was sent without a bearer
+  // token, so its response is the public view and would silently hide drafts.
+  if (method === 'GET' && !accessToken && !_retried) {
+    const pending = claimPrefetched(path)
+    // A rejection here is not fatal — the prefetch is an optimisation, and
+    // falling through re-requests the same thing the ordinary way.
+    if (pending) {
+      try {
+        return await pending
+      } catch {
+        /* fall through to a normal request */
+      }
+    }
+  }
+
   let res
   try {
     res = await send(path, { method, body, signal })

@@ -39,7 +39,13 @@ export default function NewsPostPage() {
 
         {post.coverImage && (
           <div className="relative mt-14 h-[300px] overflow-hidden rounded-3xl border border-[var(--color-line-inv)] md:h-[460px]">
-            <img src={post.coverImage} alt={post.title} className="h-full w-full object-cover" />
+            <img
+              src={post.coverImage}
+              alt={post.title}
+              fetchPriority="high"
+              decoding="async"
+              className="h-full w-full object-cover"
+            />
           </div>
         )}
       </section>

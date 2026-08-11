@@ -16,9 +16,11 @@
 
     "headers": [
       {
-        "//": "Firebase defaults every file to max-age=3600, which is exactly wrong for the two kinds of file here. The catch-all makes the HTML revalidate; the rules after it override that for anything content-addressed. Order matters — later matches win.",
+        "//": "Firebase defaults every file to max-age=3600, which is exactly wrong for the two kinds of file here. The catch-all governs the HTML; the rules after it override it for anything content-addressed. Order matters — later matches win.",
+        "//max-age": "0 — the browser revalidates on every navigation, so a deploy is visible immediately rather than up to an hour later. That was the original bug: a fresh tab loaded the previous build straight after a release.",
+        "//s-maxage": "600 — but the edge still serves it. Plain `no-cache` here was a mistake: it stopped Fastly caching the HTML at all, so every visitor paid a trip to origin and TTFB went from ~40ms to ~250ms. Firebase purges its CDN on deploy, so the ten minutes is a backstop for a failed purge, not the release delay.",
         "source": "**",
-        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+        "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, s-maxage=600" }]
       },
       {
         "//": "Filenames carry a content hash, so a changed file is a different URL and this can never serve something stale. Without it a returning visitor kept the previous deploy's bundle for up to an hour — which is how the old build survived a deploy and loaded from cache in testing.",

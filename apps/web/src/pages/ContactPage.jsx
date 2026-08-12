@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { motion } from 'motion/react'
 import ArrowRight from '../components/ArrowRight'
+import MaskedHeading from '../components/MaskedHeading'
 import { useSection } from '../context/ContentContext'
-import { renderEmphasis } from '../lib/emphasis'
+import { rise, stagger } from '../lib/motion'
 import { api } from '../lib/api'
 
 const fields = [
@@ -10,6 +12,13 @@ const fields = [
   { name: 'email', label: 'Email', type: 'email', placeholder: 'you@company.com' },
   { name: 'phone', label: 'Phone', type: 'tel', placeholder: '+1 (000) 000-0000' },
 ]
+
+// Shared by every field so the three inputs and the textarea cannot drift.
+const FIELD =
+  'border-b border-[var(--color-line)] bg-transparent pb-2.5 font-body text-[16px] text-content outline-none transition-colors placeholder:text-content/30 focus:border-accent'
+const FIELD_LABEL = 'font-body text-[13px] uppercase tracking-[0.14em] text-content/45'
+
+// data-band="light" on every section — see the note in NewsPostPage.
 
 export default function ContactPage() {
   const c = useSection('contact_page')
@@ -77,39 +86,45 @@ export default function ContactPage() {
       {/* ── Hero ─────────────────────────────────────────────── */}
       <section
         id="contact-hero"
-        className="relative overflow-hidden bg-void px-6 pb-16 pt-36 text-bone md:px-[75px] md:pb-20 md:pt-48"
+        data-band="light"
+        className="bg-surface px-6 pb-14 pt-32 text-center md:px-12 md:pb-16 md:pt-40"
       >
-        <div
-          aria-hidden
-          className="absolute inset-0"
-          style={{
-            background:
-              'radial-gradient(55% 55% at 0% 100%, rgba(252,164,46,0.16) 0%, rgba(252,164,46,0) 100%)',
-          }}
-        />
-        <div className="relative">
-          <span className="eyebrow mb-6 flex items-center gap-4 text-bone/70">
-            <span className="h-px w-10 bg-accent-soft" />
-            {c.heroEyebrow}
-          </span>
-          <h1 className="font-display text-display font-light leading-[0.98] tracking-[-0.02em]">
-            {renderEmphasis(c.heroHeading)}
+        <motion.div variants={stagger} initial="hidden" animate="show">
+          {c.heroEyebrow && (
+            <motion.span
+              variants={rise}
+              className="block font-body text-[14px] uppercase tracking-[0.14em] text-accent"
+            >
+              {c.heroEyebrow}
+            </motion.span>
+          )}
+
+          <h1 className="mx-auto mt-5 max-w-[18ch] font-display font-bold uppercase leading-[1.03] tracking-tight text-content [font-size:clamp(1.85rem,min(4.2vw,8dvh),3.4rem)]">
+            <MaskedHeading text={c.heroHeading} accentClass="italic text-accent-soft" />
           </h1>
-          <p className="mt-8 max-w-[48ch] font-body text-lg leading-relaxed text-bone/65">{c.heroParagraph}</p>
-        </div>
+
+          {c.heroParagraph && (
+            <motion.p
+              variants={rise}
+              className="mx-auto mt-7 max-w-[40rem] font-body text-[15px] leading-relaxed text-content/60"
+            >
+              {c.heroParagraph}
+            </motion.p>
+          )}
+        </motion.div>
       </section>
 
       {/* ── Details + form ───────────────────────────────────── */}
-      <section className="bg-void px-6 py-20 text-bone md:px-[75px] md:py-28">
+      <section data-band="light" className="bg-surface-alt px-6 py-20 md:px-12 md:py-28">
         <div className="grid gap-16 lg:grid-cols-[1fr_1.1fr] lg:gap-24">
           {/* Left — details + socials */}
           <div>
-            <div className="flex flex-col divide-y divide-[var(--color-line-inv)] border-y border-[var(--color-line-inv)]">
+            <div className="flex flex-col divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]">
               {details.map((d) => {
                 const inner = (
                   <div className="flex flex-col gap-1.5 py-6">
-                    <span className="eyebrow text-bone/40">{d.label}</span>
-                    <span className="font-display text-2xl font-medium tracking-[-0.01em] text-bone transition-colors duration-300 group-hover:text-accent-soft md:text-3xl">
+                    <span className={FIELD_LABEL}>{d.label}</span>
+                    <span className="font-display text-2xl font-bold tracking-[-0.01em] text-content transition-colors duration-300 group-hover:text-accent md:text-3xl">
                       {d.value}
                     </span>
                   </div>
@@ -125,7 +140,7 @@ export default function ContactPage() {
             </div>
 
             <div className="mt-10">
-              <span className="eyebrow text-bone/40">Follow</span>
+              <span className={FIELD_LABEL}>Follow</span>
               <div className="mt-4 flex flex-wrap gap-2.5">
                 {c.socials.map((s) => (
                   <a
@@ -133,7 +148,7 @@ export default function ContactPage() {
                     href={s.href}
                     target="_blank"
                     rel="noreferrer"
-                    className="rounded-full border border-[var(--color-line-inv)] px-5 py-2 font-body text-[13px] font-bold uppercase tracking-[0.14em] text-bone/55 transition-colors duration-300 hover:border-bone/40 hover:text-bone"
+                    className="rounded-full border border-[var(--color-line)] px-5 py-2 font-body text-[13px] font-medium uppercase tracking-[0.1em] text-content/55 transition-colors duration-300 hover:border-content/35 hover:text-content"
                   >
                     {s.label}
                   </a>
@@ -142,16 +157,20 @@ export default function ContactPage() {
             </div>
           </div>
 
-          {/* Right — form */}
+          {/* Right — form. On `surface` against the section's `surface-alt`, so
+              the card reads as raised rather than as a differently-tinted patch
+              of the same plane. */}
           <form
             onSubmit={onSubmit}
-            className="rounded-3xl border border-[var(--color-line-inv)] bg-carbon p-8 md:p-10"
+            className="rounded-3xl border border-[var(--color-line)] bg-surface p-8 md:p-10"
           >
             <div className="flex flex-col gap-6">
               {unitLabel && (
-                <div className="rounded-xl border border-accent/40 bg-accent/10 px-4 py-3">
-                  <span className="eyebrow text-accent-soft">Enquiring about</span>
-                  <p className="mt-1 font-display text-base font-medium text-bone">
+                <div className="rounded-xl border border-accent/35 bg-accent/8 px-4 py-3">
+                  <span className="font-body text-[13px] uppercase tracking-[0.14em] text-accent">
+                    Enquiring about
+                  </span>
+                  <p className="mt-1 font-display text-base font-bold text-content">
                     Unit {unitLabel}
                     {unitBuilding ? ` · ${unitBuilding}` : ''}
                   </p>
@@ -159,45 +178,60 @@ export default function ContactPage() {
               )}
               {fields.map((f) => (
                 <label key={f.name} className="flex flex-col gap-2">
-                  <span className="eyebrow text-bone/40">{f.label}</span>
+                  <span className={FIELD_LABEL}>{f.label}</span>
                   <input
                     name={f.name}
                     type={f.type}
                     required={f.name !== 'phone'}
                     placeholder={f.placeholder}
-                    className="border-b border-[var(--color-line-inv)] bg-transparent pb-2.5 font-body text-base text-bone outline-none transition-colors placeholder:text-bone/25 focus:border-accent"
+                    className={FIELD}
                   />
                 </label>
               ))}
               <label className="flex flex-col gap-2">
-                <span className="eyebrow text-bone/40">Message</span>
+                <span className={FIELD_LABEL}>Message</span>
                 <textarea
                   name="message"
                   rows={4}
                   required
                   defaultValue={unitLabel ? `I'd like more information about Unit ${unitLabel}.` : ''}
                   placeholder="Tell us about your property or enquiry…"
-                  className="resize-none border-b border-[var(--color-line-inv)] bg-transparent pb-2.5 font-body text-base text-bone outline-none transition-colors placeholder:text-bone/25 focus:border-accent"
+                  className={`resize-none ${FIELD}`}
                 />
               </label>
 
+              {/* PrimePill's solid variant, rebuilt as a <button>. The pill
+                  itself is an <a> and cannot submit a form, but the site's
+                  primary action has one shape — gradient lozenge, white arrow
+                  disc on the trailing edge — and this is a primary action. */}
               <button
                 type="submit"
                 disabled={status === 'sending'}
-                className="group relative mt-2 inline-flex items-center justify-center overflow-hidden rounded-full bg-accent px-6 py-3.5 font-body text-[14px] font-bold uppercase tracking-[0.1em] text-void disabled:opacity-60"
+                className="group mt-2 inline-flex h-14 w-fit items-center gap-4 rounded-full bg-[linear-gradient(96deg,#0073a4_0%,#1aa1d2_100%)] py-1.5 pl-7 pr-1.5 text-white shadow-[0_12px_26px_-16px_rgba(0,115,164,0.95)] transition-shadow duration-300 hover:shadow-[0_16px_32px_-14px_rgba(0,115,164,0.8)] disabled:opacity-60 disabled:shadow-none"
               >
-                <span className="absolute inset-0 translate-y-full bg-void/25 transition-transform duration-300 ease-out group-hover:translate-y-0" />
-                <span className="relative flex items-center gap-1.5">
+                <span className="font-body text-[15px] font-bold uppercase tracking-[0.04em]">
                   {status === 'sending' ? 'Sending…' : 'Send enquiry'}
-                  <ArrowRight className="size-5 transition-transform duration-300 ease-out group-hover:translate-x-1.5" />
+                </span>
+                {/* charcoal, not text-content: the disc is hardcoded white in
+                    both themes, so its foreground has to be a pigment — under
+                    dark mode the role token lifts to near-white and the arrow
+                    vanishes into the disc. */}
+                <span className="flex size-11 items-center justify-center rounded-full bg-white text-charcoal">
+                  <ArrowRight className="size-4 -rotate-45 transition-transform duration-300 ease-out group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
                 </span>
               </button>
 
               {status === 'sent' && (
-                <p className="text-sm text-accent-soft">Thanks — we&apos;ve received your enquiry and will be in touch.</p>
+                <p className="font-body text-[15px] text-accent">
+                  Thanks — we&apos;ve received your enquiry and will be in touch.
+                </p>
               )}
               {status === 'error' && (
-                <p className="text-sm text-red-400">Something went wrong sending that. Please try again.</p>
+                /* red-600, not red-400: the lighter tint was picked against a
+                   dark card and drops to about 2.5:1 on this one. */
+                <p className="font-body text-[15px] text-red-600">
+                  Something went wrong sending that. Please try again.
+                </p>
               )}
             </div>
           </form>

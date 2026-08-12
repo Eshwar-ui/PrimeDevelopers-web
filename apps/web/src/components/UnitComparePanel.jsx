@@ -10,6 +10,10 @@ const SPECS = [
   ['Floor', (unit) => unit.floor],
   ['Rate', (unit) => unit.rate],
   ['Frontage', (unit) => unit.frontage],
+  // Comes from the model's geometry, not the unit record — see `aspectOf` in
+  // FloorPlanSection. Comparing aspect is one of the few rows where every unit
+  // reliably has a value, which makes it unusually useful here.
+  ['Aspect', (unit, aspectOf) => aspectOf?.(unit.index) ?? null],
   ['Tenant', (unit) => (unit.status === 'leased' ? unit.tenant : null)],
 ]
 
@@ -26,14 +30,14 @@ const SPECS = [
  * headers are what let a screen reader announce "Rate, unit 103" instead of
  * reading a wall of disconnected values.
  */
-export default function UnitComparePanel({ units, onRemove, onClear, onEnquire }) {
+export default function UnitComparePanel({ units, aspectOf, onRemove, onClear, onEnquire }) {
   if (units.length < 2) return null
 
   // Only rows where at least one unit has something to say. Unit records here
   // are routinely sparse, and a table of mostly em-dashes reads as broken data
   // rather than as an absent field.
-  const rows = SPECS.map(([label, read]) => [label, units.map(read)]).filter(([, values]) =>
-    values.some((value) => value != null && String(value).trim() !== ''),
+  const rows = SPECS.map(([label, read]) => [label, units.map((unit) => read(unit, aspectOf))]).filter(
+    ([, values]) => values.some((value) => value != null && String(value).trim() !== ''),
   )
 
   const canEnquire = (unit) => onEnquire && unit.status !== 'leased' && unit.status !== 'sold'

@@ -7,6 +7,13 @@
       "runtimeArgs": ["--filter", "@prime-developers/web", "dev", "--strictPort"],
       "port": 5173,
       "autoPort": false
+    },
+    {
+      "name": "prime-api",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@prime-developers/api", "dev"],
+      "port": 3001,
+      "autoPort": false
     }
   ]
 }

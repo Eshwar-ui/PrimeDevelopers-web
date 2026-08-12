@@ -210,6 +210,25 @@ export const countByStatus = (units) =>
     return acc
   }, {})
 
+// Lives here rather than beside the compass that produces the bearings: the
+// detail card and the comparison table both name a unit's aspect, and they
+// must not reach into the 3D viewer's module to do it — that module carries
+// three/fiber/drei and is lazy precisely so it never enters the main bundle.
+const COMPASS_POINTS = [
+  'North',
+  'North-east',
+  'East',
+  'South-east',
+  'South',
+  'South-west',
+  'West',
+  'North-west',
+]
+
+/** A compass bearing in degrees as one of eight points, or null if unknown. */
+export const bearingLabel = (bearing) =>
+  Number.isFinite(bearing) ? COMPASS_POINTS[Math.round((((bearing % 360) + 360) % 360) / 45) % 8] : null
+
 export const formatArea = (size) => {
   const n = Number(String(size ?? '').replace(/[^\d.]/g, ''))
   return Number.isFinite(n) && n > 0 ? `${n.toLocaleString()} sq ft` : null

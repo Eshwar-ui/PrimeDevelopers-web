@@ -83,7 +83,7 @@ function mergeScenery(meshes) {
 
 /* ── model ─────────────────────────────────────────────────────────────── */
 
-function Model({ url, units, bindings, selected, hoveredName, statusFilter, showLabels, flaggedMeshes, onHover, onSelect, onMeshClick, onReady, onFrames }) {
+function Model({ url, units, bindings, rotation, selected, hoveredName, statusFilter, showLabels, flaggedMeshes, onHover, onSelect, onMeshClick, onReady, onFrames, onFacings }) {
   const { scene } = useGLTF(url, '/draco/')
   const invalidate = useThree((state) => state.invalidate)
 
@@ -139,15 +139,6 @@ function Model({ url, units, bindings, selected, hoveredName, statusFilter, show
     for (const mesh of [...unitMeshes, ...sceneryMeshes]) {
       mesh.geometry?.computeBoundingBox()
       mesh.geometry?.computeBoundingSphere()
-    }
-
-    // Merging collapses the scenery into one object, which is right for a
-    // visitor (one draw call instead of hundreds) and fatal while binding —
-    // the individual shapes stop existing, so there is nothing left to click.
-    const merged = !bindingMode && sceneryMeshes.length > 1 ? mergeScenery(sceneryMeshes) : null
-    if (merged) {
-      for (const mesh of sceneryMeshes) mesh.removeFromParent()
-      root.add(merged)
     }
 
     // Orientation. These are massing models — a footprint pushed straight up —
@@ -214,27 +205,44 @@ function Model({ url, units, bindings, selected, hoveredName, statusFilter, show
       membersOf.get(gid).push(name)
     }
 
+    // Merging collapses the scenery into one object, which is right for a
+    // visitor (one draw call instead of hundreds) and fatal while binding —
+    // the individual shapes stop existing, so there is nothing left to click.
+    const merged = !bindingMode && sceneryMeshes.length > 1 ? mergeScenery(sceneryMeshes) : null
+    if (merged) {
+      for (const mesh of sceneryMeshes) mesh.removeFromParent()
+      root.add(merged)
+    }
+
     // Applied to a wrapper, never to `root` itself: mergeScenery bakes each
     // mesh's matrixWorld into the merged geometry and parents the result back
     // under root, so a transform on root would land on that geometry twice.
     const stage = new THREE.Group()
     stage.add(root)
     if (zUp) stage.rotation.x = -Math.PI / 2
-    stage.updateMatrixWorld(true)
+    // The admin's orientation, applied as a transform on the wrapper — never
+    // to the geometry. The uploaded .glb is displayed exactly as delivered;
+    // this only decides which way it faces on screen, and clearing the setting
+    // puts it back where it was. Applied on the outer wrapper's Y so it stays
+    // a turn about the *world* up whether or not the file needed the Z-up fix.
+    const orientation = new THREE.Group()
+    orientation.rotation.y = THREE.MathUtils.degToRad(rotation ?? 0)
+    orientation.add(stage)
+    orientation.updateMatrixWorld(true)
 
     return {
-      root: stage,
+      root: orientation,
       list: merged ? [...unitMeshes, merged] : [...unitMeshes, ...sceneryMeshes],
       merged,
-      mergedFrom: merged ? sceneryMeshes.length : 0,
       zUp,
       groupOf,
       membersOf,
     }
-    // `bindings` decides which meshes survive merging, so the scene graph has
-    // to be rebuilt when it changes. Callers memoise it (a fresh object every
-    // render would rebuild the graph continuously).
-  }, [scene, bindingMode, bindings])
+    // `bindings` decides which meshes survive merging and `rotation` is baked
+    // into the wrapper the bounds are measured from, so the scene graph has to
+    // be rebuilt when either changes. Callers memoise `bindings` (a fresh
+    // object every render would rebuild the graph continuously).
+  }, [scene, bindingMode, bindings, rotation])
 
   // The merged geometry is built here rather than loaded, so nothing else will
   // free it.
@@ -305,11 +313,27 @@ function Model({ url, units, bindings, selected, hoveredName, statusFilter, show
   useEffect(() => {
     const box = new THREE.Box3().setFromObject(meshes.root)
     const sphere = box.getBoundingSphere(new THREE.Sphere())
+
+    // The site's own box, measured with the orientation momentarily undone.
+    // An axis-aligned box around a *turned* building is bigger than the
+    // building and no longer follows its edges, so an apron sized from it
+    // stops hugging the site the moment an orientation is set. Measuring
+    // square to the building and then turning the apron with it keeps the plot
+    // the same shape at every orientation.
+    const turn = meshes.root.rotation.y
+    meshes.root.rotation.y = 0
+    meshes.root.updateMatrixWorld(true)
+    const localBox = new THREE.Box3().setFromObject(meshes.root)
+    meshes.root.rotation.y = turn
+    meshes.root.updateMatrixWorld(true)
+
     onReady?.({
       meshNames: meshes.list.map((mesh) => mesh.name),
       bounds: {
         center: sphere.center.toArray(),
         radius: Math.max(sphere.radius, 1),
+        turn,
+        local: { min: localBox.min.toArray(), max: localBox.max.toArray() },
         // The box as well as the sphere: framing only needs a radius, but the
         // ground platform has to sit on the site's actual base and the pan
         // limits have to follow its actual footprint. A sphere around a long
@@ -340,7 +364,34 @@ function Model({ url, units, bindings, selected, hoveredName, statusFilter, show
       frames.set(index, { center: sphere.center.toArray(), radius: Math.max(sphere.radius, 0.5) })
     }
     onFrames?.(frames)
-  }, [meshes, unitByMesh, onFrames])
+
+    // Which way each unit looks out.
+    //
+    // Derived from where the unit sits relative to the whole building, not
+    // from wall normals: these are massing blocks whose walls are unwelded
+    // zero-thickness planes with unreliable winding, so a normal is as likely
+    // to point into the building as out of it. For a terrace — which is what
+    // every one of these buildings is — the offset from the centre is exactly
+    // the right answer, and it degrades honestly: a unit sitting dead centre
+    // reports no aspect at all rather than a made-up one.
+    const site = new THREE.Box3().setFromObject(meshes.root).getCenter(new THREE.Vector3())
+    const span = new THREE.Box3().setFromObject(meshes.root).getSize(new THREE.Vector3())
+    const reach = Math.max(span.x, span.z)
+    const facings = new Map()
+    for (const [index, box] of boxes) {
+      const centre = box.getCenter(new THREE.Vector3())
+      const dx = centre.x - site.x
+      const dz = centre.z - site.z
+      // Ignore an offset too small to mean anything — at the centre of a
+      // building every direction is equally wrong.
+      if (reach <= 0 || Math.hypot(dx, dz) < reach * 0.06) continue
+      // Screen-up in plan view is -Z, and the admin turns the model until that
+      // is north, so a bearing off -Z is a compass bearing.
+      const bearing = (THREE.MathUtils.radToDeg(Math.atan2(dx, -dz)) + 360) % 360
+      facings.set(index, bearing)
+    }
+    onFacings?.(facings)
+  }, [meshes, unitByMesh, onFrames, onFacings])
 
   // One label per *unit*, not per mesh. A unit bound by block owns a dozen or
   // more wall panels, and labelling each of them buries the model under a heap
@@ -384,6 +435,14 @@ function Model({ url, units, bindings, selected, hoveredName, statusFilter, show
     const sphere = new THREE.Box3().setFromObject(meshes.root).getBoundingSphere(new THREE.Sphere())
     return Math.max(sphere.radius * 3, 1)
   }, [meshes])
+
+  // The label pills, by unit index, so the declutter pass can hide them
+  // without React re-rendering the model.
+  const labelNodes = useRef(new Map())
+
+  // The hovered *unit*, not the hovered mesh — a label belongs to a unit, and
+  // hovering any panel of a block should protect that block's label.
+  const hoveredUnitIndex = hoveredName ? (unitByMesh.get(hoveredName)?.index ?? null) : null
 
   return (
     <group>
@@ -479,13 +538,165 @@ function Model({ url, units, bindings, selected, hoveredName, statusFilter, show
           zIndexRange={[20, 0]}
           style={{ pointerEvents: 'none' }}
         >
-          <span className="whitespace-nowrap rounded-full bg-void/85 px-2 py-0.5 font-body text-[10px] font-bold tracking-[0.08em] text-bone">
+          <span
+            ref={(node) => {
+              if (node) labelNodes.current.set(unit.index, node)
+              else labelNodes.current.delete(unit.index)
+            }}
+            className="whitespace-nowrap rounded-full bg-void/85 px-2 py-0.5 font-body text-[10px] font-bold tracking-[0.08em] text-bone"
+          >
             {unit.label}
           </span>
         </Html>
       ))}
+
+      {showLabels && (
+        <LabelDeclutter
+          labels={labels}
+          nodes={labelNodes}
+          selected={selected}
+          hoveredIndex={hoveredUnitIndex}
+          distanceFactor={isOrthographic ? null : labelDistance}
+        />
+      )}
     </group>
   )
+}
+
+/* ── labels ────────────────────────────────────────────────────────────── */
+
+/**
+ * Hides unit labels that would land on top of each other.
+ *
+ * Twenty units in a terrace put twenty pills within a few hundred pixels, and
+ * every one of them overlapped its neighbours — the numbers became a smear
+ * that was worse than no labels at all. There is no honest way to fit them, so
+ * the ones that cannot be read are dropped and the rest stay legible.
+ *
+ * Two things make this cheap enough to run every frame. It writes `visibility`
+ * straight to the DOM nodes instead of going through React, so an orbit does
+ * not re-render the viewer sixty times a second; and it compares screen
+ * positions rather than measuring rectangles, so it never forces a layout —
+ * label size is computed from the one measurement taken on mount.
+ */
+function LabelDeclutter({ labels, nodes, selected, hoveredIndex, distanceFactor }) {
+  const camera = useThree((state) => state.camera)
+  const size = useThree((state) => state.size)
+  const point = useRef(new THREE.Vector3())
+
+  useFrame(() => {
+    if (!labels.length) return
+
+    // Base pill size, measured once — every label is the same three-character
+    // shape, and `offsetWidth` ignores the transform drei applies, so this is
+    // the unscaled size and stays valid as the camera moves.
+    const sample = nodes.current.get(labels[0].unit.index)
+    if (!sample) return
+    const baseWidth = sample.offsetWidth || 30
+    const baseHeight = sample.offsetHeight || 16
+
+    const placed = []
+    // Selected first, then hovered, then nearest the camera: when two labels
+    // collide the one the visitor is dealing with — or the one in front —
+    // survives, which is the opposite of letting draw order decide.
+    const ordered = labels
+      .map((label) => {
+        point.current.set(...label.position)
+        const distance = camera.position.distanceTo(point.current)
+        point.current.project(camera)
+        return {
+          index: label.unit.index,
+          distance,
+          x: ((point.current.x + 1) / 2) * size.width,
+          y: ((1 - point.current.y) / 2) * size.height,
+          behind: point.current.z > 1,
+          rank:
+            (selected.has(label.unit.index) ? 0 : hoveredIndex === label.unit.index ? 1 : 2) * 1e9 +
+            distance,
+        }
+      })
+      .sort((a, b) => a.rank - b.rank)
+
+    for (const candidate of ordered) {
+      const node = nodes.current.get(candidate.index)
+      if (!node) continue
+
+      // drei scales an <Html> by `distanceFactor / distance` under a
+      // perspective camera and leaves it alone when no factor is given, which
+      // is what plan view uses. Mirrored here so the collision box matches the
+      // pill actually on screen at this distance.
+      const scale = distanceFactor
+        ? (1 / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov ?? 45) / 2) * candidate.distance)) *
+          distanceFactor
+        : 1
+      const halfWidth = (baseWidth * scale) / 2
+      const halfHeight = (baseHeight * scale) / 2
+
+      const clash =
+        candidate.behind ||
+        placed.some(
+          (other) =>
+            Math.abs(other.x - candidate.x) < halfWidth + other.halfWidth &&
+            Math.abs(other.y - candidate.y) < halfHeight + other.halfHeight,
+        )
+
+      node.style.visibility = clash ? 'hidden' : 'visible'
+      if (!clash) placed.push({ x: candidate.x, y: candidate.y, halfWidth, halfHeight })
+    }
+  })
+
+  return null
+}
+
+/* ── compass ───────────────────────────────────────────────────────────── */
+
+// North after the admin's orientation: screen-up in plan view, which is the
+// direction they turn the model to match.
+const NORTH = new THREE.Vector3(0, 0, -1)
+
+/**
+ * A compass that follows the camera.
+ *
+ * Written straight to the DOM node's transform from the render loop rather
+ * than held in React state: the azimuth changes every frame of an orbit, and
+ * re-rendering the whole viewer sixty times a second to spin a needle would
+ * cost more than the model does.
+ *
+ * Only meaningful once an admin has said which way north is, so the caller
+ * does not render it until then.
+ */
+function CompassNeedle({ dialRef, bounds }) {
+  const camera = useThree((state) => state.camera)
+  // Reused across frames — this runs every frame of an orbit, and three
+  // vectors of garbage per frame is exactly the kind of allocation that shows
+  // up as jitter on a mid-range phone.
+  const base = useRef(new THREE.Vector3())
+  const tip = useRef(new THREE.Vector3())
+
+  useFrame(() => {
+    const node = dialRef.current
+    if (!node || !bounds) return
+    // North projected into screen space, rather than derived from the camera's
+    // azimuth: that would need special-casing for plan view, where the camera
+    // looks straight down and its azimuth is degenerate. Projecting two points
+    // and taking the angle between them is the same code for both cameras.
+    //
+    // The step is a fraction of the model so the two points stay far enough
+    // apart to be numerically stable at this site's scale, where coordinates
+    // run into the thousands.
+    const step = Math.max(bounds.radius * 0.25, 1)
+    base.current.set(...bounds.center)
+    tip.current.copy(base.current).add(NORTH.clone().multiplyScalar(step))
+    base.current.project(camera)
+    tip.current.project(camera)
+    // NDC y points up, CSS rotation runs clockwise from up — which is what
+    // atan2(dx, dy) already gives.
+    const dx = tip.current.x - base.current.x
+    const dy = tip.current.y - base.current.y
+    if (!dx && !dy) return
+    node.style.transform = `rotate(${THREE.MathUtils.radToDeg(Math.atan2(dx, dy))}deg)`
+  })
+  return null
 }
 
 /* ── ground ────────────────────────────────────────────────────────────── */
@@ -505,8 +716,10 @@ function Model({ url, units, bindings, selected, hoveredName, statusFilter, show
  */
 function SiteGround({ bounds }) {
   const site = useMemo(() => {
-    const min = bounds?.box?.min
-    const max = bounds?.box?.max
+    // The square-to-the-building box, not the screen-aligned one — see the
+    // note where it is measured.
+    const min = bounds?.local?.min
+    const max = bounds?.local?.max
     if (!min || !max || ![...min, ...max].every(Number.isFinite)) return null
 
     const spanX = max[0] - min[0]
@@ -581,7 +794,9 @@ function SiteGround({ bounds }) {
   if (!site) return null
 
   return (
-    <group>
+    // Turned by the same angle as the model, so the plot stays square to the
+    // building it belongs to rather than to the screen.
+    <group rotation-y={bounds?.turn ?? 0}>
       <mesh position={site.center}>
         <boxGeometry args={[site.width, site.thickness, site.depth]} />
         <meshStandardMaterial color="#232a30" roughness={1} metalness={0} />
@@ -659,6 +874,7 @@ function CameraRig({ bounds, focus, mode, navMode, resetSignal, onDragStart, onD
     frameDefaultRef.current()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bounds, mode, camera, resetSignal])
+
 
   // Framing a unit deliberately keeps the viewer's current orbit angle and
   // only moves the target and distance. Snapping to a canonical angle throws
@@ -845,7 +1061,13 @@ export default function ModelViewer({
   onMeshClick,
   onModelReady,
   onCaptureReady,
+  onFacings,
   onError,
+  // Degrees clockwise about the world up. A display transform only — see the
+  // note where it is applied. `null` means the admin has not set an
+  // orientation, which is what suppresses the compass: a compass that points
+  // at an unverified north is worse than no compass.
+  orientation = null,
   defaultMode = '2d',
   height = 'h-[420px] md:h-[560px]',
 }) {
@@ -948,6 +1170,11 @@ export default function ModelViewer({
   // because rotation is disabled there.
   const handCursor = navMode === 'pan' || mode === '2d'
 
+  // `0` is a real orientation (north already up), so this checks for a value
+  // rather than truthiness.
+  const hasOrientation = orientation != null && Number.isFinite(orientation)
+  const dialRef = useRef(null)
+
   const chip = useMemo(() => {
     // A hover carrying no unit is a binding-mode highlight: it colours the
     // shape under the cursor but has nothing to put in a tooltip.
@@ -1030,6 +1257,7 @@ export default function ModelViewer({
               url={url}
               units={units}
               bindings={bindings}
+              rotation={orientation ?? 0}
               selected={selected}
               hoveredName={hovered?.name ?? null}
               statusFilter={statusFilter}
@@ -1043,6 +1271,7 @@ export default function ModelViewer({
               onMeshClick={onMeshClick}
               onReady={handleReady}
               onFrames={setFrames}
+              onFacings={onFacings}
             />
           </Suspense>
         </ModelErrorBoundary>
@@ -1056,7 +1285,28 @@ export default function ModelViewer({
           onDragStart={startDrag}
           onDragEnd={endDrag}
         />
+
+        {hasOrientation && <CompassNeedle dialRef={dialRef} bounds={bounds} />}
       </Canvas>
+
+      {/* Suppressed until an admin has set the orientation. An unset model has
+          no idea where north is, and a compass pointing confidently at the
+          wrong quarter is worse than none — a broker would repeat it to a
+          client. */}
+      {hasOrientation && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute bottom-4 right-4 z-10 flex size-12 items-center justify-center rounded-full border border-[var(--color-line-inv)] bg-void/80 backdrop-blur"
+        >
+          <div ref={dialRef} className="relative size-full transition-none">
+            <span className="absolute left-1/2 top-1 -translate-x-1/2 font-body text-[9px] font-bold tracking-[0.08em] text-accent-soft">
+              N
+            </span>
+            <span className="absolute left-1/2 top-[13px] h-3 w-px -translate-x-1/2 bg-accent-soft/70" />
+            <span className="absolute bottom-[13px] left-1/2 h-3 w-px -translate-x-1/2 bg-bone/25" />
+          </div>
+        </div>
+      )}
 
       {/* Hover chip lives in the DOM rather than in the scene: it stays crisp
           at any zoom and costs nothing to render. Suppressed on touch, where
@@ -1101,15 +1351,62 @@ export default function ModelViewer({
         >
           ⌗
         </ViewerButton>
-        <ViewerButton
-          label={mode === '3d' ? 'Switch to plan view' : 'Switch to 3D view'}
-          active={mode === '2d'}
-          onClick={() => setMode((m) => (m === '3d' ? '2d' : '3d'))}
-        >
-          <span className="text-[10px] font-bold">{mode === '3d' ? '2D' : '3D'}</span>
-        </ViewerButton>
       </div>
+
+      {/* The one control that changes what the visitor is looking at, so it is
+          a labelled button in its own corner rather than another glyph in the
+          stack of view options. Its old form — a 11px square reading "3D" —
+          was the only route from the plan into the model, and nothing about it
+          said so. Same corner in both modes, so it never moves out from under
+          the pointer that just used it. */}
+      <button
+        type="button"
+        onClick={() => setMode((m) => (m === '3d' ? '2d' : '3d'))}
+        className="absolute top-4 right-4 z-10 flex min-h-11 items-center gap-2 rounded-full border border-[var(--color-line-inv)] bg-void/80 px-4 py-2.5 font-body text-[11px] font-bold tracking-[0.12em] text-bone uppercase backdrop-blur transition-colors duration-200 hover:border-bone/35 hover:bg-void"
+      >
+        {mode === '2d' ? <CubeIcon /> : <PlanIcon />}
+        {mode === '2d' ? 'View in 3D' : 'View plan'}
+      </button>
     </div>
+  )
+}
+
+// An isometric box for "3D" and a stack of rooms for "plan". Both drawn for
+// the same reason as the hand: the glyphs that would do this job do not render
+// consistently, and this button is too load-bearing to risk a tofu box.
+function CubeIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden
+      className="size-4 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 3 4 7.5v9L12 21l8-4.5v-9L12 3Z" />
+      <path d="M4 7.5 12 12l8-4.5M12 12v9" />
+    </svg>
+  )
+}
+
+function PlanIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden
+      className="size-4 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="3.5" y="3.5" width="17" height="17" rx="1.5" />
+      <path d="M3.5 10h10M13.5 3.5v17M13.5 15h7" />
+    </svg>
   )
 }
 

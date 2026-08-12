@@ -15,9 +15,11 @@ create table if not exists public.content (
 
 alter table public.content enable row level security;
 
+drop policy if exists "content_public_read" on public.content;
 create policy "content_public_read" on public.content
   for select using (true);
 
+drop policy if exists "content_admin_write" on public.content;
 create policy "content_admin_write" on public.content
   for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
 
@@ -42,18 +44,23 @@ create table if not exists public.properties (
 
 alter table public.properties enable row level security;
 
+drop policy if exists "properties_public_read" on public.properties;
 create policy "properties_public_read" on public.properties
   for select using (published = true);
 
+drop policy if exists "properties_admin_read_all" on public.properties;
 create policy "properties_admin_read_all" on public.properties
   for select using (auth.role() = 'authenticated');
 
+drop policy if exists "properties_admin_write" on public.properties;
 create policy "properties_admin_write" on public.properties
   for insert with check (auth.role() = 'authenticated');
 
+drop policy if exists "properties_admin_update" on public.properties;
 create policy "properties_admin_update" on public.properties
   for update using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
 
+drop policy if exists "properties_admin_delete" on public.properties;
 create policy "properties_admin_delete" on public.properties
   for delete using (auth.role() = 'authenticated');
 
@@ -71,15 +78,19 @@ create table if not exists public.website_leads (
 
 alter table public.website_leads enable row level security;
 
+drop policy if exists "website_leads_public_insert" on public.website_leads;
 create policy "website_leads_public_insert" on public.website_leads
   for insert with check (true);
 
+drop policy if exists "website_leads_admin_read" on public.website_leads;
 create policy "website_leads_admin_read" on public.website_leads
   for select using (auth.role() = 'authenticated');
 
+drop policy if exists "website_leads_admin_update" on public.website_leads;
 create policy "website_leads_admin_update" on public.website_leads
   for update using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
 
+drop policy if exists "website_leads_admin_delete" on public.website_leads;
 create policy "website_leads_admin_delete" on public.website_leads
   for delete using (auth.role() = 'authenticated');
 
@@ -100,18 +111,23 @@ create table if not exists public.news (
 
 alter table public.news enable row level security;
 
+drop policy if exists "news_public_read" on public.news;
 create policy "news_public_read" on public.news
   for select using (published = true);
 
+drop policy if exists "news_admin_read_all" on public.news;
 create policy "news_admin_read_all" on public.news
   for select using (auth.role() = 'authenticated');
 
+drop policy if exists "news_admin_write" on public.news;
 create policy "news_admin_write" on public.news
   for insert with check (auth.role() = 'authenticated');
 
+drop policy if exists "news_admin_update" on public.news;
 create policy "news_admin_update" on public.news
   for update using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
 
+drop policy if exists "news_admin_delete" on public.news;
 create policy "news_admin_delete" on public.news
   for delete using (auth.role() = 'authenticated');
 
@@ -120,15 +136,19 @@ insert into storage.buckets (id, name, public)
 values ('images', 'images', true)
 on conflict (id) do nothing;
 
+drop policy if exists "images_public_read" on storage.objects;
 create policy "images_public_read" on storage.objects
   for select using (bucket_id = 'images');
 
+drop policy if exists "images_admin_write" on storage.objects;
 create policy "images_admin_write" on storage.objects
   for insert with check (bucket_id = 'images' and auth.role() = 'authenticated');
 
+drop policy if exists "images_admin_update" on storage.objects;
 create policy "images_admin_update" on storage.objects
   for update using (bucket_id = 'images' and auth.role() = 'authenticated');
 
+drop policy if exists "images_admin_delete" on storage.objects;
 create policy "images_admin_delete" on storage.objects
   for delete using (bucket_id = 'images' and auth.role() = 'authenticated');
 
@@ -137,15 +157,19 @@ insert into storage.buckets (id, name, public)
 values ('models', 'models', true)
 on conflict (id) do nothing;
 
+drop policy if exists "models_public_read" on storage.objects;
 create policy "models_public_read" on storage.objects
   for select using (bucket_id = 'models');
 
+drop policy if exists "models_admin_write" on storage.objects;
 create policy "models_admin_write" on storage.objects
   for insert with check (bucket_id = 'models' and auth.role() = 'authenticated');
 
+drop policy if exists "models_admin_update" on storage.objects;
 create policy "models_admin_update" on storage.objects
   for update using (bucket_id = 'models' and auth.role() = 'authenticated');
 
+drop policy if exists "models_admin_delete" on storage.objects;
 create policy "models_admin_delete" on storage.objects
   for delete using (bucket_id = 'models' and auth.role() = 'authenticated');
 
@@ -158,12 +182,15 @@ begin
 end;
 $$ language plpgsql;
 
+drop trigger if exists content_set_updated_at on public.content;
 create trigger content_set_updated_at before update on public.content
   for each row execute function public.set_updated_at();
 
+drop trigger if exists properties_set_updated_at on public.properties;
 create trigger properties_set_updated_at before update on public.properties
   for each row execute function public.set_updated_at();
 
+drop trigger if exists news_set_updated_at on public.news;
 create trigger news_set_updated_at before update on public.news
   for each row execute function public.set_updated_at();
 
@@ -180,8 +207,10 @@ create table if not exists public.website_lead_unit_attributions (
 
 alter table public.website_lead_unit_attributions enable row level security;
 
+drop policy if exists "website_lead_unit_attr_admin_read" on public.website_lead_unit_attributions;
 create policy "website_lead_unit_attr_admin_read" on public.website_lead_unit_attributions
   for select using (auth.role() = 'authenticated');
 
+drop policy if exists "website_lead_unit_attr_public_insert" on public.website_lead_unit_attributions;
 create policy "website_lead_unit_attr_public_insert" on public.website_lead_unit_attributions
   for insert with check (true);

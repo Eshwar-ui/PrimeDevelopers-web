@@ -255,6 +255,8 @@ export default function ModelManager({ building, onChange, folder }) {
         <input ref={inputRef} type="file" accept=".glb,model/gltf-binary" className="hidden" onChange={onFile} />
       </div>
 
+      {model?.url && <OrientationControl model={model} setModel={setModel} />}
+
       {error && <p className="mt-3 text-xs leading-relaxed text-red-400">{error}</p>}
 
       {/* ── pending upload: report + diff shown BEFORE anything commits ── */}
@@ -393,6 +395,8 @@ export default function ModelManager({ building, onChange, folder }) {
                 // view the roof slabs cover every one of them — so the admin
                 // keeps opening in 3D even though visitors now get the plan.
                 defaultMode="3d"
+                // Live, so the admin sees the turn as they make it.
+                orientation={Number.isFinite(model.orientation) ? model.orientation : null}
                 onSelect={() => {}}
                 statusFilter={null}
                 flaggedMeshes={flagged}
@@ -428,6 +432,111 @@ export default function ModelManager({ building, onChange, folder }) {
           </div>
         </>
       )}
+    </div>
+  )
+}
+
+// The eight steps a site plan is realistically drawn at, plus free entry for
+// anything between. Buttons rather than a slider only: a slider cannot be
+// typed into, and "the plan is 30° off" is a thing a modeller says out loud.
+const QUARTER_TURNS = [0, 90, 180, 270]
+
+/**
+ * Which way the model faces on screen, and therefore where north is.
+ *
+ * This never touches the uploaded .glb. It stores one number, and the viewer
+ * applies it as a rotation on a wrapper group around the model — the geometry,
+ * the file in storage and every binding are untouched, and clearing the field
+ * puts the model back exactly as delivered. That matters because these exports
+ * are the client's record of the site; the app's job is to display them, not
+ * to edit them.
+ *
+ * Two things depend on it. The plan view reads square instead of sitting at an
+ * angle, and — once north is known — every unit can report which way it faces,
+ * which is the question a retail tenant actually asks.
+ */
+function OrientationControl({ model, setModel }) {
+  const value = Number.isFinite(model.orientation) ? model.orientation : null
+  const set = (next) =>
+    setModel({ ...model, orientation: next == null ? null : ((next % 360) + 360) % 360 })
+
+  return (
+    <div className="mt-4 rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <span className="text-[11px] font-bold uppercase tracking-wide text-bone/70">Orientation</span>
+        <span className="text-[11px] text-bone/40">
+          Turn the model until north points up in the plan.
+        </span>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => set((value ?? 0) - 15)}
+          aria-label="Rotate 15 degrees anticlockwise"
+          className="flex size-8 items-center justify-center rounded-lg border border-white/20 text-bone/70 hover:border-ember hover:text-ember"
+        >
+          ↺
+        </button>
+        <button
+          type="button"
+          onClick={() => set((value ?? 0) + 15)}
+          aria-label="Rotate 15 degrees clockwise"
+          className="flex size-8 items-center justify-center rounded-lg border border-white/20 text-bone/70 hover:border-ember hover:text-ember"
+        >
+          ↻
+        </button>
+
+        {QUARTER_TURNS.map((deg) => (
+          <button
+            key={deg}
+            type="button"
+            onClick={() => set(deg)}
+            aria-pressed={value === deg}
+            className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${
+              value === deg
+                ? 'border-ember bg-ember text-void'
+                : 'border-white/20 text-bone/70 hover:border-ember hover:text-ember'
+            }`}
+          >
+            {deg}°
+          </button>
+        ))}
+
+        <label className="flex items-center gap-2 text-[11px] text-bone/50">
+          <span className="sr-only">Orientation in degrees</span>
+          <input
+            type="number"
+            min="0"
+            max="359"
+            step="1"
+            value={value ?? ''}
+            placeholder="—"
+            onChange={(event) => {
+              const raw = event.target.value
+              set(raw === '' ? null : Number(raw))
+            }}
+            className="w-20 rounded-lg border border-white/20 bg-black/30 px-2 py-1 text-bone"
+          />
+          degrees
+        </label>
+
+        {value != null && (
+          <button
+            type="button"
+            onClick={() => set(null)}
+            className="text-[11px] text-bone/40 hover:text-ember"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
+      <p className="mt-2 text-[11px] text-bone/35">
+        {value == null
+          ? 'Not set — the model is shown exactly as uploaded and no compass or unit aspect is published.'
+          : `North is ${value}° clockwise from the model's own front. Visitors see a compass and each unit's aspect.`}
+      </p>
     </div>
   )
 }

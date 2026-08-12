@@ -1,11 +1,11 @@
-import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import FloorPlanInteractive from './FloorPlanInteractive'
 import UnitComparePanel from './UnitComparePanel'
 import UnitDetailCard from './UnitDetailCard'
 import UnitList from './UnitList'
 import { UNIT_STATUSES } from '../lib/unitStatus'
-import { countByStatus, findUnitByLabel, getModel, getUnits } from '../lib/units'
+import { bearingLabel, countByStatus, findUnitByLabel, getModel, getUnits } from '../lib/units'
 import { hasWebGL } from '../lib/webgl'
 
 // Lazy so three/fiber/drei never enter the main bundle. A visitor who does not
@@ -66,6 +66,12 @@ export default function FloorPlanSection({ building, propertyId }) {
   const [statusFilter, setStatusFilter] = useState(null)
   const [activated, setActivated] = useState(false)
   const [viewerFailed, setViewerFailed] = useState(false)
+  // Unit index -> compass bearing, measured off the geometry once the model is
+  // in. Absent until then, and absent entirely when the admin has not set an
+  // orientation — aspect is a claim about the real world, so it is only made
+  // when someone has said which way the model actually points.
+  const [facings, setFacings] = useState(null)
+  const planRef = useRef(null)
 
   const units = useMemo(() => getUnits(building), [building])
   const model = getModel(building)
@@ -136,13 +142,44 @@ export default function FloorPlanSection({ building, propertyId }) {
 
   const clearSelection = useCallback(() => applySelection([]), [applySelection])
 
-  const activate = () => {
+  const activate = useCallback(() => {
     if (!hasWebGL()) {
       setViewerFailed(true)
       return
     }
     setActivated(true)
-  }
+  }, [])
+
+  // The plan mounts itself when it scrolls into reach, rather than waiting for
+  // a button press. Nothing about a leasing map is improved by making someone
+  // click "show me the plan" before they can see the plan.
+  //
+  // Still deferred rather than mounted with the page: three/fiber/drei is
+  // ~620KB gzipped in its own lazy chunk, and a visitor who never reaches this
+  // section should not pay for it. Observing instead of pressing keeps that
+  // property while removing the press — the chunk starts fetching a screen
+  // early, so by the time the section is actually in view it is usually there.
+  useEffect(() => {
+    if (!canShow3D || activated) return
+    const node = planRef.current
+    if (!node) return
+    // No IntersectionObserver means an old browser, and an old browser should
+    // get the plan rather than a permanent skeleton.
+    if (typeof IntersectionObserver === 'undefined') {
+      activate()
+      return
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return
+        observer.disconnect()
+        activate()
+      },
+      { rootMargin: '400px' },
+    )
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [canShow3D, activated, activate])
 
   // The most recent pick, not the first: see the note on `selection`.
   const primaryIndex = selection.length ? selection[selection.length - 1] : null
@@ -153,6 +190,13 @@ export default function FloorPlanSection({ building, propertyId }) {
     () => selection.map((index) => units.find((unit) => unit.index === index)).filter(Boolean),
     [selection, units],
   )
+
+  // Only published when the admin has set an orientation — without one the
+  // bearings are measured against an arbitrary axis and would name a direction
+  // nobody has verified. A broker repeats these to a client.
+  const hasOrientation = Number.isFinite(model?.orientation)
+  const aspectOf = (index) =>
+    hasOrientation && facings && index != null ? bearingLabel(facings.get(index)) : null
 
   // Status travels with the enquiry so sales can tell a genuine enquiry from
   // one made against data that has since changed. `property` carries the
@@ -253,9 +297,10 @@ export default function FloorPlanSection({ building, propertyId }) {
           the answer in one glance. Below lg there is no room for that, so the
           panel falls back underneath, which is where it always was. */}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start xl:grid-cols-[minmax(0,1fr)_21rem] xl:gap-8 2xl:grid-cols-[minmax(0,1fr)_24rem]">
-        <div className="min-w-0">
-          {/* Tier 1 — 3D, behind an explicit activation so WebGL is never spun
-              up for a visitor who is only scrolling past. */}
+        <div ref={planRef} className="min-w-0">
+          {/* Tier 1 — the interactive plan, mounted once it scrolls into
+              reach so WebGL is never spun up for a visitor who never gets
+              here. See the observer above. */}
           {canShow3D && activated && (
             <Suspense fallback={<ViewerSkeleton poster={poster} />}>
               <ModelViewer
@@ -265,13 +310,15 @@ export default function FloorPlanSection({ building, propertyId }) {
                 selection={selection}
                 onSelect={select}
                 statusFilter={statusFilter}
+                orientation={Number.isFinite(model?.orientation) ? model.orientation : null}
+                onFacings={setFacings}
                 onError={() => setViewerFailed(true)}
                 height={PLAN_HEIGHT}
               />
             </Suspense>
           )}
 
-          {canShow3D && !activated && <ViewerPoster poster={poster} onActivate={activate} />}
+          {canShow3D && !activated && <ViewerSkeleton poster={poster} />}
 
           {/* Tier 2 — the original pin plan, retained rather than replaced. */}
           {!canShow3D && building?.planImage && (
@@ -294,6 +341,7 @@ export default function FloorPlanSection({ building, propertyId }) {
           <UnitDetailCard
             unit={selectedUnit}
             units={units}
+            aspect={aspectOf(primaryIndex)}
             onEnquire={enquire}
             maxHeight={canShow3D ? PANEL_MAX : ''}
           />
@@ -305,6 +353,7 @@ export default function FloorPlanSection({ building, propertyId }) {
           keeps showing *where* the units being compared are. */}
       <UnitComparePanel
         units={comparedUnits}
+        aspectOf={aspectOf}
         onRemove={(index) => select(index, true)}
         onClear={clearSelection}
         onEnquire={enquire}
@@ -315,38 +364,16 @@ export default function FloorPlanSection({ building, propertyId }) {
           on the model is then the intended way in; expanded when it is not,
           because it is the only way in. */}
       <UnitList
-        // Remount when the tier changes so the collapsed/expanded default is
-        // re-applied — activating the 3D view should fold the list away.
-        key={canShow3D && activated ? '3d' : 'flat'}
+        // Keyed on the tier alone, not on activation. Activation is now
+        // automatic, so keying on it would expand the list and then collapse
+        // it under the visitor a moment later as the plan mounts.
+        key={canShow3D ? 'plan' : 'flat'}
         units={units}
         selection={selection}
         onSelect={select}
         statusFilter={statusFilter}
-        defaultOpen={!(canShow3D && activated)}
+        defaultOpen={!canShow3D}
       />
-    </div>
-  )
-}
-
-function ViewerPoster({ poster, onActivate }) {
-  return (
-    <div className={`relative overflow-hidden rounded-2xl border border-[var(--color-line-inv)] bg-void ${PLAN_HEIGHT}`}>
-      {poster && <img src={poster} alt="" className="h-full w-full object-cover opacity-45" />}
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
-        <button
-          type="button"
-          onClick={onActivate}
-          className="rounded-full bg-accent px-7 py-3 font-body text-[13px] font-bold uppercase tracking-[0.14em] text-bone transition-colors duration-300 hover:bg-accent-soft"
-        >
-          Explore the floor plan
-        </button>
-        {/* The viewer now opens in plan view, so promising 3D on the way in
-            would describe a screen the visitor does not land on. 3D is one tap
-            further, and saying so is what makes the toggle discoverable. */}
-        <span className="font-body text-xs text-bone/45">
-          Tap any unit for details, or switch to 3D to see the site in the round
-        </span>
-      </div>
     </div>
   )
 }
@@ -356,7 +383,9 @@ function ViewerSkeleton({ poster }) {
     <div className={`relative overflow-hidden rounded-2xl border border-[var(--color-line-inv)] bg-void ${PLAN_HEIGHT}`}>
       {poster && <img src={poster} alt="" className="h-full w-full object-cover opacity-25" />}
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="eyebrow text-bone/45">Loading 3D model…</span>
+        {/* "Floor plan", not "3D model": this is what the visitor is about to
+            see, and the plan is now what loads. */}
+        <span className="eyebrow text-bone/45">Loading floor plan…</span>
       </div>
     </div>
   )

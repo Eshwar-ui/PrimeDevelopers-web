@@ -18,7 +18,7 @@ const STATUS_COPY = {
 // long description from pushing the enquiry button past the bottom of the
 // plan beside it. Unset — stacked under the plan on narrow screens — the card
 // simply grows to its content like any other.
-export default function UnitDetailCard({ unit, units = [], onEnquire, maxHeight = '' }) {
+export default function UnitDetailCard({ unit, units = [], aspect = null, onEnquire, maxHeight = '' }) {
   if (!unit) return <EmptyPanel units={units} />
 
   const meta = unitStatusMeta(unit.status)
@@ -32,6 +32,10 @@ export default function UnitDetailCard({ unit, units = [], onEnquire, maxHeight 
     ['Floor', unit.floor],
     ['Rate', unit.rate],
     ['Frontage', unit.frontage],
+    // Measured off the model rather than typed in, so it appears only once a
+    // model is loaded and an orientation is set. Sits with the typed specs
+    // because to a tenant it reads as one — which way the shop looks out.
+    ['Aspect', aspect],
     unit.status === 'leased' && unit.tenant ? ['Tenant', unit.tenant] : null,
   ].filter((row) => row && row[1])
 

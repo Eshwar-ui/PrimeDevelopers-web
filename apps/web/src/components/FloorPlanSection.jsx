@@ -1,6 +1,7 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import FloorPlanInteractive from './FloorPlanInteractive'
+import UnitComparePanel from './UnitComparePanel'
 import UnitDetailCard from './UnitDetailCard'
 import UnitList from './UnitList'
 import { UNIT_STATUSES } from '../lib/unitStatus'
@@ -10,6 +11,31 @@ import { hasWebGL } from '../lib/webgl'
 // Lazy so three/fiber/drei never enter the main bundle. A visitor who does not
 // open the 3D view pays nothing for it.
 const ModelViewer = lazy(() => import('./floorplan/ModelViewer'))
+
+// One source of truth for the height of the plan column, so the 3D viewer, its
+// poster, its skeleton and the detail panel beside it all agree. If these drift
+// the two columns stop aligning and the whole layout looks accidental.
+//
+// lg is deliberately *shorter* than md rather than taller: md is still the
+// full-width stacked layout, while lg is the moment the panel takes a third of
+// the row away. Holding the md height there would leave the model in a tall
+// narrow slot, which is the worst shape to orbit a wide site plan in. The
+// height climbs again as the column gets its width back.
+const PLAN_HEIGHT = 'h-[420px] md:h-[520px] lg:h-[480px] xl:h-[560px] 2xl:h-[620px]'
+
+// A cap, not a height. Forcing the panel to match the plan looks composed on a
+// fully filled unit and hollow on a sparse one — and unit records here are
+// routinely sparse, so the hollow case is the common one. Capped instead, the
+// panel sizes to what the unit actually has, the two columns still align along
+// the top edge, and only an unusually wordy unit ever scrolls.
+const PANEL_MAX = 'lg:max-h-[480px] xl:max-h-[560px] 2xl:max-h-[620px]'
+
+// Enough to be useful, few enough that each column stays wide enough to read.
+// Past this the table is a horizontal scroll of narrow slivers, which is worse
+// than being told to drop one first.
+const COMPARE_MAX = 4
+
+const sameSelection = (a, b) => a.length === b.length && a.every((value, i) => value === b[i])
 
 /**
  * Decides which of four tiers a visitor gets and owns the selection shared
@@ -27,7 +53,16 @@ const ModelViewer = lazy(() => import('./floorplan/ModelViewer'))
 export default function FloorPlanSection({ building, propertyId }) {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [selectedIndex, setSelectedIndex] = useState(null)
+  // Unit indexes in the order they were picked. The *last* one is the primary
+  // selection — what the detail panel describes and what the camera flies to —
+  // so adding a unit to a comparison also shows you the unit you just added
+  // rather than leaving the panel on the first one you picked.
+  const [selection, setSelection] = useState([])
+  // Whether a plain tap adds to the selection or replaces it. A mode rather
+  // than modifier-only, because a modifier key does not exist on the phones
+  // and tablets brokers actually show sites on. Modifier-click still works and
+  // needs no mode, for anyone on a desktop who already expects it.
+  const [compareMode, setCompareMode] = useState(false)
   const [statusFilter, setStatusFilter] = useState(null)
   const [activated, setActivated] = useState(false)
   const [viewerFailed, setViewerFailed] = useState(false)
@@ -45,26 +80,61 @@ export default function FloorPlanSection({ building, propertyId }) {
   const poster = model?.poster || building?.planImage || null
 
   // Deep link in. An unknown unit is not an error — the viewer simply opens in
-  // its default state, which is what a stale shared link should do.
+  // its default state, which is what a stale shared link should do. `unit` is
+  // the original single-unit parameter and is still read, so links shared
+  // before comparison existed keep working.
+  //
+  // The equality guard is load-bearing: `select` below writes these same
+  // parameters, so without it every write would feed back in here as a fresh
+  // array and re-render on a loop.
   useEffect(() => {
-    const label = searchParams.get('unit')
-    if (!label) return
-    const unit = findUnitByLabel(units, label)
-    if (unit) setSelectedIndex(unit.index)
+    const raw = searchParams.get('units') ?? searchParams.get('unit')
+    if (!raw) return
+    const next = raw
+      .split(',')
+      .map((label) => findUnitByLabel(units, label)?.index)
+      .filter((index) => index != null)
+      .slice(0, COMPARE_MAX)
+    setSelection((current) => (sameSelection(current, next) ? current : next))
   }, [searchParams, units])
 
-  // Deep link out, so a broker can send a colleague straight to one unit.
-  const select = useCallback(
-    (index) => {
-      setSelectedIndex(index)
-      const label = units.find((unit) => unit.index === index)?.label
-      if (!label) return
-      const next = new URLSearchParams(searchParams)
-      next.set('unit', label)
-      setSearchParams(next, { replace: true })
+  // Deep link out, so a broker can send a colleague straight to one unit — or
+  // to the exact comparison they were just looking at.
+  const applySelection = useCallback(
+    (next) => {
+      setSelection(next)
+      const labels = next.map((index) => units.find((unit) => unit.index === index)?.label).filter(Boolean)
+      const params = new URLSearchParams(searchParams)
+      params.delete('unit')
+      params.delete('units')
+      // One unit keeps writing the singular parameter, so the common case
+      // still produces the short link people were already sharing.
+      if (labels.length === 1) params.set('unit', labels[0])
+      else if (labels.length > 1) params.set('units', labels.join(','))
+      setSearchParams(params, { replace: true })
     },
     [units, searchParams, setSearchParams],
   )
+
+  const select = useCallback(
+    (index, additive = false) => {
+      if (!(additive || compareMode)) {
+        applySelection([index])
+        return
+      }
+      // Additive taps toggle, so the same gesture that adds a unit to the
+      // comparison takes it back out — there is no separate "deselect".
+      if (selection.includes(index)) {
+        applySelection(selection.filter((value) => value !== index))
+        return
+      }
+      if (selection.length >= COMPARE_MAX) return
+      applySelection([...selection, index])
+    },
+    [selection, compareMode, applySelection],
+  )
+
+  const clearSelection = useCallback(() => applySelection([]), [applySelection])
 
   const activate = () => {
     if (!hasWebGL()) {
@@ -74,7 +144,15 @@ export default function FloorPlanSection({ building, propertyId }) {
     setActivated(true)
   }
 
-  const selectedUnit = units.find((unit) => unit.index === selectedIndex) ?? null
+  // The most recent pick, not the first: see the note on `selection`.
+  const primaryIndex = selection.length ? selection[selection.length - 1] : null
+  const selectedUnit = units.find((unit) => unit.index === primaryIndex) ?? null
+  // Kept in selection order rather than list order, so the columns of the
+  // comparison sit in the order the visitor built them.
+  const comparedUnits = useMemo(
+    () => selection.map((index) => units.find((unit) => unit.index === index)).filter(Boolean),
+    [selection, units],
+  )
 
   // Status travels with the enquiry so sales can tell a genuine enquiry from
   // one made against data that has since changed. `property` carries the
@@ -133,38 +211,104 @@ export default function FloorPlanSection({ building, propertyId }) {
             Clear filter
           </button>
         )}
+
+        {/* Sits with the legend rather than inside the 3D viewer because it
+            governs every tier — the model, the pin plan and the unit list all
+            honour it, and a control that only existed on the canvas would be
+            missing exactly where WebGL is not. */}
+        {units.length > 1 && (
+          <button
+            type="button"
+            aria-pressed={compareMode}
+            onClick={() => setCompareMode((value) => !value)}
+            className={`ml-auto flex min-h-9 items-center gap-2 rounded-full border px-3.5 py-1.5 transition-colors duration-200 ${
+              compareMode ? 'border-accent bg-accent/15' : 'border-[var(--color-line-inv)] hover:border-bone/30'
+            }`}
+          >
+            <span className="font-body text-[11px] font-bold uppercase tracking-[0.1em] text-bone/60">
+              Compare
+            </span>
+            {selection.length > 1 && (
+              <span className="font-body text-[11px] text-accent-soft">{selection.length}</span>
+            )}
+          </button>
+        )}
       </div>
 
-      {/* Tier 1 — 3D, behind an explicit activation so WebGL is never spun up
-          for a visitor who is only scrolling past. */}
-      {canShow3D && activated && (
-        <Suspense fallback={<ViewerSkeleton poster={poster} />}>
-          <ModelViewer
-            url={modelUrl}
+      {/* Shown at the cap even with compare mode off, because modifier-click
+          reaches the cap too and a tap that silently does nothing reads as a
+          broken control rather than as a limit. */}
+      {(compareMode || selection.length >= COMPARE_MAX) && (
+        <p className="-mt-4 font-body text-xs text-bone/45">
+          {selection.length >= COMPARE_MAX
+            ? `Comparing ${COMPARE_MAX} units — remove one to add another.`
+            : 'Tap units on the plan or in the list to compare them side by side.'}
+        </p>
+      )}
+
+      {/* Plan and detail sit side by side from lg up. Clicking a unit and then
+          having to look away from the model to read what you clicked is the
+          single worst moment in the old stacked layout — on a tall viewer the
+          answer was below the fold entirely. Two columns keep the question and
+          the answer in one glance. Below lg there is no room for that, so the
+          panel falls back underneath, which is where it always was. */}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start xl:grid-cols-[minmax(0,1fr)_21rem] xl:gap-8 2xl:grid-cols-[minmax(0,1fr)_24rem]">
+        <div className="min-w-0">
+          {/* Tier 1 — 3D, behind an explicit activation so WebGL is never spun
+              up for a visitor who is only scrolling past. */}
+          {canShow3D && activated && (
+            <Suspense fallback={<ViewerSkeleton poster={poster} />}>
+              <ModelViewer
+                url={modelUrl}
+                units={units}
+                bindings={bindings}
+                selection={selection}
+                onSelect={select}
+                statusFilter={statusFilter}
+                onError={() => setViewerFailed(true)}
+                height={PLAN_HEIGHT}
+              />
+            </Suspense>
+          )}
+
+          {canShow3D && !activated && <ViewerPoster poster={poster} onActivate={activate} />}
+
+          {/* Tier 2 — the original pin plan, retained rather than replaced. */}
+          {!canShow3D && building?.planImage && (
+            <FloorPlanInteractive
+              image={building.planImage}
+              units={units}
+              selection={selection}
+              onSelect={select}
+              statusFilter={statusFilter}
+            />
+          )}
+        </div>
+
+        {/* Sticky because the 2D plan is image-height driven and can run far
+            taller than the viewport; the panel then stays with the pins you
+            are clicking instead of scrolling off the top. The cap is only
+            applied against the fixed-height plan tiers — capping against a
+            plan image of unknown height would crop the panel for no reason. */}
+        <aside className="lg:sticky lg:top-24">
+          <UnitDetailCard
+            unit={selectedUnit}
             units={units}
-            bindings={bindings}
-            selectedIndex={selectedIndex}
-            onSelect={select}
-            statusFilter={statusFilter}
-            onError={() => setViewerFailed(true)}
+            onEnquire={enquire}
+            maxHeight={canShow3D ? PANEL_MAX : ''}
           />
-        </Suspense>
-      )}
+        </aside>
+      </div>
 
-      {canShow3D && !activated && <ViewerPoster poster={poster} onActivate={activate} />}
-
-      {/* Tier 2 — the original pin plan, retained rather than replaced. */}
-      {!canShow3D && building?.planImage && (
-        <FloorPlanInteractive
-          image={building.planImage}
-          units={units}
-          selectedIndex={selectedIndex}
-          onSelect={select}
-          statusFilter={statusFilter}
-        />
-      )}
-
-      <UnitDetailCard unit={selectedUnit} onEnquire={enquire} />
+      {/* Below the plan, not inside the detail column: see the note in
+          UnitComparePanel. The plan stays on screen above it, so the model
+          keeps showing *where* the units being compared are. */}
+      <UnitComparePanel
+        units={comparedUnits}
+        onRemove={(index) => select(index, true)}
+        onClear={clearSelection}
+        onEnquire={enquire}
+      />
 
       {/* Tier 3 / 4 — always rendered. SEO surface, keyboard path, fallback.
           Collapsed by default once the 3D view is live, since tapping a unit
@@ -175,7 +319,7 @@ export default function FloorPlanSection({ building, propertyId }) {
         // re-applied — activating the 3D view should fold the list away.
         key={canShow3D && activated ? '3d' : 'flat'}
         units={units}
-        selectedIndex={selectedIndex}
+        selection={selection}
         onSelect={select}
         statusFilter={statusFilter}
         defaultOpen={!(canShow3D && activated)}
@@ -186,7 +330,7 @@ export default function FloorPlanSection({ building, propertyId }) {
 
 function ViewerPoster({ poster, onActivate }) {
   return (
-    <div className="relative h-[420px] overflow-hidden rounded-2xl border border-[var(--color-line-inv)] bg-void md:h-[560px]">
+    <div className={`relative overflow-hidden rounded-2xl border border-[var(--color-line-inv)] bg-void ${PLAN_HEIGHT}`}>
       {poster && <img src={poster} alt="" className="h-full w-full object-cover opacity-45" />}
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
         <button
@@ -194,9 +338,14 @@ function ViewerPoster({ poster, onActivate }) {
           onClick={onActivate}
           className="rounded-full bg-accent px-7 py-3 font-body text-[13px] font-bold uppercase tracking-[0.14em] text-bone transition-colors duration-300 hover:bg-accent-soft"
         >
-          Explore in 3D
+          Explore the floor plan
         </button>
-        <span className="font-body text-xs text-bone/45">Rotate the building and click any unit for details</span>
+        {/* The viewer now opens in plan view, so promising 3D on the way in
+            would describe a screen the visitor does not land on. 3D is one tap
+            further, and saying so is what makes the toggle discoverable. */}
+        <span className="font-body text-xs text-bone/45">
+          Tap any unit for details, or switch to 3D to see the site in the round
+        </span>
       </div>
     </div>
   )
@@ -204,7 +353,7 @@ function ViewerPoster({ poster, onActivate }) {
 
 function ViewerSkeleton({ poster }) {
   return (
-    <div className="relative h-[420px] overflow-hidden rounded-2xl border border-[var(--color-line-inv)] bg-void md:h-[560px]">
+    <div className={`relative overflow-hidden rounded-2xl border border-[var(--color-line-inv)] bg-void ${PLAN_HEIGHT}`}>
       {poster && <img src={poster} alt="" className="h-full w-full object-cover opacity-25" />}
       <div className="absolute inset-0 flex items-center justify-center">
         <span className="eyebrow text-bone/45">Loading 3D model…</span>

@@ -15,19 +15,25 @@ import { formatArea } from '../lib/units'
 //
 // Being visible to everyone is what keeps it correct: a hidden equivalent
 // rots because nobody exercises it.
-export default function UnitList({ units, selectedIndex, onSelect, statusFilter, defaultOpen = true }) {
+export default function UnitList({ units, selection = [], onSelect, statusFilter, defaultOpen = true }) {
   const listRef = useRef(null)
   const panelId = useId()
   const [open, setOpen] = useState(defaultOpen)
+
+  const selected = new Set(selection)
+  // The most recent pick drives scrolling and the live region, matching the
+  // detail panel: scrolling to the *first* of several compared units would
+  // move the list away from the one just added.
+  const primaryIndex = selection.length ? selection[selection.length - 1] : null
 
   // Keep the list in step with selections made in the 3D viewer or 2D plan,
   // so the keyboard user's position never silently diverges from the pointer
   // user's — without stealing focus from whatever they are actually using.
   useEffect(() => {
-    if (selectedIndex == null || !listRef.current) return
-    const node = listRef.current.querySelector(`[data-unit-index="${selectedIndex}"]`)
+    if (primaryIndex == null || !listRef.current) return
+    const node = listRef.current.querySelector(`[data-unit-index="${primaryIndex}"]`)
     node?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
-  }, [selectedIndex])
+  }, [primaryIndex])
 
   if (!units.length) return null
 
@@ -61,16 +67,21 @@ export default function UnitList({ units, selectedIndex, onSelect, statusFilter,
       {/* Selection is announced here rather than on the buttons, so a screen
           reader hears the change even when it originated in the 3D canvas. */}
       <p aria-live="polite" className="sr-only">
-        {selectedIndex != null && units.find((u) => u.index === selectedIndex)
-          ? `Selected unit ${units.find((u) => u.index === selectedIndex).label}`
-          : ''}
+        {selection.length > 1
+          ? `Comparing ${selection.length} units: ${selection
+              .map((index) => units.find((u) => u.index === index)?.label)
+              .filter(Boolean)
+              .join(', ')}`
+          : primaryIndex != null && units.find((u) => u.index === primaryIndex)
+            ? `Selected unit ${units.find((u) => u.index === primaryIndex).label}`
+            : ''}
       </p>
 
       <ul id={panelId} hidden={!open} ref={listRef} className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {units.map((unit, position) => {
           const meta = unitStatusMeta(unit.status)
           const area = formatArea(unit.size)
-          const isSelected = unit.index === selectedIndex
+          const isSelected = selected.has(unit.index)
           const isFiltered = statusFilter && unit.status !== statusFilter
 
           return (
@@ -78,7 +89,10 @@ export default function UnitList({ units, selectedIndex, onSelect, statusFilter,
               <button
                 type="button"
                 data-unit-index={unit.index}
-                onClick={() => onSelect(unit.index)}
+                // Modifier-click adds to the comparison without the mode, and
+                // keyboard users get the same via shift+Enter, which the
+                // browser reports on the click event either way.
+                onClick={(e) => onSelect(unit.index, e.shiftKey || e.metaKey || e.ctrlKey)}
                 onKeyDown={(e) => onKeyDown(e, position)}
                 aria-pressed={isSelected}
                 className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition-colors duration-200 ${
@@ -88,8 +102,22 @@ export default function UnitList({ units, selectedIndex, onSelect, statusFilter,
                 } ${isFiltered ? 'opacity-40' : ''}`}
               >
                 <span className="flex min-w-0 flex-col gap-1">
-                  <span className="truncate font-display text-base font-medium text-bone">
-                    {unit.label || `Unit ${position + 1}`}
+                  <span className="flex min-w-0 items-center gap-2">
+                    {/* The unit's column number in the comparison table, so a
+                        row here and a column there are obviously the same
+                        unit. Only while actually comparing — a lone "1" on a
+                        single selection is noise. */}
+                    {selection.length > 1 && isSelected && (
+                      <span
+                        aria-hidden
+                        className="flex size-5 shrink-0 items-center justify-center rounded-md bg-accent font-body text-[10px] font-bold text-bone"
+                      >
+                        {selection.indexOf(unit.index) + 1}
+                      </span>
+                    )}
+                    <span className="truncate font-display text-base font-medium text-bone">
+                      {unit.label || `Unit ${position + 1}`}
+                    </span>
                   </span>
                   {area && <span className="font-body text-xs text-bone/45">{area}</span>}
                 </span>

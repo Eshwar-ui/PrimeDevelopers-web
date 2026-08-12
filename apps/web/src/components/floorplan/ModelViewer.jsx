@@ -18,6 +18,12 @@ const ISO_POLAR = THREE.MathUtils.degToRad(58)
 // for a leasable unit and turn up in the admin's unmatched list.
 const MERGED_SCENERY = 'merged-scenery'
 
+// A shared constant, not a `= []` default. A fresh literal per render would
+// change identity every time, and selection identity is what the material and
+// framing effects key on — they would re-run on every render of any caller
+// that does not pass a selection at all, which is the admin.
+const NO_SELECTION = []
+
 /**
  * Collapses every non-unit mesh into a single geometry sharing one material.
  *
@@ -77,9 +83,14 @@ function mergeScenery(meshes) {
 
 /* ── model ─────────────────────────────────────────────────────────────── */
 
-function Model({ url, units, bindings, selectedIndex, hoveredName, statusFilter, showLabels, flaggedMeshes, onHover, onSelect, onMeshClick, onReady, onFrames }) {
+function Model({ url, units, bindings, selected, hoveredName, statusFilter, showLabels, flaggedMeshes, onHover, onSelect, onMeshClick, onReady, onFrames }) {
   const { scene } = useGLTF(url, '/draco/')
   const invalidate = useThree((state) => state.invalidate)
+
+  // Read as a boolean rather than taking the camera itself: this only decides
+  // how labels are sized, and subscribing to the camera object would re-render
+  // the whole model on any camera change.
+  const isOrthographic = useThree((state) => state.camera.isOrthographicCamera === true)
 
   // Binding needs every shape to stay individually addressable; visitors need
   // the opposite. Derived as a boolean rather than depending on the callback
@@ -276,7 +287,7 @@ function Model({ url, units, bindings, selectedIndex, hoveredName, statusFilter,
 
       const meta = unitStatusMeta(unit.status)
       const excluded = statusFilter && unit.status !== statusFilter
-      const isSelected = unit.index === selectedIndex
+      const isSelected = selected.has(unit.index)
       const isHovered = mesh.name === hoveredName
 
       material.color.set(excluded ? meta.mutedHex : meta.hex)
@@ -284,7 +295,7 @@ function Model({ url, units, bindings, selectedIndex, hoveredName, statusFilter,
       material.emissiveIntensity = isSelected ? 0.5 : isHovered ? 0.28 : 0
     }
     invalidate()
-  }, [meshes, unitByMesh, selectedIndex, hoveredName, statusFilter, flaggedMeshes, bindingMode, invalidate])
+  }, [meshes, unitByMesh, selected, hoveredName, statusFilter, flaggedMeshes, bindingMode, invalidate])
 
   // Deliberately split from the frames effect below. Bounds drive the default
   // camera framing, so they must change only when the *model* changes — if
@@ -296,7 +307,15 @@ function Model({ url, units, bindings, selectedIndex, hoveredName, statusFilter,
     const sphere = box.getBoundingSphere(new THREE.Sphere())
     onReady?.({
       meshNames: meshes.list.map((mesh) => mesh.name),
-      bounds: { center: sphere.center.toArray(), radius: Math.max(sphere.radius, 1) },
+      bounds: {
+        center: sphere.center.toArray(),
+        radius: Math.max(sphere.radius, 1),
+        // The box as well as the sphere: framing only needs a radius, but the
+        // ground platform has to sit on the site's actual base and the pan
+        // limits have to follow its actual footprint. A sphere around a long
+        // thin site would put both in the wrong place.
+        box: { min: box.min.toArray(), max: box.max.toArray() },
+      },
     })
   }, [meshes, onReady])
 
@@ -406,24 +425,28 @@ function Model({ url, units, bindings, selectedIndex, hoveredName, statusFilter,
         onPointerOut={() => onHover(null)}
         onClick={(event) => {
           const unit = pick(event)
-          if (!unit) {
-            // Admin click-to-bind: mirrors the arm-then-click pattern the 2D
-            // pin picker already uses, so an admin who can place a pin
-            // already knows how to bind a shape.
-            if (onMeshClick) {
-              event.stopPropagation()
-              // The whole connected block, so one tap tags the shop rather than
-              // the one wall panel the ray happened to hit. Falls back to the
-              // single mesh when the geometry has no separable block — a
-              // building modelled as one continuous outline.
-              const gid = meshes.groupOf.get(event.object.name)
-              const block = (gid !== undefined && meshes.membersOf.get(gid)) || [event.object.name]
-              onMeshClick(event.object.name, block)
-            }
+          if (unit) {
+            event.stopPropagation()
+            // Whether the tap *asked* to be additive. Whether it actually is
+            // additive is the section's call — it owns compare mode, which
+            // this viewer deliberately knows nothing about.
+            const native = event.nativeEvent
+            onSelect(unit.index, native.shiftKey || native.metaKey || native.ctrlKey)
             return
           }
-          event.stopPropagation()
-          onSelect(unit.index)
+          // Admin click-to-bind: mirrors the arm-then-click pattern the 2D
+          // pin picker already uses, so an admin who can place a pin already
+          // knows how to bind a shape.
+          if (onMeshClick) {
+            event.stopPropagation()
+            // The whole connected block, so one tap tags the shop rather than
+            // the one wall panel the ray happened to hit. Falls back to the
+            // single mesh when the geometry has no separable block — a
+            // building modelled as one continuous outline.
+            const gid = meshes.groupOf.get(event.object.name)
+            const block = (gid !== undefined && meshes.membersOf.get(gid)) || [event.object.name]
+            onMeshClick(event.object.name, block)
+          }
         }}
       />
 
@@ -441,7 +464,15 @@ function Model({ url, units, bindings, selectedIndex, hoveredName, statusFilter,
           // Labels shrink with distance instead of staying a fixed screen size.
           // At a fixed size a far label competes with a near one for attention;
           // scaling them makes each read as belonging to its own block.
-          distanceFactor={labelDistance}
+          //
+          // Perspective only. drei scales an <Html> by `distanceFactor / distance`
+          // under a perspective camera but by `distanceFactor * camera.zoom`
+          // under an orthographic one, and this factor is in world units — in
+          // plan view that multiplied out to roughly 700x, so a single unit
+          // number filled the whole viewer. Dropping it there is also simply
+          // correct: a plan is orthographic, every block is equidistant, and
+          // equidistant labels belong at one screen size.
+          distanceFactor={isOrthographic ? undefined : labelDistance}
           // drei defaults these to a z-index of 16,777,271, which paints over
           // the navbar and the mobile nav overlay. Kept low here, and the
           // viewer container isolates its own stacking context as a backstop.
@@ -457,9 +488,114 @@ function Model({ url, units, bindings, selectedIndex, hoveredName, statusFilter,
   )
 }
 
+/* ── ground ────────────────────────────────────────────────────────────── */
+
+/**
+ * The platform the blocks stand on.
+ *
+ * The client's massing exports carry the buildings and nothing else — no site
+ * slab, no podium — so the blocks hang in an empty void. That costs more than
+ * looks: with no horizon in the frame, orbiting reads as the *model* spinning
+ * rather than the camera moving around it, and a pan that carries the last
+ * block off screen leaves nothing at all to navigate back by.
+ *
+ * Built here rather than merged into the model so it stays out of the bounding
+ * box that frames the camera — an apron wider than the site would otherwise
+ * pull the default view back and shrink the buildings inside it.
+ */
+function SiteGround({ bounds }) {
+  const site = useMemo(() => {
+    const min = bounds?.box?.min
+    const max = bounds?.box?.max
+    if (!min || !max || ![...min, ...max].every(Number.isFinite)) return null
+
+    const spanX = max[0] - min[0]
+    const spanZ = max[2] - min[2]
+    const footprint = Math.max(spanX, spanZ)
+    if (!(footprint > 0)) return null
+
+    // The apron follows the site's own proportions rather than squaring it
+    // off, and the setback is taken per axis rather than from the longer one.
+    // A strip mall is three times longer than it is deep: a single setback
+    // sized off its length is a tenth of the frontage but triples the depth,
+    // which leaves the terrace marooned in a field. The floor keeps a very
+    // shallow site from ending up with no visible apron at all.
+    //
+    // Every dimension here is a fraction of the model's own size — exports of
+    // the same site arrive measured in metres and in millimetres, so a fixed
+    // figure is invisible in one and enormous in the other.
+    const setback = (span) => Math.max(span * 0.18, footprint * 0.05)
+    const width = spanX + setback(spanX) * 2
+    const depth = spanZ + setback(spanZ) * 2
+    // Thin against the site, but never so thin it z-fights whatever ground a
+    // future export does happen to carry.
+    const thickness = Math.max(footprint * 0.004, (max[1] - min[1]) * 0.02)
+
+    return {
+      width,
+      depth,
+      thickness,
+      // A cell *count* across the long axis, not a cell size: the grid is not
+      // a scale bar, it is there so the eye has something to track while
+      // panning, and a count reads the same whatever units the export uses.
+      cell: Math.max(width, depth) / 16,
+      // Top face a hair below the base of the buildings rather than flush with
+      // it. These exports do carry a site slab — CENTRO's is a zero-thickness
+      // plane at y=0 covering the whole plot — it just renders invisibly,
+      // being flat and wound to face away from the camera. Invisible is not
+      // absent: coplanar with this one it would z-fight the moment anything
+      // (a double-sided material, a differently wound export) made it draw.
+      // The offset is a fraction of the slab, far too small to read as a gap.
+      center: [(min[0] + max[0]) / 2, min[1] - thickness * 0.52, (min[2] + max[2]) / 2],
+      // The grid sits above that plane, so it reads against the apron either way.
+      gridY: min[1] + thickness * 0.05,
+    }
+  }, [bounds])
+
+  // Built by hand rather than with gridHelper, which is square-only: squaring
+  // a rectangular apron either overhangs it or forces oblong cells, and oblong
+  // cells read as the ground being stretched.
+  const grid = useMemo(() => {
+    if (!site) return null
+    const { width, depth, cell } = site
+    const columns = Math.max(2, Math.round(width / cell))
+    const rows = Math.max(2, Math.round(depth / cell))
+    const halfWidth = width / 2
+    const halfDepth = depth / 2
+    const points = []
+    for (let i = 0; i <= columns; i++) {
+      const x = -halfWidth + (width * i) / columns
+      points.push(x, 0, -halfDepth, x, 0, halfDepth)
+    }
+    for (let i = 0; i <= rows; i++) {
+      const z = -halfDepth + (depth * i) / rows
+      points.push(-halfWidth, 0, z, halfWidth, 0, z)
+    }
+    const geometry = new THREE.BufferGeometry()
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3))
+    return geometry
+  }, [site])
+
+  useEffect(() => () => grid?.dispose(), [grid])
+
+  if (!site) return null
+
+  return (
+    <group>
+      <mesh position={site.center}>
+        <boxGeometry args={[site.width, site.thickness, site.depth]} />
+        <meshStandardMaterial color="#232a30" roughness={1} metalness={0} />
+      </mesh>
+      <lineSegments geometry={grid} position={[site.center[0], site.gridY, site.center[2]]}>
+        <lineBasicMaterial color="#4a555e" transparent opacity={0.35} depthWrite={false} />
+      </lineSegments>
+    </group>
+  )
+}
+
 /* ── camera ────────────────────────────────────────────────────────────── */
 
-function CameraRig({ bounds, focus, mode, resetSignal, onDragStart, onDragEnd }) {
+function CameraRig({ bounds, focus, mode, navMode, resetSignal, onDragStart, onDragEnd }) {
   const controls = useRef(null)
   const camera = useThree((state) => state.camera)
   const size = useThree((state) => state.size)
@@ -471,15 +607,32 @@ function CameraRig({ bounds, focus, mode, resetSignal, onDragStart, onDragEnd })
     const target = new THREE.Vector3(...bounds.center)
     controls.current.target.copy(target)
 
+    // Clip planes sized from the model rather than fixed. A fixed far plane
+    // cannot work here: exports arrive measured in anything from metres to
+    // millimetres, and at 5000 this site — 1678 x 120 x 2100 — fell entirely
+    // outside it. Plan view, which sits at 4x the radius, rendered an empty
+    // frame, and pulling back to the 6x zoom limit in 3D made the buildings
+    // vanish. Both read as the model failing to load.
+    //
+    // The far plane clears the furthest the controls can travel (6x radius)
+    // plus the far side of the model itself, with headroom; the near plane
+    // stays a small fraction of the radius so the depth buffer keeps enough
+    // precision to separate one block from the next.
+    camera.far = Math.max(bounds.radius * 12, 100)
+    camera.near = Math.max(bounds.radius / 2000, 0.05)
+
     if (mode === '2d') {
       camera.position.set(target.x, target.y + bounds.radius * 4, target.z + 0.001)
       camera.zoom = Math.min(size.width, size.height) / (bounds.radius * 2.4)
-      camera.updateProjectionMatrix()
     } else {
       const fov = THREE.MathUtils.degToRad(camera.fov ?? 45)
       const distance = (bounds.radius / Math.sin(fov / 2)) * 1.05
       camera.position.copy(target).add(new THREE.Vector3().setFromSphericalCoords(distance, ISO_POLAR, ISO_AZIMUTH))
     }
+
+    // Unconditional: both branches now change clip planes, and the 2D branch
+    // additionally changes zoom.
+    camera.updateProjectionMatrix()
 
     goal.current.active = false
     controls.current.update()
@@ -493,10 +646,19 @@ function CameraRig({ bounds, focus, mode, resetSignal, onDragStart, onDragEnd })
   // size, so every resize — a scrollbar appearing, entering fullscreen, a
   // phone rotating — used to re-run this and snap the camera back to default,
   // which reads as the view zooming out on its own.
+  //
+  // `camera` *is* a dependency, and has to be. Switching mode mounts a
+  // different camera and drei's `makeDefault` swaps it into the store during
+  // layout effects — after this component has rendered but before this effect
+  // runs. On `mode` alone the effect therefore fired holding the *outgoing*
+  // camera, so the newly mounted one was never positioned, zoomed or given
+  // clip planes: it sat at the R3F default looking at the origin, with the
+  // site a thousand units off screen. Plan view rendered an empty frame every
+  // time. Re-running on the camera swap is what makes the ortho view exist.
   useEffect(() => {
     frameDefaultRef.current()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bounds, mode, resetSignal])
+  }, [bounds, mode, camera, resetSignal])
 
   // Framing a unit deliberately keeps the viewer's current orbit angle and
   // only moves the target and distance. Snapping to a canonical angle throws
@@ -536,6 +698,23 @@ function CameraRig({ bounds, focus, mode, resetSignal, onDragStart, onDragEnd })
     settle.current = 45
   }, [])
 
+  // How far the orbit target may travel from the site. Panning is the only
+  // control with no natural limit — rotation wraps and zoom is already clamped
+  // — so without this a single drag carries the buildings off screen and the
+  // only way back is the recenter button. The margin is generous enough to put
+  // any corner of the site comfortably in frame and tight enough that the
+  // model never leaves it.
+  const panLimit = useMemo(() => {
+    const min = bounds?.box?.min
+    const max = bounds?.box?.max
+    if (!min || !max || ![...min, ...max].every(Number.isFinite)) return null
+    const margin = (bounds.radius ?? 1) * 0.35
+    return {
+      min: min.map((value) => value - margin),
+      max: max.map((value) => value + margin),
+    }
+  }, [bounds])
+
   useFrame(() => {
     const control = controls.current
     if (!control) return
@@ -543,6 +722,25 @@ function CameraRig({ bounds, focus, mode, resetSignal, onDragStart, onDragEnd })
     if (settle.current > 0) {
       settle.current -= 1
       invalidate()
+    }
+
+    // Applied as a correction to both target and camera rather than by
+    // rejecting the pan outright: moving them together holds the orbit angle
+    // and distance exactly, so overshooting the edge feels like the view
+    // resting against a wall instead of the camera swinging.
+    if (panLimit) {
+      const target = control.target
+      const clamped = ['x', 'y', 'z'].map((axis, i) =>
+        THREE.MathUtils.clamp(target[axis], panLimit.min[i], panLimit.max[i]),
+      )
+      if (clamped[0] !== target.x || clamped[1] !== target.y || clamped[2] !== target.z) {
+        camera.position.add(
+          new THREE.Vector3(clamped[0] - target.x, clamped[1] - target.y, clamped[2] - target.z),
+        )
+        target.set(clamped[0], clamped[1], clamped[2])
+        control.update()
+        invalidate()
+      }
     }
 
     if (!goal.current.active) return
@@ -561,6 +759,11 @@ function CameraRig({ bounds, focus, mode, resetSignal, onDragStart, onDragEnd })
 
   const radius = bounds?.radius ?? 10
 
+  // Which gesture the primary drag performs. Plan view is forced to pan
+  // whatever the toggle says: rotation is disabled there, so leaving the
+  // primary drag bound to it makes the one obvious gesture do nothing at all.
+  const panFirst = navMode === 'pan' || mode === '2d'
+
   return (
     <OrbitControls
       key={mode}
@@ -572,7 +775,23 @@ function CameraRig({ bounds, focus, mode, resetSignal, onDragStart, onDragEnd })
       zoomSpeed={0.8}
       zoomToCursor
       enableRotate={mode === '3d'}
+      // World-space panning, not screen-space: a site is explored by sliding
+      // along the ground, and screen-space panning would lift the camera off
+      // the ground plane the moment the view is tilted.
       screenSpacePanning={false}
+      // Panning is otherwise buried on the right button and on two fingers,
+      // which no visitor discovers. The toggle promotes it to the primary
+      // drag and demotes rotation to the secondary one, so both gestures stay
+      // reachable in either mode.
+      mouseButtons={{
+        LEFT: panFirst ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE,
+        MIDDLE: THREE.MOUSE.DOLLY,
+        RIGHT: panFirst ? THREE.MOUSE.ROTATE : THREE.MOUSE.PAN,
+      }}
+      touches={{
+        ONE: panFirst ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE,
+        TWO: panFirst && mode === '3d' ? THREE.TOUCH.DOLLY_ROTATE : THREE.TOUCH.DOLLY_PAN,
+      }}
       // The moment the user touches the controls, abandon any in-flight camera
       // easing. Otherwise selecting a unit and then immediately grabbing to
       // rotate leaves the easing still pulling distance toward its goal every
@@ -619,7 +838,7 @@ export default function ModelViewer({
   url,
   units,
   bindings,
-  selectedIndex,
+  selection = NO_SELECTION,
   onSelect,
   statusFilter,
   flaggedMeshes,
@@ -627,12 +846,20 @@ export default function ModelViewer({
   onModelReady,
   onCaptureReady,
   onError,
+  defaultMode = '2d',
   height = 'h-[420px] md:h-[560px]',
 }) {
   const containerRef = useRef(null)
   const [hovered, setHovered] = useState(null)
   const [showLabels, setShowLabels] = useState(true)
-  const [mode, setMode] = useState('3d')
+  // Plan view first. A leasing map answers "which unit, and is it free" before
+  // it answers "what does it look like", and a top-down plan answers the first
+  // question immediately — no orbiting to work out what you are looking at.
+  // 3D is one tap away for the second question. The admin overrides this.
+  const [mode, setMode] = useState(defaultMode)
+  // Rotate stays the default *within* 3D: it is what reads as "3D". Plan view
+  // overrides this to pan regardless, since rotation is disabled there.
+  const [navMode, setNavMode] = useState('orbit')
   const [resetSignal, setResetSignal] = useState(0)
   const [frames, setFrames] = useState(null)
   const [bounds, setBounds] = useState(null)
@@ -680,7 +907,30 @@ export default function ModelViewer({
     [onModelReady],
   )
 
-  const focus = selectedIndex != null && frames ? frames.get(selectedIndex) : null
+  const selected = useMemo(() => new Set(selection), [selection])
+
+  // What the camera flies to. With several units selected it is the frame that
+  // holds all of them, which is the whole point of comparing on a plan: you
+  // want the two shops you are weighing up on screen together, not the camera
+  // parked on whichever you happened to tap last.
+  const focus = useMemo(() => {
+    if (!frames || !selection.length) return null
+    const picked = selection.map((index) => frames.get(index)).filter(Boolean)
+    if (!picked.length) return null
+    // Identity matters here — CameraRig re-frames whenever `focus` changes —
+    // so a single selection returns the stored frame rather than a copy of it.
+    if (picked.length === 1) return picked[0]
+
+    const box = new THREE.Box3()
+    const center = new THREE.Vector3()
+    for (const frame of picked) {
+      center.set(...frame.center)
+      box.expandByPoint(center.clone().subScalar(frame.radius))
+      box.expandByPoint(center.clone().addScalar(frame.radius))
+    }
+    const sphere = box.getBoundingSphere(new THREE.Sphere())
+    return { center: sphere.center.toArray(), radius: Math.max(sphere.radius, 0.5) }
+  }, [frames, selection])
 
   useEffect(() => {
     const onChange = () => setIsFullscreen(document.fullscreenElement === containerRef.current)
@@ -692,6 +942,11 @@ export default function ModelViewer({
     if (document.fullscreenElement) document.exitFullscreen?.()
     else containerRef.current?.requestFullscreen?.()
   }
+
+  // Mirrors CameraRig's `panFirst`: the hand shows exactly when a primary drag
+  // moves the site rather than orbits it. Plan view is always in that state,
+  // because rotation is disabled there.
+  const handCursor = navMode === 'pan' || mode === '2d'
 
   const chip = useMemo(() => {
     // A hover carrying no unit is a binding-mode highlight: it colours the
@@ -729,6 +984,12 @@ export default function ModelViewer({
       <Canvas
         frameloop={live ? 'always' : 'demand'}
         dpr={[1, 1.6]}
+        // The hand tool made visible. Without a cursor the pan mode is a
+        // button that silently changes what a drag does, which is the kind of
+        // mode you forget you are in; grab/grabbing says it before you drag
+        // and confirms it while you do. Applied to the canvas wrapper only, so
+        // the control buttons keep their own pointer.
+        style={{ cursor: handCursor ? (dragging ? 'grabbing' : 'grab') : undefined }}
         gl={{
           antialias: true,
           powerPreference: 'high-performance',
@@ -761,13 +1022,15 @@ export default function ModelViewer({
         <directionalLight position={[1, 2, 1.4]} intensity={1.5} />
         <directionalLight position={[-1.5, 1, -1]} intensity={0.4} />
 
+        <SiteGround bounds={bounds} />
+
         <ModelErrorBoundary onError={onError}>
           <Suspense fallback={null}>
             <Model
               url={url}
               units={units}
               bindings={bindings}
-              selectedIndex={selectedIndex}
+              selected={selected}
               hoveredName={hovered?.name ?? null}
               statusFilter={statusFilter}
               // Each drei <Html> label writes a CSS transform every frame.
@@ -788,6 +1051,7 @@ export default function ModelViewer({
           bounds={bounds}
           focus={focus}
           mode={mode}
+          navMode={navMode}
           resetSignal={resetSignal}
           onDragStart={startDrag}
           onDragEnd={endDrag}
@@ -821,6 +1085,16 @@ export default function ModelViewer({
           ⌖
         </ViewerButton>
         <ViewerButton
+          // Hidden in plan view, where the primary drag already pans and the
+          // toggle would be a control with nothing to switch.
+          hidden={mode === '2d'}
+          label={navMode === 'pan' ? 'Drag to rotate' : 'Hand tool — drag to move the model'}
+          active={navMode === 'pan'}
+          onClick={() => setNavMode((m) => (m === 'pan' ? 'orbit' : 'pan'))}
+        >
+          <HandIcon />
+        </ViewerButton>
+        <ViewerButton
           label={showLabels ? 'Hide unit labels' : 'Show unit labels'}
           active={showLabels}
           onClick={() => setShowLabels((v) => !v)}
@@ -839,13 +1113,38 @@ export default function ModelViewer({
   )
 }
 
-function ViewerButton({ children, label, onClick, active }) {
+// The other controls are unicode glyphs, but no hand renders reliably across
+// the fonts this site ships. Drawn instead, at the same optical weight — and a
+// hand rather than a four-way arrow because it is the same tool every map and
+// drawing app calls a hand, and it matches the grab cursor the mode turns on.
+function HandIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden
+      className="size-[18px]"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M9 11V5.6a1.4 1.4 0 0 1 2.8 0V11" />
+      <path d="M11.8 10.6V4.4a1.4 1.4 0 0 1 2.8 0v6.2" />
+      <path d="M14.6 11V6.2a1.4 1.4 0 0 1 2.8 0V14a6 6 0 0 1-6 6h-.6a5 5 0 0 1-3.6-1.6l-3.2-3.6a1.4 1.4 0 0 1 2-2L9 14.4V11" />
+    </svg>
+  )
+}
+
+function ViewerButton({ children, label, onClick, active, hidden }) {
+  if (hidden) return null
   return (
     <button
       type="button"
       onClick={onClick}
       title={label}
       aria-label={label}
+      aria-pressed={active}
       className={`flex size-11 items-center justify-center rounded-lg border text-sm backdrop-blur transition-colors duration-200 ${
         active
           ? 'border-accent bg-accent/25 text-bone'

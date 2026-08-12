@@ -11,14 +11,15 @@ const STATUS_COPY = {
 // Every tier — 3D viewer, 2D pin plan, DOM unit list — converges on this one
 // card, so a copy change or a new field lands everywhere at once and the
 // tiers cannot drift into describing the same unit differently.
-export default function UnitDetailCard({ unit, onEnquire }) {
-  if (!unit) {
-    return (
-      <p className="font-body text-sm text-bone/40">
-        Select a unit to see its details.
-      </p>
-    )
-  }
+//
+// `maxHeight` is passed when the card sits in the column beside a fixed-height
+// plan. The card is a header / scrolling body / pinned action stack either
+// way; the cap is what makes the scrolling body do anything, and it keeps a
+// long description from pushing the enquiry button past the bottom of the
+// plan beside it. Unset — stacked under the plan on narrow screens — the card
+// simply grows to its content like any other.
+export default function UnitDetailCard({ unit, units = [], onEnquire, maxHeight = '' }) {
+  if (!unit) return <EmptyPanel units={units} />
 
   const meta = unitStatusMeta(unit.status)
   const area = formatArea(unit.size)
@@ -34,45 +35,89 @@ export default function UnitDetailCard({ unit, onEnquire }) {
     unit.status === 'leased' && unit.tenant ? ['Tenant', unit.tenant] : null,
   ].filter((row) => row && row[1])
 
+  const canEnquire = onEnquire && unit.status !== 'leased' && unit.status !== 'sold'
+
   return (
-    <div className="rounded-2xl border border-[var(--color-line-inv)] bg-void p-6">
-      <div className="flex flex-wrap items-center gap-3">
-        <span className={`rounded-full px-3 py-1 font-body text-[11px] font-bold uppercase tracking-[0.1em] ${meta.chip}`}>
+    <div
+      className={`flex flex-col overflow-hidden rounded-2xl border border-[var(--color-line-inv)] bg-void ${maxHeight}`}
+    >
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-[var(--color-line-inv)] px-6 py-5">
+        <span
+          className={`rounded-full px-3 py-1 font-body text-[11px] font-bold uppercase tracking-[0.1em] ${meta.chip}`}
+        >
           {meta.label}
         </span>
-        <span className="font-display text-lg font-medium text-bone">{unit.label || 'Unit'}</span>
+        <span className="font-display text-lg font-medium break-words text-bone">{unit.label || 'Unit'}</span>
         {area && <span className="font-body text-sm text-bone/45">{area}</span>}
       </div>
 
-      <p className="mt-3 font-body text-sm leading-relaxed text-bone/60">
-        {unit.description ||
-          (unit.tenant
-            ? unit.status === 'leased'
-              ? `Leased to ${unit.tenant}.`
-              : unit.tenant
-            : STATUS_COPY[unit.status] ?? STATUS_COPY.available)}
+      {/* min-h-0 is what actually lets this scroll: without it a flex child
+          refuses to shrink below its content and the panel grows past the
+          plan beside it instead of scrolling inside itself. */}
+      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+        <p className="font-body text-sm leading-relaxed text-bone/60">
+          {unit.description ||
+            (unit.tenant
+              ? unit.status === 'leased'
+                ? `Leased to ${unit.tenant}.`
+                : unit.tenant
+              : STATUS_COPY[unit.status] ?? STATUS_COPY.available)}
+        </p>
+
+        {specs.length > 0 && (
+          <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-4 lg:grid-cols-2">
+            {specs.map(([term, value]) => (
+              <div key={term} className="flex flex-col gap-1">
+                <dt className="eyebrow text-bone/40">{term}</dt>
+                <dd className="font-display text-base font-medium break-words text-bone">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+      </div>
+
+      {canEnquire && (
+        <div className="border-t border-[var(--color-line-inv)] px-6 py-4">
+          <button
+            type="button"
+            onClick={() => onEnquire(unit)}
+            className="min-h-11 w-full rounded-full bg-accent px-5 py-2.5 font-body text-[12px] font-bold uppercase tracking-[0.14em] text-bone transition-colors duration-300 hover:bg-accent-soft"
+          >
+            Enquire about {unit.label || 'this unit'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Beside the plan this space exists whether or not anything is selected, so it
+// earns its keep by answering the question a visitor arrives with — how much
+// is actually free here — rather than sitting empty until they click.
+function EmptyPanel({ units }) {
+  const total = units.length
+  const available = units.filter((unit) => unit.status === 'available').length
+
+  return (
+    <div className="flex flex-col gap-4 rounded-2xl border border-dashed border-[var(--color-line-inv)] bg-void px-6 py-8">
+      <span className="eyebrow text-bone/35">Unit details</span>
+
+      {total > 0 && (
+        <p className="font-display text-2xl leading-snug font-medium text-bone/85">
+          {available > 0 ? (
+            <>
+              <span className="text-accent-soft">{available}</span> of {total}{' '}
+              {total === 1 ? 'unit' : 'units'} available
+            </>
+          ) : (
+            <>All {total} {total === 1 ? 'unit' : 'units'} currently leased</>
+          )}
+        </p>
+      )}
+
+      <p className="font-body text-sm leading-relaxed text-bone/45">
+        Select a unit on the plan — or from the list below — to see its size, floor and availability.
       </p>
-
-      {specs.length > 0 && (
-        <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
-          {specs.map(([term, value]) => (
-            <div key={term} className="flex flex-col gap-1">
-              <dt className="eyebrow text-bone/40">{term}</dt>
-              <dd className="font-display text-base font-medium text-bone">{value}</dd>
-            </div>
-          ))}
-        </dl>
-      )}
-
-      {onEnquire && unit.status !== 'leased' && unit.status !== 'sold' && (
-        <button
-          type="button"
-          onClick={() => onEnquire(unit)}
-          className="mt-5 rounded-full bg-accent px-5 py-2 font-body text-[12px] font-bold uppercase tracking-[0.14em] text-bone transition-colors duration-300 hover:bg-accent-soft"
-        >
-          Enquire about {unit.label || 'this unit'}
-        </button>
-      )}
     </div>
   )
 }

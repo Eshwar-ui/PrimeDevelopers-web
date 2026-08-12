@@ -389,7 +389,10 @@ export default function ModelManager({ building, onChange, folder }) {
                 url={model.url}
                 units={units}
                 bindings={bindings}
-                selectedIndex={null}
+                // Binding means clicking individual wall panels, and in plan
+                // view the roof slabs cover every one of them — so the admin
+                // keeps opening in 3D even though visitors now get the plan.
+                defaultMode="3d"
                 onSelect={() => {}}
                 statusFilter={null}
                 flaggedMeshes={flagged}

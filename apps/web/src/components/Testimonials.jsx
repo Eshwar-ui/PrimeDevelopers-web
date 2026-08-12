@@ -51,7 +51,13 @@ function Avatar({ src, name }) {
     .map((w) => w[0])
     .join('')
   return (
-    <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-prime-soft font-display text-sm font-bold text-accent">
+    // prime-deep rather than accent. Both the tile and the accent shift with
+    // the theme and they shift the same way — pale wash against CG Blue on
+    // light, dark wash against the pale tint on dark — so the pair only ever
+    // reached 4.5:1 by a hair on light and fell under it on dark. prime-deep is
+    // the darker step on light and the lighter one on dark, which is the
+    // direction that buys separation in each.
+    <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-prime-soft font-display text-sm font-bold text-prime-deep">
       {initials}
     </span>
   )

@@ -146,7 +146,7 @@ export default function EnterprisePage() {
             <motion.div
               variants={rise}
               {...inView}
-              className="flex flex-col gap-10 rounded-[28px] bg-accent px-8 py-16 text-white md:flex-row md:items-end md:justify-between md:px-16 md:py-20"
+              className="flex flex-col gap-10 rounded-[28px] bg-accent px-8 py-16 text-white dark:text-void md:flex-row md:items-end md:justify-between md:px-16 md:py-20"
             >
               <h2
                 className="max-w-[16ch] font-display font-bold uppercase leading-[1.06] tracking-tight"
@@ -162,7 +162,7 @@ export default function EnterprisePage() {
                   <span className="font-body text-[15px] font-bold uppercase tracking-[0.04em]">
                     {page.closingLabel}
                   </span>
-                  <span className="flex size-11 items-center justify-center rounded-full bg-accent text-white transition-transform duration-300 ease-out group-hover:translate-x-0.5">
+                  <span className="flex size-11 items-center justify-center rounded-full bg-accent text-white transition-transform dark:text-void duration-300 ease-out group-hover:translate-x-0.5">
                     <ArrowRight className="size-4" />
                   </span>
                 </a>

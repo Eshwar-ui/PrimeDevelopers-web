@@ -142,7 +142,7 @@ export default function UnitComparePanel({ units, aspectOf, onRemove, onClear, o
                       <button
                         type="button"
                         onClick={() => onEnquire(unit)}
-                        className="min-h-11 w-full rounded-full bg-accent px-4 py-2.5 font-body text-[11px] font-bold tracking-[0.12em] text-white uppercase transition-colors duration-300 hover:bg-accent-soft"
+                        className="min-h-11 w-full rounded-full bg-accent px-4 py-2.5 font-body text-[11px] font-bold tracking-[0.12em] text-white uppercase transition-colors duration-300 hover:bg-prime-deep dark:text-void"
                       >
                         Enquire
                       </button>

@@ -137,7 +137,7 @@ export default function PropertiesPage() {
                 and a block-level lift on top would move each mask along with the
                 word inside it — leaving nothing for the word to rise out of. */}
             <h2 className="mx-auto max-w-[18ch] font-display font-bold uppercase leading-[1.03] tracking-tight text-content [font-size:clamp(1.85rem,min(4.2vw,8dvh),3.4rem)]">
-              <MaskedHeading text={p.heroHeading} accentClass="italic text-accent-soft" />
+              <MaskedHeading text={p.heroHeading} accentClass="italic text-accent" />
             </h2>
 
             {p.heroParagraph && (
@@ -210,7 +210,7 @@ export default function PropertiesPage() {
                   onClick={() => setFilter(c)}
                   className={`rounded-full border px-5 py-2 font-body text-[13px] font-medium uppercase tracking-[0.1em] transition-colors duration-300 ${
                     active
-                      ? 'border-accent bg-accent text-white'
+                      ? 'border-accent bg-accent text-white dark:text-void'
                       : 'border-[var(--color-line)] text-content/70 hover:border-content/35 hover:text-content'
                   }`}
                 >

@@ -115,7 +115,7 @@ export default function CallToAction() {
             {ctaLabel && (
               <Link
                 to={ctaHref || '/contact'}
-                className="mt-9 inline-flex items-center gap-3 rounded-xl bg-accent px-8 py-4.5 font-body text-[17px] font-medium text-white transition-colors duration-300 hover:bg-prime-deep"
+                className="mt-9 inline-flex items-center gap-3 rounded-xl bg-accent px-8 py-4.5 font-body text-[17px] font-medium text-white dark:text-void transition-colors duration-300 hover:bg-prime-deep"
               >
                 {ctaLabel}
                 <svg

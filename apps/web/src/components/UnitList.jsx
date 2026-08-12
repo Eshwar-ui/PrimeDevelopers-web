@@ -110,7 +110,7 @@ export default function UnitList({ units, selection = [], onSelect, statusFilter
                     {selection.length > 1 && isSelected && (
                       <span
                         aria-hidden
-                        className="flex size-5 shrink-0 items-center justify-center rounded-md bg-accent font-body text-[10px] font-bold text-white"
+                        className="flex size-5 shrink-0 items-center justify-center rounded-md bg-accent font-body text-[10px] font-bold text-white dark:text-void"
                       >
                         {selection.indexOf(unit.index) + 1}
                       </span>

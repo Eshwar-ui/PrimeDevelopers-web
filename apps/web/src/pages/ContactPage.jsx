@@ -100,7 +100,7 @@ export default function ContactPage() {
           )}
 
           <h1 className="mx-auto mt-5 max-w-[18ch] font-display font-bold uppercase leading-[1.03] tracking-tight text-content [font-size:clamp(1.85rem,min(4.2vw,8dvh),3.4rem)]">
-            <MaskedHeading text={c.heroHeading} accentClass="italic text-accent-soft" />
+            <MaskedHeading text={c.heroHeading} accentClass="italic text-accent" />
           </h1>
 
           {c.heroParagraph && (

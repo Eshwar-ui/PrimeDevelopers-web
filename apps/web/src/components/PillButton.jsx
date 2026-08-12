@@ -6,7 +6,7 @@ import ArrowRight from './ArrowRight'
 //   accent → electric blue      ink → carbon on light bands
 //   bone   → light pill on dark  ember → warm signal CTA
 const variants = {
-  accent: 'bg-accent text-void',
+  accent: 'bg-accent text-white dark:text-void',
   ember: 'bg-ember text-void',
   ink: 'bg-ink text-bone',
   bone: 'bg-bone text-void',

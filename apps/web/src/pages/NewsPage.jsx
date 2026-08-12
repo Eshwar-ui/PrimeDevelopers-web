@@ -35,7 +35,7 @@ export default function NewsPage() {
               and a block-level lift would move each mask along with the word
               inside it, leaving nothing for the word to rise out of. */}
           <h1 className="mx-auto mt-5 max-w-[18ch] font-display font-bold uppercase leading-[1.03] tracking-tight text-content [font-size:clamp(1.85rem,min(4.2vw,8dvh),3.4rem)]">
-            <MaskedHeading text={p.heroHeading} accentClass="italic text-accent-soft" />
+            <MaskedHeading text={p.heroHeading} accentClass="italic text-accent" />
           </h1>
 
           {p.heroParagraph && (

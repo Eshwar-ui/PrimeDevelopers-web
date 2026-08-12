@@ -233,15 +233,24 @@
   --color-prime-deep: #62b4dc;
 }
 
+/* The page ground is a role token, not a fixed colour.
+
+   These were --color-void, from when the site was dark everywhere. Nothing
+   painted over it noticed, because every section was dark too. Under the light
+   theme it became the ground showing through anywhere a section did not reach —
+   most visibly beneath `main`, which reserves a full viewport of height to stop
+   the footer jumping during a page transition and is itself transparent. A
+   short page therefore ended in several hundred pixels of near-black between
+   the content and the footer. */
 html {
   scroll-behavior: auto; /* Lenis owns scrolling */
-  background: var(--color-void);
+  background: var(--color-surface);
 }
 
 body {
   margin: 0;
-  background: var(--color-void);
-  color: var(--color-bone);
+  background: var(--color-surface);
+  color: var(--color-content);
   font-family: var(--font-body);
   font-feature-settings: "ss01", "cv01";
   -webkit-font-smoothing: antialiased;
@@ -311,25 +320,15 @@ html {
   color: var(--color-void);
 }
 
-/* ── Cinematic overlays ─────────────────────────────────────────
-   A fixed film-grain + vignette plate sits above everything, below
-   the cursor. Gives the whole site a shot-on-film texture. */
-.film-grain {
-  position: fixed;
-  inset: 0;
-  z-index: 9998;
-  pointer-events: none;
-  opacity: 0.045;
-  mix-blend-mode: screen;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-}
-.vignette {
-  position: fixed;
-  inset: 0;
-  z-index: 9997;
-  pointer-events: none;
-  background: radial-gradient(120% 100% at 50% 40%, transparent 55%, rgba(0, 0, 0, 0.42) 100%);
-}
+/* The film-grain plate and the vignette that used to sit here are gone.
+   Both were shot-on-film texture for a site that was dark on every screen: the
+   vignette laid a fixed radial reaching 42% black at the edges over everything,
+   and the grain was 4.5% noise on `screen`. Under the light theme the vignette
+   darkened all four corners of every page — the single biggest reason a light
+   page still read as a dark one — and `screen` blending makes the grain do
+   nothing on white. The redesign is a flat, light system with no equivalent.
+
+   The scroll-progress rail below is the one piece of that furniture kept. */
 
 /* Thin scroll-progress rule pinned to the very top of the viewport */
 .scroll-rail {
@@ -510,9 +509,6 @@ html {
   /* Swap the palette outright rather than wiping a circle across the screen. */
   ::view-transition-new(root) {
     animation: none;
-  }
-  .film-grain {
-    display: none;
   }
   *,
   *::before,

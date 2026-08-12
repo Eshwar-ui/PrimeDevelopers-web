@@ -58,7 +58,7 @@ export default function UnitList({ units, selection = [], onSelect, statusFilter
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-controls={panelId}
-        className="flex min-h-11 items-center gap-2 font-body text-[13px] font-bold uppercase tracking-[0.14em] text-bone/55 transition-colors duration-200 hover:text-bone"
+        className="flex min-h-11 items-center gap-2 font-body text-[13px] font-bold uppercase tracking-[0.14em] text-content/55 transition-colors duration-200 hover:text-content"
       >
         <span aria-hidden className={`transition-transform duration-200 ${open ? 'rotate-90' : ''}`}>›</span>
         {open ? 'Hide all units' : `Browse all ${units.length} units`}
@@ -98,7 +98,7 @@ export default function UnitList({ units, selection = [], onSelect, statusFilter
                 className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left transition-colors duration-200 ${
                   isSelected
                     ? 'border-accent bg-accent/12'
-                    : 'border-[var(--color-line-inv)] hover:border-bone/30'
+                    : 'border-[var(--color-line)] hover:border-content/30'
                 } ${isFiltered ? 'opacity-40' : ''}`}
               >
                 <span className="flex min-w-0 flex-col gap-1">
@@ -110,22 +110,22 @@ export default function UnitList({ units, selection = [], onSelect, statusFilter
                     {selection.length > 1 && isSelected && (
                       <span
                         aria-hidden
-                        className="flex size-5 shrink-0 items-center justify-center rounded-md bg-accent font-body text-[10px] font-bold text-bone"
+                        className="flex size-5 shrink-0 items-center justify-center rounded-md bg-accent font-body text-[10px] font-bold text-white"
                       >
                         {selection.indexOf(unit.index) + 1}
                       </span>
                     )}
-                    <span className="truncate font-display text-base font-medium text-bone">
+                    <span className="truncate font-display text-base font-medium text-content">
                       {unit.label || `Unit ${position + 1}`}
                     </span>
                   </span>
-                  {area && <span className="font-body text-xs text-bone/45">{area}</span>}
+                  {area && <span className="font-body text-xs text-content/45">{area}</span>}
                 </span>
                 {/* Status is carried by the text, not the colour — the swatch
                     is reinforcement, never the only signal. */}
                 <span className="flex shrink-0 items-center gap-2">
                   <span aria-hidden className={`size-2 rounded-sm ${meta.swatch}`} />
-                  <span className="font-body text-[11px] font-bold uppercase tracking-[0.1em] text-bone/55">
+                  <span className="font-body text-[11px] font-bold uppercase tracking-[0.1em] text-content/55">
                     {meta.label}
                   </span>
                 </span>

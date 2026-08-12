@@ -38,3 +38,8 @@ test-model.glb
 
 # Production build inputs (values live in the deploy environment)
 .env.production
+
+# Editor/tool backups of env files — these carry real secrets.
+.env.bak
+.env.*.bak
+*.env.bak

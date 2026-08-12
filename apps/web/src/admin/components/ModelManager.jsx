@@ -395,6 +395,9 @@ export default function ModelManager({ building, onChange, folder }) {
                 // view the roof slabs cover every one of them — so the admin
                 // keeps opening in 3D even though visitors now get the plan.
                 defaultMode="3d"
+                // The admin chrome is dark whichever theme the site is in, so
+                // the plan is pinned to match it rather than to the visitor's.
+                darkGround
                 // Live, so the admin sees the turn as they make it.
                 orientation={Number.isFinite(model.orientation) ? model.orientation : null}
                 onSelect={() => {}}

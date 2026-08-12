@@ -13,7 +13,7 @@ export default function FloorPlanInteractive({ image, units, selection = [], onS
   const selected = new Set(selection)
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-[var(--color-line-inv)]">
+    <div className="relative overflow-hidden rounded-2xl border border-[var(--color-line)]">
       <img src={image} alt="Floor plan" className="block w-full select-none" />
       {placed.map((unit) => {
         const meta = unitStatusMeta(unit.status)
@@ -30,7 +30,7 @@ export default function FloorPlanInteractive({ image, units, selection = [], onS
             aria-label={`Unit ${unit.label || unit.index + 1} — ${meta.label}`}
             style={{ left: `${unit.x}%`, top: `${unit.y}%` }}
             className={`absolute flex size-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-[10px] font-bold shadow-lg transition-transform duration-200 ${meta.chip} ${
-              isSelected ? 'z-10 scale-125 ring-2 ring-bone' : 'hover:scale-110'
+              isSelected ? 'z-10 scale-125 ring-2 ring-accent' : 'hover:scale-110'
             } ${isExcluded ? 'opacity-35' : ''}`}
           >
             {(unit.label || '').slice(0, 4)}

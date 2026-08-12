@@ -31,7 +31,10 @@ const DEFAULT_QUALITY = 75
  * the single largest saving on the homepage.
  */
 export const WIDTHS = {
-  thumb: 200, // hero rail thumbnails — 78x54 CSS
+  // Hero rail tiles. They were 78x54 when this was 200; the redesign widened
+  // them to half the copy column on phones and a third of it from `sm` up,
+  // which is ~350px CSS at the top end — so 200 would now be visibly soft.
+  thumb: 700,
   logo: 400, // marquee client logos — up to 200x48 CSS
   // Cards top out at ~735px CSS in the gallery, so this stays comfortably
   // retina. Sized generously on purpose: every card is lazy-loaded now, so the

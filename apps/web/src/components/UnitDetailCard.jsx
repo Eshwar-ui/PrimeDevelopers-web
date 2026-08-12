@@ -43,23 +43,23 @@ export default function UnitDetailCard({ unit, units = [], aspect = null, onEnqu
 
   return (
     <div
-      className={`flex flex-col overflow-hidden rounded-2xl border border-[var(--color-line-inv)] bg-void ${maxHeight}`}
+      className={`flex flex-col overflow-hidden rounded-2xl border border-[var(--color-line)] bg-surface ${maxHeight}`}
     >
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-[var(--color-line-inv)] px-6 py-5">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-[var(--color-line)] px-6 py-5">
         <span
           className={`rounded-full px-3 py-1 font-body text-[11px] font-bold uppercase tracking-[0.1em] ${meta.chip}`}
         >
           {meta.label}
         </span>
-        <span className="font-display text-lg font-medium break-words text-bone">{unit.label || 'Unit'}</span>
-        {area && <span className="font-body text-sm text-bone/45">{area}</span>}
+        <span className="font-display text-lg font-medium break-words text-content">{unit.label || 'Unit'}</span>
+        {area && <span className="font-body text-sm text-content/45">{area}</span>}
       </div>
 
       {/* min-h-0 is what actually lets this scroll: without it a flex child
           refuses to shrink below its content and the panel grows past the
           plan beside it instead of scrolling inside itself. */}
       <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
-        <p className="font-body text-sm leading-relaxed text-bone/60">
+        <p className="font-body text-sm leading-relaxed text-content/60">
           {unit.description ||
             (unit.tenant
               ? unit.status === 'leased'
@@ -72,8 +72,8 @@ export default function UnitDetailCard({ unit, units = [], aspect = null, onEnqu
           <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-4 lg:grid-cols-2">
             {specs.map(([term, value]) => (
               <div key={term} className="flex flex-col gap-1">
-                <dt className="eyebrow text-bone/40">{term}</dt>
-                <dd className="font-display text-base font-medium break-words text-bone">{value}</dd>
+                <dt className="eyebrow text-content/40">{term}</dt>
+                <dd className="font-display text-base font-medium break-words text-content">{value}</dd>
               </div>
             ))}
           </dl>
@@ -81,11 +81,11 @@ export default function UnitDetailCard({ unit, units = [], aspect = null, onEnqu
       </div>
 
       {canEnquire && (
-        <div className="border-t border-[var(--color-line-inv)] px-6 py-4">
+        <div className="border-t border-[var(--color-line)] px-6 py-4">
           <button
             type="button"
             onClick={() => onEnquire(unit)}
-            className="min-h-11 w-full rounded-full bg-accent px-5 py-2.5 font-body text-[12px] font-bold uppercase tracking-[0.14em] text-bone transition-colors duration-300 hover:bg-accent-soft"
+            className="min-h-11 w-full rounded-full bg-accent px-5 py-2.5 font-body text-[12px] font-bold uppercase tracking-[0.14em] text-white transition-colors duration-300 hover:bg-accent-soft"
           >
             Enquire about {unit.label || 'this unit'}
           </button>
@@ -103,14 +103,14 @@ function EmptyPanel({ units }) {
   const available = units.filter((unit) => unit.status === 'available').length
 
   return (
-    <div className="flex flex-col gap-4 rounded-2xl border border-dashed border-[var(--color-line-inv)] bg-void px-6 py-8">
-      <span className="eyebrow text-bone/35">Unit details</span>
+    <div className="flex flex-col gap-4 rounded-2xl border border-dashed border-[var(--color-line)] bg-surface px-6 py-8">
+      <span className="eyebrow text-content/35">Unit details</span>
 
       {total > 0 && (
-        <p className="font-display text-2xl leading-snug font-medium text-bone/85">
+        <p className="font-display text-2xl leading-snug font-medium text-content/85">
           {available > 0 ? (
             <>
-              <span className="text-accent-soft">{available}</span> of {total}{' '}
+              <span className="text-accent">{available}</span> of {total}{' '}
               {total === 1 ? 'unit' : 'units'} available
             </>
           ) : (
@@ -119,7 +119,7 @@ function EmptyPanel({ units }) {
         </p>
       )}
 
-      <p className="font-body text-sm leading-relaxed text-bone/45">
+      <p className="font-body text-sm leading-relaxed text-content/45">
         Select a unit on the plan — or from the list below — to see its size, floor and availability.
       </p>
     </div>

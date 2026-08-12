@@ -11,7 +11,7 @@ const variants = {
   ink: 'bg-ink text-bone',
   bone: 'bg-bone text-void',
   prime: 'bg-prime text-white', // CG Blue — Prime Developer light theme
-  outline: 'border border-charcoal/25 bg-transparent text-charcoal',
+  outline: 'border border-content/25 bg-transparent text-content',
 }
 
 const sweep = {
@@ -20,7 +20,7 @@ const sweep = {
   ink: 'bg-bone/20',
   bone: 'bg-void/15',
   prime: 'bg-white/20',
-  outline: 'bg-charcoal/8',
+  outline: 'bg-content/8',
 }
 
 export default function PillButton({

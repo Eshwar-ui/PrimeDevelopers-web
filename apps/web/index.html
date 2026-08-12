@@ -79,6 +79,23 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- Runs before first paint so a returning dark-mode visitor never sees a
+         white flash while the bundle loads. Kept deliberately tiny and inline;
+         anything deferred is already too late. Mirrored by ThemeContext. -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('prime-theme')
+          var dark =
+            stored === 'dark' ||
+            (!stored && window.matchMedia('(prefers-color-scheme: dark)').matches)
+          if (dark) document.documentElement.classList.add('dark')
+          document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
+        } catch (e) {
+          /* private mode with storage blocked — fall through to the light default */
+        }
+      })()
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

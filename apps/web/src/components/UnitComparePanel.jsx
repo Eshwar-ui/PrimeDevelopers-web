@@ -45,16 +45,16 @@ export default function UnitComparePanel({ units, aspectOf, onRemove, onClear, o
   return (
     <section
       aria-label="Compare selected units"
-      className="overflow-hidden rounded-2xl border border-[var(--color-line-inv)] bg-void"
+      className="overflow-hidden rounded-2xl border border-[var(--color-line)] bg-surface"
     >
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-[var(--color-line-inv)] px-6 py-4">
-        <h3 className="font-display text-base font-medium text-bone">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-[var(--color-line)] px-6 py-4">
+        <h3 className="font-display text-base font-medium text-content">
           Comparing {units.length} units
         </h3>
         <button
           type="button"
           onClick={onClear}
-          className="min-h-9 font-body text-[11px] font-bold tracking-[0.14em] text-accent-soft uppercase transition-colors duration-200 hover:text-bone"
+          className="min-h-9 font-body text-[11px] font-bold tracking-[0.14em] text-accent uppercase transition-colors duration-200 hover:text-content"
         >
           Clear comparison
         </button>
@@ -75,7 +75,7 @@ export default function UnitComparePanel({ units, aspectOf, onRemove, onClear, o
                   reading two columns in. */}
               <th
                 scope="col"
-                className="sticky left-0 z-10 bg-void px-6 py-4 align-bottom"
+                className="sticky left-0 z-10 bg-surface px-6 py-4 align-bottom"
               >
                 <span className="sr-only">Specification</span>
               </th>
@@ -85,14 +85,14 @@ export default function UnitComparePanel({ units, aspectOf, onRemove, onClear, o
                   <th key={unit.index} scope="col" className="min-w-[10rem] px-5 py-4 align-bottom">
                     <span className="flex flex-col items-start gap-2">
                       <span className="flex w-full items-start justify-between gap-2">
-                        <span className="font-display text-lg font-medium break-words text-bone">
+                        <span className="font-display text-lg font-medium break-words text-content">
                           {unit.label || 'Unit'}
                         </span>
                         <button
                           type="button"
                           onClick={() => onRemove(unit.index)}
                           aria-label={`Remove ${unit.label || 'this unit'} from the comparison`}
-                          className="-mt-1 -mr-1 flex size-8 shrink-0 items-center justify-center rounded-lg text-bone/40 transition-colors duration-200 hover:bg-bone/10 hover:text-bone"
+                          className="-mt-1 -mr-1 flex size-8 shrink-0 items-center justify-center rounded-lg text-content/40 transition-colors duration-200 hover:bg-content/10 hover:text-content"
                         >
                           <span aria-hidden>×</span>
                         </button>
@@ -111,29 +111,29 @@ export default function UnitComparePanel({ units, aspectOf, onRemove, onClear, o
 
           <tbody>
             {rows.map(([label, values]) => (
-              <tr key={label} className="border-t border-[var(--color-line-inv)]">
+              <tr key={label} className="border-t border-[var(--color-line)]">
                 <th
                   scope="row"
-                  className="sticky left-0 z-10 bg-void px-6 py-4 align-top eyebrow font-normal text-bone/40"
+                  className="sticky left-0 z-10 bg-surface px-6 py-4 align-top eyebrow font-normal text-content/40"
                 >
                   {label}
                 </th>
                 {values.map((value, i) => (
                   <td
                     key={units[i].index}
-                    className="px-5 py-4 align-top font-display text-base font-medium break-words text-bone"
+                    className="px-5 py-4 align-top font-display text-base font-medium break-words text-content"
                   >
                     {/* An em-dash, not a blank cell: blank reads as a render
                         failure, "—" reads as "we do not list this". */}
-                    {value != null && String(value).trim() !== '' ? value : <span className="text-bone/25">—</span>}
+                    {value != null && String(value).trim() !== '' ? value : <span className="text-content/25">—</span>}
                   </td>
                 ))}
               </tr>
             ))}
 
             {onEnquire && (
-              <tr className="border-t border-[var(--color-line-inv)]">
-                <th scope="row" className="sticky left-0 z-10 bg-void px-6 py-4">
+              <tr className="border-t border-[var(--color-line)]">
+                <th scope="row" className="sticky left-0 z-10 bg-surface px-6 py-4">
                   <span className="sr-only">Enquire</span>
                 </th>
                 {units.map((unit) => (
@@ -142,12 +142,12 @@ export default function UnitComparePanel({ units, aspectOf, onRemove, onClear, o
                       <button
                         type="button"
                         onClick={() => onEnquire(unit)}
-                        className="min-h-11 w-full rounded-full bg-accent px-4 py-2.5 font-body text-[11px] font-bold tracking-[0.12em] text-bone uppercase transition-colors duration-300 hover:bg-accent-soft"
+                        className="min-h-11 w-full rounded-full bg-accent px-4 py-2.5 font-body text-[11px] font-bold tracking-[0.12em] text-white uppercase transition-colors duration-300 hover:bg-accent-soft"
                       >
                         Enquire
                       </button>
                     ) : (
-                      <span className="font-body text-xs text-bone/35">Not available</span>
+                      <span className="font-body text-xs text-content/35">Not available</span>
                     )}
                   </td>
                 ))}

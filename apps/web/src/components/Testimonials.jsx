@@ -1,93 +1,113 @@
-import { useEffect, useState } from 'react'
-import { motion } from 'motion/react'
-import SectionHeader from './SectionHeader'
 import { useSection } from '../context/ContentContext'
 
-const ROTATE_MS = 6500
+const STAR = 'm12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2Z'
+
+function Stars({ count = 5 }) {
+  // Clamped rather than trusted: rating is free-entry in the admin, and a typo
+  // of 50 would otherwise paint a row of stars across the whole card.
+  const filled = Math.max(0, Math.min(5, Math.round(count)))
+  return (
+    <div className="flex items-center gap-1" role="img" aria-label={`${filled} out of 5 stars`}>
+      {Array.from({ length: 5 }, (_, i) => (
+        <svg key={i} viewBox="0 0 24 24" aria-hidden className="size-4">
+          <path d={STAR} className={i < filled ? 'fill-saffron' : 'fill-content/15'} />
+        </svg>
+      ))}
+    </div>
+  )
+}
+
+// Drawn rather than typed. A typographic &ldquo; inherits whatever the display
+// face gives it, which is a thin angular mark; the design calls for a pair of
+// rounded, solid speech marks, and only a path guarantees that shape. Sized to
+// the design's 40×32 quote frame.
+function QuoteMark() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-9 shrink-0 text-accent/35"
+    >
+      <path d="M16 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z" />
+      <path d="M5 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z" />
+    </svg>
+  )
+}
+
+// Initials stand in when no portrait is uploaded — the design's avatar is a
+// fixed 48px circle, and leaving it empty punches a hole in the card's footer.
+function Avatar({ src, name }) {
+  if (src) {
+    return <img src={src} alt="" className="size-12 shrink-0 rounded-full object-cover" />
+  }
+  const initials = name
+    .split(' ')
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join('')
+  return (
+    <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-prime-soft font-display text-sm font-bold text-accent">
+      {initials}
+    </span>
+  )
+}
+
+// The design lays the quotes out as a single row of three. A fourth wraps onto
+// a row of its own and reads as an orphan, so the homepage shows three and the
+// rest stay available to whatever else wants them.
+const TEASER_COUNT = 3
 
 export default function Testimonials() {
-  const { items: testimonials } = useSection('testimonials')
-  const [index, setIndex] = useState(0)
+  const { heading, paragraph, items: all } = useSection('testimonials')
+  const items = all.slice(0, TEASER_COUNT)
 
-  useEffect(() => {
-    if (testimonials.length < 2) return
-    const id = setInterval(() => setIndex((i) => (i + 1) % testimonials.length), ROTATE_MS)
-    return () => clearInterval(id)
-  }, [index, testimonials.length])
-
-  if (testimonials.length === 0) return null
-  const active = testimonials[index]
+  if (items.length === 0) return null
 
   return (
-    <section id="testimonials" className="bg-ink px-6 py-24 text-bone md:px-[75px] md:py-32">
-      <SectionHeader index="04" title="Voices" tone="inv" className="mb-16" />
+    <section
+      id="testimonials"
+      data-band="light"
+      className="bg-surface-alt px-6 py-16 text-content md:px-[75px] md:py-16"
+    >
+      <div className="mb-10">
+        <h2 className="font-display text-[22px] font-bold leading-tight tracking-[-0.01em] text-content">
+          {heading}
+        </h2>
+        {paragraph && (
+          <p className="mt-4 font-body text-[16px] leading-normal text-content/60">{paragraph}</p>
+        )}
+      </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 40 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, amount: 0.3 }}
-        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-        className="grid items-start gap-12 lg:grid-cols-[1.6fr_1fr] lg:gap-20"
-      >
-        {/* Rotating featured quote */}
-        <div className="relative min-h-[340px] md:min-h-[380px]">
-          <span
-            aria-hidden
-            className="pointer-events-none absolute -top-16 -left-2 select-none font-display text-[11rem] leading-none text-ember/20"
-          >
-            &ldquo;
-          </span>
-          <motion.blockquote
-            key={index}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, ease: [0.76, 0, 0.24, 1] }}
-            className="absolute inset-0"
-          >
-            <p className="max-w-[24ch] font-display text-[1.9rem] font-light leading-[1.18] tracking-[-0.015em] md:text-[2.8rem]">
-              {active.quote}
-            </p>
-            <footer className="mt-9">
-              <p className="font-display text-lg font-medium">{active.name}</p>
-              <p className="eyebrow mt-2 text-accent-soft">{active.role}</p>
-            </footer>
-          </motion.blockquote>
-        </div>
+      <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+        {items.map((t) => (
+          <figure key={t.name} className="flex flex-col rounded-2xl bg-surface p-8">
+            <QuoteMark />
 
-        {/* Client selector */}
-        <ul className="flex flex-col border-y border-[var(--color-line-inv)]">
-          {testimonials.map((t, i) => {
-            const isActive = i === index
-            return (
-              <li key={t.name} className="border-b border-[var(--color-line-inv)] last:border-0">
-                <button
-                  type="button"
-                  onClick={() => setIndex(i)}
-                  className="group flex w-full items-center gap-4 py-5 text-left"
-                >
-                  <span className={`numeral text-sm ${isActive ? 'text-ember' : 'text-bone/25'}`}>
-                    0{i + 1}
-                  </span>
-                  <span
-                    className={`font-display text-lg font-medium transition-colors duration-300 ${
-                      isActive ? 'text-bone' : 'text-bone/40 group-hover:text-bone/75'
-                    }`}
-                  >
-                    {t.name}
-                  </span>
-                  {isActive && (
-                    <motion.span
-                      layoutId="testi-active"
-                      className="ml-auto h-1.5 w-1.5 rounded-full bg-ember"
-                      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                    />
-                  )}
-                </button>
-              </li>
-            )
-          })}
-        </ul>
-      </motion.div>
+            <blockquote className="mt-4 flex-1 font-body text-[15px] leading-[1.65] text-content/80">
+              {t.quote}
+            </blockquote>
+
+            <div className="mt-7">
+              <Stars count={t.rating ?? 5} />
+            </div>
+
+            <figcaption className="mt-5 flex items-center gap-3">
+              <Avatar src={t.avatar} name={t.name} />
+              <div className="min-w-0">
+                <p className="font-display text-[16px] font-bold leading-tight text-content">
+                  {t.name}
+                </p>
+                <p className="mt-1 font-body text-[15px] text-content/55">{t.role}</p>
+              </div>
+            </figcaption>
+          </figure>
+        ))}
+      </div>
     </section>
   )
 }

@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Class-based dark mode. Tailwind v4's stock `dark:` follows the OS setting,
+   which a manual toggle has to be able to override, so the variant is rebound
+   to a class we own on <html>. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ─────────────────────────────────────────────────────────────
    Self-hosted brand fonts.
 
@@ -142,11 +147,90 @@
   --color-saffron: #fca42e; /* deep saffron — secondary energy accent */
   --color-slate: #4a4f66; /* independence — muted slate ink */
 
+  /* ── Semantic surfaces ────────────────────────────────────────────
+     The palette above names pigments; these name roles, and only these
+     get swapped under .dark. The split matters because two pigments are
+     overloaded: charcoal is both body text and a dark button ground, and
+     white is both a card surface and button foreground. Redefining those
+     directly would invert one use while fixing the other, so anything
+     that changes with the theme goes through a role token instead.
+
+     The relationship, not just the values, is what carries over: `alt`
+     always recedes behind `surface`, in either theme. */
+  --color-surface: #ffffff; /* section grounds and cards */
+  --color-surface-alt: #eeeeee; /* recessed band behind them */
+  --color-content: #2f2f2f; /* primary ink */
+  --color-invert: #2f2f2f; /* solid contrast chip (dark pill on light) */
+  --color-invert-fg: #ffffff; /* type on that chip */
+
   /* Fluid, cinematic type scale */
   --text-eyebrow: 0.72rem;
   --text-display: clamp(2.75rem, 8.5vw, 8.5rem);
   --text-h2: clamp(2rem, 4.6vw, 4rem);
   --text-stat: clamp(2.4rem, 4.4vw, 4rem);
+
+  /* ── Motion ───────────────────────────────────────────────────────
+     One decelerating curve carries nearly every entrance on the site —
+     hero words, page arrivals, panels expanding. Naming it is what stops
+     the next component from inventing a fourth cubic-bezier that is
+     almost but not quite the same.
+
+     `exit` accelerates instead: something leaving should look taken
+     away, not eased out. `swap` is symmetric, for a thing replacing
+     another thing in place rather than arriving or departing. */
+  --ease-brand: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ease-swap: cubic-bezier(0.76, 0, 0.24, 1);
+
+  /* ── Shape ────────────────────────────────────────────────────────
+     Three radii, by the job the corner is doing rather than by size, so
+     a photographic frame and a card can't quietly drift apart.
+
+     `notch` is the odd one: it is the radius of a corner turned inside
+     out, where a bay of page ground meets the edge of a frame. It reads
+     larger than the frame's own radius because a concave curve of equal
+     radius looks tighter than a convex one. */
+  --radius-frame: 32px;
+  --radius-panel: 20px;
+  --radius-notch: 44px;
+
+  /* ── Page gutter ──────────────────────────────────────────────────
+     The distance from the viewport edge to the measure. Two values, not
+     a scale: the narrow one is a phone's thumb margin, the wide one is
+     what the designs draw. Anything between is a section disagreeing
+     with the page. */
+  --spacing-gutter: 1.5rem;
+  --spacing-gutter-lg: 6.25rem;
+}
+
+/* Dark theme. Written against :root.dark rather than .dark so it outweighs the
+   :root block Tailwind emits for @theme regardless of layer order.
+
+   Only role tokens and the hairlines are touched. The pigment names keep their
+   values in both themes, so `text-bone` on a dark band stays legible and
+   `text-white` on the accent button stays white. */
+:root.dark {
+  --color-surface: #1b262c;
+  --color-surface-alt: #131b20;
+  --color-content: #e6edf0;
+  --color-invert: #e6edf0;
+  --color-invert-fg: #162025;
+
+  /* Hairlines flip polarity: a dark rule is invisible on a dark ground. */
+  --color-line: rgba(255, 255, 255, 0.14);
+
+  /* The pale blue wash behind icon tiles and avatars has to darken with the
+     surface or it reads as a lit panel floating on an unlit page. */
+  --color-prime-soft: #14313f;
+
+  /* CG Blue is specified against white and only reaches 2.9:1 on this ground —
+     under WCAG AA, and it carries real text: eyebrows, property names, stat
+     labels, every "Read More". Dark mode lifts it to the tint the palette
+     already keeps for secondary use, which measures 4.9:1 here. The brand blue
+     is unchanged in light mode, where it was designed to sit. */
+  --color-accent: #3e9bc7;
+  --color-prime: #3e9bc7;
+  --color-prime-deep: #62b4dc;
 }
 
 html {
@@ -162,6 +246,34 @@ body {
   font-feature-settings: "ss01", "cv01";
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /* clip, not hidden: hidden would make the body a scroll container and break
+     position:sticky and ScrollTrigger's pinning. clip just cuts sideways
+     overflow without spawning a horizontal track. */
+  overflow-x: clip;
+}
+
+/* ── Scrollbars ──────────────────────────────────────────────────
+   Hidden site-wide, on both axes and in nested scrollers alike — the
+   layout is full-bleed and Lenis drives the scroll, so the native
+   chrome only interrupts it. Chrome/Safari need the pseudo-element
+   zeroed; Firefox and legacy Edge take a property. Scrolling itself
+   is untouched — wheel, touch, keyboard and programmatic scrolling
+   all still work, the tracks are simply not painted. */
+html {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* legacy Edge */
+}
+
+*,
+*::before,
+*::after {
+  scrollbar-width: none;
+}
+
+*::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 /* Rubik display — primary brand font for headings */
@@ -295,10 +407,89 @@ body {
   }
 }
 
+/* ── Hero reveal ────────────────────────────────────────────────
+   CSS rather than JS on purpose. A masked word is clipped by its own
+   box, so its resting position has to be *off* that box — which means a
+   reveal that never runs leaves the headline permanently invisible. A
+   keyframe cannot fail to run: with no animation support, or with
+   reduced motion below, the element simply sits at its natural place
+   and the type is just there.
+
+   `both` fill holds the off-screen frame through the stagger delay and
+   pins the final one afterwards, so nothing snaps at either end. */
+@keyframes word-rise {
+  from {
+    transform: translateY(112%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+.word-rise {
+  animation: word-rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Uncovers top-to-bottom, against the copy rising on the other side. */
+@keyframes panel-wipe {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+.panel-wipe {
+  animation: panel-wipe 1.15s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+}
+
 /* Utility: letterbox reveal wrapper masks content that slides up into frame */
 .reveal-mask {
   overflow: hidden;
   display: block;
+}
+
+/* ── Theme change ───────────────────────────────────────────────
+   The incoming theme is clipped to a circle that grows from the toggle
+   itself, so the new palette looks like it is being poured out of the
+   button rather than the page blinking.
+
+   Both snapshots are painted, not cross-faded: the default view-transition
+   animation fades the old one out, which would show the page washing to
+   grey through the middle of the wipe. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-old(root) {
+  z-index: 1;
+}
+::view-transition-new(root) {
+  z-index: 2;
+  animation: theme-reveal 0.62s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes theme-reveal {
+  from {
+    clip-path: circle(0% at var(--theme-x, 50%) var(--theme-y, 0%));
+  }
+  to {
+    clip-path: circle(150% at var(--theme-x, 50%) var(--theme-y, 0%));
+  }
+}
+
+/* Fallback for engines without the View Transitions API (Safari, Firefox):
+   the class is held for the length of the fade and then dropped, so these
+   transitions never apply to ordinary hover or scroll work. */
+.theme-fade,
+.theme-fade *,
+.theme-fade *::before,
+.theme-fade *::after {
+  transition:
+    background-color 0.42s ease,
+    border-color 0.42s ease,
+    color 0.42s ease,
+    fill 0.42s ease !important;
 }
 
 /* Lenis */
@@ -309,7 +500,15 @@ body {
 /* Respect users who prefer less motion */
 @media (prefers-reduced-motion: reduce) {
   .hero-slide-active,
-  .ticker-track {
+  .ticker-track,
+  /* Dropping the animation leaves both at their natural state — words in
+     place, panel unclipped — so the hero simply arrives already revealed. */
+  .word-rise,
+  .panel-wipe {
+    animation: none;
+  }
+  /* Swap the palette outright rather than wiping a circle across the screen. */
+  ::view-transition-new(root) {
     animation: none;
   }
   .film-grain {

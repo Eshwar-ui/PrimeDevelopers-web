@@ -6,6 +6,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { SCENERY_HEX, unitStatusMeta } from '../../lib/unitStatus'
 import { groupBySharedVertices, meshUnitLabel, unitsByMeshName } from '../../lib/units'
 import { prefersReducedMotion } from '../../lib/webgl'
+import { useTheme } from '../../context/ThemeContext'
 
 // This whole module lands in its own lazy chunk — three + fiber + drei is
 // ~600KB gzipped and must never touch the main bundle. Nothing here is
@@ -714,7 +715,28 @@ function CompassNeedle({ dialRef, bounds }) {
  * box that frames the camera — an apron wider than the site would otherwise
  * pull the default view back and shrink the buildings inside it.
  */
-function SiteGround({ bounds }) {
+/**
+ * The apron the building stands on, and the survey grid ruled across it.
+ *
+ * Both colours are passed in rather than fixed, because the canvas is
+ * transparent: whatever these are not covering is the container's own ground.
+ * A slab dark enough to read as a site plan against the old dark page is a
+ * black rectangle floating in the light one, which reads as a broken image
+ * rather than as a drawing.
+ *
+ * The grid keeps roughly the same contrast against the apron in both, so the
+ * plan reads as the same drawing rendered on different paper.
+ */
+const APRON = {
+  dark: { slab: '#232a30', grid: '#4a555e' },
+  // Light neutral paper with a considerably darker rule — the convention a
+  // printed site plan already follows, and the reason this is not simply the
+  // dark pair inverted.
+  light: { slab: '#e4e7e9', grid: '#8a949c' },
+}
+
+function SiteGround({ bounds, dark = true }) {
+  const apron = dark ? APRON.dark : APRON.light
   const site = useMemo(() => {
     // The square-to-the-building box, not the screen-aligned one — see the
     // note where it is measured.
@@ -799,10 +821,10 @@ function SiteGround({ bounds }) {
     <group rotation-y={bounds?.turn ?? 0}>
       <mesh position={site.center}>
         <boxGeometry args={[site.width, site.thickness, site.depth]} />
-        <meshStandardMaterial color="#232a30" roughness={1} metalness={0} />
+        <meshStandardMaterial color={apron.slab} roughness={1} metalness={0} />
       </mesh>
       <lineSegments geometry={grid} position={[site.center[0], site.gridY, site.center[2]]}>
-        <lineBasicMaterial color="#4a555e" transparent opacity={0.35} depthWrite={false} />
+        <lineBasicMaterial color={apron.grid} transparent opacity={0.35} depthWrite={false} />
       </lineSegments>
     </group>
   )
@@ -1070,8 +1092,14 @@ export default function ModelViewer({
   orientation = null,
   defaultMode = '2d',
   height = 'h-[420px] md:h-[560px]',
+  // Forces the site apron's palette instead of following the visitor's theme.
+  // The admin passes `true`: its panels are dark whatever the site theme is, so
+  // an editor in light mode would otherwise get a pale plan in a dark chrome.
+  darkGround,
 }) {
   const containerRef = useRef(null)
+  const { isDark } = useTheme()
+  const groundIsDark = darkGround ?? isDark
   const [hovered, setHovered] = useState(null)
   const [showLabels, setShowLabels] = useState(true)
   // Plan view first. A leasing map answers "which unit, and is it free" before
@@ -1206,7 +1234,7 @@ export default function ModelViewer({
       // z-index:auto, so descendants compete with the whole page. Isolating
       // means nothing inside the viewer can ever paint over the navbar or the
       // mobile nav overlay, whatever z-index a library reaches for.
-      className={`relative isolate overflow-hidden rounded-2xl border border-[var(--color-line-inv)] bg-void ${isFullscreen ? 'h-screen' : height}`}
+      className={`relative isolate overflow-hidden rounded-2xl border border-[var(--color-line)] bg-surface-alt ${isFullscreen ? 'h-screen' : height}`}
     >
       <Canvas
         frameloop={live ? 'always' : 'demand'}
@@ -1220,7 +1248,11 @@ export default function ModelViewer({
         gl={{
           antialias: true,
           powerPreference: 'high-performance',
-          alpha: false,
+          // Transparent, so the panel's ground is the container's `bg-surface-alt`
+          // and follows the theme. Opaque was cheaper, but it clears to black
+          // whatever the CSS says — the reason an earlier attempt to light this
+          // panel by restyling the wrapper had no visible effect at all.
+          alpha: true,
           stencil: false,
           // Only for the admin capture flow — keeping the drawing buffer around
           // costs memory and bandwidth on every frame, so visitors never pay it.
@@ -1249,7 +1281,7 @@ export default function ModelViewer({
         <directionalLight position={[1, 2, 1.4]} intensity={1.5} />
         <directionalLight position={[-1.5, 1, -1]} intensity={0.4} />
 
-        <SiteGround bounds={bounds} />
+        <SiteGround bounds={bounds} dark={groundIsDark} />
 
         <ModelErrorBoundary onError={onError}>
           <Suspense fallback={null}>
@@ -1313,14 +1345,14 @@ export default function ModelViewer({
           there is no hover and the detail panel does this job. */}
       {chip && (
         <div
-          className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-[calc(100%+14px)] rounded-lg border border-[var(--color-line-inv)] bg-void/95 px-3 py-2 shadow-xl"
+          className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-[calc(100%+14px)] rounded-lg border border-[var(--color-line)] bg-surface/95 px-3 py-2 shadow-xl"
           style={{ left: chip.left, top: chip.top }}
         >
           <div className="flex items-center gap-2">
             <span aria-hidden className={`size-2 rounded-sm ${unitStatusMeta(chip.unit.status).swatch}`} />
-            <span className="font-display text-sm font-medium text-bone">{chip.unit.label}</span>
+            <span className="font-display text-sm font-medium text-content">{chip.unit.label}</span>
           </div>
-          <div className="mt-0.5 font-body text-[11px] text-bone/55">
+          <div className="mt-0.5 font-body text-[11px] text-content/55">
             {unitStatusMeta(chip.unit.status).label}
             {chip.unit.size ? ` · ${Number(String(chip.unit.size).replace(/[^\d.]/g, '')).toLocaleString()} sq ft` : ''}
           </div>
@@ -1444,8 +1476,8 @@ function ViewerButton({ children, label, onClick, active, hidden }) {
       aria-pressed={active}
       className={`flex size-11 items-center justify-center rounded-lg border text-sm backdrop-blur transition-colors duration-200 ${
         active
-          ? 'border-accent bg-accent/25 text-bone'
-          : 'border-[var(--color-line-inv)] bg-void/70 text-bone/70 hover:border-bone/35 hover:text-bone'
+          ? 'border-accent bg-accent/15 text-accent'
+          : 'border-[var(--color-line)] bg-surface/80 text-content/70 hover:border-content/35 hover:text-content'
       }`}
     >
       {children}

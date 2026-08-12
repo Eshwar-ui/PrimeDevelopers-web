@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useSmoothScroll, lenis } from './hooks/useSmoothScroll'
@@ -7,8 +8,11 @@ import Hero from './components/Hero'
 import Marquee from './components/Marquee'
 import About from './components/About'
 import Properties from './components/Properties'
+import Services from './components/Services'
 import Gallery from './components/Gallery'
 import Testimonials from './components/Testimonials'
+import NewsTeaser from './components/NewsTeaser'
+import CallToAction from './components/CallToAction'
 import Footer from './components/Footer'
 import CinematicLayer from './components/CinematicLayer'
 
@@ -21,6 +25,7 @@ import CinematicLayer from './components/CinematicLayer'
 // in. The secondary public pages follow the same logic: a chunk fetched on
 // navigation costs a fraction of what carrying it on every first paint does.
 const AboutPage = lazy(() => import('./pages/AboutPage'))
+const EnterprisePage = lazy(() => import('./pages/EnterprisePage'))
 const PropertiesPage = lazy(() => import('./pages/PropertiesPage'))
 const PropertyDetailPage = lazy(() => import('./pages/PropertyDetailPage'))
 const ContactPage = lazy(() => import('./pages/ContactPage'))
@@ -46,8 +51,12 @@ import RequireAuth from './admin/RequireAuth'
 // Deliberately not a spinner. A chunk on a warm connection lands in tens of
 // milliseconds, and a spinner that appears and vanishes that fast reads as a
 // flicker; a matching ground reads as the page still arriving.
+//
+// `bg-surface` rather than a fixed colour: the ground it has to match is now
+// whichever theme the visitor is in, and a hardcoded dark panel would flash
+// black across a light page.
 function RouteFallback() {
-  return <div className="min-h-[100dvh] bg-void" />
+  return <div className="min-h-[100dvh] bg-surface" />
 }
 
 function Home() {
@@ -57,21 +66,35 @@ function Home() {
       <Marquee />
       <About />
       <Properties />
+      <Services />
       <Gallery />
       <Testimonials />
+      <NewsTeaser />
+      <CallToAction />
     </>
   )
 }
 
-// On every route change: jump to top and let ScrollTrigger recompute positions
-// once the new page has laid out.
-function ScrollManager() {
-  const { pathname } = useLocation()
+// The route transition. Asymmetric on purpose: the outgoing page leaves quickly
+// on an accelerating curve, as if it were being taken away, and the incoming one
+// arrives slower on the decelerating curve the rest of the site eases with.
+// Matching the two makes a swap feel like a cross-fade; splitting them gives it
+// a direction.
+const PAGE = {
+  initial: { opacity: 0, y: 14 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } },
+  exit: { opacity: 0, y: -10, transition: { duration: 0.3, ease: [0.4, 0, 1, 1] } },
+}
+
+// Sends the document back to the top as the new page mounts. Mounted inside the
+// keyed subtree rather than driven by a callback on the transition: under
+// `mode="wait"` the new page only mounts once the old one has gone, so this
+// already runs during the empty frame — no callback needed to find that moment,
+// and nothing to go wrong if one never fires.
+function ScrollTop() {
   useEffect(() => {
     lenis.current?.scrollTo(0, { immediate: true })
-    const id = requestAnimationFrame(() => ScrollTrigger.refresh())
-    return () => cancelAnimationFrame(id)
-  }, [pathname])
+  }, [])
   return null
 }
 
@@ -89,32 +112,71 @@ function RedirectId({ to }) {
 
 function PublicSite() {
   useSmoothScroll() // Lenis + GSAP ScrollTrigger, mounted once at the root
+  const location = useLocation()
+  const reduced = useReducedMotion()
+
+  // `mode="wait"` is what makes this work rather than just decorate. It holds
+  // the incoming page until the outgoing one is fully gone, which buys a moment
+  // with nothing on screen — the only moment when the jump back to the top of
+  // the document can happen unseen. Resetting the scroll on the pathname change
+  // instead, as this used to, snaps the outgoing page upward while the visitor
+  // is still looking at it.
+  //
+  // The cost is that mounting the new route waits on an animation. That is only
+  // safe because the wait is bounded by a duration rather than by anything that
+  // can fail to arrive — and because a tab that isn't rendering isn't being
+  // looked at, so the pause resolves the moment it is.
+
+  // Refreshed once the new page has both mounted and settled: ScrollTrigger
+  // measures the document, and measuring it mid-transition records positions
+  // that are about to change.
+  const onArrived = () => ScrollTrigger.refresh()
 
   return (
     <>
-      <ScrollManager />
       <CinematicLayer />
       <Navbar />
-      <main>
-        {/* Inside <main>, so the navbar and footer stay painted while a route
-            chunk is in flight rather than the whole page blanking. */}
-        <Suspense fallback={<RouteFallback />}>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/about" element={<AboutPage />} />
-            <Route path="/properties" element={<PropertiesPage />} />
-            <Route path="/properties/:slug" element={<PropertyDetailPage />} />
-            <Route path="/news" element={<NewsPage />} />
-            <Route path="/news/:slug" element={<NewsPostPage />} />
-            <Route path="/contact" element={<ContactPage />} />
+      {/* Holds the page open through the frame where neither route is mounted.
+          Without it the footer flies up to meet the header and drops back. */}
+      <main className="min-h-dvh">
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={location.pathname}
+            initial={reduced ? false : PAGE.initial}
+            animate={PAGE.animate}
+            exit={reduced ? { opacity: 0 } : PAGE.exit}
+            onAnimationComplete={onArrived}
+          >
+            <ScrollTop />
+            {/* Inside the animated subtree, not around it: a boundary above
+                AnimatePresence would unmount the whole transition the moment a
+                route chunk suspended, so the outgoing page would vanish
+                instead of leaving. Here the fallback simply takes the incoming
+                page's place until its chunk lands, and the exit still plays. */}
+            <Suspense fallback={<RouteFallback />}>
+              {/* The location is passed explicitly so the outgoing subtree keeps
+                  rendering the route it was mounted with. Left to read the router
+                  itself, it would swap its own content to the new page and then
+                  animate that out. */}
+              <Routes location={location}>
+                <Route path="/" element={<Home />} />
+                <Route path="/about" element={<AboutPage />} />
+                <Route path="/enterprise" element={<EnterprisePage />} />
+                <Route path="/properties" element={<PropertiesPage />} />
+                <Route path="/properties/:slug" element={<PropertyDetailPage />} />
+                <Route path="/news" element={<NewsPage />} />
+                <Route path="/news/:slug" element={<NewsPostPage />} />
+                <Route path="/contact" element={<ContactPage />} />
 
-            {/* Legacy routes — pre-rename links keep working */}
-            <Route path="/projects" element={<Navigate to="/properties" replace />} />
-            <Route path="/projects/:slug" element={<RedirectSlug to="/properties" />} />
-            <Route path="/blog" element={<Navigate to="/news" replace />} />
-            <Route path="/blog/:slug" element={<RedirectSlug to="/news" />} />
-          </Routes>
-        </Suspense>
+                {/* Legacy routes — pre-rename links keep working */}
+                <Route path="/projects" element={<Navigate to="/properties" replace />} />
+                <Route path="/projects/:slug" element={<RedirectSlug to="/properties" />} />
+                <Route path="/blog" element={<Navigate to="/news" replace />} />
+                <Route path="/blog/:slug" element={<RedirectSlug to="/news" />} />
+              </Routes>
+            </Suspense>
+          </motion.div>
+        </AnimatePresence>
       </main>
       <Footer />
     </>

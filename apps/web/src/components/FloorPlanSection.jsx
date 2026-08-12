@@ -235,14 +235,14 @@ export default function FloorPlanSection({ building, propertyId }) {
               aria-pressed={isActive}
               onClick={() => setStatusFilter(isActive ? null : status.value)}
               className={`flex min-h-9 items-center gap-2 rounded-full border px-3.5 py-1.5 transition-colors duration-200 disabled:opacity-30 ${
-                isActive ? 'border-accent bg-accent/15' : 'border-[var(--color-line-inv)] hover:border-bone/30'
+                isActive ? 'border-accent bg-accent/15' : 'border-[var(--color-line)] hover:border-content/30'
               }`}
             >
               <span aria-hidden className={`size-2.5 rounded-sm ${status.swatch}`} />
-              <span className="font-body text-[11px] font-bold uppercase tracking-[0.1em] text-bone/60">
+              <span className="font-body text-[11px] font-bold uppercase tracking-[0.1em] text-content/60">
                 {status.label}
               </span>
-              <span className="font-body text-[11px] text-bone/35">{count}</span>
+              <span className="font-body text-[11px] text-content/35">{count}</span>
             </button>
           )
         })}
@@ -250,7 +250,7 @@ export default function FloorPlanSection({ building, propertyId }) {
           <button
             type="button"
             onClick={() => setStatusFilter(null)}
-            className="font-body text-[11px] font-bold uppercase tracking-[0.1em] text-accent-soft hover:text-bone"
+            className="font-body text-[11px] font-bold uppercase tracking-[0.1em] text-accent hover:text-content"
           >
             Clear filter
           </button>
@@ -266,14 +266,14 @@ export default function FloorPlanSection({ building, propertyId }) {
             aria-pressed={compareMode}
             onClick={() => setCompareMode((value) => !value)}
             className={`ml-auto flex min-h-9 items-center gap-2 rounded-full border px-3.5 py-1.5 transition-colors duration-200 ${
-              compareMode ? 'border-accent bg-accent/15' : 'border-[var(--color-line-inv)] hover:border-bone/30'
+              compareMode ? 'border-accent bg-accent/15' : 'border-[var(--color-line)] hover:border-content/30'
             }`}
           >
-            <span className="font-body text-[11px] font-bold uppercase tracking-[0.1em] text-bone/60">
+            <span className="font-body text-[11px] font-bold uppercase tracking-[0.1em] text-content/60">
               Compare
             </span>
             {selection.length > 1 && (
-              <span className="font-body text-[11px] text-accent-soft">{selection.length}</span>
+              <span className="font-body text-[11px] text-accent">{selection.length}</span>
             )}
           </button>
         )}
@@ -283,7 +283,7 @@ export default function FloorPlanSection({ building, propertyId }) {
           reaches the cap too and a tap that silently does nothing reads as a
           broken control rather than as a limit. */}
       {(compareMode || selection.length >= COMPARE_MAX) && (
-        <p className="-mt-4 font-body text-xs text-bone/45">
+        <p className="-mt-4 font-body text-xs text-content/45">
           {selection.length >= COMPARE_MAX
             ? `Comparing ${COMPARE_MAX} units — remove one to add another.`
             : 'Tap units on the plan or in the list to compare them side by side.'}
@@ -379,13 +379,17 @@ export default function FloorPlanSection({ building, propertyId }) {
 }
 
 function ViewerSkeleton({ poster }) {
+  // surface-alt, not surface: the viewport is a recessed well the plan sits in,
+  // and on the light ground a white skeleton is indistinguishable from the
+  // section around it — the panel would appear not to exist until the model
+  // lands. Matches the ground ModelViewer's own container paints.
   return (
-    <div className={`relative overflow-hidden rounded-2xl border border-[var(--color-line-inv)] bg-void ${PLAN_HEIGHT}`}>
+    <div className={`relative overflow-hidden rounded-2xl border border-[var(--color-line)] bg-surface-alt ${PLAN_HEIGHT}`}>
       {poster && <img src={poster} alt="" className="h-full w-full object-cover opacity-25" />}
       <div className="absolute inset-0 flex items-center justify-center">
         {/* "Floor plan", not "3D model": this is what the visitor is about to
             see, and the plan is now what loads. */}
-        <span className="eyebrow text-bone/45">Loading floor plan…</span>
+        <span className="eyebrow text-content/45">Loading floor plan…</span>
       </div>
     </div>
   )

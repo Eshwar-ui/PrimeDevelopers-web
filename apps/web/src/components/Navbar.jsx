@@ -97,9 +97,23 @@ export default function Navbar() {
   // through the nav is observed — reliable under Lenis, unlike scroll events.
   useEffect(() => {
     let observer
-    const build = () => {
-      if (observer) observer.disconnect()
+    // The bands the live observer is watching. Rebuilding is only worth doing
+    // when this set actually changes: the mutation watch below is on the whole
+    // subtree, and plenty of things under <main> add and remove nodes without
+    // touching a band — drei mounts and unmounts an element per 3D unit label
+    // as they declutter, which on a property page is churn on every frame.
+    // Without this guard each of those frames would re-query the document and
+    // construct a fresh IntersectionObserver for the same five sections.
+    let watched = []
+    const same = (next) => next.length === watched.length && next.every((el, i) => el === watched[i])
+
+    // `force` is for the resize path, where the bands are unchanged but the
+    // rootMargin is derived from the viewport height and has to be recomputed.
+    const build = (force = false) => {
       const els = Array.from(document.querySelectorAll('[data-band="light"]'))
+      if (observer && !force && same(els)) return
+      if (observer) observer.disconnect()
+      watched = els
       const seen = new Set()
       observer = new IntersectionObserver(
         (entries) => {
@@ -121,22 +135,42 @@ export default function Navbar() {
 
     build()
 
-    // Rebuilt when <main> swaps its child, not on the pathname alone. The page
-    // transition holds the incoming route back until the outgoing one has
-    // finished leaving, so at the moment the pathname changes there is nothing
-    // mounted to find: the observer would come up watching no bands, never fire,
-    // and leave `overLight` false — bone type and a bone logo on a bone hero,
-    // with only the accent-coloured active link still legible. Watching for the
-    // swap itself is what keeps this independent of how long that takes.
+    // Rebuilt whenever nodes are added or removed anywhere under <main>, not on
+    // the pathname alone. The page transition holds the incoming route back
+    // until the outgoing one has finished leaving, so at the moment the pathname
+    // changes there is nothing mounted to find: the observer would come up
+    // watching no bands, never fire, and leave `overLight` false — bone type and
+    // a bone logo on a bone hero, with only the accent-coloured active link
+    // still legible.
+    //
+    // `subtree` is what makes that hold for the routes that are code-split. Those
+    // mount a Suspense fallback first and swap the real page in *underneath* the
+    // transition wrapper, which is not a child of <main> — so watching only
+    // <main>'s own children saw the fallback and never the page. It presented as
+    // the failure above on every lazy route while the eagerly-imported home page
+    // stayed fine, and intermittently even there, since a warm module cache can
+    // resolve the import before the callback is delivered.
+    //
+    // Coalesced to one rebuild per frame: a subtree watch on an animated page
+    // fires in bursts, and build() re-queries and reconstructs an observer each
+    // time. Only insertions and removals are watched, so style and attribute
+    // churn from GSAP costs nothing here.
     const host = document.querySelector('main')
-    const swaps = host && new MutationObserver(build)
-    swaps?.observe(host, { childList: true })
+    let queued = 0
+    const rebuild = () => {
+      cancelAnimationFrame(queued)
+      queued = requestAnimationFrame(build)
+    }
+    const swaps = host && new MutationObserver(rebuild)
+    swaps?.observe(host, { childList: true, subtree: true })
 
-    window.addEventListener('resize', build)
+    const onResize = () => build(true)
+    window.addEventListener('resize', onResize)
     return () => {
+      cancelAnimationFrame(queued)
       if (observer) observer.disconnect()
       swaps?.disconnect()
-      window.removeEventListener('resize', build)
+      window.removeEventListener('resize', onResize)
     }
   }, [pathname])
 

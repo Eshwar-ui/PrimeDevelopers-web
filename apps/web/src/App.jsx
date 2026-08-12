@@ -55,8 +55,12 @@ import RequireAuth from './admin/RequireAuth'
 // `bg-surface` rather than a fixed colour: the ground it has to match is now
 // whichever theme the visitor is in, and a hardcoded dark panel would flash
 // black across a light page.
+//
+// Tagged as a light band like any other section, because for the moment it is
+// on screen it *is* the page. Without it the navbar spends the chunk download
+// dressed for a dark ground it is no longer standing on.
 function RouteFallback() {
-  return <div className="min-h-[100dvh] bg-surface" />
+  return <div data-band="light" className="min-h-[100dvh] bg-surface" />
 }
 
 function Home() {

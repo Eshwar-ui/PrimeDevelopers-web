@@ -1,5 +1,7 @@
 {
   "hosting": {
+    "//site": "Two hosting sites live in this project. Without this key `firebase deploy` picks the one matching the project id (theprime-construction), which is not the canonical site — naming it here is what makes `pnpm run deploy:web` land in the right place.",
+    "site": "theprimedeveloper",
     "public": "apps/web/dist",
     "ignore": [
       "firebase.json",

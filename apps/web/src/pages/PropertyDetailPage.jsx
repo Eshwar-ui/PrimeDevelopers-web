@@ -5,23 +5,27 @@ import CountUp from '../components/CountUp'
 import { rise, stagger, inViewOnce } from '../lib/motion'
 import { useProperty } from '../context/ContentContext'
 import { useSectionNav } from '../hooks/useSectionNav'
-import PillButton from '../components/PillButton'
 import PrimePill from '../components/PrimePill'
 import SocialIcon from '../components/SocialIcon'
 import FloorPlanSection from '../components/FloorPlanSection'
 import MaskedHeading from '../components/MaskedHeading'
 import { invertedCorner } from '../lib/notch'
+import { sized } from '../lib/images'
 import { youtubeEmbedUrl } from '../lib/video'
 
 // Eyebrow section label with the accent dash, matching the site system.
-function SectionTag({ children, tone = 'inv' }) {
+//
+// `inv` means "on one of the two dark bands", not "dark mode" — the light
+// variant reads role tokens and follows the theme, while the dark one is fixed,
+// because the bands it sits on are dark in both themes by design.
+function SectionTag({ children, tone = 'light' }) {
   const inv = tone === 'inv'
   return (
     <div className="flex items-center gap-4">
       <span aria-hidden className={`h-px w-10 shrink-0 ${inv ? 'bg-accent-soft' : 'bg-accent'}`} />
       <span
         className={`font-body text-[13px] font-bold uppercase tracking-[0.28em] ${
-          inv ? 'text-bone/80' : 'text-ink/70'
+          inv ? 'text-bone/80' : 'text-content/70'
         }`}
       >
         {children}
@@ -105,9 +109,17 @@ export default function PropertyDetailPage() {
 
   if (!property) {
     return (
-      <section className="flex min-h-[70vh] flex-col items-center justify-center gap-6 bg-void px-6 text-center">
-        <h1 className="font-display text-3xl font-medium text-bone">Property not found</h1>
-        <Link to="/properties" className="eyebrow text-accent-soft">
+      <section
+        data-band="light"
+        className="flex min-h-[70vh] flex-col items-center justify-center gap-6 bg-surface px-6 text-center"
+      >
+        <h1 className="font-display text-3xl font-bold tracking-[-0.01em] text-content">
+          Property not found
+        </h1>
+        <Link
+          to="/properties"
+          className="font-body text-[14px] uppercase tracking-[0.14em] text-accent transition-colors duration-300 hover:text-prime-deep"
+        >
           ← Back to all properties
         </Link>
       </section>
@@ -224,9 +236,12 @@ export default function PropertyDetailPage() {
         </div>
       )}
 
-      {/* ── Resource links — flyers, listings, floor plan PDFs ─── */}
+      {/* ── Resource links — flyers, listings, floor plan PDFs ───
+          surface-alt, so the tray of links reads as recessed under the hero
+          rather than as a second page starting. It was a dark slab, which
+          immediately after a white hero looked like the site had changed. */}
       {d?.resourceLinks?.length > 0 && (
-        <section className="bg-carbon px-6 py-14 text-bone md:px-[75px] md:py-20">
+        <section data-band="light" className="bg-surface-alt px-6 py-14 md:px-gutter-lg md:py-20">
           <SectionTag>Resources</SectionTag>
           <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {d.resourceLinks.map(
@@ -238,16 +253,22 @@ export default function PropertyDetailPage() {
                     href={link.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="group flex items-center gap-4 rounded-2xl border border-[var(--color-line-inv)] bg-ink p-4 transition-colors hover:border-bone/25"
+                    className="group flex items-center gap-4 rounded-2xl border border-[var(--color-line)] bg-surface p-4 transition-colors duration-300 hover:border-accent"
                   >
                     {link.thumbnail ? (
-                      <img src={link.thumbnail} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" />
+                      <img
+                        src={link.thumbnail}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        className="h-12 w-12 shrink-0 rounded-lg object-cover"
+                      />
                     ) : (
-                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-void">
-                        <span className="text-ember">→</span>
+                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-surface-alt text-accent transition-transform duration-300 group-hover:translate-x-0.5">
+                        →
                       </span>
                     )}
-                    <span className="font-body text-sm font-bold uppercase tracking-[0.1em] text-bone transition-colors group-hover:text-accent-soft">
+                    <span className="font-body text-sm font-bold uppercase tracking-[0.1em] text-content transition-colors duration-300 group-hover:text-accent">
                       {link.label}
                     </span>
                   </a>
@@ -306,8 +327,11 @@ export default function PropertyDetailPage() {
                       key={`${s.label ?? ''}-${i}`}
                       className="flex flex-col gap-1.5 bg-surface px-3 py-6 text-center"
                     >
-                      <span className="numeral text-[1.35rem] text-ember">{s.value}</span>
-                      <span className="font-body text-[11px] font-bold uppercase tracking-[0.16em] text-content/70">
+                      {/* Ink numeral, accent label — the treatment the homepage
+                          stats band uses. Saffron measures about 1.9:1 on this
+                          ground and has been dropped from the light system. */}
+                      <span className="numeral text-[1.35rem] text-content">{s.value}</span>
+                      <span className="font-body text-[11px] font-bold uppercase tracking-[0.16em] text-accent">
                         {s.label}
                       </span>
                     </div>
@@ -374,9 +398,9 @@ export default function PropertyDetailPage() {
                           label beneath from shivering as the digits change. */}
                       <CountUp
                         value={s.value}
-                        className="numeral text-[2.4rem] leading-none text-ember"
+                        className="numeral text-[2.4rem] leading-none text-content"
                       />
-                      <span className="font-body text-[11px] font-bold uppercase tracking-[0.16em] text-content/70">
+                      <span className="font-body text-[11px] font-bold uppercase tracking-[0.16em] text-accent">
                         {s.label}
                       </span>
                     </div>
@@ -509,9 +533,13 @@ export default function PropertyDetailPage() {
         </section>
       )}
 
-      {/* ── Gateway for growth — light intermission ──────────── */}
+      {/* ── Gateway for growth ───────────────────────────────────
+          `bg-bone` / `text-ink` before this: fixed pigments, not role tokens.
+          --color-bone is never overridden, so the section stayed a sheet of
+          pure white with dark type in *both* themes — a blinding slab midway
+          down an otherwise dark page. */}
       {d?.location?.heading && (
-        <section data-band="light" className="bg-bone px-6 py-20 text-ink md:px-[75px] md:py-28">
+        <section data-band="light" className="bg-surface px-6 py-20 md:px-gutter-lg md:py-28">
           <div className="grid gap-12 lg:grid-cols-[1.1fr_1fr] lg:gap-20">
             {/* Image + thumbnails */}
             {gallery.length > 0 && (
@@ -539,12 +567,12 @@ export default function PropertyDetailPage() {
             )}
 
             <div className="flex flex-col justify-center">
-              <SectionTag tone="ink">{d.location.eyebrow}</SectionTag>
-              <h2 className="mt-6 font-display text-h2 font-light leading-[1.05] tracking-[-0.02em] text-ink">
+              <SectionTag>{d.location.eyebrow}</SectionTag>
+              <h2 className="mt-6 font-display text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] text-content md:text-[3rem]">
                 {d.location.heading}
               </h2>
-              <p className="mt-3 font-display text-lg font-medium text-accent">{d.location.sub}</p>
-              <p className="mt-6 max-w-[58ch] font-body text-base leading-relaxed text-muted">
+              <p className="mt-3 font-display text-lg font-bold text-accent">{d.location.sub}</p>
+              <p className="mt-6 max-w-[58ch] font-body text-[16px] leading-[1.7] text-content/70">
                 {d.location.body}
               </p>
             </div>
@@ -553,19 +581,25 @@ export default function PropertyDetailPage() {
       )}
 
       {/* ── Established sites gallery — light intermission ────── */}
+              /* No top padding: this continues the section above on the same ground
+            rather than starting a new one. */
       {d?.establishedSites?.heading && gallery.length > 0 && (
-        <section data-band="light" className="bg-bone px-6 pb-20 text-ink md:px-[75px] md:pb-28">
-          <SectionTag tone="ink">Established Sites</SectionTag>
-          <h2 className="mt-6 max-w-[24ch] font-display text-h2 font-light leading-[1.05] tracking-[-0.02em] text-ink">
+        <section data-band="light" className="bg-surface px-6 pb-20 md:px-gutter-lg md:pb-28">
+          <SectionTag>Established Sites</SectionTag>
+          <h2 className="mt-6 max-w-[24ch] font-display text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] text-content md:text-[3rem]">
             {d.establishedSites.heading}
           </h2>
           <div className="mt-12 grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-5">
             {gallery.slice(0, 4).map((src, i) => (
-              <div key={i} className="group overflow-hidden rounded-2xl bg-bone-deep">
+              <div key={i} className="group overflow-hidden rounded-2xl bg-surface-alt">
                 <img
-                  src={src}
+                  src={sized(src, 'card')}
                   alt=""
-                  className="h-48 w-full object-cover grayscale transition-all duration-700 ease-out group-hover:scale-[1.04] group-hover:grayscale-0 md:h-56"
+                  loading="lazy"
+                  decoding="async"
+                  // Full colour, scale-only hover — the grayscale-to-colour
+                  // reveal is gone site-wide in the redesign.
+                  className="h-48 w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04] md:h-56"
                 />
               </div>
             ))}
@@ -574,15 +608,26 @@ export default function PropertyDetailPage() {
       )}
 
       {/* ── Ext. Facade photo strip ──────────────────────────── */}
+              /* Dark on purpose, and one of only two bands on this page that are.
+            The elevation photographs are the thing being sold and they carry
+            far more depth against a near-black ground than against paper — the
+            same reason a gallery paints its walls dark behind bright work.
+            Deliberately carries no data-band, so the navbar goes light over it. */
       {d?.extFacade?.length > 0 && (
-        <section className="bg-void px-6 py-20 text-bone md:px-[75px] md:py-28">
-          <SectionTag>Ext. Facade</SectionTag>
+        <section className="bg-void px-6 py-20 text-bone md:px-gutter-lg md:py-28">
+          <SectionTag tone="inv">Ext. Facade</SectionTag>
           <div className="mt-10 grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-5">
             {d.extFacade.map(
               (src, i) =>
                 src && (
-                  <div key={i} className="overflow-hidden rounded-2xl bg-carbon">
-                    <img src={src} alt="" className="h-48 w-full object-cover md:h-56" />
+                  <div key={i} className="group overflow-hidden rounded-2xl bg-carbon">
+                    <img
+                      src={sized(src, 'card')}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                      className="h-48 w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04] md:h-64"
+                    />
                   </div>
                 )
             )}
@@ -592,13 +637,15 @@ export default function PropertyDetailPage() {
 
       {/* ── Neighborhoods + map ──────────────────────────────── */}
       {d?.neighborhoods?.items?.length > 0 && (
-        <section className="bg-ink px-6 py-20 text-bone md:px-[75px] md:py-28">
+        <section data-band="light" className="bg-surface-alt px-6 py-20 md:px-gutter-lg md:py-28">
           <SectionTag>Head by Areas</SectionTag>
-          <h2 className="mt-6 font-display text-h2 font-light tracking-[-0.02em]">Neighborhoods</h2>
+          <h2 className="mt-6 font-display text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] text-content md:text-[3rem]">
+            Neighborhoods
+          </h2>
 
           <div className="mt-12 grid gap-10 lg:grid-cols-[1fr_1.2fr] lg:gap-16">
             {/* Accordion */}
-            <div className="divide-y divide-[var(--color-line-inv)] border-y border-[var(--color-line-inv)]">
+            <div className="divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]">
               {d.neighborhoods.items.map((n, i) => {
                 const open = i === openArea
                 return (
@@ -609,13 +656,19 @@ export default function PropertyDetailPage() {
                     className="flex w-full flex-col items-start gap-2 py-5 text-left"
                   >
                     <span className="flex w-full items-center justify-between gap-4">
-                      <span className="font-display text-lg font-medium text-bone">{n.name}</span>
-                      <span className={`text-ember transition-transform ${open ? 'rotate-45' : ''}`}>
+                      <span className="font-display text-lg font-bold text-content">{n.name}</span>
+                      {/* accent, not the saffron this was: ember is gone from
+                          the light system, and it is the only affordance
+                          telling you the row opens. */}
+                      <span
+                        aria-hidden
+                        className={`text-accent transition-transform duration-300 ${open ? 'rotate-45' : ''}`}
+                      >
                         +
                       </span>
                     </span>
                     {open && n.note && (
-                      <span className="max-w-[46ch] font-body text-sm leading-relaxed text-bone/55">
+                      <span className="max-w-[46ch] font-body text-[15px] leading-[1.7] text-content/70">
                         {n.note}
                       </span>
                     )}
@@ -626,11 +679,17 @@ export default function PropertyDetailPage() {
 
             {/* Map */}
             {d.neighborhoods.mapQuery && (
-              <div className="h-[300px] overflow-hidden rounded-2xl border border-[var(--color-line-inv)] md:h-[380px]">
+              <div className="h-[300px] overflow-hidden rounded-2xl border border-[var(--color-line)] md:h-[380px]">
                 <iframe
                   title="Location map"
                   src={`https://www.google.com/maps?q=${encodeURIComponent(d.neighborhoods.mapQuery)}&output=embed`}
-                  className="h-full w-full grayscale invert-[0.92]"
+                  // Google serves a light map and there is no way to ask it for
+                  // a dark one, so the inversion is how this used to match a
+                  // dark section. Desaturated only on the light ground, where
+                  // the map is already the right value, and inverted just in
+                  // dark mode — a white rectangle there would be the brightest
+                  // thing on the page.
+                  className="h-full w-full grayscale dark:invert-[0.92]"
                   loading="lazy"
                   referrerPolicy="no-referrer-when-downgrade"
                 />
@@ -642,16 +701,18 @@ export default function PropertyDetailPage() {
 
       {/* ── Videos ───────────────────────────────────────────── */}
       {d?.videos?.length > 0 && (
-        <section className="bg-void px-6 py-20 text-bone md:px-[75px] md:py-28">
+        <section data-band="light" className="bg-surface px-6 py-20 md:px-gutter-lg md:py-28">
           <SectionTag>YouTube</SectionTag>
-          <h2 className="mt-6 font-display text-h2 font-light tracking-[-0.02em]">Videos</h2>
+          <h2 className="mt-6 font-display text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] text-content md:text-[3rem]">
+            Videos
+          </h2>
           <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2">
             {d.videos.map(
               (v, i) =>
                 v.url && (
                   <div
                     key={i}
-                    className="relative aspect-video overflow-hidden rounded-2xl border border-[var(--color-line-inv)] bg-ink"
+                    className="relative aspect-video overflow-hidden rounded-2xl border border-[var(--color-line)] bg-surface-alt"
                   >
                     <iframe
                       title={`Property video ${i + 1}`}
@@ -669,26 +730,54 @@ export default function PropertyDetailPage() {
       )}
 
       {/* ── CTA ──────────────────────────────────────────────── */}
-      <section className="bg-void px-6 pb-20 md:px-[75px] md:pb-28">
-        <div className="flex flex-col items-start gap-8 rounded-3xl border border-[var(--color-line-inv)] bg-carbon p-10 text-bone md:flex-row md:items-center md:justify-between md:p-14">
+      {/* ── Closing anchor ───────────────────────────────────────
+          The band itself, not a card sitting on one. This was a dark panel
+          inset on a ground of almost the same value, separated by a hairline —
+          which read as a leftover component rather than the end of the page.
+          Full-bleed, it closes the page the way the About page's final band
+          does, and it is the second and last of the two dark anchors.
+
+          No data-band, so the navbar keeps its light chrome over it. */}
+      <section className="relative overflow-hidden bg-void px-6 py-24 text-bone md:px-gutter-lg md:py-32">
+        {/* A single low breath of CG Blue behind the corner the eye leaves
+            from. Atmosphere rather than decoration: on a flat near-black this
+            wide it is the difference between a closing statement and a slab. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              'radial-gradient(60% 70% at 100% 100%, rgba(0,115,164,0.22) 0%, rgba(0,115,164,0) 70%)',
+          }}
+        />
+
+        <div className="relative flex flex-col items-start gap-10 md:flex-row md:items-end md:justify-between">
           <div>
-            <h3 className="font-display text-3xl font-medium leading-[1.05] tracking-[-0.01em] md:text-4xl">
+            <SectionTag tone="inv">Enquire</SectionTag>
+            <h2 className="mt-6 max-w-[20ch] font-display text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] md:text-[3rem]">
               Interested in {property.name}?
-            </h3>
-            <p className="mt-3 font-body text-base text-bone/60">
-              Talk to our team about availability, pricing, and tours. ({soldPct}% currently reserved.)
+            </h2>
+            <p className="mt-5 max-w-[52ch] font-body text-[16px] leading-[1.7] text-bone/70">
+              Talk to our team about availability, pricing, and tours. ({soldPct}% currently
+              reserved.)
             </p>
           </div>
-          <PillButton
+
+          {/* PrimePill rather than the accent PillButton: this is the site's
+              primary call to action and the one on the page that should look
+              like it. Its solid variant is built from fixed pigments — the
+              gradient and a white disc — so it is legible on this band in
+              either theme, where anything keyed to --color-accent would shift
+              underneath it. */}
+          <PrimePill
             href="/contact"
-            variant="accent"
             onClick={(e) => {
               e.preventDefault()
               go('/contact')
             }}
           >
             Enquire now
-          </PillButton>
+          </PrimePill>
         </div>
       </section>
     </div>

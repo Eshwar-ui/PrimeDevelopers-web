@@ -75,10 +75,20 @@ services:
         value: 15m
       - key: JWT_REFRESH_EXPIRY
         value: 7d
+      # The canonical site. Both hosting sites live in the same Firebase
+      # project; theprimedeveloper is the one that carries the brand name and
+      # the one deploys now go to.
       - key: FRONTEND_URL
-        value: https://theprime-construction.web.app
-      # Comma-separated. Both Firebase default domains are served, and a
+        value: https://theprimedeveloper.web.app
+      # Comma-separated. Firebase serves each site on two default domains and a
       # request from the one that isn't listed fails CORS with a message that
-      # points at the browser rather than at this setting — so list both.
+      # points at the browser rather than at this setting — so list both of
+      # each.
+      #
+      # theprime-construction is still here on purpose: it is no longer
+      # deployed to, but it keeps serving its last build until the site is
+      # deleted, and dropping it from this list would break that copy
+      # immediately rather than letting it retire quietly. Remove the second
+      # pair once the site is gone.
       - key: CORS_ORIGINS
-        value: https://theprime-construction.web.app,https://theprime-construction.firebaseapp.com
+        value: https://theprimedeveloper.web.app,https://theprimedeveloper.firebaseapp.com,https://theprime-construction.web.app,https://theprime-construction.firebaseapp.com

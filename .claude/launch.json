@@ -7,6 +7,13 @@
       "runtimeArgs": ["--filter", "@prime-developers/web", "dev"],
       "port": 5173,
       "autoPort": true
+    },
+    {
+      "name": "prime-dev-npm",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "apps/web"],
+      "port": 5173,
+      "autoPort": true
     }
   ]
 }

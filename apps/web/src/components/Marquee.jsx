@@ -8,7 +8,7 @@ import { useSection } from '../context/ContentContext'
 // shifts it left by exactly one set width (-50%) and repeats — no seam. A
 // Parallax wrapper adds a subtle vertical drift on scroll for depth.
 export default function Marquee() {
-  const { eyebrow, logos } = useSection('marquee')
+  const { logos } = useSection('marquee')
   const track = useRef(null)
 
   useGSAP(() => {
@@ -23,10 +23,16 @@ export default function Marquee() {
   if (logos.length === 0) return null
 
   return (
-    <section className="relative w-full overflow-x-clip border-y border-[var(--color-line)] bg-bone py-14">
-      <p className="eyebrow mb-9 bg-gradient-to-r from-accent via-accent-soft to-ember bg-clip-text px-6 text-center text-transparent md:px-8">
-        {eyebrow}
-      </p>
+    // No top hairline: the hero above is white too, so a rule there reads as a
+    // stroke hung off the hero's bottom rather than a join between sections.
+    //
+    // data-band="light" is not decoration: the fixed header picks its chrome by
+    // observing these, and without it this white strip was read as dark, so
+    // scrolling through the logos dropped a charcoal scrim over them.
+    <section
+      data-band="light"
+      className="relative w-full overflow-x-clip border-b border-[var(--color-line)] bg-surface py-14"
+    >
       <Parallax speed={0.15}>
         <div ref={track} className="flex w-max items-center gap-24 pr-24">
           {[...logos, ...logos].map((logo, i) => (
@@ -41,8 +47,8 @@ export default function Marquee() {
       </Parallax>
 
       {/* edge fades to sell the infinite scroll */}
-      <div className="pointer-events-none absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-bone to-transparent md:w-40" />
-      <div className="pointer-events-none absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-bone to-transparent md:w-40" />
+      <div className="pointer-events-none absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-surface to-transparent md:w-40" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-surface to-transparent md:w-40" />
     </section>
   )
 }

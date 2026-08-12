@@ -14,7 +14,7 @@ const STATUS_COPY = {
 export default function UnitDetailCard({ unit, onEnquire }) {
   if (!unit) {
     return (
-      <p className="font-body text-sm text-bone/40">
+      <p className="font-body text-sm text-content/45">
         Select a unit to see its details.
       </p>
     )
@@ -35,16 +35,16 @@ export default function UnitDetailCard({ unit, onEnquire }) {
   ].filter((row) => row && row[1])
 
   return (
-    <div className="rounded-2xl border border-[var(--color-line-inv)] bg-void p-6">
+    <div className="rounded-2xl border border-[var(--color-line)] bg-surface p-6">
       <div className="flex flex-wrap items-center gap-3">
         <span className={`rounded-full px-3 py-1 font-body text-[11px] font-bold uppercase tracking-[0.1em] ${meta.chip}`}>
           {meta.label}
         </span>
-        <span className="font-display text-lg font-medium text-bone">{unit.label || 'Unit'}</span>
-        {area && <span className="font-body text-sm text-bone/45">{area}</span>}
+        <span className="font-display text-lg font-medium text-content">{unit.label || 'Unit'}</span>
+        {area && <span className="font-body text-sm text-content/50">{area}</span>}
       </div>
 
-      <p className="mt-3 font-body text-sm leading-relaxed text-bone/60">
+      <p className="mt-3 font-body text-sm leading-relaxed text-content/60">
         {unit.description ||
           (unit.tenant
             ? unit.status === 'leased'
@@ -57,8 +57,8 @@ export default function UnitDetailCard({ unit, onEnquire }) {
         <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
           {specs.map(([term, value]) => (
             <div key={term} className="flex flex-col gap-1">
-              <dt className="eyebrow text-bone/40">{term}</dt>
-              <dd className="font-display text-base font-medium text-bone">{value}</dd>
+              <dt className="eyebrow text-content/45">{term}</dt>
+              <dd className="font-display text-base font-medium text-content">{value}</dd>
             </div>
           ))}
         </dl>

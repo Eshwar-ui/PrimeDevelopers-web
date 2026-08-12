@@ -1,66 +1,145 @@
-import { useRef, useState } from 'react'
+import { useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
-import ArrowRight from './ArrowRight'
-import SectionHeader from './SectionHeader'
 import { useSectionNav } from '../hooks/useSectionNav'
 import { useSection, useProperties } from '../context/ContentContext'
 import { renderEmphasis } from '../lib/emphasis'
 
-const TEASER_COUNT = 7
+gsap.registerPlugin(ScrollTrigger)
+
+// The cards are tall, so the teaser stays short — a homepage section that runs
+// past three of these stops reading as a teaser and starts being the index.
+const TEASER_COUNT = 3
+
+// Spec-row glyphs. The stats behind them are free text an admin typed, so the
+// icon is chosen by what the label says and falls back to a neutral mark —
+// a wrong icon reads as a data error, a neutral one reads as a bullet.
+const SPEC_ICONS = [
+  [/\b(sf|sft|sq|m²|m2|size|area|acre)\b/i, 'M3 8V3h5M21 8V3h-5M3 16v5h5M21 16v5h-5'],
+  [/\b(floor|storey|story|level)\b/i, 'M12 3 2 8l10 5 10-5-10-5ZM2 14l10 5 10-5'],
+  [/\b(bed|bedroom)\b/i, 'M2 18v-6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v6M2 18v2M22 18v2M6 10V7h12v3'],
+  [/\b(bath|shower)\b/i, 'M4 12h16v3a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4v-3ZM7 12V6a2 2 0 0 1 4 0'],
+  [/\b(unit|suite)\b/i, 'M4 21V7l8-4 8 4v14M9 21v-5h6v5'],
+]
+const FALLBACK_ICON = 'M12 4l8 8-8 8-8-8 8-8Z'
+
+function SpecIcon({ label }) {
+  const match = SPEC_ICONS.find(([test]) => test.test(label ?? ''))
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-4.5 shrink-0 text-content/45"
+    >
+      <path d={match ? match[1] : FALLBACK_ICON} />
+    </svg>
+  )
+}
+
+function DownloadIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-4 shrink-0"
+    >
+      <path d="M12 4v12m0 0 4.5-4.5M12 16l-4.5-4.5M4 20h16" />
+    </svg>
+  )
+}
+
+/**
+ * The three figures a listing carries — total, sold, available — are not three
+ * facts. Across every property in the CMS `sold + available === total` exactly,
+ * so printing them as a stack of equal-weight numerals states the same thing
+ * three times and leaves the reader to do the subtraction that matters.
+ *
+ * This leads with the only figure a prospect is actually shopping for, and
+ * spends the rest of the space showing how much of the development is already
+ * gone — which is the persuasive part, and is invisible in a list.
+ */
+function AvailabilityMeter({ total, sold, available }) {
+  if (!total) return null
+
+  // Derived rather than trusted. The two are edited by hand in the admin, so
+  // they can disagree with the total; the bar is drawn against whichever
+  // denominator keeps it inside its track.
+  const denominator = Math.max(total, sold + available)
+  const soldPct = denominator > 0 ? Math.round((sold / denominator) * 100) : 0
+  const soldOut = available === 0
+
+  return (
+    <div className="shrink-0 rounded-2xl border border-line bg-surface-alt p-5 md:w-52 md:self-center">
+      <p className="eyebrow text-content/40">Availability</p>
+
+      <div className="mt-3 flex items-baseline gap-2">
+        {soldOut ? (
+          <span className="font-display text-[1.6rem] font-bold leading-none text-content/70">
+            Fully sold
+          </span>
+        ) : (
+          <>
+            <span className="numeral text-[2.6rem] leading-none text-accent">{available}</span>
+            <span className="font-body text-[13px] text-content/50">
+              of {total} available
+            </span>
+          </>
+        )}
+      </div>
+
+      {/* role="img" rather than a progressbar: this reports a completed
+          proportion, not a task in flight, and the label already carries the
+          number for anyone not seeing the fill. */}
+      <div
+        role="img"
+        aria-label={`${soldPct}% sold — ${sold} of ${total}`}
+        className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-content/12"
+      >
+        <div
+          className={`h-full rounded-full transition-[width] duration-700 ease-out ${
+            soldOut ? 'bg-content/35' : 'bg-accent'
+          }`}
+          style={{ width: `${soldPct}%` }}
+        />
+      </div>
+
+      <div className="mt-2.5 flex items-center justify-between font-body text-[12px] text-content/45">
+        <span>{sold} sold</span>
+        <span>{soldPct}%</span>
+      </div>
+    </div>
+  )
+}
 
 export default function Properties() {
   const { heading } = useSection('properties_home')
-  const allProperties = useProperties()
-  const properties = allProperties.slice(0, TEASER_COUNT)
+  const properties = useProperties().slice(0, TEASER_COUNT)
   const scope = useRef(null)
   const go = useSectionNav()
   const navigate = useNavigate()
-  const [active, setActive] = useState(0)
-  const prev = useRef(0)
-  const current = properties[active]
-  const previous = properties[prev.current]
-
-  const select = (i) => {
-    if (i !== active) {
-      prev.current = active
-      setActive(i)
-    }
-  }
 
   useGSAP(
     () => {
       gsap.from('[data-card]', {
-        x: -60,
+        y: 48,
         opacity: 0,
-        duration: 1,
+        duration: 0.9,
         ease: 'power3.out',
-        scrollTrigger: { trigger: scope.current, start: 'top 65%' },
+        stagger: 0.12,
+        scrollTrigger: { trigger: scope.current, start: 'top 75%' },
       })
-      gsap.from('[data-row]', {
-        x: 40,
-        opacity: 0,
-        duration: 0.7,
-        ease: 'power3.out',
-        stagger: 0.08,
-        scrollTrigger: { trigger: scope.current, start: 'top 65%' },
-      })
-
-      const drift = (sel, dist) =>
-        gsap.fromTo(
-          sel,
-          { yPercent: dist },
-          {
-            yPercent: -dist,
-            ease: 'none',
-            scrollTrigger: { trigger: scope.current, start: 'top bottom', end: 'bottom top', scrub: true },
-          }
-        )
-      drift('[data-depth-back]', 12)
-      drift('[data-depth-front]', 5)
-      drift('[data-depth-list]', -6)
     },
     { scope }
   )
@@ -68,123 +147,171 @@ export default function Properties() {
   if (properties.length === 0) return null
 
   return (
+    // data-band="light" flips the fixed header to charcoal chrome — the band
+    // is bright gray now, not the carbon it used to be.
     <section
       id="properties"
+      data-band="light"
       ref={scope}
-      className="bg-carbon px-6 py-24 text-bone md:px-[134px] md:py-32"
+      className="bg-surface-alt px-6 py-20 text-content md:px-[75px] md:py-24"
     >
-      <div className="mb-14 flex flex-col gap-8">
-        <SectionHeader index="02" title="Work" />
-        <h3 className="max-w-[16ch] font-display text-[2.2rem] font-light leading-[1.02] tracking-[-0.02em] md:text-h2">
-          {renderEmphasis(heading)}
-        </h3>
+      <div className="flex items-center justify-between gap-6">
+        <h2
+          className="font-display font-bold leading-tight tracking-[-0.01em] text-accent"
+          style={{ fontSize: 'clamp(1.5rem, 2vw, 2.15rem)' }}
+        >
+          {renderEmphasis(heading, '')}
+        </h2>
+
+        <a
+          href="/properties"
+          onClick={(e) => {
+            e.preventDefault()
+            go('/properties')
+          }}
+          className="shrink-0 rounded-full border border-content/25 px-6 py-3 font-body text-[12px] font-medium uppercase tracking-[0.12em] text-content transition-colors duration-300 hover:border-content hover:bg-surface md:px-7"
+        >
+          View all
+        </a>
       </div>
 
-      <div className="flex flex-col items-center gap-16 lg:flex-row lg:gap-24">
-        {/* Stacked property cards */}
-        <div data-card className="relative shrink-0">
-          <div
-            data-depth-back
-            className="absolute -left-14 top-9 hidden h-[560px] w-[480px] overflow-hidden rounded-[20px] border border-[var(--color-line-inv)] opacity-30 md:block"
-          >
-            <img src={properties[0].image} alt="" className="h-full w-full object-cover" />
-          </div>
-          <div
-            data-depth-front
-            role="link"
-            tabIndex={0}
-            onClick={() => navigate(`/properties/${current.slug}`)}
-            onKeyDown={(e) => e.key === 'Enter' && navigate(`/properties/${current.slug}`)}
-            className="group/card relative h-[520px] w-[86vw] max-w-[420px] cursor-pointer overflow-hidden rounded-[24px] border border-bone/10 shadow-[0_50px_100px_-40px_rgba(0,0,0,0.9)] md:h-[560px] md:w-[540px] md:max-w-none"
-          >
-            <img
-              key={`back-${active}`}
-              src={previous.image}
-              alt=""
-              className="proj-slide-out absolute inset-0 z-10 h-full w-full object-cover"
-            />
-            <img
-              key={`front-${active}`}
-              src={current.image}
-              alt={current.name}
-              className="proj-slide-in absolute inset-0 z-20 h-full w-full object-cover transition-transform duration-500 ease-out group-hover/card:scale-[1.03]"
-            />
+      <div className="mt-10 flex flex-col gap-7">
+        {properties.map((p) => {
+          const overview = p.detail?.overview ?? {}
+          const specs = (overview.stats ?? []).filter((s) => s.value || s.label)
+          const blurb = p.detail?.tagline || overview.body
+          const open = () => navigate(`/properties/${p.slug}`)
+          // The button is part of the card's shape, so it always renders. What
+          // moves is where it points: a real flyer downloads, and '#' — the
+          // seed's placeholder for "none uploaded yet" — falls through to the
+          // property's own page rather than becoming a dead click.
+          const flyer = overview.flyer && overview.flyer !== '#' ? overview.flyer : null
 
-            {/* gradient scrim so stats stay legible */}
-            <div
-              aria-hidden
-              className="absolute inset-x-0 bottom-0 z-20 h-1/2"
-              style={{ background: 'linear-gradient(180deg, transparent, rgba(26,26,26,0.85))' }}
-            />
-
-            <div className="absolute inset-x-8 bottom-8 z-30 border-t border-bone/25 pt-5">
-              <p className="mb-4 font-display text-xl font-medium text-bone">{current.name}</p>
-              <div className="flex items-end justify-between text-bone">
-                {[
-                  ['Buildings', current.buildings],
-                  ['Units Sold', current.sold],
-                  ['Available', current.available],
-                ].map(([label, n]) => (
-                  <div key={label} className="flex flex-col items-start gap-1.5">
-                    <span className="numeral text-[2rem] text-ember">
-                      {String(n).padStart(2, '0')}
-                    </span>
-                    <span className="eyebrow text-bone/50">{label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Property list + more link */}
-        <div className="w-full max-w-[520px]">
-          <ul data-depth-list>
-            {properties.map((p, i) => {
-              const isActive = i === active
-              return (
-                <li
-                  key={p.slug}
-                  data-row
-                  role="link"
-                  tabIndex={0}
-                  onMouseEnter={() => select(i)}
-                  onClick={() => navigate(`/properties/${p.slug}`)}
-                  onKeyDown={(e) => e.key === 'Enter' && navigate(`/properties/${p.slug}`)}
-                  className={`group flex cursor-pointer items-center gap-3 border-b py-4 transition-colors duration-300 ${
-                    isActive ? 'border-bone/50' : 'border-[var(--color-line-inv)]'
-                  }`}
+          // The card's padding is deliberately asymmetric. The image is inset by
+          // the card's own p-3.5 and reads as intentional there; text at that
+          // same distance just looks like it's falling off the edge, so the type
+          // side gets room to breathe.
+          return (
+            // Hover is carried by the shadow and the image, never by a
+            // transform on the card: GSAP animates these in on `y` and leaves
+            // an inline `transform` behind, which an inline style always wins
+            // against a utility class — a `hover:-translate-y` here would
+            // silently stop working the moment the reveal had run.
+            <article
+              key={p.slug}
+              data-card
+              className="group flex flex-col gap-4 rounded-[20px] bg-surface p-3 shadow-[0_0_0_0_rgba(0,0,0,0)] transition-shadow duration-500 ease-out hover:shadow-[0_26px_56px_-36px_rgba(0,0,0,0.5)] md:flex-row md:items-stretch md:gap-7 md:p-3.5 md:pr-7"
+            >
+              {p.image && (
+                // A real link rather than an onClick on the image: the old
+                // handler was reachable by mouse only, so the largest target on
+                // the card was invisible to the keyboard. Hidden from the
+                // accessibility tree because the heading below already links to
+                // the same place, and two links to one property read as two
+                // properties when they're announced in sequence.
+                <a
+                  href={`/properties/${p.slug}`}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    open()
+                  }}
+                  tabIndex={-1}
+                  aria-hidden="true"
+                  className="relative h-44 w-full shrink-0 overflow-hidden rounded-[14px] sm:h-56 md:h-auto md:w-[27%] md:min-w-56 md:max-w-124 md:self-stretch"
                 >
-                  <span className="numeral w-8 shrink-0 text-sm text-ember">0{i + 1}</span>
-                  <span
-                    className={`flex-1 font-display text-2xl font-light leading-tight tracking-[-0.01em] transition-colors duration-300 md:text-[28px] ${
-                      isActive ? 'text-bone' : 'text-bone/25'
-                    }`}
-                  >
-                    {p.name}
-                  </span>
-                  <ArrowRight
-                    className={`size-7 shrink-0 text-accent-soft transition-all duration-300 ${
-                      isActive ? 'translate-x-0 opacity-100' : '-translate-x-2 opacity-0'
-                    }`}
+                  <img
+                    src={p.image}
+                    alt={p.name}
+                    className="absolute inset-0 size-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.05]"
                   />
-                </li>
-              )
-            })}
-          </ul>
+                </a>
+              )}
 
-          <a
-            href="/properties"
-            onClick={(e) => {
-              e.preventDefault()
-              go('/properties')
-            }}
-            className="group mt-10 inline-flex items-center gap-2.5 font-body text-sm font-bold uppercase tracking-[0.18em] text-bone transition-colors hover:text-accent-soft"
-          >
-            More Properties
-            <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-1.5" />
-          </a>
-        </div>
+              {/* min-w-0 so a long blurb wraps instead of widening the row and
+                  squeezing the stats column off the end. Centred rather than
+                  top-aligned: the image sets the row height, so anchoring the
+                  type to the top pools all the slack under the buttons. */}
+              <div className="min-w-0 flex-1 md:self-center md:py-2">
+                <a
+                  href={`/properties/${p.slug}`}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    open()
+                  }}
+                  // group-hover as well as hover, so pointing anywhere on the
+                  // card lights the name. Without it the image zooms and the
+                  // shadow lifts while the title sits inert, and the card reads
+                  // as several things reacting rather than one.
+                  className="font-display text-[1.45rem] font-bold leading-tight tracking-[-0.01em] text-accent transition-colors duration-300 hover:text-prime-deep group-hover:text-prime-deep"
+                >
+                  {p.name}
+                </a>
+
+                {p.address && (
+                  <p className="mt-1 font-body text-[15px] text-content/50">{p.address}</p>
+                )}
+
+                {specs.length > 0 && (
+                  <ul className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2">
+                    {/* Indexed, not keyed on the label: these are free text an
+                        admin typed, so two blank or repeated labels are a
+                        content mistake, not an impossible one — and React
+                        answers duplicate keys by dropping a row. */}
+                    {specs.map((s, i) => (
+                      <li key={`${s.label ?? ''}-${i}`} className="flex items-center gap-2">
+                        <SpecIcon label={s.label} />
+                        <span className="font-body text-[15px] text-content/80">
+                          {[s.value, s.label].filter(Boolean).join(' ')}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {blurb && (
+                  <p className="mt-3.5 max-w-[68ch] font-body text-[15px] leading-relaxed text-content/85 line-clamp-2">
+                    {blurb}
+                  </p>
+                )}
+
+                <div className="mt-4 flex flex-wrap items-center gap-2.5">
+                  <a
+                    href={`/properties/${p.slug}`}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      open()
+                    }}
+                    className="rounded-xl bg-invert px-5 py-3 font-body text-[15px] font-medium text-invert-fg transition-colors duration-300 hover:opacity-90"
+                  >
+                    View property
+                  </a>
+
+                  <a
+                    href={flyer ?? `/properties/${p.slug}`}
+                    {...(flyer
+                      ? { target: '_blank', rel: 'noreferrer' }
+                      : {
+                          onClick: (e) => {
+                            e.preventDefault()
+                            open()
+                          },
+                        })}
+                    className="inline-flex items-center gap-2.5 rounded-xl border border-content/15 bg-surface px-5 py-3 font-body text-[15px] font-medium text-content transition-colors duration-300 hover:border-content/40"
+                  >
+                    Download brochure
+                    <DownloadIcon />
+                  </a>
+                </div>
+              </div>
+
+              <AvailabilityMeter
+                total={p.buildings}
+                sold={p.sold}
+                available={p.available}
+              />
+            </article>
+          )
+        })}
       </div>
     </section>
   )

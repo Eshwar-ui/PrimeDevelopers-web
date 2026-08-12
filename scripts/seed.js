@@ -66,7 +66,6 @@ async function main() {
       ],
     },
     marquee: {
-      eyebrow: 'Trusted by teams building across Texas',
       logos: [
         { image: logos['22yards'], alt: '22 Yards' },
         { image: logos.farm2cook, alt: 'Farm2Cook' },
@@ -79,9 +78,8 @@ async function main() {
       heading: 'Experienced professionals turning raw land into *finished Texas developments*.',
       paragraph1:
         "Since 2017, Prime Developers has grown into one of Texas's most active developers — owning and operating retail, flex, and residential properties across Dallas–Fort Worth and Austin.",
-      paragraph2:
-        'Our team pairs a proven track record in large-scale, complex development with a hands-on approach to investment — from permitting through handover, every detail engineered to last.',
-      ctaLabel: 'About Prime Developers',
+      videoUrl: '/about-video.mp4',
+      videoPoster: '/about-poster.jpg',
       stats: [
         { value: 9, label: 'Years of Experience' },
         { value: 10, label: 'Properties Completed' },
@@ -89,9 +87,60 @@ async function main() {
         { value: 3, label: 'Industry Awards Won' },
       ],
     },
-    properties_home: { heading: 'Developments that *hold the line.*' },
-    gallery: { heading: "Places we've *brought to life.*" },
+    properties_home: { heading: 'Our properties.' },
+    services_home: {
+      eyebrow: 'Our Services',
+      heading: 'Expert support across every stage of your property journey.',
+      items: [
+        {
+          icon: 'compass',
+          title: 'Expert Guidance',
+          body: 'Personalized advice from experienced real estate professionals.',
+        },
+        {
+          icon: 'map-pin',
+          title: 'Premium Locations',
+          body: 'Access to prime neighborhoods and sought-after developments.',
+        },
+        {
+          icon: 'shield-check',
+          title: 'Trusted Partners',
+          body: 'Vetted vendors and partners for a seamless experience.',
+        },
+        {
+          icon: 'clock',
+          title: '24/7 Support',
+          body: 'Responsive care whenever you need it.',
+        },
+      ],
+    },
+    gallery: {
+      eyebrow: 'Curated Portfolio',
+      heading: 'Image Gallery',
+      paragraph:
+        'Explore our collection of award-winning architectural designs, bespoke luxury interiors, and breath-taking coastal estates. Each space is custom-crafted to redefine modern premium living in Texas.',
+      features: [{ title: 'High-End Modern Materials' }, { title: 'Bespoke Light Integration' }],
+    },
+    news_home: {
+      heading: 'News & Insights',
+      paragraph: 'Stay updated on the latest real estate trends and market insights.',
+    },
+    cta_home: {
+      heading: 'Ready to Find Your Dream Property?',
+      paragraph:
+        "Whether you're looking for a luxury residence or a strategic investment opportunity, our team is here to guide you every step of the way.",
+      ctaLabel: 'Get Started',
+      ctaHref: '/contact',
+      // Matches the fallback in the web app's DEFAULTS — seeding an empty
+      // string here would write a row that hides the panel's photo, which is
+      // worse than no row at all.
+      image:
+        'https://knghxhtfkbswzhphhigy.supabase.co/storage/v1/object/public/images/site/property-1.png',
+    },
     testimonials: {
+      heading: 'What Our Clients Say',
+      paragraph:
+        'Real stories from homeowners and investors who have partnered with Prime to bring their vision to life.',
       items: [
         {
           quote:
@@ -120,10 +169,13 @@ async function main() {
       ],
     },
     navbar: {
+      // No Contact link: the header's Enquire button already points at
+      // /contact, so carrying both put the same destination in the bar twice.
       links: [
         { label: 'About', to: '/about' },
         { label: 'Properties', to: '/properties' },
-        { label: 'Contact', to: '/contact' },
+        { label: 'Expertise', to: '/enterprise' },
+        { label: 'News', to: '/news' },
       ],
     },
     footer: {

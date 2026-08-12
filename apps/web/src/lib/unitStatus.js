@@ -6,12 +6,19 @@
 // `hex` exists because a WebGL material cannot read a Tailwind class string.
 // `mutedHex` is what a unit desaturates to when a status filter excludes it —
 // filtered units recede rather than vanish, so the building keeps its shape.
+//
+// `chip` is the solid badge — the status as a block of colour. `pill` is the
+// quiet form the availability list uses: the same hue at low alpha behind it and
+// carrying the type, so a column of twenty rows reads as a list with statuses
+// rather than as twenty coloured blocks. Mixed against `transparent` rather than
+// a fixed white so the tint sits correctly on either theme's ground.
 export const UNIT_STATUSES = [
   {
     value: 'available',
     label: 'Available',
     swatch: 'bg-[var(--color-status-available)]',
     chip: 'bg-[var(--color-status-available)] text-void',
+    pill: 'bg-[color-mix(in_srgb,var(--color-status-available)_16%,transparent)] text-[var(--color-status-available)]',
     hex: '#3ecf7e',
     mutedHex: '#33443c',
   },
@@ -20,6 +27,7 @@ export const UNIT_STATUSES = [
     label: 'Leased',
     swatch: 'bg-[var(--color-status-leased)]',
     chip: 'bg-[var(--color-status-leased)] text-void',
+    pill: 'bg-[color-mix(in_srgb,var(--color-status-leased)_16%,transparent)] text-[var(--color-status-leased)]',
     hex: '#e2665c',
     mutedHex: '#4a3634',
   },
@@ -28,6 +36,7 @@ export const UNIT_STATUSES = [
     label: 'Coming Soon',
     swatch: 'bg-ember',
     chip: 'bg-ember text-void',
+    pill: 'bg-[color-mix(in_srgb,var(--color-ember)_16%,transparent)] text-ember',
     hex: '#fca42e',
     mutedHex: '#4a3f2d',
   },
@@ -36,6 +45,7 @@ export const UNIT_STATUSES = [
     label: 'Sold',
     swatch: 'bg-accent-soft',
     chip: 'bg-accent-soft text-void',
+    pill: 'bg-[color-mix(in_srgb,var(--color-accent-soft)_16%,transparent)] text-accent-soft',
     hex: '#3e9bc7',
     mutedHex: '#2e3f47',
   },

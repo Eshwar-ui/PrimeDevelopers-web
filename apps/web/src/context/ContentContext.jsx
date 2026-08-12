@@ -6,11 +6,78 @@ import { useAuth } from './AuthContext'
 // component — every field a component reads is guaranteed to exist.
 const DEFAULTS = {
   hero: { eyebrow: '', heading: '', paragraph: '', ctaLabel: 'View Properties', ctaHref: '#properties', slides: [] },
-  marquee: { eyebrow: '', logos: [] },
-  about_home: { heading: '', paragraph1: '', paragraph2: '', ctaLabel: 'About Prime Developers', stats: [] },
+  marquee: { logos: [] },
+  // The film ships with the app rather than being uploaded, so it lands here
+  // as a default: the live content row predates these two keys, and a key the
+  // row doesn't carry is exactly what the defaults are for. Setting either in
+  // the admin still overrides it.
+  about_home: {
+    heading: '',
+    paragraph1: '',
+    videoUrl: '/about-video.mp4',
+    videoPoster: '/about-poster.jpg',
+    stats: [],
+  },
   properties_home: { heading: '' },
-  gallery: { heading: '' },
-  testimonials: { items: [] },
+  // Ships with its copy rather than waiting on a seed, for the same reason
+  // about_home's film does: the live content row predates this key entirely, so
+  // an empty default would hide the section until someone opened the admin.
+  services_home: {
+    eyebrow: 'Our Services',
+    heading: 'Expert support across every stage of your property journey.',
+    items: [
+      {
+        icon: 'compass',
+        title: 'Expert Guidance',
+        body: 'Personalized advice from experienced real estate professionals.',
+      },
+      {
+        icon: 'map-pin',
+        title: 'Premium Locations',
+        body: 'Access to prime neighborhoods and sought-after developments.',
+      },
+      {
+        icon: 'shield-check',
+        title: 'Trusted Partners',
+        body: 'Vetted vendors and partners for a seamless experience.',
+      },
+      { icon: 'clock', title: '24/7 Support', body: 'Responsive care whenever you need it.' },
+    ],
+  },
+  // eyebrow/paragraph/features postdate the live row the same way services_home
+  // does, so they carry their copy here; heading stays blank and comes from the
+  // row, which has always had one.
+  gallery: {
+    heading: '',
+    eyebrow: 'Curated Portfolio',
+    paragraph:
+      'Explore our collection of award-winning architectural designs, bespoke luxury interiors, and breath-taking coastal estates. Each space is custom-crafted to redefine modern premium living in Texas.',
+    features: [{ title: 'High-End Modern Materials' }, { title: 'Bespoke Light Integration' }],
+  },
+  testimonials: {
+    heading: 'What Our Clients Say',
+    paragraph:
+      'Real stories from homeowners and investors who have partnered with Prime to bring their vision to life.',
+    items: [],
+  },
+  news_home: {
+    heading: 'News & Insights',
+    paragraph: 'Stay updated on the latest real estate trends and market insights.',
+  },
+  // No cta_home row exists yet, so this object is what the panel actually
+  // renders — an empty `image` here meant the photo column never mounted and
+  // the panel read as a bare slab of copy. Pointing it at a photo already in
+  // storage is the same value the admin's uploader would write, so replacing it
+  // from Content → Closing call to action → Panel image needs no code change.
+  cta_home: {
+    heading: 'Ready to Find Your Dream Property?',
+    paragraph:
+      "Whether you're looking for a luxury residence or a strategic investment opportunity, our team is here to guide you every step of the way.",
+    ctaLabel: 'Get Started',
+    ctaHref: '/contact',
+    image:
+      'https://knghxhtfkbswzhphhigy.supabase.co/storage/v1/object/public/images/site/property-1.png',
+  },
   footer: {
     email: '',
     phone: '',
@@ -47,7 +114,40 @@ const DEFAULTS = {
     location: '',
     socials: [],
   },
-  properties_page: { heroEyebrow: '', heroHeading: '', heroParagraph: '' },
+  enterprise_page: {
+    heroEyebrow: '',
+    heroHeading: '',
+    heroParagraph: '',
+    heroImage: '',
+    ctaLabel: 'Talk to us',
+    ctaHref: '/contact',
+    capabilitiesHeading: '',
+    capabilities: [],
+    stats: [],
+    closingHeading: '',
+    closingLabel: 'Start a conversation',
+    closingHref: '/contact',
+  },
+  // The live row predates every key below `heroParagraph`, so these ship as
+  // defaults rather than waiting on a seed — same reason about_home's film and
+  // services_home's copy do. `heroSlides` stays empty on purpose: the strip
+  // falls back to the listings' own photographs, which is the right content
+  // for a properties carousel and needs no upload.
+  properties_page: {
+    heroEyebrow: '',
+    heroHeading: 'Explore Our Properties',
+    heroParagraph:
+      'Discover a curated collection of premium residential, retail, and commercial spaces across the heart of Texas.',
+    ctaLabel: 'Browse Listings',
+    ctaHref: '#collection',
+    ctaSecondaryLabel: 'Schedule a Tour',
+    ctaSecondaryHref: '/contact',
+    heroSlides: [],
+    curatedEyebrow: 'Featured Projects',
+    curatedHeading: 'The Curated Collection',
+    curatedParagraph:
+      "Since 2017, Prime Developer has grown into one of Texas's most active real estate developers — owning and operating iconic commercial and residential properties in dynamic, fast-moving markets.",
+  },
   news_page: { heroEyebrow: '', heroHeading: '', heroParagraph: '' },
 }
 

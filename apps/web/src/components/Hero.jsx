@@ -1,248 +1,400 @@
-import { useRef, useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'motion/react'
 import gsap from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
-import PillButton from './PillButton'
 import ArrowRight from './ArrowRight'
-import watermark from '../assets/watermark-p.svg'
+import { invertedCorner } from '../lib/notch'
+import { rise, stagger } from '../lib/motion'
+import PrimePill from './PrimePill'
+import TexasFlag from './TexasFlag'
+import MaskedHeading, { WORD_STAGGER, wordCount } from './MaskedHeading'
+import { lenis } from '../hooks/useSmoothScroll'
 import { useSection } from '../context/ContentContext'
-import { renderEmphasis } from '../lib/emphasis'
+
+gsap.registerPlugin(ScrollTrigger)
 
 const SLIDE_MS = 6000
+const RAIL_MS = 900
 
-// Letterbox reveal: each headline line slides up from behind its own mask.
-const line = {
-  hidden: { y: '115%' },
-  show: { y: 0, transition: { duration: 0.9, ease: [0.16, 1, 0.3, 1] } },
-}
-const container = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.1, delayChildren: 0.25 } },
-}
-const soft = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.75, ease: 'easeOut' } },
+// Slides of headroom rendered past the live position in each direction, so the
+// track always has something to move into mid-transition.
+const RAIL_SPAN = 4
+
+// Positive modulo. `pos` runs negative once the back arrow is used, and JS's %
+// keeps the sign of the dividend, which would index off the front of the list.
+const mod = (n, m) => ((n % m) + m) % m
+
+// Two of these finish the notch: one rounds the panel's top edge where the bay
+// ends, the other rounds its left edge where the bay lifts away. Both take the
+// default origin, since both sweep away from their bottom-right.
+//
+// Kept to a clean alpha edge with no shading of its own: the notch's shadow is
+// a drop-shadow on the group, which traces this silhouette exactly. Baking a
+// band into the gradient as well would double up at the joints.
+const corner = invertedCorner()
+
+// drop-shadow follows the rendered alpha rather than a box, so one filter on
+// the group shades every edge of the notch — including the two arcs, which no
+// box-shadow can trace. The second, tight pass is a contact shadow that keeps
+// the edge legible where the image behind it is pale.
+const notchShadow = {
+  filter: 'drop-shadow(0 2px 9px var(--edge-shade)) drop-shadow(0 0 1px var(--edge-shade))',
 }
 
 export default function Hero() {
   const hero = useSection('hero')
   const slides = hero.slides.length ? hero.slides : [{ image: '', place: '', kind: '' }]
-  const scope = useRef(null)
-  const [index, setIndex] = useState(0)
+  // `pos` is the track's position along the looped rail. The live slide is what
+  // it lands on modulo one set, and it may go negative — the back arrow walks
+  // it left, which the rail renders a lead set to accommodate.
+  const [pos, setPos] = useState(0)
+  const [snapping, setSnapping] = useState(false)
   const [paused, setPaused] = useState(false)
+  const scope = useRef(null)
+  const panelRef = useRef(null)
+  const railRef = useRef(null)
+  const [panelLeft, setPanelLeft] = useState(0)
 
-  const jump = (n) => setIndex(n)
-  const next = () => setIndex((i) => (i + 1) % slides.length)
-  const prev = () => setIndex((i) => (i - 1 + slides.length) % slides.length)
+  const count = slides.length
+  const index = mod(pos, count)
 
-  // Auto-advance; resetting on `index` gives a full dwell after a manual pick,
-  // and hovering the bottom bar pauses the cycle so reading stays deliberate.
+  // The rail is rendered as a window of whole sets around wherever the track
+  // currently is, with headroom on both sides. Whole sets so the repeat stays
+  // aligned, and grown on demand because tapping an arrow repeatedly outruns
+  // the snap and the track must never walk off the end of what exists. The
+  // extra images are the same handful of sources, so they come from cache.
+  const first = -Math.ceil((Math.max(0, -pos) + RAIL_SPAN) / count) * count
+  const last = Math.ceil((Math.max(0, pos) + RAIL_SPAN + 1) / count) * count - 1
+  const rail = Array.from({ length: last - first + 1 }, (_, k) => slides[mod(k + first, count)])
+
+  // Dots travel forward to reach a slide, wrapping past the end rather than
+  // rewinding — a jump backwards on a tap reads as a mistake. The arrows are
+  // the deliberate exception: back means back.
+  const goTo = (target) => setPos((p) => p + mod(target - mod(p, count), count))
+  const step = (n) => setPos((p) => p + n)
+
+  // The notch is cut in panel-local coordinates, but the thing it has to clear
+  // — the header's Enquire CTA — is positioned against the viewport. Measuring
+  // where the panel starts is what lets one be expressed in terms of the other.
   useEffect(() => {
-    if (paused || slides.length < 2) return
-    const id = setTimeout(next, SLIDE_MS)
-    return () => clearTimeout(id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [index, paused, slides.length])
+    const measure = () => {
+      const el = panelRef.current
+      if (el) setPanelLeft(Math.round(el.getBoundingClientRect().left))
+    }
+    measure()
+    const id = requestAnimationFrame(measure)
+    window.addEventListener('resize', measure)
+    return () => {
+      cancelAnimationFrame(id)
+      window.removeEventListener('resize', measure)
+    }
+  }, [])
 
+  // Auto-advance; keyed on `index` rather than `pos` so the loop's silent snap
+  // back doesn't restart the dwell and stutter the cycle once per lap. Hovering
+  // the rail pauses it so browsing stays calm.
+  useEffect(() => {
+    if (paused || count < 2) return
+    const id = setTimeout(() => setPos((p) => p + 1), SLIDE_MS)
+    return () => clearTimeout(id)
+  }, [index, paused, count])
+
+  // Once the track has walked outside the first set in either direction, fold
+  // it back with the transition suppressed. It lands on a congruent position —
+  // pixel-identical frame — so the seam is invisible. Driven by a timer rather
+  // than transitionend, which never fires in a background tab and would let
+  // `pos` wander further than the rendered rail.
+  useEffect(() => {
+    if (pos >= 0 && pos < count) return
+    const id = setTimeout(() => {
+      setSnapping(true)
+      setPos((p) => mod(p, count))
+    }, RAIL_MS)
+    return () => clearTimeout(id)
+  }, [pos, count])
+
+  // Two frames: one to paint at the rewound position with no transition, then
+  // restore it. A single frame can land before the browser has painted.
+  useEffect(() => {
+    if (!snapping) return
+    let inner
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => setSnapping(false))
+    })
+    return () => {
+      cancelAnimationFrame(outer)
+      cancelAnimationFrame(inner)
+    }
+  }, [snapping])
+
+  // Scroll-scrubbed drift inside each frame. Two triggers, not one per image:
+  // every thumbnail shares a row, and the panel's stack shares a frame, so each
+  // group can ride a single scrubbed tween. Selector strings resolve within the
+  // scope, and useGSAP reverts them when the rail's length changes.
   useGSAP(
     () => {
-      gsap.to('[data-hero-bg]', {
-        yPercent: 14,
-        ease: 'none',
-        scrollTrigger: { trigger: scope.current, start: 'top top', end: 'bottom top', scrub: true },
-      })
-      gsap.to('[data-hero-copy]', {
-        yPercent: -10,
-        ease: 'none',
-        scrollTrigger: { trigger: scope.current, start: 'top top', end: 'bottom top', scrub: true },
-      })
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+      const drift = (selector, trigger, distance) => {
+        // The rail is absent when there's only one slide, and a ScrollTrigger
+        // with a null trigger silently falls back to the tween target.
+        if (!trigger) return
+        gsap.fromTo(
+          selector,
+          { yPercent: -distance },
+          {
+            yPercent: distance,
+            ease: 'none',
+            scrollTrigger: { trigger, start: 'top bottom', end: 'bottom top', scrub: true },
+          }
+        )
+      }
+      drift('[data-parallax="panel"]', panelRef.current, 6)
+      drift('[data-parallax="thumb"]', railRef.current, 5)
     },
-    { scope }
+    { scope, dependencies: [rail.length] }
   )
 
   const active = slides[index] ?? slides[0]
 
+  const onCta = (e) => {
+    if (!hero.ctaHref?.startsWith('#')) return
+    e.preventDefault()
+    lenis.current?.scrollTo(hero.ctaHref, { offset: -20 })
+  }
+
   return (
     <section
       id="hero"
+      data-band="light"
       ref={scope}
-      className="relative flex min-h-[100dvh] w-full flex-col overflow-hidden bg-ink text-bone"
+      className="relative w-full overflow-hidden bg-surface text-content [--edge-shade:rgba(18,30,38,0.26)] lg:h-dvh lg:max-h-240 lg:min-h-152"
     >
-      {/* ── Full-bleed cinematic backdrop ─────────────────────────── */}
-      <div data-hero-bg className="absolute inset-0">
-        {active.image && (
-          <img
-            src={active.image}
-            alt=""
-            className="hero-slide-active absolute inset-0 h-full w-full object-cover"
-          />
-        )}
-        {/* single light scrim — only the lower band darkens so copy stays readable */}
-        <div className="absolute inset-0 bg-gradient-to-t from-ink/80 via-ink/20 to-transparent" />
-      </div>
-
-      {/* faint brand P watermark, flattened to a soft white silhouette on the dark backdrop */}
-      <img
-        src={watermark}
-        alt=""
-        aria-hidden
-        className="pointer-events-none absolute -bottom-20 -left-20 w-[46vw] max-w-[620px] opacity-[0.05] brightness-0 invert"
-      />
-
-      {/* ── drawing-sheet frame — a thin inset border with ember corner ticks,
-          framing the photo like an architectural sheet. Desktop only. ── */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-5 z-[5] hidden rounded-sm border border-white/12 md:block"
-      >
-        <span className="absolute -left-px -top-px size-4 border-l-2 border-t-2 border-ember/80" />
-        <span className="absolute -right-px -top-px size-4 border-r-2 border-t-2 border-ember/80" />
-      </div>
-
-      {/* ── vertical thumbnail rail — sheet index, right edge ── */}
-      {slides.length > 1 && (
+      <div className="mx-auto grid max-w-[1560px] grid-cols-1 gap-12 px-6 pb-8 pt-28 md:px-12 lg:h-full lg:grid-cols-[1.06fr_1fr] lg:gap-7 lg:pb-7 lg:pt-5">
+        {/* ── copy column ─────────────────────────────────────────── */}
+        {/* min-w-0: grid items default to min-width:auto, and the thumbnail
+            rail's shrink-0 children would otherwise set a min-content width
+            wide enough to swallow the visual column whole. */}
         <motion.div
-          variants={container}
+          variants={stagger}
           initial="hidden"
           animate="show"
-          className="absolute right-10 top-1/2 z-20 hidden -translate-y-1/2 flex-col gap-3 xl:flex"
+          // justify-between: once the rail hits its ceiling, whatever height is
+          // still spare is shared out between every block rather than pooling
+          // into one visible band above the thumbnails.
+          className="min-w-0 lg:flex lg:h-full lg:flex-col lg:justify-between lg:pt-[clamp(4rem,11dvh,6.5rem)]"
+        >
+          <h1
+            className="font-display font-bold uppercase leading-[1.03] tracking-tight text-content"
+            // Governed by whichever runs out first, width or height, so a
+            // short-and-wide window shrinks the headline instead of pushing
+            // the thumbnail rail off the fold.
+            style={{ fontSize: 'clamp(2.25rem, min(4.9vw, 9.5dvh), 4.35rem)' }}
+          >
+            <MaskedHeading text={hero.heading} />
+            {/* The flag is masked with the words so it arrives as the last beat
+                of the line rather than being present before the type it
+                belongs to. */}
+            <span className="inline-block overflow-hidden pb-[0.08em] align-bottom -mb-[0.08em]">
+              <span
+                className="word-rise inline-block"
+                style={{ animationDelay: `${wordCount(hero.heading) * WORD_STAGGER}s` }}
+              >
+                <TexasFlag className="inline-block h-[0.62em] w-auto translate-y-[0.07em] rounded-[0.07em]" />
+              </span>
+            </span>
+          </h1>
+
+          <motion.p
+            variants={rise}
+            className="mt-7 max-w-120 font-body text-[15px] leading-relaxed text-content/60"
+          >
+            {hero.paragraph}
+          </motion.p>
+
+          <motion.div variants={rise}>
+            <PrimePill
+              href={hero.ctaHref}
+              onClick={onCta}
+              className="mt-[clamp(1.5rem,4dvh,2.25rem)]"
+            >
+              {hero.ctaLabel}
+            </PrimePill>
+          </motion.div>
+
+          {/* ── thumbnail rail — the slide index, tracking the main visual ── */}
+          {count > 1 && (
+            <motion.div
+              variants={rise}
+              onMouseEnter={() => setPaused(true)}
+              onMouseLeave={() => setPaused(false)}
+              // The rail claims the column's leftover height rather than being
+              // pushed to the bottom by a margin, so a taller window grows the
+              // thumbnails instead of opening a gap above them.
+              ref={railRef}
+              // Thumbnail width is a division of the rail, not a fixed length:
+              // the column is a fraction of the viewport, so anything fixed
+              // only fits at one window size and clips the last one everywhere
+              // else. Two across on narrow screens, three from sm up.
+              className="mt-12 [--thumb:calc((100%_-_1.25rem)/2)] sm:[--thumb:calc((100%_-_2.5rem)/3)] lg:mt-0 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:pt-10"
+            >
+              <div className="overflow-hidden lg:max-h-56 lg:min-h-22 lg:flex-1">
+                <div
+                  className={`flex gap-5 ease-brand lg:h-full ${
+                    snapping ? '' : 'transition-transform duration-900'
+                  }`}
+                  // Offset by `first`, since the rail starts a set or more to
+                  // the left of position zero.
+                  style={{
+                    transform: `translateX(calc(${first - pos} * (var(--thumb) + 1.25rem)))`,
+                  }}
+                >
+                  {rail.map((slide, k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      // This tile's own position on the rail, not the slide
+                      // index — every visible tile is at or ahead of `pos`, so
+                      // a click never rewinds.
+                      onClick={() => setPos(k + first)}
+                      aria-label={`Show ${slide.place || `slide ${mod(k + first, count) + 1}`}`}
+                      aria-current={k + first === pos ? 'true' : undefined}
+                      className={`relative h-[7.1rem] w-(--thumb) shrink-0 overflow-hidden rounded-[14px] bg-surface-alt transition-opacity duration-500 lg:h-full ${
+                        mod(k + first, count) === index ? '' : 'opacity-70 hover:opacity-100'
+                      }`}
+                    >
+                      {slide.image && (
+                        <img
+                          data-parallax="thumb"
+                          src={slide.image}
+                          alt=""
+                          // Oversized and centred so the scroll drift always
+                          // has frame left to travel into.
+                          className="absolute inset-x-0 top-[-10%] h-[120%] w-full object-cover"
+                        />
+                      )}
+                      <span
+                        aria-hidden
+                        style={{ boxShadow: 'inset 0 0 14px var(--edge-shade)' }}
+                        className="pointer-events-none absolute inset-0 rounded-[14px]"
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Index left, transport right — the dots read as position and
+                  the arrows as controls, so splitting them to opposite ends
+                  keeps the two jobs from being mistaken for one cluster. */}
+              <div className="mt-5 flex items-center justify-between gap-6">
+                <div className="flex items-center gap-2.5">
+                  {slides.map((slide, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => goTo(i)}
+                      aria-label={`Go to ${slide.place || `slide ${i + 1}`}`}
+                      className={`size-1.75 rounded-full transition-colors duration-300 ${
+                        i === index ? 'bg-accent' : 'bg-content/20 hover:bg-content/40'
+                      }`}
+                    />
+                  ))}
+                </div>
+
+                <div className="flex shrink-0 items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => step(-1)}
+                    aria-label="Previous property"
+                    className="flex size-8.5 shrink-0 items-center justify-center rounded-full border border-content/15 text-content transition-colors duration-300 hover:border-accent hover:text-accent"
+                  >
+                    <ArrowRight className="size-3.5 rotate-180" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => step(1)}
+                    aria-label="Next property"
+                    className="flex size-8.5 shrink-0 items-center justify-center rounded-full border border-content/15 text-content transition-colors duration-300 hover:border-accent hover:text-accent"
+                  >
+                    <ArrowRight className="size-3.5" />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </motion.div>
+
+        {/* ── visual column ───────────────────────────────────────── */}
+        <div
+          ref={panelRef}
+          style={{ '--notch-w': `calc(var(--nav-bay, 65.5rem) - ${panelLeft}px)` }}
+          // lg:rounded-tl-none — once the notch is cut, the panel's own
+          // top-left corner falls inside it. Left rounded, its arc and the
+          // inner shadow tracing it show through as a phantom corner.
+          className="panel-wipe relative h-96 min-w-0 overflow-hidden rounded-(--notch-r) bg-surface-alt [--notch-h:4.25rem] [--notch-r:28px] sm:h-128 lg:h-full lg:rounded-tl-none"
         >
           {slides.map((slide, i) => (
-            <motion.button
+            <img
               key={i}
-              variants={soft}
-              type="button"
-              onClick={() => jump(i)}
-              aria-label={`Show ${slide.place}`}
-              aria-current={i === index ? 'true' : undefined}
-              className={`group relative h-14 w-20 overflow-hidden rounded-lg border transition-all duration-300 ${
-                i === index
-                  ? 'border-ember shadow-[0_8px_24px_-8px_rgba(0,0,0,0.7)]'
-                  : 'border-white/15 opacity-45 hover:opacity-80'
+              data-parallax="panel"
+              src={slide.image}
+              alt={i === index ? slide.place : ''}
+              className={`absolute inset-x-0 top-[-10%] h-[120%] w-full object-cover transition-opacity duration-900 ease-out ${
+                i === index ? 'opacity-100' : 'opacity-0'
               }`}
-            >
-              {slide.image && <img src={slide.image} alt="" className="h-full w-full object-cover" />}
-              <span
-                className={`absolute bottom-1 left-1.5 font-arimo text-[9px] font-bold tabular-nums ${
-                  i === index ? 'text-ember' : 'text-bone/80'
-                }`}
-              >
-                {String(i + 1).padStart(2, '0')}
-              </span>
-            </motion.button>
+            />
           ))}
-        </motion.div>
-      )}
 
-      {/* ── main copy column ─────────────────────────────────────── */}
-      <div className="relative z-10 flex flex-1 flex-col px-6 pt-28 sm:px-10 md:px-12 md:pt-32 lg:px-16">
-        {/* headline + supporting copy, anchored low over the photo */}
-        <div data-hero-copy className="mb-12 mt-auto max-w-4xl pt-16 lg:mb-16">
-          {/* brand eyebrow — sits directly with the headline it introduces */}
-          <motion.div
-            variants={container}
-            initial="hidden"
-            animate="show"
-            className="mb-6 flex items-center gap-4"
-          >
-            <motion.span variants={soft} className="h-px w-12 bg-accent-soft" />
-            <motion.span
-              variants={soft}
-              className="font-arimo text-[12px] font-bold uppercase tracking-[0.24em] text-accent-soft"
-            >
-              {hero.eyebrow}
-            </motion.span>
-          </motion.div>
-
-          <motion.h1
-            variants={container}
-            initial="hidden"
-            animate="show"
-            className="font-rubik font-bold leading-[0.96] tracking-[-0.03em] text-bone"
-            style={{ fontSize: 'clamp(2.75rem, 7.5vw, 7rem)' }}
-          >
-            <span className="reveal-mask">
-              <motion.span variants={line} className="block">
-                {renderEmphasis(hero.heading)}
-              </motion.span>
-            </span>
-          </motion.h1>
-
-          <motion.div
-            variants={container}
-            initial="hidden"
-            animate="show"
-            className="mt-9 flex flex-col gap-7 sm:flex-row sm:items-end sm:gap-12"
-          >
-            <motion.p variants={soft} className="max-w-md font-arimo text-[15px] leading-relaxed text-bone/75">
-              {hero.paragraph}
-            </motion.p>
-            <motion.div variants={soft}>
-              <PillButton href={hero.ctaHref} variant="prime" className="shrink-0 font-arimo">
-                {hero.ctaLabel}
-              </PillButton>
-            </motion.div>
-          </motion.div>
-        </div>
-      </div>
-
-      {/* ── simple bottom bar — place, type, index, and controls on one line ── */}
-      <motion.div
-        variants={soft}
-        initial="hidden"
-        animate="show"
-        onMouseEnter={() => setPaused(true)}
-        onMouseLeave={() => setPaused(false)}
-        className="relative z-10 border-t border-white/15"
-      >
-        {/* slim cycle progress riding the top hairline */}
-        <span aria-hidden className="absolute inset-x-0 -top-px block h-[2px] overflow-hidden">
-          <motion.span
-            key={`${index}-${paused}`}
-            initial={{ scaleX: 0 }}
-            animate={{ scaleX: paused ? 0 : 1 }}
-            transition={{ duration: paused ? 0 : SLIDE_MS / 1000, ease: 'linear' }}
-            className="block h-full w-full origin-left bg-ember"
+          {/* Inner shadow along the panel's own edges. It has to be its own
+              layer: an inset box-shadow on the panel would paint beneath the
+              images, not over them. */}
+          <span
+            aria-hidden
+            style={{ boxShadow: 'inset 0 0 22px var(--edge-shade)' }}
+            className="pointer-events-none absolute inset-0 rounded-(--notch-r) lg:rounded-tl-none"
           />
-        </span>
 
-        <div className="flex items-center justify-between gap-6 px-6 py-5 sm:px-10 lg:px-16">
-          {/* current property */}
-          <span className="flex items-baseline gap-3">
-            <span className="truncate font-rubik text-xl font-bold text-bone md:text-2xl">
+          {/* ── the notch ────────────────────────────────────────────
+              A bay of page-white bitten out of the panel's top-left so the
+              header rail reads on white, closed at all three corners: the
+              bay's own convex radius makes the reflex corner concave, and
+              an inverted corner at each end rounds the panel's top and left
+              edges where they resume. Width comes from --nav-bay, which the
+              Navbar measures off the live CTA — CMS-driven link labels make
+              it unknowable up front. */}
+          <div
+            aria-hidden
+            style={notchShadow}
+            className="pointer-events-none absolute inset-0 hidden lg:block"
+          >
+            <span className="absolute left-0 top-0 h-(--notch-h) w-[min(var(--notch-w),100%)] rounded-br-(--notch-r) bg-surface" />
+            {/* Half a pixel of overlap onto the bay — a butt joint against a
+                fractional calc leaves a hairline of image showing through. */}
+            <span
+              style={corner}
+              className="absolute left-[calc(var(--notch-w)-0.5px)] top-0 size-(--notch-r)"
+            />
+            <span
+              style={corner}
+              className="absolute left-0 top-[calc(var(--notch-h)-0.5px)] size-(--notch-r)"
+            />
+          </div>
+
+          {/* current property caption, floated over the lower-right corner */}
+          <div className="absolute bottom-4 right-4 w-64 rounded-[22px] bg-surface p-5 shadow-[0_18px_40px_-26px_rgba(0,0,0,0.5)] lg:w-75 lg:p-6">
+            {hero.eyebrow && (
+              <span className="font-body text-[11px] font-bold uppercase tracking-[0.18em] text-accent">
+                {hero.eyebrow}
+              </span>
+            )}
+            <p className="mt-2 font-display text-[1.3rem] font-bold leading-tight text-content">
               {active.place}
-            </span>
-            <span className="hidden font-arimo text-[11px] font-bold uppercase tracking-[0.2em] text-bone/50 sm:block">
-              {active.kind}
-            </span>
-          </span>
-
-          <div className="flex shrink-0 items-center gap-5">
-            <span className="font-rubik text-base font-bold tabular-nums md:text-lg">
-              <span className="text-ember">{String(index + 1).padStart(2, '0')}</span>
-              <span className="text-bone/40"> / {String(slides.length).padStart(2, '0')}</span>
-            </span>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={prev}
-                aria-label="Previous property"
-                className="flex size-11 shrink-0 items-center justify-center rounded-full border border-white/20 text-bone transition-colors hover:border-ember/70 hover:text-ember"
-              >
-                <ArrowRight className="size-4 rotate-180" />
-              </button>
-              <button
-                type="button"
-                onClick={next}
-                aria-label="Next property"
-                className="flex size-11 shrink-0 items-center justify-center rounded-full border border-white/20 text-bone transition-colors hover:border-ember/70 hover:text-ember"
-              >
-                <ArrowRight className="size-4" />
-              </button>
-            </div>
+            </p>
+            <p className="mt-1 font-body text-[13px] text-content/55">{active.kind}</p>
           </div>
         </div>
-      </motion.div>
+      </div>
     </section>
   )
 }

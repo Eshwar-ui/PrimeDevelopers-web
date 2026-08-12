@@ -98,10 +98,23 @@ export default function FloorPlanSection({ building, propertyId }) {
   if (!units.length && !building?.planImage && !model?.url) return null
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
+      {/* Viewer and unit card share a row, as the design draws them: the card
+          is what the viewer is *for*, and stacking it underneath means a click
+          on the model updates something below the fold. The viewer takes the
+          width; the card only needs enough for a label, three figures and a
+          button. Stacks below lg, where there is no room for both. */}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,2.9fr)_minmax(0,1fr)]">
+        <div className="relative min-w-0">
       {/* Legend doubles as the status filter — the highest-value interaction
-          on a leasing map, and nearly free once materials are per-unit. */}
-      <div className="flex flex-wrap gap-x-3 gap-y-2">
+          on a leasing map, and nearly free once materials are per-unit.
+          Floated over the panel rather than sitting above it: it describes what
+          is in the picture, and it is the picture's own key.
+
+          pointer-events-none on the strip with auto on the chips, so dragging
+          across the top of the panel still orbits the model instead of being
+          swallowed by an invisible bar. */}
+      <div className="pointer-events-none absolute inset-x-0 top-4 z-10 flex flex-wrap justify-center gap-x-2 gap-y-2 px-4 [&>*]:pointer-events-auto">
         {UNIT_STATUSES.map((status) => {
           const count = counts[status.value] ?? 0
           const isActive = statusFilter === status.value
@@ -112,15 +125,20 @@ export default function FloorPlanSection({ building, propertyId }) {
               disabled={!count}
               aria-pressed={isActive}
               onClick={() => setStatusFilter(isActive ? null : status.value)}
-              className={`flex min-h-9 items-center gap-2 rounded-full border px-3.5 py-1.5 transition-colors duration-200 disabled:opacity-30 ${
-                isActive ? 'border-accent bg-accent/15' : 'border-[var(--color-line-inv)] hover:border-bone/30'
+              // Carries its own translucent ground: floated over the panel it
+              // sits on 3D geometry, not a flat surface, so it cannot borrow
+              // contrast from what is behind it.
+              className={`flex min-h-9 items-center gap-2 rounded-full border px-3.5 py-1.5 backdrop-blur-sm transition-colors duration-200 disabled:opacity-30 ${
+                isActive
+                  ? 'border-accent bg-accent/20'
+                  : 'border-[var(--color-line)] bg-surface/80 hover:border-content/30'
               }`}
             >
               <span aria-hidden className={`size-2.5 rounded-sm ${status.swatch}`} />
-              <span className="font-body text-[11px] font-bold uppercase tracking-[0.1em] text-bone/60">
+              <span className="font-body text-[11px] font-bold uppercase tracking-[0.1em] text-content/60">
                 {status.label}
               </span>
-              <span className="font-body text-[11px] text-bone/35">{count}</span>
+              <span className="font-body text-[11px] text-content/40">{count}</span>
             </button>
           )
         })}
@@ -128,7 +146,7 @@ export default function FloorPlanSection({ building, propertyId }) {
           <button
             type="button"
             onClick={() => setStatusFilter(null)}
-            className="font-body text-[11px] font-bold uppercase tracking-[0.1em] text-accent-soft hover:text-bone"
+            className="font-body text-[11px] font-bold uppercase tracking-[0.1em] text-accent hover:text-content"
           >
             Clear filter
           </button>
@@ -163,8 +181,10 @@ export default function FloorPlanSection({ building, propertyId }) {
           statusFilter={statusFilter}
         />
       )}
+        </div>
 
-      <UnitDetailCard unit={selectedUnit} onEnquire={enquire} />
+        <UnitDetailCard unit={selectedUnit} onEnquire={enquire} />
+      </div>
 
       {/* Tier 3 / 4 — always rendered. SEO surface, keyboard path, fallback.
           Collapsed by default once the 3D view is live, since tapping a unit
@@ -186,17 +206,17 @@ export default function FloorPlanSection({ building, propertyId }) {
 
 function ViewerPoster({ poster, onActivate }) {
   return (
-    <div className="relative h-[420px] overflow-hidden rounded-2xl border border-[var(--color-line-inv)] bg-void md:h-[560px]">
+    <div className="relative h-[420px] overflow-hidden rounded-2xl border border-[var(--color-line)] bg-surface-alt md:h-[560px]">
       {poster && <img src={poster} alt="" className="h-full w-full object-cover opacity-45" />}
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
         <button
           type="button"
           onClick={onActivate}
-          className="rounded-full bg-accent px-7 py-3 font-body text-[13px] font-bold uppercase tracking-[0.14em] text-bone transition-colors duration-300 hover:bg-accent-soft"
+          className="rounded-full bg-accent px-7 py-3 font-body text-[13px] font-bold uppercase tracking-[0.14em] text-white transition-colors duration-300 hover:bg-accent-soft"
         >
           Explore in 3D
         </button>
-        <span className="font-body text-xs text-bone/45">Rotate the building and click any unit for details</span>
+        <span className="font-body text-xs text-content/50">Rotate the building and click any unit for details</span>
       </div>
     </div>
   )
@@ -204,10 +224,10 @@ function ViewerPoster({ poster, onActivate }) {
 
 function ViewerSkeleton({ poster }) {
   return (
-    <div className="relative h-[420px] overflow-hidden rounded-2xl border border-[var(--color-line-inv)] bg-void md:h-[560px]">
+    <div className="relative h-[420px] overflow-hidden rounded-2xl border border-[var(--color-line)] bg-surface-alt md:h-[560px]">
       {poster && <img src={poster} alt="" className="h-full w-full object-cover opacity-25" />}
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="eyebrow text-bone/45">Loading 3D model…</span>
+        <span className="eyebrow text-content/50">Loading 3D model…</span>
       </div>
     </div>
   )

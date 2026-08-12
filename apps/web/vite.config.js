@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
@@ -32,6 +32,22 @@ function selfHostedDraco() {
 }
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [react(), tailwindcss(), selfHostedDraco()],
+export default defineConfig(({ mode }) => {
+  /**
+   * Dev-only API proxy. Set DEV_API_TARGET in .env to whichever API you're
+   * working against — a local `pnpm --filter @prime-developers/api dev`, or
+   * the deployed Render service — and point VITE_API_BASE_URL at the dev
+   * server itself. The browser then only ever talks to its own origin, so the
+   * deployed API's CORS allowlist (which knows nothing about localhost) can't
+   * block a local session. Absent the variable, nothing is proxied; production
+   * builds never see this block at all.
+   */
+  const { DEV_API_TARGET } = loadEnv(mode, process.cwd(), '')
+
+  return {
+    plugins: [react(), tailwindcss(), selfHostedDraco()],
+    server: DEV_API_TARGET
+      ? { proxy: { '/api': { target: DEV_API_TARGET, changeOrigin: true } } }
+      : {},
+  }
 })

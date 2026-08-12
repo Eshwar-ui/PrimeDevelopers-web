@@ -1,83 +1,192 @@
-import { useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import gsap from 'gsap'
-import { ScrollTrigger } from 'gsap/ScrollTrigger'
-import { useGSAP } from '@gsap/react'
-import SectionHeader from './SectionHeader'
 import { useSection, useProperties } from '../context/ContentContext'
 import { renderEmphasis } from '../lib/emphasis'
 
-// Asymmetric two-row layout (7/5 then 5/7) — not a generic equal-column grid.
-const SPANS = ['md:col-span-7', 'md:col-span-5', 'md:col-span-5', 'md:col-span-7']
-
-// A deliberate bright "intermission" band between the dark cinematic sections.
-export default function Gallery() {
-  const { heading } = useSection('gallery')
-  const properties = useProperties().slice(0, 4)
-  const scope = useRef(null)
-  const navigate = useNavigate()
-
-  useGSAP(
-    () => {
-      gsap.from('[data-gitem]', {
-        y: 60,
-        opacity: 0,
-        duration: 1,
-        ease: 'power3.out',
-        stagger: 0.12,
-        scrollTrigger: { trigger: scope.current, start: 'top 72%' },
-      })
-    },
-    { scope }
+function Chevron({ dir }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-5"
+    >
+      <path d={dir === 'left' ? 'm15 18-6-6 6-6' : 'm9 18 6-6-6-6'} />
+    </svg>
   )
+}
+
+// Split layout: a fixed information column on the left, and a clipped carousel
+// on the right whose next card deliberately peeks past the section edge.
+//
+// The carousel is a scroll-snap container rather than a transform-driven track.
+// The design's card is a fixed 580px that has to become fluid below desktop,
+// and a transform needs that width in JS — measured, and re-measured on every
+// resize. Snapping lets CSS own the width and keeps the arrows to one scrollTo.
+export default function Gallery() {
+  const { eyebrow, heading, paragraph, features } = useSection('gallery')
+  const properties = useProperties()
+  const navigate = useNavigate()
+  const trackRef = useRef(null)
+  const [index, setIndex] = useState(0)
+
+  // Derive the active card from scroll position rather than tracking it on
+  // click alone — a swipe or a trackpad flick moves the track too, and the dots
+  // have to follow those as well.
+  const syncIndex = useCallback(() => {
+    const track = trackRef.current
+    if (!track) return
+    const cards = [...track.children]
+    const nearest = cards.reduce(
+      (best, card, i) =>
+        Math.abs(card.offsetLeft - track.scrollLeft) < best.distance
+          ? { i, distance: Math.abs(card.offsetLeft - track.scrollLeft) }
+          : best,
+      { i: 0, distance: Infinity }
+    )
+    setIndex(nearest.i)
+  }, [])
+
+  useEffect(() => {
+    const track = trackRef.current
+    if (!track) return
+    track.addEventListener('scroll', syncIndex, { passive: true })
+    return () => track.removeEventListener('scroll', syncIndex)
+  }, [syncIndex])
+
+  const goTo = (i) => {
+    const track = trackRef.current
+    const card = track?.children[i]
+    if (card) track.scrollTo({ left: card.offsetLeft, behavior: 'smooth' })
+  }
 
   if (properties.length === 0) return null
+
+  const atStart = index === 0
+  const atEnd = index >= properties.length - 1
 
   return (
     <section
       id="gallery"
       data-band="light"
-      ref={scope}
-      className="bg-bone px-6 py-24 text-ink md:px-[75px] md:py-32"
+      // Only the left edge is padded on desktop: the carousel has to run past
+      // the right edge for the next card to peek, which a symmetric pad
+      // would cut off.
+      className="overflow-hidden bg-surface py-16 pl-6 text-content md:py-10 md:pl-[100px]"
     >
-      <div className="mb-14 flex flex-col gap-8">
-        <SectionHeader index="03" title="Frames" tone="ink" />
-        <h3 className="max-w-[18ch] font-display text-[2.2rem] font-light leading-[1.02] tracking-[-0.02em] text-ink md:text-h2">
-          {renderEmphasis(heading)}
-        </h3>
+      <div className="flex flex-col gap-10 pr-6 md:flex-row md:items-center md:gap-20 md:pr-0">
+        {/* Left — information column */}
+        <div className="shrink-0 md:w-[400px] md:py-16">
+          {eyebrow && <p className="eyebrow text-accent">{eyebrow}</p>}
+
+          <h2 className="mt-3 font-display text-[2.5rem] font-bold leading-[1.15] tracking-[-0.02em] text-content">
+            {renderEmphasis(heading)}
+          </h2>
+
+          {paragraph && (
+            <p className="mt-6 font-body text-[16px] leading-[1.55] text-content/70">{paragraph}</p>
+          )}
+
+          {features?.length > 0 && (
+            <ul className="mt-8">
+              {features.map((f, i) => (
+                <li
+                  key={f.title}
+                  className="flex items-center gap-3 border-t border-line py-4 last:border-b"
+                >
+                  <span className="numeral text-[15px] font-bold text-content">
+                    {String(i + 1).padStart(2, '0')}
+                  </span>
+                  <span className="font-body text-[16px] text-content/80">{f.title}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Right — clipped carousel */}
+        <div className="min-w-0 flex-1">
+          <div
+            ref={trackRef}
+            // relative is load-bearing, not cosmetic: the arrows and dots
+            // compare each card's offsetLeft against the track's scrollLeft,
+            // and offsetLeft is measured from the nearest *positioned*
+            // ancestor. Without this the cards resolve against a container
+            // outside the scroller and every jump overshoots by the left
+            // column's width.
+            className="relative flex snap-x snap-mandatory gap-6 overflow-x-auto overscroll-x-contain"
+          >
+            {properties.map((p) => (
+              <figure
+                key={p.slug}
+                role="link"
+                tabIndex={0}
+                onClick={() => navigate(`/properties/${p.slug}`)}
+                onKeyDown={(e) => e.key === 'Enter' && navigate(`/properties/${p.slug}`)}
+                className="group w-[85vw] shrink-0 cursor-pointer snap-start sm:w-[420px] md:w-[580px]"
+              >
+                <div className="overflow-hidden rounded-2xl">
+                  <img
+                    src={p.image}
+                    alt={p.name}
+                    className="h-[260px] w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04] md:h-[400px]"
+                  />
+                </div>
+                <figcaption className="mt-4">
+                  <p className="font-display text-[20px] font-bold leading-tight tracking-[-0.01em] text-content">
+                    {p.name}
+                  </p>
+                  {p.address && (
+                    <p className="mt-1.5 font-body text-[15px] text-content/55">{p.address}</p>
+                  )}
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-12 md:gap-5">
-        {properties.map((p, i) => (
-          <figure
-            key={p.slug}
-            data-gitem
-            role="link"
-            tabIndex={0}
-            onClick={() => navigate(`/properties/${p.slug}`)}
-            onKeyDown={(e) => e.key === 'Enter' && navigate(`/properties/${p.slug}`)}
-            className={`group cursor-pointer ${SPANS[i % SPANS.length]}`}
+      {/* Controls — dots track the left column, arrows sit under the carousel */}
+      <div className="mt-8 flex items-center justify-between gap-6 pr-6 md:mt-6 md:pr-[100px]">
+        <div className="flex items-center gap-2">
+          {properties.map((p, i) => (
+            <button
+              key={p.slug}
+              type="button"
+              onClick={() => goTo(i)}
+              aria-label={`Show ${p.name}`}
+              aria-current={i === index}
+              className={`rounded-full transition-all duration-300 ${
+                i === index ? 'size-2.5 bg-accent' : 'size-2 bg-content/20 hover:bg-content/40'
+              }`}
+            />
+          ))}
+        </div>
+
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => goTo(index - 1)}
+            disabled={atStart}
+            aria-label="Previous"
+            className="flex size-13 items-center justify-center rounded-full border border-line text-content transition-colors duration-300 enabled:hover:border-content/40 disabled:opacity-35"
           >
-            <div className="relative h-[300px] overflow-hidden rounded-2xl md:h-[460px]">
-              <img
-                src={p.image}
-                alt={p.name}
-                className="h-full w-full object-cover grayscale transition-all duration-700 ease-out group-hover:scale-[1.04] group-hover:grayscale-0"
-              />
-              <div
-                aria-hidden
-                className="absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
-                style={{ background: 'linear-gradient(180deg, transparent 55%, rgba(26,26,26,0.5))' }}
-              />
-            </div>
-            <figcaption className="mt-4 flex items-center justify-between">
-              <span className="font-display text-lg font-medium tracking-[-0.01em] text-ink">
-                {p.name}
-              </span>
-              <span className="eyebrow text-muted">{p.address}</span>
-            </figcaption>
-          </figure>
-        ))}
+            <Chevron dir="left" />
+          </button>
+          <button
+            type="button"
+            onClick={() => goTo(index + 1)}
+            disabled={atEnd}
+            aria-label="Next"
+            className="flex size-13 items-center justify-center rounded-full bg-accent text-white transition-colors duration-300 enabled:hover:bg-prime-deep disabled:opacity-35"
+          >
+            <Chevron dir="right" />
+          </button>
+        </div>
       </div>
     </section>
   )

@@ -1,6 +1,7 @@
-import { Section, TextField, TextAreaField } from '../components/Field'
+import { Section, TextField, TextAreaField, SelectField } from '../components/Field'
 import ImageUploader from '../components/ImageUploader'
 import RepeatableList from '../components/RepeatableList'
+import { SERVICE_ICONS } from '../../lib/serviceIcons'
 
 // Shared hint for the *word* → italic accent-color convention used across
 // headings, so admins get the same visual flourish as the original hardcoded copy.
@@ -49,9 +50,6 @@ export const SECTIONS = [
     description: 'Scrolling client-logo strip.',
     Editor: ({ value, onChange }) => (
       <>
-        <Section title="Copy">
-          <TextField label="Eyebrow" value={value.eyebrow} onChange={(eyebrow) => onChange({ eyebrow })} />
-        </Section>
         <Section title="Logos">
           <RepeatableList
             items={value.logos}
@@ -78,9 +76,12 @@ export const SECTIONS = [
         <Section title="Copy">
           <TextAreaField label="Heading" rows={2} value={value.heading} onChange={(heading) => onChange({ heading })} />
           <p className="-mt-3 text-[11px] text-bone/35">{emphasisHint}</p>
-          <TextAreaField label="Paragraph 1" value={value.paragraph1} onChange={(paragraph1) => onChange({ paragraph1 })} />
-          <TextAreaField label="Paragraph 2" value={value.paragraph2} onChange={(paragraph2) => onChange({ paragraph2 })} />
-          <TextField label="Button label" value={value.ctaLabel} onChange={(ctaLabel) => onChange({ ctaLabel })} />
+          <TextAreaField label="Paragraph" value={value.paragraph1} onChange={(paragraph1) => onChange({ paragraph1 })} />
+        </Section>
+        <Section title="Film" description="Plays on click. Leave the link empty to show the still on its own.">
+          <ImageUploader label="Poster still" value={value.videoPoster} onChange={(videoPoster) => onChange({ videoPoster })} folder="site/about" />
+          <TextField label="Video link" value={value.videoUrl} onChange={(videoUrl) => onChange({ videoUrl })} />
+          <p className="-mt-3 text-[11px] text-bone/35">A YouTube or Vimeo link, or a direct link to an .mp4 file.</p>
         </Section>
         <Section title="Stats">
           <RepeatableList
@@ -111,14 +112,59 @@ export const SECTIONS = [
     ),
   },
   {
+    key: 'services_home',
+    label: 'Services (homepage strip)',
+    description: 'The four support promises between the property teaser and the gallery.',
+    Editor: ({ value, onChange }) => (
+      <>
+        <Section title="Copy">
+          <TextField label="Eyebrow" value={value.eyebrow} onChange={(eyebrow) => onChange({ eyebrow })} />
+          <TextAreaField label="Heading" rows={2} value={value.heading} onChange={(heading) => onChange({ heading })} />
+        </Section>
+        <Section title="Cards">
+          <RepeatableList
+            items={value.items}
+            onChange={(items) => onChange({ items })}
+            makeItem={() => ({ icon: SERVICE_ICONS[0], title: '', body: '' })}
+            addLabel="Add card"
+            renderItem={(item, set) => (
+              <div className="flex flex-col gap-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <SelectField label="Icon" value={item.icon} onChange={(icon) => set({ ...item, icon })} options={SERVICE_ICONS} />
+                  <TextField label="Title" value={item.title} onChange={(title) => set({ ...item, title })} />
+                </div>
+                <TextAreaField label="Body" value={item.body} onChange={(body) => set({ ...item, body })} />
+              </div>
+            )}
+          />
+        </Section>
+      </>
+    ),
+  },
+  {
     key: 'gallery',
     label: 'Gallery',
-    description: 'Heading above the homepage photo gallery — photos shown there come from the Properties list.',
+    description: 'The homepage photo gallery — photos shown there come from the Properties list.',
     Editor: ({ value, onChange }) => (
-      <Section title="Copy">
-        <TextAreaField label="Heading" rows={2} value={value.heading} onChange={(heading) => onChange({ heading })} />
-        <p className="-mt-3 text-[11px] text-bone/35">{emphasisHint}</p>
-      </Section>
+      <>
+        <Section title="Copy">
+          <TextField label="Eyebrow" value={value.eyebrow} onChange={(eyebrow) => onChange({ eyebrow })} />
+          <TextAreaField label="Heading" rows={2} value={value.heading} onChange={(heading) => onChange({ heading })} />
+          <p className="-mt-3 text-[11px] text-bone/35">{emphasisHint}</p>
+          <TextAreaField label="Paragraph" rows={4} value={value.paragraph} onChange={(paragraph) => onChange({ paragraph })} />
+        </Section>
+        <Section title="Highlights" description="The numbered list under the paragraph — numbering is automatic.">
+          <RepeatableList
+            items={value.features}
+            onChange={(features) => onChange({ features })}
+            makeItem={() => ({ title: '' })}
+            addLabel="Add highlight"
+            renderItem={(item, set) => (
+              <TextField label="Title" value={item.title} onChange={(title) => set({ ...item, title })} />
+            )}
+          />
+        </Section>
+      </>
     ),
   },
   {
@@ -126,23 +172,64 @@ export const SECTIONS = [
     label: 'Testimonials',
     description: 'Client quotes on the homepage.',
     Editor: ({ value, onChange }) => (
-      <Section title="Quotes">
-        <RepeatableList
-          items={value.items}
-          onChange={(items) => onChange({ items })}
-          makeItem={() => ({ quote: '', name: '', role: '' })}
-          addLabel="Add testimonial"
-          renderItem={(item, set) => (
-            <div className="flex flex-col gap-3">
-              <TextAreaField label="Quote" value={item.quote} onChange={(quote) => set({ ...item, quote })} />
-              <div className="grid grid-cols-2 gap-3">
-                <TextField label="Name" value={item.name} onChange={(name) => set({ ...item, name })} />
-                <TextField label="Role" value={item.role} onChange={(role) => set({ ...item, role })} />
+      <>
+        <Section title="Copy">
+          <TextField label="Heading" value={value.heading} onChange={(heading) => onChange({ heading })} />
+          <TextAreaField label="Paragraph" value={value.paragraph} onChange={(paragraph) => onChange({ paragraph })} />
+        </Section>
+        <Section title="Quotes">
+          <RepeatableList
+            items={value.items}
+            onChange={(items) => onChange({ items })}
+            makeItem={() => ({ quote: '', name: '', role: '', avatar: '', rating: 5 })}
+            addLabel="Add testimonial"
+            renderItem={(item, set) => (
+              <div className="flex flex-col gap-3">
+                <TextAreaField label="Quote" value={item.quote} onChange={(quote) => set({ ...item, quote })} />
+                <div className="grid grid-cols-2 gap-3">
+                  <TextField label="Name" value={item.name} onChange={(name) => set({ ...item, name })} />
+                  <TextField label="Role" value={item.role} onChange={(role) => set({ ...item, role })} />
+                </div>
+                <TextField label="Rating (0–5)" type="number" value={item.rating ?? 5} onChange={(rating) => set({ ...item, rating })} />
+                <ImageUploader label="Portrait" value={item.avatar} onChange={(avatar) => set({ ...item, avatar })} folder="site/testimonials" />
+                <p className="-mt-3 text-[11px] text-bone/35">Optional — initials are shown when no portrait is uploaded.</p>
               </div>
-            </div>
-          )}
-        />
+            )}
+          />
+        </Section>
+      </>
+    ),
+  },
+  {
+    key: 'news_home',
+    label: 'News (homepage teaser)',
+    description: 'Heading above the homepage news teaser — the posts themselves come from the News list.',
+    Editor: ({ value, onChange }) => (
+      <Section title="Copy">
+        <TextField label="Heading" value={value.heading} onChange={(heading) => onChange({ heading })} />
+        <TextAreaField label="Paragraph" value={value.paragraph} onChange={(paragraph) => onChange({ paragraph })} />
       </Section>
+    ),
+  },
+  {
+    key: 'cta_home',
+    label: 'Closing call to action',
+    description: 'The dark panel that closes the homepage.',
+    Editor: ({ value, onChange }) => (
+      <>
+        <Section title="Copy">
+          <TextAreaField label="Heading" rows={2} value={value.heading} onChange={(heading) => onChange({ heading })} />
+          <p className="-mt-3 text-[11px] text-bone/35">{emphasisHint}</p>
+          <TextAreaField label="Paragraph" value={value.paragraph} onChange={(paragraph) => onChange({ paragraph })} />
+          <div className="grid grid-cols-2 gap-4">
+            <TextField label="Button label" value={value.ctaLabel} onChange={(ctaLabel) => onChange({ ctaLabel })} />
+            <TextField label="Button link" value={value.ctaHref} onChange={(ctaHref) => onChange({ ctaHref })} />
+          </div>
+        </Section>
+        <Section title="Photo">
+          <ImageUploader label="Panel image" value={value.image} onChange={(image) => onChange({ image })} folder="site/cta" />
+        </Section>
+      </>
     ),
   },
   {
@@ -331,16 +418,92 @@ export const SECTIONS = [
     ),
   },
   {
+    key: 'enterprise_page',
+    label: 'Enterprise page',
+    description: 'The /enterprise page — hero, capabilities, record, and closing band.',
+    Editor: ({ value, onChange }) => (
+      <>
+        <Section title="Hero">
+          <TextField label="Eyebrow" value={value.heroEyebrow} onChange={(heroEyebrow) => onChange({ heroEyebrow })} />
+          <TextAreaField label="Heading" rows={2} value={value.heroHeading} onChange={(heroHeading) => onChange({ heroHeading })} />
+          <p className="-mt-3 text-[11px] text-bone/35">{emphasisHint}</p>
+          <TextAreaField label="Paragraph" value={value.heroParagraph} onChange={(heroParagraph) => onChange({ heroParagraph })} />
+          <ImageUploader label="Banner image" value={value.heroImage} onChange={(heroImage) => onChange({ heroImage })} folder="site/enterprise" />
+          <div className="grid grid-cols-2 gap-4">
+            <TextField label="Button label" value={value.ctaLabel} onChange={(ctaLabel) => onChange({ ctaLabel })} />
+            <TextField label="Button link" value={value.ctaHref} onChange={(ctaHref) => onChange({ ctaHref })} />
+          </div>
+        </Section>
+        <Section title="Capabilities">
+          <TextAreaField label="Heading" rows={2} value={value.capabilitiesHeading} onChange={(capabilitiesHeading) => onChange({ capabilitiesHeading })} />
+          <RepeatableList
+            items={value.capabilities}
+            onChange={(capabilities) => onChange({ capabilities })}
+            makeItem={() => ({ title: '', body: '' })}
+            addLabel="Add capability"
+            renderItem={(item, set) => (
+              <div className="flex flex-col gap-3">
+                <TextField label="Title" value={item.title} onChange={(title) => set({ ...item, title })} />
+                <TextAreaField label="Body" value={item.body} onChange={(body) => set({ ...item, body })} />
+              </div>
+            )}
+          />
+        </Section>
+        <Section title="Record">
+          <RepeatableList
+            items={value.stats}
+            onChange={(stats) => onChange({ stats })}
+            makeItem={() => ({ value: '', label: '' })}
+            addLabel="Add stat"
+            renderItem={(item, set) => (
+              <div className="grid grid-cols-2 gap-3">
+                <TextField label="Value" value={item.value} onChange={(v) => set({ ...item, value: v })} />
+                <TextField label="Label" value={item.label} onChange={(label) => set({ ...item, label })} />
+              </div>
+            )}
+          />
+        </Section>
+        <Section title="Closing band">
+          <TextAreaField label="Heading" rows={2} value={value.closingHeading} onChange={(closingHeading) => onChange({ closingHeading })} />
+          <p className="-mt-3 text-[11px] text-bone/35">{emphasisHint}</p>
+          <div className="grid grid-cols-2 gap-4">
+            <TextField label="Button label" value={value.closingLabel} onChange={(closingLabel) => onChange({ closingLabel })} />
+            <TextField label="Button link" value={value.closingHref} onChange={(closingHref) => onChange({ closingHref })} />
+          </div>
+        </Section>
+      </>
+    ),
+  },
+  {
     key: 'properties_page',
     label: 'Properties page',
-    description: 'Hero copy on the /properties listing page.',
+    description: 'Hero, buttons and collection copy on the /properties listing page.',
     Editor: ({ value, onChange }) => (
-      <Section title="Hero">
-        <TextField label="Eyebrow" value={value.heroEyebrow} onChange={(heroEyebrow) => onChange({ heroEyebrow })} />
-        <TextAreaField label="Heading" rows={2} value={value.heroHeading} onChange={(heroHeading) => onChange({ heroHeading })} />
-        <p className="-mt-3 text-[11px] text-bone/35">{emphasisHint}</p>
-        <TextAreaField label="Paragraph" value={value.heroParagraph} onChange={(heroParagraph) => onChange({ heroParagraph })} />
-      </Section>
+      <>
+        <Section title="Hero">
+          <TextField label="Eyebrow" value={value.heroEyebrow} onChange={(heroEyebrow) => onChange({ heroEyebrow })} />
+          <TextAreaField label="Heading" rows={2} value={value.heroHeading} onChange={(heroHeading) => onChange({ heroHeading })} />
+          <p className="-mt-3 text-[11px] text-bone/35">{emphasisHint}</p>
+          <TextAreaField label="Paragraph" value={value.heroParagraph} onChange={(heroParagraph) => onChange({ heroParagraph })} />
+        </Section>
+        <Section title="Hero buttons">
+          <div className="grid grid-cols-2 gap-4">
+            <TextField label="Primary label" value={value.ctaLabel} onChange={(ctaLabel) => onChange({ ctaLabel })} />
+            <TextField label="Primary link" value={value.ctaHref} onChange={(ctaHref) => onChange({ ctaHref })} />
+            <TextField label="Secondary label" value={value.ctaSecondaryLabel} onChange={(ctaSecondaryLabel) => onChange({ ctaSecondaryLabel })} />
+            <TextField label="Secondary link" value={value.ctaSecondaryHref} onChange={(ctaSecondaryHref) => onChange({ ctaSecondaryHref })} />
+          </div>
+        </Section>
+        {/* No field for the hero band: it plays the published listings' own
+            photographs, so there is nothing to upload and nothing that can
+            fall out of step with the grid below it. */}
+        <Section title="The collection">
+          <TextField label="Eyebrow" value={value.curatedEyebrow} onChange={(curatedEyebrow) => onChange({ curatedEyebrow })} />
+          <TextAreaField label="Heading" rows={2} value={value.curatedHeading} onChange={(curatedHeading) => onChange({ curatedHeading })} />
+          <p className="-mt-3 text-[11px] text-bone/35">{emphasisHint}</p>
+          <TextAreaField label="Paragraph" value={value.curatedParagraph} onChange={(curatedParagraph) => onChange({ curatedParagraph })} />
+        </Section>
+      </>
     ),
   },
   {

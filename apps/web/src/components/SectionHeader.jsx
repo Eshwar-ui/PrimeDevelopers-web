@@ -3,9 +3,9 @@
 // follows in each section carries the weight.
 export default function SectionHeader({ title, index, tone = 'inv', className = '' }) {
   const inv = tone === 'inv' // inv = light text on a dark section
-  const text = inv ? 'text-bone' : 'text-ink'
+  const text = inv ? 'text-bone' : 'text-content'
   const dash = inv ? 'bg-accent-soft' : 'bg-accent'
-  const idx = inv ? 'text-bone/15' : 'text-ink/10'
+  const idx = inv ? 'text-bone/15' : 'text-content/10'
 
   return (
     <div className={`flex items-center gap-4 ${className}`}>

@@ -529,7 +529,7 @@ export default function ModelViewer({
       // z-index:auto, so descendants compete with the whole page. Isolating
       // means nothing inside the viewer can ever paint over the navbar or the
       // mobile nav overlay, whatever z-index a library reaches for.
-      className={`relative isolate overflow-hidden rounded-2xl border border-[var(--color-line-inv)] bg-void ${isFullscreen ? 'h-screen' : height}`}
+      className={`relative isolate overflow-hidden rounded-2xl border border-[var(--color-line)] bg-surface-alt ${isFullscreen ? 'h-screen' : height}`}
     >
       <Canvas
         frameloop={live ? 'always' : 'demand'}
@@ -537,7 +537,11 @@ export default function ModelViewer({
         gl={{
           antialias: true,
           powerPreference: 'high-performance',
-          alpha: false,
+          // Transparent, so the panel's ground is the container's `bg-surface-alt`
+          // and follows the theme. Opaque was cheaper, but it clears to black
+          // whatever the CSS says — the reason an earlier attempt to light this
+          // panel by restyling the wrapper had no visible effect at all.
+          alpha: true,
           stencil: false,
           // Only for the admin capture flow — keeping the drawing buffer around
           // costs memory and bandwidth on every frame, so visitors never pay it.
@@ -604,14 +608,14 @@ export default function ModelViewer({
           there is no hover and the detail panel does this job. */}
       {chip && (
         <div
-          className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-[calc(100%+14px)] rounded-lg border border-[var(--color-line-inv)] bg-void/95 px-3 py-2 shadow-xl"
+          className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-[calc(100%+14px)] rounded-lg border border-[var(--color-line)] bg-surface/95 px-3 py-2 shadow-xl"
           style={{ left: chip.left, top: chip.top }}
         >
           <div className="flex items-center gap-2">
             <span aria-hidden className={`size-2 rounded-sm ${unitStatusMeta(chip.unit.status).swatch}`} />
-            <span className="font-display text-sm font-medium text-bone">{chip.unit.label}</span>
+            <span className="font-display text-sm font-medium text-content">{chip.unit.label}</span>
           </div>
-          <div className="mt-0.5 font-body text-[11px] text-bone/55">
+          <div className="mt-0.5 font-body text-[11px] text-content/55">
             {unitStatusMeta(chip.unit.status).label}
             {chip.unit.size ? ` · ${Number(String(chip.unit.size).replace(/[^\d.]/g, '')).toLocaleString()} sq ft` : ''}
           </div>
@@ -653,8 +657,8 @@ function ViewerButton({ children, label, onClick, active }) {
       aria-label={label}
       className={`flex size-11 items-center justify-center rounded-lg border text-sm backdrop-blur transition-colors duration-200 ${
         active
-          ? 'border-accent bg-accent/25 text-bone'
-          : 'border-[var(--color-line-inv)] bg-void/70 text-bone/70 hover:border-bone/35 hover:text-bone'
+          ? 'border-accent bg-accent/15 text-accent'
+          : 'border-[var(--color-line)] bg-surface/80 text-content/70 hover:border-content/35 hover:text-content'
       }`}
     >
       {children}

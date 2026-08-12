@@ -16,7 +16,7 @@ const fields = [
 // Shared by every field so the three inputs and the textarea cannot drift.
 const FIELD =
   'border-b border-[var(--color-line)] bg-transparent pb-2.5 font-body text-[16px] text-content outline-none transition-colors placeholder:text-content/30 focus:border-accent'
-const FIELD_LABEL = 'font-body text-[13px] uppercase tracking-[0.14em] text-content/45'
+const FIELD_LABEL = 'font-body text-[13px] uppercase tracking-[0.14em] text-content/70'
 
 // data-band="light" on every section — see the note in NewsPostPage.
 
@@ -106,7 +106,7 @@ export default function ContactPage() {
           {c.heroParagraph && (
             <motion.p
               variants={rise}
-              className="mx-auto mt-7 max-w-[40rem] font-body text-[15px] leading-relaxed text-content/60"
+              className="mx-auto mt-7 max-w-[40rem] font-body text-[15px] leading-relaxed text-content/70"
             >
               {c.heroParagraph}
             </motion.p>
@@ -148,7 +148,7 @@ export default function ContactPage() {
                     href={s.href}
                     target="_blank"
                     rel="noreferrer"
-                    className="rounded-full border border-[var(--color-line)] px-5 py-2 font-body text-[13px] font-medium uppercase tracking-[0.1em] text-content/55 transition-colors duration-300 hover:border-content/35 hover:text-content"
+                    className="rounded-full border border-[var(--color-line)] px-5 py-2 font-body text-[13px] font-medium uppercase tracking-[0.1em] text-content/70 transition-colors duration-300 hover:border-content/35 hover:text-content"
                   >
                     {s.label}
                   </a>

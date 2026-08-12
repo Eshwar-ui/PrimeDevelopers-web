@@ -239,10 +239,10 @@ export default function FloorPlanSection({ building, propertyId }) {
               }`}
             >
               <span aria-hidden className={`size-2.5 rounded-sm ${status.swatch}`} />
-              <span className="font-body text-[11px] font-bold uppercase tracking-[0.1em] text-content/60">
+              <span className="font-body text-[11px] font-bold uppercase tracking-[0.1em] text-content/70">
                 {status.label}
               </span>
-              <span className="font-body text-[11px] text-content/35">{count}</span>
+              <span className="font-body text-[11px] text-content/70">{count}</span>
             </button>
           )
         })}
@@ -269,7 +269,7 @@ export default function FloorPlanSection({ building, propertyId }) {
               compareMode ? 'border-accent bg-accent/15' : 'border-[var(--color-line)] hover:border-content/30'
             }`}
           >
-            <span className="font-body text-[11px] font-bold uppercase tracking-[0.1em] text-content/60">
+            <span className="font-body text-[11px] font-bold uppercase tracking-[0.1em] text-content/70">
               Compare
             </span>
             {selection.length > 1 && (
@@ -283,7 +283,7 @@ export default function FloorPlanSection({ building, propertyId }) {
           reaches the cap too and a tap that silently does nothing reads as a
           broken control rather than as a limit. */}
       {(compareMode || selection.length >= COMPARE_MAX) && (
-        <p className="-mt-4 font-body text-xs text-content/45">
+        <p className="-mt-4 font-body text-xs text-content/70">
           {selection.length >= COMPARE_MAX
             ? `Comparing ${COMPARE_MAX} units — remove one to add another.`
             : 'Tap units on the plan or in the list to compare them side by side.'}
@@ -389,7 +389,7 @@ function ViewerSkeleton({ poster }) {
       <div className="absolute inset-0 flex items-center justify-center">
         {/* "Floor plan", not "3D model": this is what the visitor is about to
             see, and the plan is now what loads. */}
-        <span className="eyebrow text-content/45">Loading floor plan…</span>
+        <span className="eyebrow text-content/70">Loading floor plan…</span>
       </div>
     </div>
   )

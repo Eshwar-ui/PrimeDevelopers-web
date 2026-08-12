@@ -41,7 +41,7 @@ export default function NewsPage() {
           {p.heroParagraph && (
             <motion.p
               variants={rise}
-              className="mx-auto mt-7 max-w-[40rem] font-body text-[15px] leading-relaxed text-content/60"
+              className="mx-auto mt-7 max-w-[40rem] font-body text-[15px] leading-relaxed text-content/70"
             >
               {p.heroParagraph}
             </motion.p>
@@ -55,7 +55,7 @@ export default function NewsPage() {
           together into one undifferentiated page. */}
       <section data-band="light" className="bg-surface-alt px-6 py-20 md:px-12 md:py-28">
         {posts.length === 0 ? (
-          <p className="font-body text-[16px] text-content/50">No posts yet — check back soon.</p>
+          <p className="font-body text-[16px] text-content/70">No posts yet — check back soon.</p>
         ) : (
           <div className="grid grid-cols-1 gap-7 md:grid-cols-2 lg:grid-cols-3">
             {posts.map((post) => (
@@ -81,7 +81,7 @@ export default function NewsPage() {
                 </div>
                 <div className="flex flex-1 flex-col p-6">
                   {post.publishedAt && (
-                    <span className="font-body text-[13px] uppercase tracking-[0.14em] text-content/45">
+                    <span className="font-body text-[13px] uppercase tracking-[0.14em] text-content/70">
                       {new Date(post.publishedAt).toLocaleDateString(undefined, {
                         year: 'numeric',
                         month: 'long',
@@ -93,7 +93,7 @@ export default function NewsPage() {
                     {post.title}
                   </h3>
                   {post.excerpt && (
-                    <p className="mt-3 font-body text-[15px] leading-[1.7] text-content/60">
+                    <p className="mt-3 font-body text-[15px] leading-[1.7] text-content/70">
                       {post.excerpt}
                     </p>
                   )}

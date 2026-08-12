@@ -37,7 +37,7 @@ function SpecIcon({ label }) {
       strokeWidth="1.6"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="size-4.5 shrink-0 text-content/45"
+      className="size-4.5 shrink-0 text-content/70"
     >
       <path d={match ? match[1] : FALLBACK_ICON} />
     </svg>
@@ -83,7 +83,7 @@ function AvailabilityMeter({ total, sold, available }) {
 
   return (
     <div className="shrink-0 rounded-2xl border border-line bg-surface-alt p-5 md:w-52 md:self-center">
-      <p className="eyebrow text-content/40">Availability</p>
+      <p className="eyebrow text-content/70">Availability</p>
 
       <div className="mt-3 flex items-baseline gap-2">
         {soldOut ? (
@@ -93,7 +93,7 @@ function AvailabilityMeter({ total, sold, available }) {
         ) : (
           <>
             <span className="numeral text-[2.6rem] leading-none text-accent">{available}</span>
-            <span className="font-body text-[13px] text-content/50">
+            <span className="font-body text-[13px] text-content/70">
               of {total} available
             </span>
           </>
@@ -116,7 +116,7 @@ function AvailabilityMeter({ total, sold, available }) {
         />
       </div>
 
-      <div className="mt-2.5 flex items-center justify-between font-body text-[12px] text-content/45">
+      <div className="mt-2.5 flex items-center justify-between font-body text-[12px] text-content/70">
         <span>{sold} sold</span>
         <span>{soldPct}%</span>
       </div>
@@ -251,7 +251,7 @@ export default function Properties() {
                 </a>
 
                 {p.address && (
-                  <p className="mt-1 font-body text-[15px] text-content/50">{p.address}</p>
+                  <p className="mt-1 font-body text-[15px] text-content/70">{p.address}</p>
                 )}
 
                 {specs.length > 0 && (

@@ -22,7 +22,7 @@ export default function NewsTeaser() {
           {heading}
         </h2>
         {paragraph && (
-          <p className="mt-4 max-w-[52ch] font-body text-[16px] leading-normal text-content/60">
+          <p className="mt-4 max-w-[52ch] font-body text-[16px] leading-normal text-content/70">
             {paragraph}
           </p>
         )}
@@ -73,7 +73,7 @@ export default function NewsTeaser() {
               {post.publishedAt && (
                 <time
                   dateTime={post.publishedAt}
-                  className="font-body text-[14px] text-content/45"
+                  className="font-body text-[14px] text-content/70"
                 >
                   {new Date(post.publishedAt).toLocaleDateString(undefined, {
                     year: 'numeric',
@@ -88,7 +88,7 @@ export default function NewsTeaser() {
               </h3>
 
               {post.excerpt && (
-                <p className="mt-3 flex-1 font-body text-[14px] leading-[1.7] text-content/60">
+                <p className="mt-3 flex-1 font-body text-[14px] leading-[1.7] text-content/70">
                   {post.excerpt}
                 </p>
               )}

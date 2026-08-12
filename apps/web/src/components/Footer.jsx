@@ -80,11 +80,12 @@ export default function Footer() {
         <div data-foot className="self-center">
           <MagneticButton
             href={email ? `mailto:${email}` : undefined}
-            // text-white, not text-content: the disc is filled with the accent
-            // in both themes, so its label is a pigment rather than a role
-            // token — under dark mode text-content would go near-white anyway,
-            // but under light it would turn charcoal-on-blue.
-            className="group relative flex size-40 shrink-0 flex-col items-center justify-center gap-2 rounded-full bg-accent text-center text-white md:size-48"
+            // The label flips with the disc rather than being fixed. --color-accent
+            // is CG Blue on light and lifts to a paler tint on dark, so a single
+            // choice cannot serve both: white measures 5.3:1 on the deep blue and
+            // only 3.1:1 on the pale one, and charcoal is the other way round.
+            // Each theme therefore gets whichever of the two the disc can carry.
+            className="group relative flex size-40 shrink-0 flex-col items-center justify-center gap-2 rounded-full bg-accent text-center text-white md:size-48 dark:text-void"
           >
             <span className="font-body text-sm font-bold uppercase tracking-[0.1em]">
               Start a property
@@ -102,7 +103,7 @@ export default function Footer() {
         {details.map((d) => {
           const inner = (
             <div className="flex h-full flex-col gap-2.5 bg-surface p-8">
-              <span className="eyebrow text-content/45">{d.label}</span>
+              <span className="eyebrow text-content/70">{d.label}</span>
               <span className="font-display text-xl font-bold tracking-[-0.01em] text-content">
                 {d.value}
               </span>
@@ -125,7 +126,7 @@ export default function Footer() {
       >
         {columns.map((col) => (
           <div key={col.title} className={`flex flex-col items-start gap-7 ${alignCls[col.align]}`}>
-            <h3 className="eyebrow text-content/45">{col.title}</h3>
+            <h3 className="eyebrow text-content/70">{col.title}</h3>
             <ul className="flex flex-col gap-4">
               {/* Keyed on href *and* label because neither alone is unique:
                   two properties may legitimately share a name (the label), and
@@ -135,7 +136,7 @@ export default function Footer() {
                   <a
                     href={l.href}
                     onClick={(e) => handleNav(e, l.href)}
-                    className="font-display text-[19px] font-medium tracking-[-0.01em] text-content/65 transition-colors duration-300 hover:text-accent"
+                    className="font-display text-[19px] font-medium tracking-[-0.01em] text-content/70 transition-colors duration-300 hover:text-accent"
                   >
                     {l.label}
                   </a>
@@ -161,7 +162,7 @@ export default function Footer() {
       />
 
       {/* Copyright bar */}
-      <div className="relative mt-12 flex flex-col gap-2 text-content/45 md:flex-row md:justify-between">
+      <div className="relative mt-12 flex flex-col gap-2 text-content/70 md:flex-row md:justify-between">
         <p className="eyebrow">{copyrightLeft}</p>
         <p className="eyebrow">{copyrightRight}</p>
       </div>

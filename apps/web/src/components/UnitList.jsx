@@ -58,7 +58,7 @@ export default function UnitList({ units, selection = [], onSelect, statusFilter
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-controls={panelId}
-        className="flex min-h-11 items-center gap-2 font-body text-[13px] font-bold uppercase tracking-[0.14em] text-content/55 transition-colors duration-200 hover:text-content"
+        className="flex min-h-11 items-center gap-2 font-body text-[13px] font-bold uppercase tracking-[0.14em] text-content/70 transition-colors duration-200 hover:text-content"
       >
         <span aria-hidden className={`transition-transform duration-200 ${open ? 'rotate-90' : ''}`}>›</span>
         {open ? 'Hide all units' : `Browse all ${units.length} units`}
@@ -119,13 +119,13 @@ export default function UnitList({ units, selection = [], onSelect, statusFilter
                       {unit.label || `Unit ${position + 1}`}
                     </span>
                   </span>
-                  {area && <span className="font-body text-xs text-content/45">{area}</span>}
+                  {area && <span className="font-body text-xs text-content/70">{area}</span>}
                 </span>
                 {/* Status is carried by the text, not the colour — the swatch
                     is reinforcement, never the only signal. */}
                 <span className="flex shrink-0 items-center gap-2">
                   <span aria-hidden className={`size-2 rounded-sm ${meta.swatch}`} />
-                  <span className="font-body text-[11px] font-bold uppercase tracking-[0.1em] text-content/55">
+                  <span className="font-body text-[11px] font-bold uppercase tracking-[0.1em] text-content/70">
                     {meta.label}
                   </span>
                 </span>

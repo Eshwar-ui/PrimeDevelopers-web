@@ -147,7 +147,7 @@ export default function Gallery() {
                     {p.name}
                   </p>
                   {p.address && (
-                    <p className="mt-1.5 font-body text-[15px] text-content/55">{p.address}</p>
+                    <p className="mt-1.5 font-body text-[15px] text-content/70">{p.address}</p>
                   )}
                 </figcaption>
               </figure>

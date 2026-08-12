@@ -1352,7 +1352,7 @@ export default function ModelViewer({
             <span aria-hidden className={`size-2 rounded-sm ${unitStatusMeta(chip.unit.status).swatch}`} />
             <span className="font-display text-sm font-medium text-content">{chip.unit.label}</span>
           </div>
-          <div className="mt-0.5 font-body text-[11px] text-content/55">
+          <div className="mt-0.5 font-body text-[11px] text-content/70">
             {unitStatusMeta(chip.unit.status).label}
             {chip.unit.size ? ` · ${Number(String(chip.unit.size).replace(/[^\d.]/g, '')).toLocaleString()} sq ft` : ''}
           </div>

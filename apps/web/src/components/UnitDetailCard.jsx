@@ -52,14 +52,14 @@ export default function UnitDetailCard({ unit, units = [], aspect = null, onEnqu
           {meta.label}
         </span>
         <span className="font-display text-lg font-medium break-words text-content">{unit.label || 'Unit'}</span>
-        {area && <span className="font-body text-sm text-content/45">{area}</span>}
+        {area && <span className="font-body text-sm text-content/70">{area}</span>}
       </div>
 
       {/* min-h-0 is what actually lets this scroll: without it a flex child
           refuses to shrink below its content and the panel grows past the
           plan beside it instead of scrolling inside itself. */}
       <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
-        <p className="font-body text-sm leading-relaxed text-content/60">
+        <p className="font-body text-sm leading-relaxed text-content/70">
           {unit.description ||
             (unit.tenant
               ? unit.status === 'leased'
@@ -72,7 +72,7 @@ export default function UnitDetailCard({ unit, units = [], aspect = null, onEnqu
           <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-4 lg:grid-cols-2">
             {specs.map(([term, value]) => (
               <div key={term} className="flex flex-col gap-1">
-                <dt className="eyebrow text-content/40">{term}</dt>
+                <dt className="eyebrow text-content/70">{term}</dt>
                 <dd className="font-display text-base font-medium break-words text-content">{value}</dd>
               </div>
             ))}
@@ -104,7 +104,7 @@ function EmptyPanel({ units }) {
 
   return (
     <div className="flex flex-col gap-4 rounded-2xl border border-dashed border-[var(--color-line)] bg-surface px-6 py-8">
-      <span className="eyebrow text-content/35">Unit details</span>
+      <span className="eyebrow text-content/70">Unit details</span>
 
       {total > 0 && (
         <p className="font-display text-2xl leading-snug font-medium text-content/85">
@@ -119,7 +119,7 @@ function EmptyPanel({ units }) {
         </p>
       )}
 
-      <p className="font-body text-sm leading-relaxed text-content/45">
+      <p className="font-body text-sm leading-relaxed text-content/70">
         Select a unit on the plan — or from the list below — to see its size, floor and availability.
       </p>
     </div>

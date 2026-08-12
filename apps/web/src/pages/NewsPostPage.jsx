@@ -40,7 +40,7 @@ export default function NewsPostPage() {
         <div className="relative mx-auto max-w-[76rem]">
           <Link
             to="/news"
-            className="mb-8 inline-block font-body text-[14px] uppercase tracking-[0.14em] text-content/50 transition-colors duration-300 hover:text-accent"
+            className="mb-8 inline-block font-body text-[14px] uppercase tracking-[0.14em] text-content/70 transition-colors duration-300 hover:text-accent"
           >
             ← All posts
           </Link>

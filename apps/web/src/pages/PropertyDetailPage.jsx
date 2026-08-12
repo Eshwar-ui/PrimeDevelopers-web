@@ -160,7 +160,7 @@ export default function PropertyDetailPage() {
           </h1>
 
           {d?.tagline && (
-            <p className="mx-auto mt-5 max-w-[46rem] font-body text-[17px] leading-relaxed text-content/60">
+            <p className="mx-auto mt-5 max-w-[46rem] font-body text-[17px] leading-relaxed text-content/70">
               {d.tagline}
             </p>
           )}
@@ -282,7 +282,7 @@ export default function PropertyDetailPage() {
               <h2 className="mt-6 font-display font-bold leading-[1.08] tracking-[-0.02em] text-content [font-size:clamp(1.9rem,3.4vw,3rem)]">
                 {d.overview.heading}
               </h2>
-              <p className="mt-6 max-w-[52ch] font-body text-[16px] leading-[1.7] text-content/60">
+              <p className="mt-6 max-w-[52ch] font-body text-[16px] leading-[1.7] text-content/70">
                 {d.overview.body}
               </p>
               {d.overview.flyer && (
@@ -307,7 +307,7 @@ export default function PropertyDetailPage() {
                       className="flex flex-col gap-1.5 bg-surface px-3 py-6 text-center"
                     >
                       <span className="numeral text-[1.35rem] text-ember">{s.value}</span>
-                      <span className="font-body text-[11px] font-bold uppercase tracking-[0.16em] text-content/45">
+                      <span className="font-body text-[11px] font-bold uppercase tracking-[0.16em] text-content/70">
                         {s.label}
                       </span>
                     </div>
@@ -362,7 +362,7 @@ export default function PropertyDetailPage() {
               </motion.h2>
               <motion.p
                 variants={rise}
-                className="mt-6 max-w-[48ch] font-body text-[16px] leading-[1.7] text-content/60"
+                className="mt-6 max-w-[48ch] font-body text-[16px] leading-[1.7] text-content/70"
               >
                 {d.highlights.body}
               </motion.p>
@@ -376,7 +376,7 @@ export default function PropertyDetailPage() {
                         value={s.value}
                         className="numeral text-[2.4rem] leading-none text-ember"
                       />
-                      <span className="font-body text-[11px] font-bold uppercase tracking-[0.16em] text-content/45">
+                      <span className="font-body text-[11px] font-bold uppercase tracking-[0.16em] text-content/70">
                         {s.label}
                       </span>
                     </div>
@@ -414,7 +414,7 @@ export default function PropertyDetailPage() {
                       <h3 className="font-display text-[1.15rem] font-bold tracking-[-0.01em] text-content transition-colors duration-300 group-hover:text-accent">
                         {c.title}
                       </h3>
-                      <p className="mt-1.5 font-body text-[15px] leading-relaxed text-content/55">
+                      <p className="mt-1.5 font-body text-[15px] leading-relaxed text-content/70">
                         {c.body}
                       </p>
                     </div>
@@ -462,7 +462,7 @@ export default function PropertyDetailPage() {
                 key={label}
                 className="rounded-2xl border border-[var(--color-line)] bg-surface px-6 py-5"
               >
-                <span className="font-body text-[11px] font-bold uppercase tracking-[0.16em] text-content/45">
+                <span className="font-body text-[11px] font-bold uppercase tracking-[0.16em] text-content/70">
                   {label}
                 </span>
                 <p className="mt-2 font-display text-[1.5rem] font-bold tracking-[-0.01em] text-content">
@@ -500,7 +500,7 @@ export default function PropertyDetailPage() {
               <FloorPlanSection key={tab} building={d.floorPlans.buildings[tab]} propertyId={property.id} />
             ) : (
               <div className="flex h-[280px] items-center justify-center rounded-2xl border border-[var(--color-line)] bg-surface-alt md:h-[380px]">
-                <span className="eyebrow text-content/35">
+                <span className="eyebrow text-content/70">
                   Floor plan — {d.floorPlans.buildings[tab].building}
                 </span>
               </div>

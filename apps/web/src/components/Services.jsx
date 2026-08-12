@@ -79,7 +79,7 @@ export default function Services() {
             <h3 className="mt-3.5 font-display text-[17px] font-bold leading-tight tracking-[-0.01em] text-content">
               {s.title}
             </h3>
-            <p className="mt-2.5 font-body text-[14px] leading-[1.7] text-content/60">{s.body}</p>
+            <p className="mt-2.5 font-body text-[14px] leading-[1.7] text-content/70">{s.body}</p>
           </article>
         ))}
       </div>

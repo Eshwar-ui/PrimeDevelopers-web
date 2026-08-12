@@ -208,7 +208,7 @@ export default function Hero() {
 
           <motion.p
             variants={rise}
-            className="mt-7 max-w-120 font-body text-[15px] leading-relaxed text-content/60"
+            className="mt-7 max-w-120 font-body text-[15px] leading-relaxed text-content/70"
           >
             {hero.paragraph}
           </motion.p>
@@ -409,7 +409,7 @@ export default function Hero() {
             <p className="mt-2 font-display text-[1.3rem] font-bold leading-tight text-content">
               {active.place}
             </p>
-            <p className="mt-1 font-body text-[13px] text-content/55">{active.kind}</p>
+            <p className="mt-1 font-body text-[13px] text-content/70">{active.kind}</p>
           </div>
         </div>
       </div>

@@ -92,7 +92,7 @@ export default function UnitComparePanel({ units, aspectOf, onRemove, onClear, o
                           type="button"
                           onClick={() => onRemove(unit.index)}
                           aria-label={`Remove ${unit.label || 'this unit'} from the comparison`}
-                          className="-mt-1 -mr-1 flex size-8 shrink-0 items-center justify-center rounded-lg text-content/40 transition-colors duration-200 hover:bg-content/10 hover:text-content"
+                          className="-mt-1 -mr-1 flex size-8 shrink-0 items-center justify-center rounded-lg text-content/70 transition-colors duration-200 hover:bg-content/10 hover:text-content"
                         >
                           <span aria-hidden>×</span>
                         </button>
@@ -114,7 +114,7 @@ export default function UnitComparePanel({ units, aspectOf, onRemove, onClear, o
               <tr key={label} className="border-t border-[var(--color-line)]">
                 <th
                   scope="row"
-                  className="sticky left-0 z-10 bg-surface px-6 py-4 align-top eyebrow font-normal text-content/40"
+                  className="sticky left-0 z-10 bg-surface px-6 py-4 align-top eyebrow font-normal text-content/70"
                 >
                   {label}
                 </th>
@@ -147,7 +147,7 @@ export default function UnitComparePanel({ units, aspectOf, onRemove, onClear, o
                         Enquire
                       </button>
                     ) : (
-                      <span className="font-body text-xs text-content/35">Not available</span>
+                      <span className="font-body text-xs text-content/70">Not available</span>
                     )}
                   </td>
                 ))}

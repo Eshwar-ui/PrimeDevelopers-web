@@ -96,7 +96,7 @@ export default function AboutPage() {
             <h1 className="mt-5 max-w-[16ch] font-display text-[2.25rem] font-bold uppercase leading-[1.03] tracking-tight text-content md:text-[3.4rem]">
               {renderEmphasis(p.heroHeading)}
             </h1>
-            <p className="mt-7 max-w-[46ch] font-body text-[16px] leading-[1.7] text-content/60">
+            <p className="mt-7 max-w-[46ch] font-body text-[16px] leading-[1.7] text-content/70">
               {p.heroParagraph}
             </p>
           </div>
@@ -146,7 +146,7 @@ export default function AboutPage() {
 
           <div
             data-reveal
-            className="flex max-w-[52ch] flex-col gap-6 font-body text-[16px] leading-[1.7] text-content/60"
+            className="flex max-w-[52ch] flex-col gap-6 font-body text-[16px] leading-[1.7] text-content/70"
           >
             <p>{p.firmParagraph1}</p>
             <p>{p.firmParagraph2}</p>
@@ -207,7 +207,7 @@ export default function AboutPage() {
                   {pr.title}
                 </h3>
               </div>
-              <p className="max-w-[64ch] font-body text-[16px] leading-[1.7] text-content/60 md:text-[17px]">
+              <p className="max-w-[64ch] font-body text-[16px] leading-[1.7] text-content/70 md:text-[17px]">
                 {pr.body}
               </p>
             </div>
@@ -260,7 +260,7 @@ export default function AboutPage() {
 
         <p
           data-reveal
-          className="mt-14 max-w-[62ch] font-body text-[16px] leading-[1.7] text-content/60"
+          className="mt-14 max-w-[62ch] font-body text-[16px] leading-[1.7] text-content/70"
         >
           {p.foundersClosing}
         </p>

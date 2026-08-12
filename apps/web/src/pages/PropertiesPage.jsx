@@ -63,7 +63,7 @@ function Card({ p, onOpen }) {
 
         <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-[var(--color-line)] pt-4">
           {specsFor(p).map((spec) => (
-            <span key={spec} className="font-body text-[14px] text-content/55">
+            <span key={spec} className="font-body text-[14px] text-content/70">
               {spec}
             </span>
           ))}
@@ -150,7 +150,7 @@ export default function PropertiesPage() {
                  sets, and it lands the same copy on two balanced lines. */
               <motion.p
                 variants={rise}
-                className="mx-auto mt-7 max-w-[40rem] font-body text-[15px] leading-relaxed text-content/60"
+                className="mx-auto mt-7 max-w-[40rem] font-body text-[15px] leading-relaxed text-content/70"
               >
                 {p.heroParagraph}
               </motion.p>
@@ -190,7 +190,7 @@ export default function PropertiesPage() {
             </h2>
           </div>
           {p.curatedParagraph && (
-            <p className="font-body text-[16px] leading-[1.7] text-content/60">
+            <p className="font-body text-[16px] leading-[1.7] text-content/70">
               {p.curatedParagraph}
             </p>
           )}
@@ -211,7 +211,7 @@ export default function PropertiesPage() {
                   className={`rounded-full border px-5 py-2 font-body text-[13px] font-medium uppercase tracking-[0.1em] transition-colors duration-300 ${
                     active
                       ? 'border-accent bg-accent text-white'
-                      : 'border-[var(--color-line)] text-content/55 hover:border-content/35 hover:text-content'
+                      : 'border-[var(--color-line)] text-content/70 hover:border-content/35 hover:text-content'
                   }`}
                 >
                   {c}

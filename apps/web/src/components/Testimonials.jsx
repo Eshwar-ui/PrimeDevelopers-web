@@ -79,7 +79,7 @@ export default function Testimonials() {
           {heading}
         </h2>
         {paragraph && (
-          <p className="mt-4 font-body text-[16px] leading-normal text-content/60">{paragraph}</p>
+          <p className="mt-4 font-body text-[16px] leading-normal text-content/70">{paragraph}</p>
         )}
       </div>
 
@@ -102,7 +102,7 @@ export default function Testimonials() {
                 <p className="font-display text-[16px] font-bold leading-tight text-content">
                   {t.name}
                 </p>
-                <p className="mt-1 font-body text-[15px] text-content/55">{t.role}</p>
+                <p className="mt-1 font-body text-[15px] text-content/70">{t.role}</p>
               </div>
             </figcaption>
           </figure>

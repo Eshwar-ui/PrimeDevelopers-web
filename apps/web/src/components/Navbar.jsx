@@ -123,45 +123,55 @@ export default function Navbar() {
       return r.top < STRIP_BOTTOM && r.bottom > STRIP_TOP && r.width > 0
     }
 
+    // Which bands are currently across the strip. Held out here rather than per
+    // build so the observer's deltas and the direct measurement below agree on
+    // one set instead of each keeping its own.
+    let seen = new Set()
+
     // `force` is for the resize path, where the bands are unchanged but the
     // rootMargin is derived from the viewport height and has to be recomputed.
     const build = (force = false) => {
       const els = Array.from(document.querySelectorAll('[data-band="light"]'))
-      if (observer && !force && same(els)) return
-      if (observer) observer.disconnect()
-      watched = els
-      const seen = new Set()
-      observer = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((e) => {
-            if (e.isIntersecting) seen.add(e.target)
-            else seen.delete(e.target)
-          })
-          setOverLight(seen.size > 0)
-        },
-        // A 16px strip just under the nav, expressed as "everything except the
-        // band between 40px and 56px from the top".
-        //
-        // The height is read defensively. An unlaid-out or embedded viewport
-        // reports 0, and 0 is worse than it looks: `0 - 56` is negative, which
-        // the IntersectionObserver constructor rejects outright — and clamping
-        // that to 0 only trades the throw for a degenerate band that nothing
-        // can ever intersect, leaving the chrome dressed for a dark ground on
-        // a light page. Falling back to the document height, then to a typical
-        // viewport, keeps the strip somewhere real in both cases.
-        { rootMargin: `-${STRIP_TOP}px 0px -${Math.max(STRIP_BOTTOM, viewportHeight()) - STRIP_BOTTOM}px 0px` }
-      )
 
-      // Seeded from layout rather than waiting to be told. The observer's first
-      // callback is asynchronous, and until it lands the chrome would be
-      // whatever it was on the page before — which on a route change is the
-      // wrong page. Measuring here makes the colour correct in the same frame
-      // the route mounts, and leaves the observer responsible only for what it
-      // is actually good at: keeping it correct while the visitor scrolls.
-      els.forEach((el) => {
-        observer.observe(el)
-        if (crossesStrip(el)) seen.add(el)
-      })
+      // Only the *observer* is skipped when the band set is unchanged. The
+      // measurement below always runs, and that distinction is the whole point:
+      // the first build fires before the page has laid out, when every band is
+      // still a zero rect and nothing crosses anything. Every later mutation
+      // then finds the same set of bands, so a guard that returned early here
+      // would leave that first, wrong answer standing for the life of the page.
+      // It is precisely why the home page kept a white navbar on a white hero
+      // while the code-split routes — whose band set genuinely changes — came
+      // out right.
+      const rebuild = !observer || force || !same(els)
+      if (rebuild) {
+        if (observer) observer.disconnect()
+        watched = els
+        // The strip is expressed as "everything except the band between
+        // STRIP_TOP and STRIP_BOTTOM from the top". The height is read
+        // defensively: an unlaid-out or embedded viewport reports 0, and
+        // `0 - 56` is negative, which the constructor rejects outright.
+        observer = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((e) => {
+              if (e.isIntersecting) seen.add(e.target)
+              else seen.delete(e.target)
+            })
+            setOverLight(seen.size > 0)
+          },
+          { rootMargin: `-${STRIP_TOP}px 0px -${Math.max(STRIP_BOTTOM, viewportHeight()) - STRIP_BOTTOM}px 0px` }
+        )
+        els.forEach((el) => observer.observe(el))
+      }
+
+      // Measured rather than waited for. The observer's first callback is
+      // asynchronous, so until it lands the chrome would keep whatever the
+      // previous page set — which on a route change is by definition the wrong
+      // page — and if it never lands, as when the page is laid out after the
+      // observer was created, it keeps the wrong answer indefinitely. Reading
+      // layout here settles it in the same frame, and leaves the observer to do
+      // the one thing it is good at: keeping it right while the visitor
+      // scrolls.
+      seen = new Set(els.filter(crossesStrip))
       setOverLight(seen.size > 0)
     }
 

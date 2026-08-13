@@ -107,6 +107,9 @@ export default function Navbar() {
     let watched = []
     const same = (next) => next.length === watched.length && next.every((el, i) => el === watched[i])
 
+    const viewportHeight = () =>
+      window.innerHeight || document.documentElement?.clientHeight || 800
+
     // `force` is for the resize path, where the bands are unchanged but the
     // rootMargin is derived from the viewport height and has to be recomputed.
     const build = (force = false) => {
@@ -123,12 +126,17 @@ export default function Navbar() {
           })
           setOverLight(seen.size > 0)
         },
-        // Clamped at 0. The intent is "a 56px band just under the nav", but
-        // subtracting from an innerHeight that is smaller than 56 — a viewport
-        // not yet laid out, which reads as 0 in an embedded frame — yields
-        // `--56px`, and the IntersectionObserver constructor throws on it.
-        // Thrown from inside an effect, that takes the whole render down.
-        { rootMargin: `-40px 0px -${Math.max(0, window.innerHeight - 56)}px 0px` }
+        // A 16px strip just under the nav, expressed as "everything except the
+        // band between 40px and 56px from the top".
+        //
+        // The height is read defensively. An unlaid-out or embedded viewport
+        // reports 0, and 0 is worse than it looks: `0 - 56` is negative, which
+        // the IntersectionObserver constructor rejects outright — and clamping
+        // that to 0 only trades the throw for a degenerate band that nothing
+        // can ever intersect, leaving the chrome dressed for a dark ground on
+        // a light page. Falling back to the document height, then to a typical
+        // viewport, keeps the strip somewhere real in both cases.
+        { rootMargin: `-40px 0px -${Math.max(56, viewportHeight()) - 56}px 0px` }
       )
       els.forEach((el) => observer.observe(el))
     }

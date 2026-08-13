@@ -143,26 +143,35 @@ function PublicSite() {
       {/* Holds the page open through the frame where neither route is mounted.
           Without it the footer flies up to meet the header and drops back. */}
       <main className="min-h-dvh">
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={location.pathname}
-            initial={reduced ? false : PAGE.initial}
-            animate={PAGE.animate}
-            exit={reduced ? { opacity: 0 } : PAGE.exit}
-            onAnimationComplete={onArrived}
-          >
-            <ScrollTop />
-            {/* Inside the animated subtree, not around it: a boundary above
-                AnimatePresence would unmount the whole transition the moment a
-                route chunk suspended, so the outgoing page would vanish
-                instead of leaving. Here the fallback simply takes the incoming
-                page's place until its chunk lands, and the exit still plays. */}
-            <Suspense fallback={<RouteFallback />}>
-              {/* The location is passed explicitly so the outgoing subtree keeps
-                  rendering the route it was mounted with. Left to read the router
-                  itself, it would swap its own content to the new page and then
-                  animate that out. */}
-              <Routes location={location}>
+        {/* Suspense sits ABOVE AnimatePresence, and the order is load-bearing.
+            Nested the other way the two deadlock: AnimatePresence mounts the
+            incoming page, that page suspends immediately on its route chunk,
+            React discards the mount, and `mode="wait"` never receives the
+            signal that the swap finished — so the outgoing page stays on
+            screen indefinitely while the URL says otherwise. Every code-split
+            route became unreachable by clicking, though a hard load was fine,
+            because a hard load never asks AnimatePresence to swap anything.
+
+            The cost is that a route whose chunk is not yet cached shows the
+            fallback instead of animating out. That is the right way round: the
+            flash lasts one chunk download and only the first time a visitor
+            opens that route, and the alternative is navigation that does not
+            work at all.
+
+            `location` is no longer passed to Routes. It existed to keep the
+            outgoing subtree rendering the page it was mounted with, which only
+            mattered while Routes lived inside the animated child. */}
+        <Suspense fallback={<RouteFallback />}>
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={location.pathname}
+              initial={reduced ? false : PAGE.initial}
+              animate={PAGE.animate}
+              exit={reduced ? { opacity: 0 } : PAGE.exit}
+              onAnimationComplete={onArrived}
+            >
+              <ScrollTop />
+              <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/about" element={<AboutPage />} />
                 <Route path="/enterprise" element={<EnterprisePage />} />
@@ -178,9 +187,9 @@ function PublicSite() {
                 <Route path="/blog" element={<Navigate to="/news" replace />} />
                 <Route path="/blog/:slug" element={<RedirectSlug to="/news" />} />
               </Routes>
-            </Suspense>
-          </motion.div>
-        </AnimatePresence>
+            </motion.div>
+          </AnimatePresence>
+        </Suspense>
       </main>
       <Footer />
     </>

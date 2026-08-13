@@ -107,8 +107,21 @@ export default function Navbar() {
     let watched = []
     const same = (next) => next.length === watched.length && next.every((el, i) => el === watched[i])
 
+    // The strip the chrome is decided from: a 16px band just below the nav.
+    // Shared by the observer's rootMargin and the direct measurement below, so
+    // the two can never disagree about where it is.
+    const STRIP_TOP = 40
+    const STRIP_BOTTOM = 56
+
     const viewportHeight = () =>
       window.innerHeight || document.documentElement?.clientHeight || 800
+
+    // Does this band cross the strip right now? The same question the observer
+    // answers, asked directly off layout.
+    const crossesStrip = (el) => {
+      const r = el.getBoundingClientRect()
+      return r.top < STRIP_BOTTOM && r.bottom > STRIP_TOP && r.width > 0
+    }
 
     // `force` is for the resize path, where the bands are unchanged but the
     // rootMargin is derived from the viewport height and has to be recomputed.
@@ -136,9 +149,20 @@ export default function Navbar() {
         // can ever intersect, leaving the chrome dressed for a dark ground on
         // a light page. Falling back to the document height, then to a typical
         // viewport, keeps the strip somewhere real in both cases.
-        { rootMargin: `-40px 0px -${Math.max(56, viewportHeight()) - 56}px 0px` }
+        { rootMargin: `-${STRIP_TOP}px 0px -${Math.max(STRIP_BOTTOM, viewportHeight()) - STRIP_BOTTOM}px 0px` }
       )
-      els.forEach((el) => observer.observe(el))
+
+      // Seeded from layout rather than waiting to be told. The observer's first
+      // callback is asynchronous, and until it lands the chrome would be
+      // whatever it was on the page before — which on a route change is the
+      // wrong page. Measuring here makes the colour correct in the same frame
+      // the route mounts, and leaves the observer responsible only for what it
+      // is actually good at: keeping it correct while the visitor scrolls.
+      els.forEach((el) => {
+        observer.observe(el)
+        if (crossesStrip(el)) seen.add(el)
+      })
+      setOverLight(seen.size > 0)
     }
 
     build()
@@ -163,11 +187,23 @@ export default function Navbar() {
     // fires in bursts, and build() re-queries and reconstructs an observer each
     // time. Only insertions and removals are watched, so style and attribute
     // churn from GSAP costs nothing here.
+    //
+    // The pending frame is *kept*, not cancelled and re-booked. Cancelling on
+    // every mutation starves the callback outright: during a route mount the
+    // bursts arrive faster than one frame — React committing sections, images
+    // resolving, GSAP inserting nodes — so each one pushes the rebuild a frame
+    // further out and it never runs at all. That left the navbar on whatever
+    // bands it happened to find first, which on a code-split route is nothing,
+    // so it stayed dressed for a dark ground on a white page. The home page hid
+    // it by settling quickly enough to land one frame of quiet.
     const host = document.querySelector('main')
     let queued = 0
     const rebuild = () => {
-      cancelAnimationFrame(queued)
-      queued = requestAnimationFrame(build)
+      if (queued) return
+      queued = requestAnimationFrame(() => {
+        queued = 0
+        build()
+      })
     }
     const swaps = host && new MutationObserver(rebuild)
     swaps?.observe(host, { childList: true, subtree: true })

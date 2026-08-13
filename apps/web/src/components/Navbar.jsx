@@ -128,6 +128,14 @@ export default function Navbar() {
     // one set instead of each keeping its own.
     let seen = new Set()
 
+    // Reads layout and decides the chrome. Defaults to re-querying so the
+    // deferred call below cannot act on a list that has since gone stale.
+    const measure = (els) => {
+      const bands = els ?? Array.from(document.querySelectorAll('[data-band="light"]'))
+      seen = new Set(bands.filter(crossesStrip))
+      setOverLight(seen.size > 0)
+    }
+
     // `force` is for the resize path, where the bands are unchanged but the
     // rootMargin is derived from the viewport height and has to be recomputed.
     const build = (force = false) => {
@@ -166,13 +174,19 @@ export default function Navbar() {
       // Measured rather than waited for. The observer's first callback is
       // asynchronous, so until it lands the chrome would keep whatever the
       // previous page set — which on a route change is by definition the wrong
-      // page — and if it never lands, as when the page is laid out after the
-      // observer was created, it keeps the wrong answer indefinitely. Reading
-      // layout here settles it in the same frame, and leaves the observer to do
-      // the one thing it is good at: keeping it right while the visitor
-      // scrolls.
-      seen = new Set(els.filter(crossesStrip))
-      setOverLight(seen.size > 0)
+      // page. Reading layout here settles it in the same frame, and leaves the
+      // observer to do the one thing it is good at: keeping it right while the
+      // visitor scrolls.
+      measure(els)
+
+      // And once more after the frame has been laid out. A page that mounts all
+      // of its markup at once produces no further mutations to rebuild on, so
+      // if the first measurement lands before layout — a hero sized in dvh, a
+      // web font still swapping, an image that has not reserved its box yet —
+      // nothing would ever correct it. One deferred re-read closes that window
+      // without polling, and it is the difference between the home page being
+      // right on arrival and staying wrong until the visitor scrolls.
+      requestAnimationFrame(() => measure())
     }
 
     build()

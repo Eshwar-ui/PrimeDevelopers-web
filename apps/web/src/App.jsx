@@ -90,14 +90,30 @@ const PAGE = {
   exit: { opacity: 0, y: -10, transition: { duration: 0.3, ease: [0.4, 0, 1, 1] } },
 }
 
-// Sends the document back to the top as the new page mounts. Mounted inside the
+// Sends the document back to the top as the new page mounts, and re-measures
+// the scroll triggers now that there is a page to measure. Mounted inside the
 // keyed subtree rather than driven by a callback on the transition: under
 // `mode="wait"` the new page only mounts once the old one has gone, so this
 // already runs during the empty frame — no callback needed to find that moment,
 // and nothing to go wrong if one never fires.
+//
+// The refresh used to hang off the transition's onAnimationComplete, which is
+// exactly the callback that does not fire on a first load: AnimatePresence is
+// given `initial={false}`, so the first page to mount never animates in and
+// never reports completing. ScrollTrigger was therefore left holding whatever
+// it measured while the route chunk was still arriving and the images had not
+// reserved their boxes — positions that are wrong by the time the page settles,
+// which leaves every `gsap.from(..., { opacity: 0 })` section stuck invisible.
+// That is the blank page below a correct navbar, and why a second load fixed
+// it: with everything cached the first measurement was already right.
 function ScrollTop() {
   useEffect(() => {
     lenis.current?.scrollTo(0, { immediate: true })
+
+    // Next frame, so the refresh reads a laid-out page rather than the one
+    // being committed around it.
+    const raf = requestAnimationFrame(() => ScrollTrigger.refresh())
+    return () => cancelAnimationFrame(raf)
   }, [])
   return null
 }
@@ -135,6 +151,23 @@ function PublicSite() {
   // measures the document, and measuring it mid-transition records positions
   // that are about to change.
   const onArrived = () => ScrollTrigger.refresh()
+
+  // And again when the things that change the document's height finally land.
+  // A route mounting is not the end of the layout: images without intrinsic
+  // dimensions still have to load and the brand faces still have to swap, and
+  // each of those moves every trigger below it. Both are one-shot, both are
+  // cheap, and between them they cover the window in which a first load can
+  // measure a document that is still assembling itself.
+  useEffect(() => {
+    const refresh = () => ScrollTrigger.refresh()
+
+    if (document.readyState !== 'complete') {
+      window.addEventListener('load', refresh, { once: true })
+    }
+    document.fonts?.ready.then(refresh).catch(() => {})
+
+    return () => window.removeEventListener('load', refresh)
+  }, [])
 
   return (
     <>

@@ -238,7 +238,7 @@ export default function PropertyDetailPage() {
 
       {/* Property highlights */}
       {d?.highlights?.heading && (
-        <section data-band="light" className="bg-surface-alt px-6 py-20 md:px-gutter-lg md:py-24">
+        <section data-band="light" className="bg-surface-alt px-6 pb-8 pt-16 md:px-gutter-lg md:pb-10 md:pt-20">
           <div className="grid gap-12 lg:grid-cols-[1fr_1.1fr] lg:gap-16">
             <motion.div
               variants={stagger}
@@ -325,7 +325,7 @@ export default function PropertyDetailPage() {
         <section
           data-band="light"
           id="floor-plans"
-          className="bg-surface-alt px-gutter py-20 md:px-gutter-lg md:py-28"
+          className="bg-surface-alt px-gutter pb-16 pt-8 md:px-gutter-lg md:pb-20 md:pt-10"
         >
           {/* `floorPlans.heading` and `.body` are deliberately not rendered.
               The design opens this section on the figures, and the stat cards
@@ -360,7 +360,7 @@ export default function PropertyDetailPage() {
           </div>
 
           {d.floorPlans.buildings.length > 1 && (
-            <div className="mt-6 flex max-w-full justify-center gap-3 overflow-x-auto pb-2 pt-1">
+            <div className="mt-4 flex max-w-full justify-start gap-2 overflow-x-auto pb-1">
               {d.floorPlans.buildings.map((b, i) => (
                 <button
                   key={b.building}
@@ -379,7 +379,7 @@ export default function PropertyDetailPage() {
             </div>
           )}
           {/* Interactive floor plan, or a placeholder until one is uploaded */}
-          <div className="mt-4">
+          <div className="mt-3">
             {d.floorPlans.buildings[tab].planImage ||
             d.floorPlans.buildings[tab].model?.url ||
             d.floorPlans.buildings[tab].unitList?.length ? (

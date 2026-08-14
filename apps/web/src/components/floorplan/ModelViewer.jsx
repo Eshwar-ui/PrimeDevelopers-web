@@ -1432,10 +1432,14 @@ export default function ModelViewer({
       <button
         type="button"
         onClick={() => setMode((m) => (m === '3d' ? '2d' : '3d'))}
-        className="absolute top-4 right-4 z-10 flex min-h-11 items-center gap-2 rounded-full border border-[var(--color-line-inv)] bg-void/80 px-4 py-2.5 font-body text-[11px] font-bold tracking-[0.12em] text-bone uppercase backdrop-blur transition-colors duration-200 hover:border-bone/35 hover:bg-void"
+        aria-label={mode === '2d' ? 'Switch to 3D' : 'Switch to 2D'}
+        className="group absolute left-4 top-4 z-30 flex min-h-11 items-center gap-2 overflow-hidden rounded-full border border-white/12 bg-black/58 px-4 py-2.5 font-body text-[11px] font-bold uppercase tracking-[0.12em] text-bone shadow-[0_14px_32px_-22px_rgba(0,0,0,.9)] backdrop-blur-xl transition-[background-color,border-color,transform] duration-300 ease-brand hover:-translate-y-0.5 hover:border-white/30 hover:bg-black/72 active:translate-y-0"
       >
-        {mode === '2d' ? <CubeIcon /> : <PlanIcon />}
-        {mode === '2d' ? 'View in 3D' : 'View plan'}
+        <span className="transition-transform duration-300 ease-brand group-hover:rotate-12">{mode === '2d' ? <CubeIcon /> : <PlanIcon />}</span>
+        <span className="flex min-w-0 items-center overflow-hidden">
+          <span className="max-w-10 whitespace-nowrap opacity-100 transition-[max-width,opacity,transform] duration-300 ease-brand group-hover:max-w-0 group-hover:-translate-y-2 group-hover:opacity-0">{mode === '2d' ? '3D' : '2D'}</span>
+          <span className="max-w-0 translate-y-2 overflow-hidden whitespace-nowrap opacity-0 transition-[max-width,opacity,transform] duration-300 ease-brand group-hover:max-w-28 group-hover:translate-y-0 group-hover:opacity-100">{mode === '2d' ? 'Switch to 3D' : 'Switch to 2D'}</span>
+        </span>
       </button>
     </div>
   )

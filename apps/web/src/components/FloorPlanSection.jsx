@@ -229,7 +229,7 @@ export default function FloorPlanSection({ building, propertyId }) {
           panel falls back underneath, which is where it always was. */}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(18rem,1fr)] lg:items-start">
         <div ref={planRef} className="relative min-w-0">
-          <div className="absolute left-1/2 top-6 z-20 flex max-w-[calc(100%-2rem)] -translate-x-1/2 gap-2 overflow-x-auto rounded-full border border-white/10 bg-black/72 p-1.5 shadow-[0_16px_35px_-24px_rgba(0,0,0,.9)] backdrop-blur-md">
+          <div className="absolute right-4 top-4 z-20 flex max-w-[calc(100%-6.5rem)] flex-nowrap justify-end gap-2 overflow-x-auto sm:right-5 sm:top-5">
             {UNIT_STATUSES.map((status) => {
               const count = counts[status.value] ?? 0
               const isActive = statusFilter === status.value
@@ -241,7 +241,7 @@ export default function FloorPlanSection({ building, propertyId }) {
                   aria-pressed={isActive}
                   onClick={() => setStatusFilter(isActive ? null : status.value)}
                   className={`flex min-h-10 shrink-0 items-center gap-2 rounded-full border px-3.5 py-1.5 transition-colors duration-200 disabled:opacity-25 ${
-                    isActive ? 'border-white/30 bg-white/12' : 'border-white/10 hover:border-white/25 hover:bg-white/5'
+                    isActive ? 'border-white/35 bg-white/16 shadow-[0_12px_28px_-20px_rgba(0,0,0,.9)] backdrop-blur-xl' : 'border-white/12 bg-black/48 shadow-[0_12px_28px_-20px_rgba(0,0,0,.9)] backdrop-blur-xl hover:border-white/28 hover:bg-black/62'
                   }`}
                 >
                   <span aria-hidden className={`size-2.5 rounded-sm ${status.swatch}`} />
@@ -251,7 +251,7 @@ export default function FloorPlanSection({ building, propertyId }) {
               )
             })}
             {statusFilter && (
-              <button type="button" onClick={() => setStatusFilter(null)} aria-label="Clear status filter" className="grid size-10 shrink-0 place-items-center rounded-full text-sm text-white/60 hover:bg-white/10 hover:text-white">×</button>
+              <button type="button" onClick={() => setStatusFilter(null)} aria-label="Clear status filter" className="grid size-10 shrink-0 place-items-center rounded-full border border-white/12 bg-black/48 text-sm text-white/60 backdrop-blur-xl hover:border-white/28 hover:bg-black/62 hover:text-white">×</button>
             )}
           </div>
           {/* Tier 1 — the interactive plan, mounted once it scrolls into

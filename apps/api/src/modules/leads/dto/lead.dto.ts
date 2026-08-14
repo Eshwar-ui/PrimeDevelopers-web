@@ -63,6 +63,7 @@ export class CreateLeadDto {
   buildingLabel?: string;
 }
 
+
 export class UpdateLeadStatusDto {
   @ApiProperty({ enum: LEAD_STATUSES })
   @IsIn(LEAD_STATUSES)

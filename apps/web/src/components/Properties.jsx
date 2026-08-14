@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
@@ -7,6 +7,7 @@ import { useSectionNav } from '../hooks/useSectionNav'
 import { useSection, useProperties } from '../context/ContentContext'
 import { renderEmphasis } from '../lib/emphasis'
 import { sized } from '../lib/images'
+import BrochureRequestModal from './BrochureRequestModal'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -44,7 +45,7 @@ function SpecIcon({ label }) {
   )
 }
 
-function DownloadIcon() {
+function MailIcon() {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -56,11 +57,27 @@ function DownloadIcon() {
       strokeLinejoin="round"
       className="size-4 shrink-0"
     >
-      <path d="M12 4v12m0 0 4.5-4.5M12 16l-4.5-4.5M4 20h16" />
+      <path d="M3 6.5h18v12H3zM3 7l9 7 9-7" />
     </svg>
   )
 }
 
+function OfferIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-4.5 shrink-0 text-ember"
+    >
+      <path d="M12 3.5 14.2 8l4.8.7-3.5 3.4.8 4.8-4.3-2.3-4.3 2.3.8-4.8L5 8.7 9.8 8 12 3.5Z" />
+    </svg>
+  )
+}
 /**
  * The three figures a listing carries — total, sold, available — are not three
  * facts. Across every property in the CMS `sold + available === total` exactly,
@@ -78,23 +95,23 @@ function AvailabilityMeter({ total, sold, available }) {
   // they can disagree with the total; the bar is drawn against whichever
   // denominator keeps it inside its track.
   const denominator = Math.max(total, sold + available)
-  const soldPct = denominator > 0 ? Math.round((sold / denominator) * 100) : 0
+  const availablePct = denominator > 0 ? Math.round((available / denominator) * 100) : 0
   const soldOut = available === 0
 
   return (
-    <div className="shrink-0 rounded-2xl border border-line bg-surface-alt p-5 md:w-52 md:self-center">
-      <p className="eyebrow text-content/70">Availability</p>
+    <div className="shrink-0 border-t border-line pt-5 md:w-48 md:self-center md:border-l md:border-t-0 md:py-4 md:pl-7">
+      <p className="font-body text-[12px] font-bold uppercase tracking-[0.16em] text-content/70">Availability</p>
 
-      <div className="mt-3 flex items-baseline gap-2">
+      <div className="mt-4 flex items-center gap-3">
         {soldOut ? (
           <span className="font-display text-[1.6rem] font-bold leading-none text-content/70">
             Fully sold
           </span>
         ) : (
           <>
-            <span className="numeral text-[2.6rem] leading-none text-accent">{available}</span>
-            <span className="font-body text-[13px] text-content/70">
-              of {total} available
+            <span className="numeral text-[3rem] leading-none text-accent">{available}</span>
+            <span className="max-w-20 font-body text-[13px] leading-[1.2] text-content/70">
+              units available
             </span>
           </>
         )}
@@ -105,20 +122,20 @@ function AvailabilityMeter({ total, sold, available }) {
           number for anyone not seeing the fill. */}
       <div
         role="img"
-        aria-label={`${soldPct}% sold — ${sold} of ${total}`}
-        className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-content/12"
+        aria-label={`${available} of ${total} units available, ${availablePct}%`}
+        className="mt-5 h-1 w-full overflow-hidden rounded-full bg-content/10"
       >
         <div
           className={`h-full rounded-full transition-[width] duration-700 ease-out ${
             soldOut ? 'bg-content/35' : 'bg-accent'
           }`}
-          style={{ width: `${soldPct}%` }}
+          style={{ width: `${availablePct}%` }}
         />
       </div>
 
       <div className="mt-2.5 flex items-center justify-between font-body text-[12px] text-content/70">
         <span>{sold} sold</span>
-        <span>{soldPct}%</span>
+        <span>{availablePct}% open</span>
       </div>
     </div>
   )
@@ -130,9 +147,11 @@ export default function Properties() {
   const scope = useRef(null)
   const go = useSectionNav()
   const navigate = useNavigate()
+  const [brochureProperty, setBrochureProperty] = useState(null)
 
   useGSAP(
     () => {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
       gsap.from('[data-card]', {
         y: 48,
         opacity: 0,
@@ -179,14 +198,18 @@ export default function Properties() {
       <div className="mt-10 flex flex-col gap-7">
         {properties.map((p) => {
           const overview = p.detail?.overview ?? {}
-          const specs = (overview.stats ?? []).filter((s) => s.value || s.label)
+          const specs = (overview.stats ?? [])
+            .filter((s) => s.value || s.label)
+            .filter((s) => {
+              const text = [s.value, s.label].filter(Boolean).join(' ')
+              return !/\b(total|available)\s+(units?|suites?)\b|\b(units?|suites?)\s+(total|available)\b/i.test(text)
+            })
           const blurb = p.detail?.tagline || overview.body
           const open = () => navigate(`/properties/${p.slug}`)
           // The button is part of the card's shape, so it always renders. What
           // moves is where it points: a real flyer downloads, and '#' — the
           // seed's placeholder for "none uploaded yet" — falls through to the
           // property's own page rather than becoming a dead click.
-          const flyer = overview.flyer && overview.flyer !== '#' ? overview.flyer : null
 
           // The card's padding is deliberately asymmetric. The image is inset by
           // the card's own p-3.5 and reads as intentional there; text at that
@@ -201,7 +224,7 @@ export default function Properties() {
             <article
               key={p.slug}
               data-card
-              className="group flex flex-col gap-4 rounded-[20px] bg-surface p-3 shadow-[0_0_0_0_rgba(0,0,0,0)] transition-shadow duration-500 ease-out hover:shadow-[0_26px_56px_-36px_rgba(0,0,0,0.5)] md:flex-row md:items-stretch md:gap-7 md:p-3.5 md:pr-7"
+              className="group relative grid overflow-hidden rounded-panel bg-surface shadow-[0_1px_0_rgba(0,0,0,0.04)] transition-shadow duration-500 ease-brand hover:shadow-[0_28px_64px_-42px_rgba(0,0,0,0.52)] focus-within:shadow-[0_28px_64px_-42px_rgba(0,0,0,0.52)] md:min-h-80 md:grid-cols-[minmax(18rem,34%)_minmax(0,1fr)]"
             >
               {p.image && (
                 // A real link rather than an onClick on the image: the old
@@ -210,52 +233,45 @@ export default function Properties() {
                 // accessibility tree because the heading below already links to
                 // the same place, and two links to one property read as two
                 // properties when they're announced in sequence.
-                <a
-                  href={`/properties/${p.slug}`}
-                  onClick={(e) => {
-                    e.preventDefault()
-                    open()
-                  }}
-                  tabIndex={-1}
-                  aria-hidden="true"
-                  className="relative h-44 w-full shrink-0 overflow-hidden rounded-[14px] sm:h-56 md:h-auto md:w-[27%] md:min-w-56 md:max-w-124 md:self-stretch"
-                >
+                <div className="relative h-52 w-full overflow-hidden bg-surface-alt sm:h-64 md:h-full">
                   <img
                     src={sized(p.image, 'card')}
                     alt={p.name}
                     loading="lazy"
                     decoding="async"
-                    className="absolute inset-0 size-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.05]"
+                    className="absolute inset-0 size-full object-cover transition-transform duration-700 ease-brand group-hover:scale-[1.035]"
                   />
-                </a>
+                </div>
               )}
 
               {/* min-w-0 so a long blurb wraps instead of widening the row and
                   squeezing the stats column off the end. Centred rather than
                   top-aligned: the image sets the row height, so anchoring the
                   type to the top pools all the slack under the buttons. */}
-              <div className="min-w-0 flex-1 md:self-center md:py-2">
-                <a
-                  href={`/properties/${p.slug}`}
-                  onClick={(e) => {
-                    e.preventDefault()
-                    open()
-                  }}
-                  // group-hover as well as hover, so pointing anywhere on the
-                  // card lights the name. Without it the image zooms and the
-                  // shadow lifts while the title sits inert, and the card reads
-                  // as several things reacting rather than one.
-                  className="font-display text-[1.45rem] font-bold leading-tight tracking-[-0.01em] text-accent transition-colors duration-300 hover:text-prime-deep group-hover:text-prime-deep"
-                >
+              <div className="grid min-w-0 gap-6 p-6 sm:p-7 md:grid-cols-[minmax(0,1fr)_12rem] md:gap-7 md:p-8">
+                <div className="min-w-0">
+                  {p.category && <p className="mb-3 font-body text-[12px] font-bold uppercase tracking-[0.16em] text-accent">{p.category}</p>}
+                <h3 className="font-display text-[clamp(1.45rem,2vw,1.9rem)] font-bold leading-[1.08] tracking-[-0.02em] text-content transition-colors duration-300 hover:text-accent group-hover:text-accent">
                   {p.name}
-                </a>
+                </h3>
 
                 {p.address && (
-                  <p className="mt-1 font-body text-[15px] text-content/70">{p.address}</p>
+                  <p className="mt-2 font-body text-[15px] leading-relaxed text-content/70">{p.address}</p>
+                )}
+                {typeof p.detail?.offer === 'string' && p.detail.offer.trim() && (
+                  <div className="mt-4 flex items-start gap-3 rounded-xl border border-ember/25 bg-ember/10 px-4 py-3">
+                    <OfferIcon />
+                    <div className="min-w-0">
+                      <p className="font-body text-[12px] font-bold uppercase tracking-[0.12em] text-content/75">Offer available</p>
+                      <p className="mt-0.5 font-body text-[13px] leading-relaxed text-content/85 [overflow-wrap:anywhere]">
+                        {p.detail.offer}
+                      </p>
+                    </div>
+                  </div>
                 )}
 
                 {specs.length > 0 && (
-                  <ul className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2">
+                  <ul className="mt-5 grid grid-cols-2 gap-x-5 gap-y-3 border-y border-line py-4 sm:grid-cols-3">
                     {/* Indexed, not keyed on the label: these are free text an
                         admin typed, so two blank or repeated labels are a
                         content mistake, not an impossible one — and React
@@ -263,7 +279,7 @@ export default function Properties() {
                     {specs.map((s, i) => (
                       <li key={`${s.label ?? ''}-${i}`} className="flex items-center gap-2">
                         <SpecIcon label={s.label} />
-                        <span className="font-body text-[15px] text-content/80">
+                        <span className="font-body text-[13px] font-medium text-content/75">
                           {[s.value, s.label].filter(Boolean).join(' ')}
                         </span>
                       </li>
@@ -272,50 +288,48 @@ export default function Properties() {
                 )}
 
                 {blurb && (
-                  <p className="mt-3.5 max-w-[68ch] font-body text-[15px] leading-relaxed text-content/85 line-clamp-2">
+                  <p className="mt-4 max-w-[62ch] font-body text-[14px] leading-[1.65] text-content/70 line-clamp-2">
                     {blurb}
                   </p>
                 )}
 
-                <div className="mt-4 flex flex-wrap items-center gap-2.5">
+                <div className="mt-5 flex flex-wrap items-center gap-3">
                   <a
                     href={`/properties/${p.slug}`}
                     onClick={(e) => {
                       e.preventDefault()
                       open()
                     }}
-                    className="rounded-xl bg-invert px-5 py-3 font-body text-[15px] font-medium text-invert-fg transition-colors duration-300 hover:opacity-90"
+                    aria-label={`View ${p.name}`}
+                    className="after:absolute after:inset-0 inline-flex min-h-12 items-center rounded-full bg-invert px-6 font-body text-[14px] font-bold text-invert-fg transition-opacity duration-300 hover:opacity-85 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-accent"
                   >
                     View property
                   </a>
 
-                  <a
-                    href={flyer ?? `/properties/${p.slug}`}
-                    {...(flyer
-                      ? { target: '_blank', rel: 'noreferrer' }
-                      : {
-                          onClick: (e) => {
-                            e.preventDefault()
-                            open()
-                          },
-                        })}
-                    className="inline-flex items-center gap-2.5 rounded-xl border border-content/15 bg-surface px-5 py-3 font-body text-[15px] font-medium text-content transition-colors duration-300 hover:border-content/40"
+                  <button
+                    type="button"
+                    onClick={() => setBrochureProperty(p)}
+                    className="relative z-10 inline-flex min-h-12 items-center gap-2.5 rounded-full border border-content/25 px-5 font-body text-[14px] font-medium text-content transition-colors duration-300 hover:border-accent hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-accent"
                   >
-                    Download brochure
-                    <DownloadIcon />
-                  </a>
+                    Request brochure
+                    <MailIcon />
+                  </button>
                 </div>
-              </div>
+                </div>
 
-              <AvailabilityMeter
-                total={p.buildings}
-                sold={p.sold}
-                available={p.available}
-              />
+                <AvailabilityMeter
+                  total={p.buildings}
+                  sold={p.sold}
+                  available={p.available}
+                />
+              </div>
             </article>
           )
         })}
       </div>
+      {brochureProperty && (
+        <BrochureRequestModal property={brochureProperty} onClose={() => setBrochureProperty(null)} />
+      )}
     </section>
   )
 }

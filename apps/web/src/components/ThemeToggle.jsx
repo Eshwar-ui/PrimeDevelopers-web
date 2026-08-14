@@ -29,7 +29,7 @@ export default function ThemeToggle({ className = '', tone = 'dark' }) {
       aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
       aria-pressed={isDark}
       title={isDark ? 'Light mode' : 'Dark mode'}
-      className={`relative grid size-10 shrink-0 place-items-center rounded-full transition-colors duration-300 ${ring} ${className}`}
+      className={`relative grid size-11 shrink-0 place-items-center rounded-full transition-colors duration-300 ${ring} ${className}`}
     >
       <svg
         viewBox="0 0 24 24"

@@ -70,7 +70,6 @@ async function main() {
         { image: logos['22yards'], alt: '22 Yards' },
         { image: logos.farm2cook, alt: 'Farm2Cook' },
         { image: logos.sevenoaks, alt: 'Sevenoaks' },
-        { image: logos.lego, alt: 'Lego' },
         { image: logos.qahwah, alt: 'Qahwah' },
       ],
     },

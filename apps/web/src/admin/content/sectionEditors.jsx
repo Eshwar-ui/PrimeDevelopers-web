@@ -439,12 +439,14 @@ export const SECTIONS = [
           <RepeatableList
             items={value.capabilities}
             onChange={(capabilities) => onChange({ capabilities })}
-            makeItem={() => ({ title: '', body: '' })}
+            makeItem={() => ({ title: '', body: '', image: '', href: '' })}
             addLabel="Add capability"
             renderItem={(item, set) => (
               <div className="flex flex-col gap-3">
                 <TextField label="Title" value={item.title} onChange={(title) => set({ ...item, title })} />
                 <TextAreaField label="Body" value={item.body} onChange={(body) => set({ ...item, body })} />
+                <ImageUploader label="Service image" value={item.image} onChange={(image) => set({ ...item, image })} folder="site/enterprise/services" />
+                <TextField label="Service link" value={item.href} onChange={(href) => set({ ...item, href })} />
               </div>
             )}
           />

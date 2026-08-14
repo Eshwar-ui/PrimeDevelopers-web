@@ -400,7 +400,7 @@ export default function Hero() {
           </div>
 
           {/* current property caption, floated over the lower-right corner */}
-          <div className="absolute bottom-4 right-4 w-64 rounded-[22px] bg-surface p-5 shadow-[0_18px_40px_-26px_rgba(0,0,0,0.5)] lg:w-75 lg:p-6">
+          <div className="absolute bottom-4 left-4 right-4 w-auto rounded-[18px] sm:left-auto sm:w-64 sm:rounded-[22px] bg-surface p-5 shadow-[0_18px_40px_-26px_rgba(0,0,0,0.5)] lg:w-75 lg:p-6">
             {hero.eyebrow && (
               <span className="font-body text-[11px] font-bold uppercase tracking-[0.18em] text-accent">
                 {hero.eyebrow}

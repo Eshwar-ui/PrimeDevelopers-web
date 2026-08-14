@@ -839,6 +839,19 @@ function CameraRig({ bounds, focus, mode, navMode, resetSignal, onDragStart, onD
   const invalidate = useThree((state) => state.invalidate)
   const goal = useRef({ target: new THREE.Vector3(), distance: 0, active: false })
 
+  // Fit plan view from the actual X/Z footprint rather than its bounding
+  // sphere. A sphere around a rectangular site reserves empty corners and
+  // leaves the plan looking unnecessarily small. Four percent keeps labels
+  // and perimeter edges clear without turning into visible dead space.
+  const planFitZoom = useMemo(() => {
+    const min = bounds?.box?.min
+    const max = bounds?.box?.max
+    if (!min || !max || !size.width || !size.height) return 1
+    const width = Math.max(max[0] - min[0], 0.001)
+    const depth = Math.max(max[2] - min[2], 0.001)
+    return Math.min(size.width / (width * 1.04), size.height / (depth * 1.04))
+  }, [bounds, size.width, size.height])
+
   const frameDefault = useCallback(() => {
     if (!bounds || !controls.current) return
     const target = new THREE.Vector3(...bounds.center)
@@ -860,7 +873,7 @@ function CameraRig({ bounds, focus, mode, navMode, resetSignal, onDragStart, onD
 
     if (mode === '2d') {
       camera.position.set(target.x, target.y + bounds.radius * 4, target.z + 0.001)
-      camera.zoom = Math.min(size.width, size.height) / (bounds.radius * 2.4)
+      camera.zoom = planFitZoom
     } else {
       const fov = THREE.MathUtils.degToRad(camera.fov ?? 45)
       const distance = (bounds.radius / Math.sin(fov / 2)) * 1.05
@@ -874,7 +887,7 @@ function CameraRig({ bounds, focus, mode, navMode, resetSignal, onDragStart, onD
     goal.current.active = false
     controls.current.update()
     invalidate()
-  }, [bounds, camera, size, mode, invalidate])
+  }, [bounds, camera, size, mode, invalidate, planFitZoom])
 
   const frameDefaultRef = useRef(frameDefault)
   frameDefaultRef.current = frameDefault
@@ -962,14 +975,36 @@ function CameraRig({ bounds, focus, mode, navMode, resetSignal, onDragStart, onD
       invalidate()
     }
 
+    // In plan view, pan travel is derived from the live orthographic frustum.
+    // At the fitted zoom one axis normally has no travel at all; zooming in
+    // creates only enough travel to reach the newly cropped edges. This keeps
+    // the site in the viewport instead of letting it drift into empty ground.
+    let activePanLimit = panLimit
+    if (mode === '2d' && bounds?.box?.min && bounds?.box?.max) {
+      const min = bounds.box.min
+      const max = bounds.box.max
+      const centerX = (min[0] + max[0]) / 2
+      const centerY = (min[1] + max[1]) / 2
+      const centerZ = (min[2] + max[2]) / 2
+      const modelHalfWidth = (max[0] - min[0]) / 2
+      const modelHalfDepth = (max[2] - min[2]) / 2
+      const visibleHalfWidth = size.width / (2 * Math.max(camera.zoom, 0.001))
+      const visibleHalfDepth = size.height / (2 * Math.max(camera.zoom, 0.001))
+      const travelX = Math.max(0, modelHalfWidth - visibleHalfWidth)
+      const travelZ = Math.max(0, modelHalfDepth - visibleHalfDepth)
+      activePanLimit = {
+        min: [centerX - travelX, centerY, centerZ - travelZ],
+        max: [centerX + travelX, centerY, centerZ + travelZ],
+      }
+    }
     // Applied as a correction to both target and camera rather than by
     // rejecting the pan outright: moving them together holds the orbit angle
     // and distance exactly, so overshooting the edge feels like the view
     // resting against a wall instead of the camera swinging.
-    if (panLimit) {
+    if (activePanLimit) {
       const target = control.target
       const clamped = ['x', 'y', 'z'].map((axis, i) =>
-        THREE.MathUtils.clamp(target[axis], panLimit.min[i], panLimit.max[i]),
+        THREE.MathUtils.clamp(target[axis], activePanLimit.min[i], activePanLimit.max[i]),
       )
       if (clamped[0] !== target.x || clamped[1] !== target.y || clamped[2] !== target.z) {
         camera.position.add(
@@ -1046,6 +1081,8 @@ function CameraRig({ bounds, focus, mode, navMode, resetSignal, onDragStart, onD
       // Wide enough that there is real travel in both directions: the default
       // framing sits at ~2.9x radius, so the old 4x ceiling gave almost no
       // room to pull back.
+      minZoom={mode === '2d' ? planFitZoom : 0}
+      maxZoom={mode === '2d' ? planFitZoom * 6 : Infinity}
       minDistance={radius * 0.4}
       maxDistance={radius * 6}
     />
@@ -1321,25 +1358,26 @@ export default function ModelViewer({
         {hasOrientation && <CompassNeedle dialRef={dialRef} bounds={bounds} />}
       </Canvas>
 
-      {/* Suppressed until an admin has set the orientation. An unset model has
-          no idea where north is, and a compass pointing confidently at the
-          wrong quarter is worse than none — a broker would repeat it to a
-          client. */}
-      {hasOrientation && (
-        <div
-          aria-hidden
-          className="pointer-events-none absolute bottom-4 right-4 z-10 flex size-12 items-center justify-center rounded-full border border-[var(--color-line-inv)] bg-void/80 backdrop-blur"
-        >
-          <div ref={dialRef} className="relative size-full transition-none">
-            <span className="absolute left-1/2 top-1 -translate-x-1/2 font-body text-[9px] font-bold tracking-[0.08em] text-accent-soft">
-              N
-            </span>
-            <span className="absolute left-1/2 top-[13px] h-3 w-px -translate-x-1/2 bg-accent-soft/70" />
-            <span className="absolute bottom-[13px] left-1/2 h-3 w-px -translate-x-1/2 bg-bone/25" />
-          </div>
+      {/* Always visible so every plan has a directional reference. When the
+          admin has calibrated orientation the needle follows the camera;
+          otherwise it remains a clearly labelled north-up reference. */}
+      <div
+        role="img"
+        aria-label={hasOrientation ? 'North indicator' : 'North reference — orientation not calibrated'}
+        title={hasOrientation ? 'North' : 'North reference — orientation not calibrated'}
+        className="pointer-events-none absolute bottom-4 right-4 z-10 flex size-14 items-center justify-center rounded-full border border-[var(--color-line-inv)] bg-void/85 shadow-[0_12px_30px_-18px_rgba(0,0,0,.8)] backdrop-blur"
+      >
+        <div ref={dialRef} className="relative size-full transition-none">
+          <span className="absolute left-1/2 top-1.5 -translate-x-1/2 font-body text-[9px] font-bold tracking-[0.12em] text-accent-soft">N</span>
+          <span className="absolute left-1/2 top-[15px] h-3.5 w-px -translate-x-1/2 bg-accent-soft" />
+          <span className="absolute left-1/2 top-[13px] size-1.5 -translate-x-1/2 rotate-45 border-l border-t border-accent-soft" />
+          <span className="absolute bottom-[12px] left-1/2 h-3 w-px -translate-x-1/2 bg-bone/25" />
         </div>
-      )}
+      </div>
 
+      <div className="pointer-events-none absolute bottom-4 left-1/2 z-10 hidden -translate-x-1/2 rounded-full border border-[var(--color-line-inv)] bg-void/75 px-4 py-2 font-body text-[10px] font-bold uppercase tracking-[0.1em] text-bone/65 backdrop-blur sm:block">
+        {mode === '2d' ? 'Drag to pan · select a unit' : 'Drag to explore · select a unit'}
+      </div>
       {/* Hover chip lives in the DOM rather than in the scene: it stays crisp
           at any zoom and costs nothing to render. Suppressed on touch, where
           there is no hover and the detail panel does this job. */}

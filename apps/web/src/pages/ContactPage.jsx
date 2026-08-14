@@ -2,70 +2,81 @@ import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { motion } from 'motion/react'
 import ArrowRight from '../components/ArrowRight'
-import MaskedHeading from '../components/MaskedHeading'
 import { useSection } from '../context/ContentContext'
 import { rise, stagger } from '../lib/motion'
 import { api } from '../lib/api'
 
 const fields = [
-  { name: 'name', label: 'Full name', type: 'text', placeholder: 'Jane Doe' },
-  { name: 'email', label: 'Email', type: 'email', placeholder: 'you@company.com' },
-  { name: 'phone', label: 'Phone', type: 'tel', placeholder: '+1 (000) 000-0000' },
+  { name: 'name', label: 'Full Name', type: 'text', placeholder: 'Enter your name' },
+  { name: 'email', label: 'Email Address', type: 'email', placeholder: 'you@gmail.com' },
+  { name: 'phone', label: 'Phone Number', type: 'tel', placeholder: '+1' },
+  { name: 'company', label: 'Company', type: 'text', placeholder: 'Enter your company name' },
 ]
 
-// Shared by every field so the three inputs and the textarea cannot drift.
 const FIELD =
-  'border-b border-[var(--color-line)] bg-transparent pb-2.5 font-body text-[16px] text-content outline-none transition-colors placeholder:text-content/30 focus:border-accent'
-const FIELD_LABEL = 'font-body text-[13px] uppercase tracking-[0.14em] text-content/70'
+  'contact-field h-12 rounded-xl border border-[var(--color-line)] bg-carbon px-4 font-body text-[15px] text-bone outline-none transition-[border-color,box-shadow] placeholder:text-bone/35 focus:border-accent/75 focus:ring-[3px] focus:ring-accent/10'
+const FIELD_LABEL = 'font-display text-[15px] font-semibold text-content'
 
-// data-band="light" on every section — see the note in NewsPostPage.
+function ContactIcon({ type }) {
+  if (type === 'location') {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="size-7" aria-hidden>
+        <path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z" />
+        <circle cx="12" cy="10" r="2.5" />
+      </svg>
+    )
+  }
+  if (type === 'phone') {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="size-7" aria-hidden>
+        <path d="M7 3H4.5A1.5 1.5 0 0 0 3 4.5C3 13.6 10.4 21 19.5 21a1.5 1.5 0 0 0 1.5-1.5V17l-4-1-1.4 2.1a14 14 0 0 1-9.7-9.7L8 7 7 3Z" />
+      </svg>
+    )
+  }
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="size-7" aria-hidden>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="m4 7 8 6 8-6" />
+    </svg>
+  )
+}
 
 export default function ContactPage() {
   const c = useSection('contact_page')
-  const [status, setStatus] = useState('idle') // idle | sending | sent | error
+  const homeHero = useSection('hero')
+  const [status, setStatus] = useState('idle')
   const [searchParams] = useSearchParams()
 
-  // Arrives from a unit's detail panel on a property page. The lead is stored
-  // with the unit it came from, so sales opens the call already knowing what
-  // is being asked about.
   const unitLabel = searchParams.get('unit')
   const unitBuilding = searchParams.get('building')
   const unitStatus = searchParams.get('status')
   const propertyId = searchParams.get('property') || null
-  // Only ever an internal path we wrote ourselves — never echoed back into a
-  // link, only folded into the stored message text (see onSubmit).
   const sourcePath = searchParams.get('from')?.startsWith('/') ? searchParams.get('from') : null
+  const heroImage = homeHero.slides?.[4]?.image ?? homeHero.slides?.[0]?.image
 
-  const details = [
-    { label: 'Email', value: c.email, href: c.email ? `mailto:${c.email}` : null },
-    { label: 'Phone', value: c.phone, href: c.phone ? `tel:${c.phone.replace(/[^\d+]/g, '')}` : null },
-    { label: 'Location', value: c.location, href: null },
+  const contactCards = [
+    { type: 'location', title: 'Location', value: c.location, href: null },
+    { type: 'phone', title: 'Call Us', value: c.phone, href: c.phone ? `tel:${c.phone.replace(/[^\d+]/g, '')}` : null },
+    { type: 'email', title: 'Email Us', value: c.email, href: c.email ? `mailto:${c.email}` : null },
   ]
 
-  const onSubmit = async (e) => {
-    e.preventDefault()
+  const onSubmit = async (event) => {
+    event.preventDefault()
     setStatus('sending')
-    const fd = new FormData(e.currentTarget)
-
-    // The leads table has no column for "status at time of enquiry" or a
-    // source link, so both are folded into the stored message rather than
-    // being dropped. The unit itself is attributed properly, as its own row.
+    const form = event.currentTarget
+    const data = new FormData(form)
+    const company = data.get('company')?.trim()
     const context = unitLabel
-      ? `\n\n[Unit ${unitLabel}${unitBuilding ? ` · ${unitBuilding}` : ''} — ${unitStatus || 'status unknown'} at time of enquiry${sourcePath ? ` · ${window.location.origin}${sourcePath}` : ''}]`
+      ? `\n\n[Unit ${unitLabel}${unitBuilding ? ` · ${unitBuilding}` : ''} - ${unitStatus || 'status unknown'} at time of enquiry${sourcePath ? ` · ${window.location.origin}${sourcePath}` : ''}]`
       : ''
+    const companyContext = company ? `\n\n[Company: ${company}]` : ''
 
-    // One request: the API writes the lead and its unit attribution in a single
-    // transaction. This used to be two independent inserts, so a failed
-    // attribution left a lead with no record of what it was about — and the
-    // failure was only visible in the browser console.
-    const form = e.currentTarget
     try {
       await api.post('/leads', {
-        name: fd.get('name'),
-        email: fd.get('email'),
-        phone: fd.get('phone') || undefined,
-        message: `${fd.get('message')}${context}`,
-        // Both or neither — the API rejects a half-specified attribution.
+        name: data.get('name'),
+        email: data.get('email'),
+        phone: data.get('phone') || undefined,
+        message: `${data.get('message')}${companyContext}${context}`,
         ...(unitLabel && propertyId && {
           propertyId,
           unitLabel,
@@ -82,159 +93,159 @@ export default function ContactPage() {
   }
 
   return (
-    <div>
-      {/* ── Hero ─────────────────────────────────────────────── */}
+    <div
+      data-band="light"
+      className="bg-ink text-bone [--color-content:#e6edf0] [--color-line:rgba(255,255,255,0.14)] [--color-surface-alt:#131b20] [--color-surface:#1b262c]"
+    >
       <section
         id="contact-hero"
-        data-band="light"
-        className="bg-surface px-6 pb-14 pt-32 text-center md:px-12 md:pb-16 md:pt-40"
+        className="relative min-h-[520px] overflow-hidden bg-carbon px-6 pb-28 pt-32 text-center text-white md:min-h-[590px] md:pb-32 md:pt-36"
       >
-        <motion.div variants={stagger} initial="hidden" animate="show">
-          {c.heroEyebrow && (
-            <motion.span
-              variants={rise}
-              className="block font-body text-[14px] uppercase tracking-[0.14em] text-accent"
-            >
-              {c.heroEyebrow}
-            </motion.span>
-          )}
+        {heroImage && (
+          <img
+            src={heroImage}
+            alt="Prime Developers property in Texas"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        )}
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(20,28,33,.64)_0%,rgba(20,28,33,.58)_55%,rgba(20,28,33,.72)_100%)]" />
 
-          <h1 className="mx-auto mt-5 max-w-[18ch] font-display font-bold uppercase leading-[1.03] tracking-tight text-content [font-size:clamp(1.85rem,min(4.2vw,8dvh),3.4rem)]">
-            <MaskedHeading text={c.heroHeading} accentClass="italic text-accent" />
-          </h1>
-
-          {c.heroParagraph && (
-            <motion.p
-              variants={rise}
-              className="mx-auto mt-7 max-w-[40rem] font-body text-[15px] leading-relaxed text-content/70"
-            >
-              {c.heroParagraph}
-            </motion.p>
-          )}
+        <motion.div variants={stagger} initial="hidden" animate="show" className="relative mx-auto max-w-[1200px]">
+          <motion.h1
+            variants={rise}
+            className="font-display font-bold leading-[1.06] tracking-[-0.035em] [font-size:clamp(2.35rem,3.8vw,3.75rem)]"
+          >
+            Let&apos;s Build Something Great Together
+          </motion.h1>
+          <motion.p variants={rise} className="mx-auto mt-5 max-w-[660px] font-body text-[17px] leading-[1.55] text-white/80 md:text-[19px]">
+            Have a property question, investment opportunity, or project in mind? Our team is ready to help you find the right path forward.
+          </motion.p>
+          <motion.div variants={rise} className="mt-10">
+            <span className="font-body text-[12px] font-bold uppercase tracking-[0.18em] text-accent-soft">
+              We&apos;re here to help
+            </span>
+            <h2 className="mt-3 font-display text-[clamp(2rem,3vw,3rem)] font-medium tracking-[-0.025em]">
+              Start a Conversation
+            </h2>
+          </motion.div>
         </motion.div>
       </section>
 
-      {/* ── Details + form ───────────────────────────────────── */}
-      <section data-band="light" className="bg-surface-alt px-6 py-20 md:px-12 md:py-28">
-        <div className="grid gap-16 lg:grid-cols-[1fr_1.1fr] lg:gap-24">
-          {/* Left — details + socials */}
-          <div>
-            <div className="flex flex-col divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]">
-              {details.map((d) => {
-                const inner = (
-                  <div className="flex flex-col gap-1.5 py-6">
-                    <span className={FIELD_LABEL}>{d.label}</span>
-                    <span className="font-display text-2xl font-bold tracking-[-0.01em] text-content transition-colors duration-300 group-hover:text-accent md:text-3xl">
-                      {d.value}
-                    </span>
-                  </div>
-                )
-                return d.href ? (
-                  <a key={d.label} href={d.href} className="group">
-                    {inner}
-                  </a>
-                ) : (
-                  <div key={d.label}>{inner}</div>
-                )
-              })}
-            </div>
-
-            <div className="mt-10">
-              <span className={FIELD_LABEL}>Follow</span>
-              <div className="mt-4 flex flex-wrap gap-2.5">
-                {c.socials.map((s) => (
-                  <a
-                    key={s.label}
-                    href={s.href}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rounded-full border border-[var(--color-line)] px-5 py-2 font-body text-[13px] font-medium uppercase tracking-[0.1em] text-content/70 transition-colors duration-300 hover:border-content/35 hover:text-content"
-                  >
-                    {s.label}
-                  </a>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Right — form. On `surface` against the section's `surface-alt`, so
-              the card reads as raised rather than as a differently-tinted patch
-              of the same plane. */}
+      <section className="relative px-6 pb-20 md:px-12 md:pb-28">
+        <div className="mx-auto -mt-28 max-w-[1100px]">
           <form
             onSubmit={onSubmit}
-            className="rounded-3xl border border-[var(--color-line)] bg-surface p-8 md:p-10"
+            className="relative min-w-0 rounded-[28px] border border-[var(--color-line)] bg-surface p-7 shadow-[0_24px_70px_-38px_rgba(20,28,33,.35)] md:p-12 lg:grid lg:grid-cols-[280px_1fr] lg:gap-14"
           >
-            <div className="flex flex-col gap-6">
+            <div>
+              <span className="font-body text-[12px] font-bold uppercase tracking-[0.18em] text-accent">
+                Send us a message
+              </span>
+              <h2 className="mt-4 max-w-[12ch] font-display text-[clamp(2rem,3vw,2.8rem)] font-bold leading-[1.12] tracking-[-0.03em]">
+                Tell Us What You&apos;re Looking For
+              </h2>
+              <p className="mt-5 max-w-[30ch] font-body text-[15px] leading-[1.6] text-content/65">
+                Have a question or opportunity to discuss? Send us a message and our team will get back to you.
+              </p>
+              <span aria-hidden className="mt-5 block h-0.5 w-24 bg-accent" />
+            </div>
+
+            <div className="min-w-0 mt-10 lg:mt-0">
               {unitLabel && (
-                <div className="rounded-xl border border-accent/35 bg-accent/8 px-4 py-3">
-                  <span className="font-body text-[13px] uppercase tracking-[0.14em] text-accent">
-                    Enquiring about
-                  </span>
-                  <p className="mt-1 font-display text-base font-bold text-content">
-                    Unit {unitLabel}
-                    {unitBuilding ? ` · ${unitBuilding}` : ''}
-                  </p>
+                <div className="mb-6 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3">
+                  <span className="font-body text-[11px] font-bold uppercase tracking-[0.15em] text-accent">Enquiring about</span>
+                  <p className="mt-1 font-display text-[15px] font-semibold">Unit {unitLabel}{unitBuilding ? ` · ${unitBuilding}` : ''}</p>
                 </div>
               )}
-              {fields.map((f) => (
-                <label key={f.name} className="flex flex-col gap-2">
-                  <span className={FIELD_LABEL}>{f.label}</span>
-                  <input
-                    name={f.name}
-                    type={f.type}
-                    required={f.name !== 'phone'}
-                    placeholder={f.placeholder}
-                    className={FIELD}
+
+              <div className="grid gap-x-5 gap-y-5 sm:grid-cols-2">
+                {fields.map((field) => (
+                  <label key={field.name} className="flex flex-col gap-2">
+                    <span className={FIELD_LABEL}>{field.label}</span>
+                    <input
+                      name={field.name}
+                      type={field.type}
+                      required={field.name === 'name' || field.name === 'email'}
+                      placeholder={field.placeholder}
+                      className={FIELD}
+                    />
+                  </label>
+                ))}
+                <label className="flex flex-col gap-2 sm:col-span-2">
+                  <span className={FIELD_LABEL}>Anything else we should know?</span>
+                  <textarea
+                    name="message"
+                    rows={4}
+                    required
+                    defaultValue={unitLabel ? `I'd like more information about Unit ${unitLabel}.` : ''}
+                    placeholder="Type your message"
+                    className="contact-field min-h-28 resize-none rounded-xl border border-[var(--color-line)] bg-carbon px-4 py-3 font-body text-[15px] text-bone outline-none transition-[border-color,box-shadow] placeholder:text-bone/35 focus:border-accent/75 focus:ring-[3px] focus:ring-accent/10"
                   />
                 </label>
-              ))}
-              <label className="flex flex-col gap-2">
-                <span className={FIELD_LABEL}>Message</span>
-                <textarea
-                  name="message"
-                  rows={4}
-                  required
-                  defaultValue={unitLabel ? `I'd like more information about Unit ${unitLabel}.` : ''}
-                  placeholder="Tell us about your property or enquiry…"
-                  className={`resize-none ${FIELD}`}
-                />
-              </label>
+              </div>
 
-              {/* PrimePill's solid variant, rebuilt as a <button>. The pill
-                  itself is an <a> and cannot submit a form, but the site's
-                  primary action has one shape — gradient lozenge, white arrow
-                  disc on the trailing edge — and this is a primary action. */}
-              <button
-                type="submit"
-                disabled={status === 'sending'}
-                className="group mt-2 inline-flex h-14 w-fit items-center gap-4 rounded-full bg-[linear-gradient(96deg,#0073a4_0%,#1aa1d2_100%)] py-1.5 pl-7 pr-1.5 text-white shadow-[0_12px_26px_-16px_rgba(0,115,164,0.95)] transition-shadow duration-300 hover:shadow-[0_16px_32px_-14px_rgba(0,115,164,0.8)] disabled:opacity-60 disabled:shadow-none"
-              >
-                <span className="font-body text-[15px] font-bold uppercase tracking-[0.04em]">
-                  {status === 'sending' ? 'Sending…' : 'Send enquiry'}
-                </span>
-                {/* charcoal, not text-content: the disc is hardcoded white in
-                    both themes, so its foreground has to be a pigment — under
-                    dark mode the role token lifts to near-white and the arrow
-                    vanishes into the disc. */}
-                <span className="flex size-11 items-center justify-center rounded-full bg-white text-charcoal">
-                  <ArrowRight className="size-4 -rotate-45 transition-transform duration-300 ease-out group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-                </span>
-              </button>
-
-              {status === 'sent' && (
-                <p className="font-body text-[15px] text-accent">
-                  Thanks — we&apos;ve received your enquiry and will be in touch.
-                </p>
-              )}
-              {status === 'error' && (
-                /* red-600, not red-400: the lighter tint was picked against a
-                   dark card and drops to about 2.5:1 on this one. */
-                <p className="font-body text-[15px] text-red-600">
-                  Something went wrong sending that. Please try again.
-                </p>
-              )}
+              <div className="mt-7 flex flex-col items-stretch gap-5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+                {status === 'sent' && <p className="font-body text-[14px] text-accent">Thanks, we&apos;ve received your enquiry.</p>}
+                {status === 'error' && <p role="alert" className="font-body text-[14px] text-red-600">Something went wrong. Please try again.</p>}
+                <button
+                  type="submit"
+                  disabled={status === 'sending'}
+                  className="group inline-flex h-12 w-full items-center justify-center gap-4 rounded-full sm:w-auto bg-accent pl-6 pr-4 font-body text-[14px] font-semibold text-white transition-colors hover:bg-prime-deep active:scale-[0.98] disabled:opacity-60"
+                >
+                  {status === 'sending' ? 'Sending...' : 'Send Enquiry'}
+                  <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-1" />
+                </button>
+              </div>
             </div>
           </form>
+
+          <div className="mt-12 grid gap-4 md:grid-cols-3">
+            {contactCards.map((card) => {
+              const content = (
+                <>
+                  <span className="text-accent"><ContactIcon type={card.type} /></span>
+                  <span className="min-w-0">
+                    <strong className="block font-display text-[1.35rem] font-bold tracking-[-0.02em]">{card.title}</strong>
+                    <span className="mt-1 block break-words font-body text-[15px] text-content/65">{card.value}</span>
+                  </span>
+                </>
+              )
+              return card.href ? (
+                <a key={card.type} href={card.href} className="flex min-h-24 items-center gap-5 rounded-2xl border border-accent/55 px-7 py-5 transition-colors hover:bg-accent/5">
+                  {content}
+                </a>
+              ) : (
+                <div key={card.type} className="flex min-h-24 items-center gap-5 rounded-2xl border border-accent/55 px-7 py-5">
+                  {content}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </section>
+
+      <section className="px-6 pb-28 pt-8 md:px-12 md:pb-36 md:pt-12">
+        <div className="mx-auto grid max-w-[1100px] gap-10 lg:grid-cols-[280px_1fr] lg:items-center lg:gap-16">
+          <div>
+            <span className="font-body text-[12px] font-bold uppercase tracking-[0.18em] text-accent">Find us in Texas</span>
+            <h2 className="mt-4 max-w-[13ch] font-display text-[clamp(2rem,3.2vw,3rem)] font-bold leading-[1.13] tracking-[-0.03em]">
+              We&apos;re here to serve across Texas
+            </h2>
+            <p className="mt-5 max-w-[30ch] font-body text-[15px] leading-[1.6] text-content/65">
+              Serving investors, businesses and property owners across the Texas market.
+            </p>
+            <span aria-hidden className="mt-5 block h-0.5 w-24 bg-accent" />
+          </div>
+
+          <div className="overflow-hidden rounded-[22px] border border-[var(--color-line)] bg-surface-alt shadow-[0_20px_55px_-40px_rgba(20,28,33,.35)]">
+            <iframe
+              title="Prime Developers service area in Texas"
+              src="https://www.google.com/maps?q=Texas%2C%20USA&z=6&output=embed"
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              className="h-[330px] w-full border-0 md:h-[390px]"
+            />
+          </div>
         </div>
       </section>
     </div>

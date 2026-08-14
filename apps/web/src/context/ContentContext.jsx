@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { api } from '../lib/api'
 import { withTransformedImages } from '../lib/images'
 import { useAuth } from './AuthContext'
+import LogoLoader from '../components/LogoLoader'
 
 // Fallback shape per section so a missing/not-yet-seeded row never crashes a
 // component — every field a component reads is guaranteed to exist.
@@ -115,17 +116,52 @@ const DEFAULTS = {
     location: '',
     socials: [],
   },
+  // No enterprise_page row exists and every field here was blank, so /enterprise
+  // rendered a single band containing nothing but its own CTA button: an empty
+  // <h1> above three sections that each hide themselves on an empty array. The
+  // copy ships here for the same reason services_home's and cta_home's does — a
+  // default is what stands in for a row that was never seeded, and every field
+  // is still overridden the moment someone saves the section in the admin.
+  //
+  // `stats` stays empty deliberately. That section hides itself on an empty
+  // array, and the figures it asks for — projects delivered, square footage,
+  // years active — are claims about the business that only the business can
+  // make. Inventing plausible ones would put fabricated numbers on a public
+  // page. Same for `heroImage`: the block is conditional, so an unset one costs
+  // nothing, where picking a photograph is a content decision.
   enterprise_page: {
-    heroEyebrow: '',
-    heroHeading: '',
-    heroParagraph: '',
+    heroEyebrow: 'Expertise',
+    heroHeading: 'Four ways to build with Prime',
+    heroParagraph:
+      'Development is where we started, not where we stop. Interiors, collaborations, franchise and investment each open a different door into the same practice — the same teams, the same standards, and one line of accountability from first drawing to handover.',
     heroImage: '',
     ctaLabel: 'Talk to us',
     ctaHref: '/contact',
-    capabilitiesHeading: '',
-    capabilities: [],
+    capabilitiesHeading: 'What we do',
+    capabilities: [
+      {
+        title: 'Interiors',
+        image: '/images/expertise/interiors.webp',
+        body: 'Bespoke interior design and fit-out, handled in-house. The team that delivers the shell finishes the space, so specification, procurement and snagging answer to one contract rather than three — and the detail you were shown is the detail you get.',
+      },
+      {
+        title: 'Collaborations',
+        image: '/images/expertise/collaborations.webp',
+        body: 'Joint development with landowners and partner developers. You bring the land or the capital; we bring entitlement, design and delivery, structured as a genuine partnership with terms agreed before a drawing is issued.',
+      },
+      {
+        title: 'Franchise',
+        image: '/images/expertise/franchise.webp',
+        body: 'Operate under the Prime name in your own market. Partners take on our processes, supplier network and brand system with hands-on onboarding, held to the standards that earned the name in the first place.',
+      },
+      {
+        title: 'Invest',
+        image: '/images/expertise/invest.webp',
+        body: 'Participate in our commercial and residential pipeline. Opportunities are presented with the whole picture — hold period, exit assumptions, and the risks set out beside the returns — so you can weigh them on the same terms we do.',
+      },
+    ],
     stats: [],
-    closingHeading: '',
+    closingHeading: 'Tell us which door you want to come through',
     closingLabel: 'Start a conversation',
     closingHref: '/contact',
   },
@@ -233,11 +269,7 @@ export function ContentProvider({ children }) {
   }
 
   if (!value.ready) {
-    return (
-      <div className="flex min-h-[100dvh] items-center justify-center bg-void">
-        <span className="h-8 w-8 animate-spin rounded-full border-2 border-bone/20 border-t-ember" />
-      </div>
-    )
+    return <LogoLoader />
   }
 
   return <ContentContext.Provider value={value}>{children}</ContentContext.Provider>

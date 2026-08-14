@@ -4,6 +4,54 @@
    which a manual toggle has to be able to override, so the variant is rebound
    to a class we own on <html>. */
 @custom-variant dark (&:where(.dark, .dark *));
+/* Branded bootstrap state: the official logomark resolves from a quiet
+   silhouette into full colour without a generic spinner or layout shift. */
+.prime-logo-loader {
+  position: relative;
+  width: clamp(3.5rem, 5vw, 4.75rem);
+  aspect-ratio: 929.04 / 1080;
+  filter: drop-shadow(0 0 1.5rem rgb(0 115 164 / 0.16));
+  animation: prime-loader-breathe 1.8s ease-in-out infinite;
+}
+.prime-logo-loader img { display: block; width: 100%; height: 100%; }
+.prime-logo-loader__ghost { opacity: 0.13; filter: grayscale(1); }
+.prime-logo-loader__reveal {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  clip-path: inset(100% 0 0);
+  animation: prime-loader-reveal 1.8s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+.prime-logo-loader__line {
+  position: absolute;
+  left: -12%;
+  right: -12%;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgb(62 155 199 / 0.9), transparent);
+  box-shadow: 0 0 0.75rem rgb(0 115 164 / 0.65);
+  animation: prime-loader-line 1.8s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+@keyframes prime-loader-reveal {
+  0%, 12% { clip-path: inset(100% 0 0); }
+  62%, 82% { clip-path: inset(0); }
+  100% { clip-path: inset(0 0 100%); }
+}
+@keyframes prime-loader-line {
+  0%, 12% { bottom: 0; opacity: 0; }
+  18% { opacity: 1; }
+  62% { bottom: 100%; opacity: 1; }
+  76%, 100% { bottom: 100%; opacity: 0; }
+}
+@keyframes prime-loader-breathe {
+  0%, 100% { transform: scale(0.97); }
+  55% { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .prime-logo-loader, .prime-logo-loader__reveal, .prime-logo-loader__line { animation: none; }
+  .prime-logo-loader__ghost, .prime-logo-loader__line { display: none; }
+  .prime-logo-loader__reveal { clip-path: none; }
+}
 
 /* ─────────────────────────────────────────────────────────────
    Self-hosted brand fonts.
@@ -320,27 +368,6 @@ html {
   color: var(--color-void);
 }
 
-/* The film-grain plate and the vignette that used to sit here are gone.
-   Both were shot-on-film texture for a site that was dark on every screen: the
-   vignette laid a fixed radial reaching 42% black at the edges over everything,
-   and the grain was 4.5% noise on `screen`. Under the light theme the vignette
-   darkened all four corners of every page — the single biggest reason a light
-   page still read as a dark one — and `screen` blending makes the grain do
-   nothing on white. The redesign is a flat, light system with no equivalent.
-
-   The scroll-progress rail below is the one piece of that furniture kept. */
-
-/* Thin scroll-progress rule pinned to the very top of the viewport */
-.scroll-rail {
-  position: fixed;
-  top: 0;
-  left: 0;
-  height: 2px;
-  z-index: 9999;
-  transform-origin: 0 50%;
-  background: linear-gradient(90deg, var(--color-accent), var(--color-ember));
-}
-
 /* ── Motion primitives ─────────────────────────────────────────── */
 
 /* Projects card image swap — hero-style bottom-to-top slide. */
@@ -477,6 +504,47 @@ html {
   }
 }
 
+/* Property cards morph into their matching full-screen hero. The root fades
+   beneath the named image/title layers; those layers keep their geometry and
+   interpolate independently, so the transition reads as one continuous card. */
+html.property-route-transition::view-transition-old(root) {
+  z-index: 1;
+  animation: property-route-out 0.72s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+html.property-route-transition::view-transition-new(root) {
+  z-index: 2;
+  animation: property-route-in 0.88s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+html.property-route-transition::view-transition-group(*) {
+  animation-duration: 1.05s;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+html.property-route-transition::view-transition-image-pair(*) {
+  isolation: auto;
+}
+html.property-route-transition::view-transition-old(*) {
+  animation: property-shared-old 1.05s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+html.property-route-transition::view-transition-new(*) {
+  animation: property-shared-new 1.05s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes property-route-out {
+  to { opacity: 0.12; transform: scale(0.995); }
+}
+@keyframes property-route-in {
+  from { opacity: 0; transform: scale(1.006); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes property-shared-old {
+  from { opacity: 1; filter: brightness(1); }
+  to { opacity: 0; filter: brightness(0.86); }
+}
+@keyframes property-shared-new {
+  from { opacity: 0; filter: brightness(0.92); }
+  38% { opacity: 0.18; }
+  to { opacity: 1; filter: brightness(1); }
+}
 /* Fallback for engines without the View Transitions API (Safari, Firefox):
    the class is held for the length of the fade and then dropped, so these
    transitions never apply to ordinary hover or scroll work. */
@@ -515,4 +583,28 @@ html {
   *::after {
     transition-duration: 0.01ms !important;
   }
+}
+
+@keyframes expertise-marquee {
+  to { transform: translate3d(-50%, 0, 0); }
+}
+
+.animate-marquee {
+  animation: expertise-marquee 24s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee { animation: none; }
+}
+/* Chrome paints autofilled contact fields with its own blue-gray surface.
+   Keep the form on its dark raised material while preserving readable type. */
+.contact-field:-webkit-autofill,
+.contact-field:-webkit-autofill:hover,
+.contact-field:-webkit-autofill:focus,
+.contact-field:-webkit-autofill:active {
+  -webkit-text-fill-color: #e6edf0;
+  caret-color: #e6edf0;
+  box-shadow: 0 0 0 1000px #23333b inset;
+  -webkit-box-shadow: 0 0 0 1000px #23333b inset;
+  transition: background-color 9999s ease-out 0s;
 }

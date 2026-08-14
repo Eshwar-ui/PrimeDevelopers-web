@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { flushSync } from 'react-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import { useSection, useProperties, useCategories } from '../context/ContentContext'
 import { renderEmphasis } from '../lib/emphasis'
@@ -38,12 +39,24 @@ function Card({ p, onOpen }) {
       exit={{ opacity: 0, scale: 0.96 }}
       transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
       onClick={onOpen}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onOpen()
+        }
+      }}
+      role="link"
+      tabIndex={0}
+      aria-label={`Open ${p.name}`}
       className="group flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-[var(--color-line)] bg-surface transition-shadow duration-300 hover:shadow-[0_22px_48px_-30px_rgba(0,0,0,0.45)]"
     >
-      <div className="relative h-60 overflow-hidden bg-surface-alt">
+      <div
+        className="relative h-60 overflow-hidden bg-surface-alt"
+      >
         {p.image && (
           <img
             src={sized(p.image, 'card')}
+            style={{ viewTransitionName: `property-image-${p.slug}` }}
             alt={p.name}
             loading="lazy"
             decoding="async"
@@ -56,7 +69,10 @@ function Card({ p, onOpen }) {
       </div>
 
       <div className="flex flex-1 flex-col p-6">
-        <h3 className="font-display text-[1.55rem] font-bold leading-tight tracking-[-0.01em] text-content">
+        <h3
+          style={{ viewTransitionName: `property-title-${p.slug}` }}
+          className="font-display text-[1.55rem] font-bold leading-tight tracking-[-0.01em] text-content"
+        >
           {p.name}
         </h3>
         <p className="mt-2 font-body text-[15px] text-accent">{p.address}</p>
@@ -80,7 +96,48 @@ export default function PropertiesPage() {
   const [filter, setFilter] = useState('All')
   const navigate = useNavigate()
   const list = filter === 'All' ? properties : properties.filter((pr) => pr.category === filter)
+  const openProperty = async (property) => {
+    const path = `/properties/${property.slug}`
+    const root = document.documentElement
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
+    // The route is lazy and AnimatePresence holds the outgoing listing for its
+    // exit. Warm the chunk first, then keep the View Transition update pending
+    // until the matching hero is truly mounted; otherwise Chrome snapshots the
+    // outgoing page twice and there is no destination element to morph into.
+    await import('./PropertyDetailPage')
+
+    if (!document.startViewTransition || reduced) {
+      navigate(path)
+      return
+    }
+
+    root.classList.add('property-route-transition')
+    flushSync(() => {
+      window.dispatchEvent(new CustomEvent('prime:property-transition', { detail: true }))
+    })
+    const transition = document.startViewTransition(async () => {
+      flushSync(() => navigate(path))
+
+      await new Promise((resolve) => {
+        const deadline = performance.now() + 1600
+        const waitForHero = () => {
+          const hero = document.querySelector(`[data-property-hero="${property.slug}"]`)
+          if (hero || performance.now() >= deadline) {
+            resolve()
+            return
+          }
+          setTimeout(waitForHero, 16)
+        }
+        waitForHero()
+      })
+    })
+
+    transition.finished.finally(() => {
+      root.classList.remove('property-route-transition')
+      window.dispatchEvent(new CustomEvent('prime:property-transition', { detail: false }))
+    })
+  }
   // The band defaults to the listings themselves rather than a second set of
   // uploads: it is the properties carousel, so the properties are the obvious
   // content, and it means the strip is populated the moment the page exists.
@@ -208,7 +265,7 @@ export default function PropertiesPage() {
                   key={c}
                   type="button"
                   onClick={() => setFilter(c)}
-                  className={`rounded-full border px-5 py-2 font-body text-[13px] font-medium uppercase tracking-[0.1em] transition-colors duration-300 ${
+                  className={`min-h-11 rounded-full border px-5 py-2 font-body text-[13px] font-medium uppercase tracking-[0.1em] transition-colors duration-300 ${
                     active
                       ? 'border-accent bg-accent text-white dark:text-void'
                       : 'border-[var(--color-line)] text-content/70 hover:border-content/35 hover:text-content'
@@ -224,7 +281,7 @@ export default function PropertiesPage() {
         <motion.div layout className="mt-12 grid grid-cols-1 gap-7 md:grid-cols-2 lg:grid-cols-3">
           <AnimatePresence mode="popLayout">
             {list.map((pr) => (
-              <Card key={pr.slug} p={pr} onOpen={() => navigate(`/properties/${pr.slug}`)} />
+              <Card key={pr.slug} p={pr} onOpen={() => openProperty(pr)} />
             ))}
           </AnimatePresence>
         </motion.div>

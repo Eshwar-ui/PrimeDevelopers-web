@@ -10,6 +10,7 @@ import BuildingBlock from './components/BuildingBlock'
 
 const emptyDetail = () => ({
   tagline: '',
+  offer: '',
   overview: { eyebrow: '', heading: '', body: '', flyer: '', stats: [] },
   tenants: [],
   highlights: { heading: '', body: '', bigStats: [], cards: [] },
@@ -186,6 +187,13 @@ export default function PropertyEditPage() {
           />
         </Section>
 
+        <Section title="Promotion">
+          <TextField
+            label="Offer message (leave blank to hide)"
+            value={form.detail.offer}
+            onChange={(offer) => setForm((f) => ({ ...f, detail: { ...f.detail, offer } }))}
+          />
+        </Section>
         <Section title="Overview">
           <TextField label="Eyebrow" value={form.detail.overview.eyebrow} onChange={(eyebrow) => patchDetail('overview', { eyebrow })} />
           <TextField label="Heading" value={form.detail.overview.heading} onChange={(heading) => patchDetail('overview', { heading })} />

@@ -31,13 +31,25 @@ export default function Navbar() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
 
+  useEffect(() => {
+    if (!menuOpen) return undefined
+    const previousOverflow = document.body.style.overflow
+    const onKeyDown = (event) => event.key === 'Escape' && setMenuOpen(false)
+    document.body.style.overflow = 'hidden'
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [menuOpen])
   // Only the homepage hero cuts a bay for the rail to sit in; everywhere else
   // the header runs the full measure.
   const isHome = pathname === '/'
 
   // The lockup doubles as the Home link, so the rail only needs an explicit
   // Home entry when the admin-managed list doesn't already carry one.
-  const navLinks = links.some((l) => l.to === '/') ? links : [{ label: 'Home', to: '/' }, ...links]
+  const linksWithHome = links.some((l) => l.to === '/') ? links : [{ label: 'Home', to: '/' }, ...links]
+  const navLinks = linksWithHome.filter((link) => link.to !== '/contact')
 
   const handleNav = (e, link) => {
     e.preventDefault()
@@ -193,7 +205,7 @@ export default function Navbar() {
       //
       // Also skipped on mobile, where the bar is a logo and a burger and has
       // nothing to gain from the expansion.
-      if (!isHome || window.innerWidth < 768) {
+      if (!isHome || window.innerWidth < 1024) {
         el.style.width = '100%'
         return
       }
@@ -299,7 +311,7 @@ export default function Navbar() {
           </a>
 
           {/* Desktop rail */}
-          <nav className="hidden md:block">
+          <nav className="hidden lg:block">
             <ul className="flex items-center gap-7 lg:gap-9">
               {navLinks.map((link) => (
                 <li key={link.label}>
@@ -324,7 +336,7 @@ export default function Navbar() {
             <a
               href="/contact"
               onClick={goContact}
-              className={`group hidden shrink-0 items-center gap-3 rounded-full py-1.5 pl-6 pr-1.5 transition-colors duration-500 md:inline-flex ${enquire}`}
+              className={`group hidden min-h-11 shrink-0 items-center gap-3 rounded-full py-1.5 pl-6 pr-1.5 transition-colors duration-500 lg:inline-flex ${enquire}`}
             >
               <span className="font-body text-[15px] font-medium">Enquire</span>
               <span
@@ -341,7 +353,7 @@ export default function Navbar() {
             onClick={() => setMenuOpen((o) => !o)}
             aria-label={menuOpen ? 'Close menu' : 'Open menu'}
             aria-expanded={menuOpen}
-            className="flex size-11 items-center justify-center md:hidden"
+            className="flex size-11 items-center justify-center lg:hidden"
           >
             <span className="relative h-3 w-6">
               <span
@@ -369,7 +381,7 @@ export default function Navbar() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-40 flex flex-col justify-center gap-3 bg-void px-8 md:hidden"
+            className="fixed inset-0 z-40 flex flex-col justify-center gap-3 bg-void px-6 sm:px-8 lg:hidden"
           >
             {navLinks.map((link, i) => (
               <motion.a
@@ -379,7 +391,7 @@ export default function Navbar() {
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 + i * 0.08, ease: 'easeOut' }}
-                className="font-display text-5xl font-light tracking-[-0.02em] text-bone"
+                className="flex min-h-11 items-center font-display text-[clamp(2.25rem,10vw,3rem)] font-light tracking-[-0.02em] text-bone"
               >
                 <span className="numeral mr-4 align-middle text-base text-accent-soft">
                   0{i + 1}

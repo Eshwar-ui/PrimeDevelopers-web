@@ -43,7 +43,7 @@ export default function UnitDetailCard({ unit, units = [], aspect = null, onEnqu
 
   return (
     <div
-      className={`flex flex-col overflow-hidden rounded-2xl border border-[var(--color-line)] bg-surface ${maxHeight}`}
+      className={`flex flex-col overflow-hidden rounded-2xl border border-[var(--color-line)] bg-surface-alt ${maxHeight}`}
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-[var(--color-line)] px-6 py-5">
         <span
@@ -51,7 +51,7 @@ export default function UnitDetailCard({ unit, units = [], aspect = null, onEnqu
         >
           {meta.label}
         </span>
-        <span className="font-display text-lg font-medium break-words text-content">{unit.label || 'Unit'}</span>
+        <span className="font-display text-xl font-bold tracking-[-0.02em] break-words text-content">{unit.label || 'Unit'}</span>
         {area && <span className="font-body text-sm text-content/70">{area}</span>}
       </div>
 
@@ -103,8 +103,9 @@ function EmptyPanel({ units }) {
   const available = units.filter((unit) => unit.status === 'available').length
 
   return (
-    <div className="flex flex-col gap-4 rounded-2xl border border-dashed border-[var(--color-line)] bg-surface px-6 py-8">
-      <span className="eyebrow text-content/70">Unit details</span>
+    <div className="relative flex min-h-[15rem] flex-col justify-end gap-4 overflow-hidden rounded-2xl border border-[var(--color-line)] bg-surface-alt px-6 py-8">
+      <span aria-hidden className="absolute -right-5 -top-10 font-display text-[8rem] font-bold leading-none text-accent/[0.07]">{available}</span>
+      <span className="eyebrow relative text-content/55">Unit details</span>
 
       {total > 0 && (
         <p className="font-display text-2xl leading-snug font-medium text-content/85">

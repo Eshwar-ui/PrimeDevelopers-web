@@ -21,14 +21,14 @@ const ModelViewer = lazy(() => import('./floorplan/ModelViewer'))
 // the row away. Holding the md height there would leave the model in a tall
 // narrow slot, which is the worst shape to orbit a wide site plan in. The
 // height climbs again as the column gets its width back.
-const PLAN_HEIGHT = 'h-[420px] md:h-[520px] lg:h-[480px] xl:h-[560px] 2xl:h-[620px]'
+const PLAN_HEIGHT = 'h-[340px] sm:h-[420px] md:h-[500px] lg:h-[calc(100dvh-7rem)]'
 
 // A cap, not a height. Forcing the panel to match the plan looks composed on a
 // fully filled unit and hollow on a sparse one — and unit records here are
 // routinely sparse, so the hollow case is the common one. Capped instead, the
 // panel sizes to what the unit actually has, the two columns still align along
 // the top edge, and only an unusually wordy unit ever scrolls.
-const PANEL_MAX = 'lg:max-h-[480px] xl:max-h-[560px] 2xl:max-h-[620px]'
+const PANEL_MAX = 'lg:max-h-[calc(100dvh-7rem)]'
 
 // Enough to be useful, few enough that each column stays wide enough to read.
 // Past this the table is a horizontal scroll of narrow slivers, which is worse
@@ -220,10 +220,11 @@ export default function FloorPlanSection({ building, propertyId }) {
   if (!units.length && !building?.planImage && !model?.url) return null
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       {/* Legend doubles as the status filter — the highest-value interaction
           on a leasing map, and nearly free once materials are per-unit. */}
-      <div className="flex flex-wrap gap-x-3 gap-y-2">
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-surface-alt p-3 sm:p-4">
+        <span className="mr-2 font-body text-[10px] font-bold uppercase tracking-[0.16em] text-content/50">Filter units</span>
         {UNIT_STATUSES.map((status) => {
           const count = counts[status.value] ?? 0
           const isActive = statusFilter === status.value
@@ -234,7 +235,7 @@ export default function FloorPlanSection({ building, propertyId }) {
               disabled={!count}
               aria-pressed={isActive}
               onClick={() => setStatusFilter(isActive ? null : status.value)}
-              className={`flex min-h-9 items-center gap-2 rounded-full border px-3.5 py-1.5 transition-colors duration-200 disabled:opacity-30 ${
+              className={`flex min-h-11 items-center gap-2 rounded-full border px-3.5 py-1.5 transition-colors duration-200 disabled:opacity-30 ${
                 isActive ? 'border-accent bg-accent/15' : 'border-[var(--color-line)] hover:border-content/30'
               }`}
             >
@@ -250,7 +251,7 @@ export default function FloorPlanSection({ building, propertyId }) {
           <button
             type="button"
             onClick={() => setStatusFilter(null)}
-            className="font-body text-[11px] font-bold uppercase tracking-[0.1em] text-accent hover:text-content"
+            className="inline-flex min-h-11 items-center font-body text-[11px] font-bold uppercase tracking-[0.1em] text-accent hover:text-content"
           >
             Clear filter
           </button>
@@ -265,7 +266,7 @@ export default function FloorPlanSection({ building, propertyId }) {
             type="button"
             aria-pressed={compareMode}
             onClick={() => setCompareMode((value) => !value)}
-            className={`ml-auto flex min-h-9 items-center gap-2 rounded-full border px-3.5 py-1.5 transition-colors duration-200 ${
+            className={`ml-auto flex min-h-11 items-center gap-2 rounded-full border px-3.5 py-1.5 transition-colors duration-200 ${
               compareMode ? 'border-accent bg-accent/15' : 'border-[var(--color-line)] hover:border-content/30'
             }`}
           >

@@ -2,21 +2,25 @@ import { useRef } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
-import MagneticButton from './MagneticButton'
-import ArrowRight from './ArrowRight'
 import { useSectionNav } from '../hooks/useSectionNav'
 import { useSection, useProperties } from '../context/ContentContext'
-import { renderEmphasis } from '../lib/emphasis'
 import logo from '../assets/prime-logo.svg'
 
-const alignCls = {
-  left: 'md:items-start md:text-left',
-  center: 'md:items-center md:text-center',
-  right: 'md:items-end md:text-right',
-}
+// The old file imported ScrollTrigger without registering it and worked only
+// because About/Hero/Services happen to register it at module scope and end up
+// in the same bundle. That is a load-order accident, not a guarantee — the
+// footer renders on routes where none of those three mount.
+gsap.registerPlugin(ScrollTrigger)
 
 export default function Footer() {
-  const { email, phone, studio, ctaHeading, quickLinks, socials, copyrightLeft, copyrightRight } = useSection('footer')
+  // `ctaHeading` is deliberately not read here. CallToAction is the page's
+  // closing statement — it sits immediately above this on the homepage and says
+  // the same thing with a photograph behind it — so a second oversized heading
+  // and a second "start a property" button was the same ask twice in a row. The
+  // field stays in the CMS schema rather than being deleted: the copy is still
+  // there if the closing panel is ever reworked, and dropping it would take an
+  // editor's text with it.
+  const { email, phone, studio, quickLinks, socials, copyrightLeft, copyrightRight } = useSection('footer')
   const properties = useProperties().slice(0, 4)
   const scope = useRef(null)
   const go = useSectionNav()
@@ -27,11 +31,14 @@ export default function Footer() {
     { label: 'Studio', value: studio, href: null },
   ]
 
+  // An empty column is a hole in the grid, not a column — the CMS defaults every
+  // one of these to `[]`, and a site with no properties published would otherwise
+  // leave a titled heading standing over nothing.
   const columns = [
-    { title: 'Quick Links', align: 'left', links: quickLinks },
-    { title: 'Properties', align: 'center', links: properties.map((p) => ({ label: p.name, href: `/properties/${p.slug}` })) },
-    { title: 'Socials', align: 'right', links: socials },
-  ]
+    { title: 'Quick Links', links: quickLinks },
+    { title: 'Properties', links: properties.map((p) => ({ label: p.name, href: `/properties/${p.slug}` })) },
+    { title: 'Socials', links: socials },
+  ].filter((col) => col.links.length > 0)
 
   const handleNav = (e, href) => {
     if (href === '#') return // placeholder social links
@@ -54,80 +61,69 @@ export default function Footer() {
   )
 
   return (
-    // surface-alt, and data-band like every other light section — the navbar
-    // reads that attribute to pick its own colour, and the footer is tall
-    // enough to sit under it on a short page.
+    // A dark anchor in *both* themes, and now the bottom half of one continuous
+    // dark close: the CallToAction panel above runs straight into this ground
+    // rather than sitting on a white band above it.
+    //
+    // Deliberately carries no data-band, following the closing image band on the
+    // about page and the dark sections on the property page. The navbar picks its
+    // chrome by observing [data-band="light"] under itself; tagging this one would
+    // flip the header to charcoal type over a near-black ground.
+    //
+    // Because the ground no longer changes with the theme, every colour here is
+    // drawn from the *fixed* half of the palette — void, bone, accent-soft,
+    // line-inv — never the role tokens (surface/content/accent/line), which swap
+    // under .dark and would invert against a ground that doesn't.
     <footer
       id="contact"
       ref={scope}
-      data-band="light"
-      className="relative overflow-hidden border-t border-[var(--color-line)] bg-surface-alt px-6 pb-8 pt-24 text-content md:px-12 md:pt-32"
+      className="relative overflow-hidden bg-void px-6 pb-10 pt-20 text-bone md:px-12 md:pt-24"
     >
-      {/* The saffron dusk glow that sat in this corner is gone. It was lift for
-          a near-black ground; over a light one it reads as a stain, and saffron
-          has been dropped from the light system everywhere else. */}
-
-      {/* Big statement + magnetic CTA */}
-      <div className="relative grid items-end gap-12 lg:grid-cols-[1fr_auto]">
-        <h2
-          data-foot
-          className="font-display font-bold leading-[0.98] tracking-[-0.02em] text-content"
-          style={{ fontSize: 'clamp(2.5rem, 6vw, 5.5rem)' }}
-        >
-          {renderEmphasis(ctaHeading)}
-        </h2>
-
-        <div data-foot className="self-center">
-          <MagneticButton
-            href={email ? `mailto:${email}` : undefined}
-            // The label flips with the disc rather than being fixed. --color-accent
-            // is CG Blue on light and lifts to a paler tint on dark, so a single
-            // choice cannot serve both: white measures 5.3:1 on the deep blue and
-            // only 3.1:1 on the pale one, and charcoal is the other way round.
-            // Each theme therefore gets whichever of the two the disc can carry.
-            className="group relative flex size-40 shrink-0 flex-col items-center justify-center gap-2 rounded-full bg-accent text-center text-white md:size-48 dark:text-void"
-          >
-            <span className="font-body text-sm font-bold uppercase tracking-[0.1em]">
-              Start a property
-            </span>
-            <ArrowRight className="size-6 -rotate-45 transition-transform duration-300 group-hover:rotate-0" />
-          </MagneticButton>
-        </div>
-      </div>
-
-      {/* Contact details — hairline-divided */}
-      <div
-        data-foot
-        className="relative mt-24 grid gap-px overflow-hidden rounded-2xl border border-[var(--color-line)] bg-line md:grid-cols-3"
-      >
-        {details.map((d) => {
+      {/* ── 01 · Contact strip ─────────────────────────────────── */}
+      {/* Open, hairline-ruled columns rather than a bordered card grid. A card
+          grid draws its cell separation with a `gap-px` over a `bg-line` fill —
+          a trick that needs the gap colour to contrast with the cells, which
+          stops working when both go dark. Rules do the same job here without
+          asking three panels to float on an unlit page. */}
+      <div data-foot className="relative grid border-t border-[var(--color-line-inv)] md:grid-cols-3">
+        {details.map((d, i) => {
           const inner = (
-            <div className="flex h-full flex-col gap-2.5 bg-surface p-8">
-              <span className="eyebrow text-content/70">{d.label}</span>
-              <span className="font-display text-xl font-bold tracking-[-0.01em] text-content">
+            <div className="flex h-full flex-col gap-3 py-8 md:py-10">
+              <span className="eyebrow text-bone/50">{d.label}</span>
+              <span className="font-display text-lg font-medium tracking-[-0.01em] md:text-xl">
                 {d.value}
               </span>
             </div>
           )
+          const cell = `${i > 0 ? 'border-t border-[var(--color-line-inv)] md:border-t-0 md:border-l md:pl-10' : ''}`
           return d.href ? (
-            <a key={d.label} href={d.href} className="[&>div]:transition-colors [&>div]:hover:bg-surface-alt">
+            <a
+              key={d.label}
+              href={d.href}
+              className={`${cell} group transition-colors duration-300 hover:text-accent-soft`}
+            >
               {inner}
             </a>
           ) : (
-            <div key={d.label}>{inner}</div>
+            <div key={d.label} className={cell}>
+              {inner}
+            </div>
           )
         })}
       </div>
 
-      {/* Three aligned link columns */}
+      {/* ── 02 · Link columns ──────────────────────────────────── */}
+      {/* All three read left-aligned. An earlier pass centred the middle column
+          and right-aligned the last, which looked balanced as a block but gave
+          the eye three different left edges to find on the way down. */}
       <div
         data-foot
-        className="relative mt-20 grid grid-cols-1 gap-12 border-t border-[var(--color-line)] pt-16 md:grid-cols-3"
+        className="relative mt-16 grid grid-cols-1 gap-x-8 gap-y-10 border-t border-[var(--color-line-inv)] pt-12 sm:grid-cols-2 md:mt-20 md:grid-cols-3 md:gap-12 md:pt-16"
       >
         {columns.map((col) => (
-          <div key={col.title} className={`flex flex-col items-start gap-7 ${alignCls[col.align]}`}>
-            <h3 className="eyebrow text-content/70">{col.title}</h3>
-            <ul className="flex flex-col gap-4">
+          <div key={col.title} className="flex flex-col items-start gap-6">
+            <h3 className="eyebrow text-bone/50">{col.title}</h3>
+            <ul className="flex flex-col gap-3.5">
               {/* Keyed on href *and* label because neither alone is unique:
                   two properties may legitimately share a name (the label), and
                   the placeholder social links all share `#` (the href). */}
@@ -136,9 +132,17 @@ export default function Footer() {
                   <a
                     href={l.href}
                     onClick={(e) => handleNav(e, l.href)}
-                    className="font-display text-[19px] font-medium tracking-[-0.01em] text-content/70 transition-colors duration-300 hover:text-accent"
+                    className="group relative inline-flex min-h-11 items-center font-display text-[17px] font-medium tracking-[-0.01em] text-bone/60 transition-colors duration-300 hover:text-bone md:text-[19px]"
                   >
                     {l.label}
+                    {/* Wipes in from the left instead of the whole label just
+                        changing colour — the one piece of motion in a block
+                        that is otherwise static, and it tracks the reading
+                        direction rather than blinking on. */}
+                    <span
+                      aria-hidden
+                      className="absolute -bottom-0.5 left-0 h-px w-0 bg-accent-soft transition-[width] duration-300 ease-brand group-hover:w-full"
+                    />
                   </a>
                 </li>
               ))}
@@ -147,22 +151,21 @@ export default function Footer() {
         ))}
       </div>
 
-      {/* Oversized wordmark, flattened to a silhouette and flipped per theme.
-          brightness-0 crushes it to black — right on the light ground — and
-          dark mode inverts that to white. Plain `invert` on the original would
-          hue-shift the CG Blue fill to its complement, orange, which is why the
-          mark is knocked to black first in both cases. Carried lighter on light:
-          the same 12% that reads as a whisper against near-black is a smudge
-          against near-white. */}
+      {/* ── 03 · Wordmark ──────────────────────────────────────── */}
+      {/* brightness-0 crushes the mark to a black silhouette, invert lifts it to
+          white. Both are needed: plain `invert` on the original would hue-shift
+          the CG Blue fill to its complement, orange. This used to be a pair of
+          per-theme treatments at two different opacities; on a ground that no
+          longer changes, one treatment covers both. */}
       <img
         src={logo}
         alt=""
         aria-hidden
-        className="pointer-events-none relative mx-auto mt-24 w-full max-w-none select-none opacity-[0.07] brightness-0 dark:opacity-[0.12] dark:invert"
+        className="pointer-events-none relative mx-auto mt-24 w-full max-w-none select-none opacity-[0.06] brightness-0 invert md:mt-28"
       />
 
-      {/* Copyright bar */}
-      <div className="relative mt-12 flex flex-col gap-2 text-content/70 md:flex-row md:justify-between">
+      {/* ── 04 · Copyright ─────────────────────────────────────── */}
+      <div className="relative mt-12 flex flex-col gap-2 border-t border-[var(--color-line-inv)] pt-8 text-bone/50 md:flex-row md:justify-between">
         <p className="eyebrow">{copyrightLeft}</p>
         <p className="eyebrow">{copyrightRight}</p>
       </div>

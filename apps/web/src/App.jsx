@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
@@ -14,7 +14,6 @@ import Testimonials from './components/Testimonials'
 import NewsTeaser from './components/NewsTeaser'
 import CallToAction from './components/CallToAction'
 import Footer from './components/Footer'
-import CinematicLayer from './components/CinematicLayer'
 
 // The home page's sections stay eagerly imported above: they are what the
 // overwhelming majority of visits render, and deferring them would only add a
@@ -118,6 +117,13 @@ function PublicSite() {
   useSmoothScroll() // Lenis + GSAP ScrollTrigger, mounted once at the root
   const location = useLocation()
   const reduced = useReducedMotion()
+  const [sharedPropertyTransition, setSharedPropertyTransition] = useState(false)
+
+  useEffect(() => {
+    const handleSharedTransition = (event) => setSharedPropertyTransition(Boolean(event.detail))
+    window.addEventListener('prime:property-transition', handleSharedTransition)
+    return () => window.removeEventListener('prime:property-transition', handleSharedTransition)
+  }, [])
 
   // `mode="wait"` is what makes this work rather than just decorate. It holds
   // the incoming page until the outgoing one is fully gone, which buys a moment
@@ -138,17 +144,22 @@ function PublicSite() {
 
   return (
     <>
-      <CinematicLayer />
       <Navbar />
       {/* Holds the page open through the frame where neither route is mounted.
           Without it the footer flies up to meet the header and drops back. */}
       <main className="min-h-dvh">
-        <AnimatePresence mode="wait" initial={false}>
+        <AnimatePresence mode={sharedPropertyTransition ? 'sync' : 'wait'} initial={false}>
           <motion.div
             key={location.pathname}
             initial={reduced ? false : PAGE.initial}
             animate={PAGE.animate}
-            exit={reduced ? { opacity: 0 } : PAGE.exit}
+            exit={
+              sharedPropertyTransition
+                ? { opacity: 1, y: 0, transition: { duration: 0 } }
+                : reduced
+                  ? { opacity: 0 }
+                  : PAGE.exit
+            }
             onAnimationComplete={onArrived}
           >
             <ScrollTop />

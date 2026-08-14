@@ -333,43 +333,12 @@ export default function PropertyDetailPage() {
               the CMS and on the record — editing them simply has no effect on
               this page any more. */}
 
-          <div className="flex flex-col gap-7 border-b border-[var(--color-line)] pb-10 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <span className="eyebrow text-accent">Leasing plan</span>
-              <h2 className="mt-4 max-w-[13ch] font-display text-[clamp(2.25rem,5vw,4.75rem)] font-bold leading-[0.95] tracking-[-0.045em] text-content">
-                Find the right space
-              </h2>
-              <p className="mt-5 max-w-[56ch] font-body text-[15px] leading-[1.7] text-content/65 md:text-[16px]">
-                Explore live availability, compare suites and enquire about the unit that fits your business.
-              </p>
-            </div>
-
-            {d.floorPlans.buildings.length > 1 && (
-              <div className="flex max-w-full gap-2 overflow-x-auto pb-1 lg:justify-end">
-                {d.floorPlans.buildings.map((b, i) => (
-                  <button
-                    key={b.building}
-                    type="button"
-                    onClick={() => setTab(i)}
-                    aria-pressed={i === tab}
-                    className={`min-h-11 shrink-0 rounded-full border px-5 py-2.5 font-body text-[13px] font-bold uppercase tracking-[0.08em] transition-all duration-300 ${
-                      i === tab
-                        ? 'border-accent bg-accent text-white shadow-[0_10px_28px_-18px_rgba(0,115,164,.85)] dark:text-void'
-                        : 'border-[var(--color-line)] bg-surface text-content/65 hover:border-content/35 hover:text-content'
-                    }`}
-                  >
-                    {b.building}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
           {/* Four separate cards rather than the joined strip Overview uses.
               These are properties of the building currently selected below, so
               they have to look like they can change when the tab does — a
               welded strip reads as a fixed masthead. `Building No.` is dropped:
               the tabs directly beneath already name the building. */}
-          <div className="mt-10 grid grid-cols-2 overflow-hidden rounded-2xl border border-[var(--color-line)] bg-surface md:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {[
               ['Total Area', `${d.floorPlans.buildings[tab].area} sq ft`],
               ['Total Units', d.floorPlans.buildings[tab].units],
@@ -378,20 +347,39 @@ export default function PropertyDetailPage() {
             ].map(([label, value]) => (
               <div
                 key={label}
-                className="min-w-0 border-b border-r border-[var(--color-line)] px-5 py-6 even:border-r-0 md:border-b-0 md:px-7 md:even:border-r"
+                className="min-w-0 rounded-2xl border border-[var(--color-line)] bg-surface px-6 py-6 shadow-[0_18px_45px_-38px_rgba(20,28,33,.45)] md:px-7"
               >
                 <span className="font-body text-[11px] font-bold uppercase tracking-[0.16em] text-content/70">
                   {label}
                 </span>
-                <p className="mt-2 font-display text-[1.5rem] font-bold tracking-[-0.01em] text-content">
+                <p className="mt-3 font-display text-[clamp(1.75rem,2.4vw,2.4rem)] font-bold uppercase leading-none tracking-[-0.025em] text-content">
                   {value}
                 </p>
               </div>
             ))}
           </div>
 
+          {d.floorPlans.buildings.length > 1 && (
+            <div className="mt-6 flex max-w-full justify-center gap-3 overflow-x-auto pb-2 pt-1">
+              {d.floorPlans.buildings.map((b, i) => (
+                <button
+                  key={b.building}
+                  type="button"
+                  onClick={() => setTab(i)}
+                  aria-pressed={i === tab}
+                  className={`min-h-12 shrink-0 rounded-xl border bg-surface px-5 py-3 font-body text-[15px] font-medium shadow-[0_12px_24px_-18px_rgba(20,28,33,.65)] transition-all duration-300 ${
+                    i === tab
+                      ? 'border-accent text-accent ring-1 ring-accent/20'
+                      : 'border-[var(--color-line)] text-content hover:-translate-y-0.5 hover:border-content/30'
+                  }`}
+                >
+                  {b.building}
+                </button>
+              ))}
+            </div>
+          )}
           {/* Interactive floor plan, or a placeholder until one is uploaded */}
-          <div className="mt-10 rounded-[28px] border border-[var(--color-line)] bg-surface p-4 shadow-[0_24px_70px_-46px_rgba(20,28,33,.55)] sm:p-6 lg:p-8">
+          <div className="mt-4">
             {d.floorPlans.buildings[tab].planImage ||
             d.floorPlans.buildings[tab].model?.url ||
             d.floorPlans.buildings[tab].unitList?.length ? (

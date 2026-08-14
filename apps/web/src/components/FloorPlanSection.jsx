@@ -28,7 +28,7 @@ const PLAN_HEIGHT = 'h-[340px] sm:h-[420px] md:h-[500px] lg:h-[calc(100dvh-7rem)
 // routinely sparse, so the hollow case is the common one. Capped instead, the
 // panel sizes to what the unit actually has, the two columns still align along
 // the top edge, and only an unusually wordy unit ever scrolls.
-const PANEL_MAX = 'lg:max-h-[calc(100dvh-7rem)]'
+const PANEL_MAX = 'lg:h-[calc(100dvh-7rem)]'
 
 // Enough to be useful, few enough that each column stays wide enough to read.
 // Past this the table is a horizontal scroll of narrow slivers, which is worse
@@ -220,85 +220,40 @@ export default function FloorPlanSection({ building, propertyId }) {
   if (!units.length && !building?.planImage && !model?.url) return null
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* Legend doubles as the status filter — the highest-value interaction
-          on a leasing map, and nearly free once materials are per-unit. */}
-      <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-surface-alt p-3 sm:p-4">
-        <span className="mr-2 font-body text-[10px] font-bold uppercase tracking-[0.16em] text-content/50">Filter units</span>
-        {UNIT_STATUSES.map((status) => {
-          const count = counts[status.value] ?? 0
-          const isActive = statusFilter === status.value
-          return (
-            <button
-              key={status.value}
-              type="button"
-              disabled={!count}
-              aria-pressed={isActive}
-              onClick={() => setStatusFilter(isActive ? null : status.value)}
-              className={`flex min-h-11 items-center gap-2 rounded-full border px-3.5 py-1.5 transition-colors duration-200 disabled:opacity-30 ${
-                isActive ? 'border-accent bg-accent/15' : 'border-[var(--color-line)] hover:border-content/30'
-              }`}
-            >
-              <span aria-hidden className={`size-2.5 rounded-sm ${status.swatch}`} />
-              <span className="font-body text-[11px] font-bold uppercase tracking-[0.1em] text-content/70">
-                {status.label}
-              </span>
-              <span className="font-body text-[11px] text-content/70">{count}</span>
-            </button>
-          )
-        })}
-        {statusFilter && (
-          <button
-            type="button"
-            onClick={() => setStatusFilter(null)}
-            className="inline-flex min-h-11 items-center font-body text-[11px] font-bold uppercase tracking-[0.1em] text-accent hover:text-content"
-          >
-            Clear filter
-          </button>
-        )}
-
-        {/* Sits with the legend rather than inside the 3D viewer because it
-            governs every tier — the model, the pin plan and the unit list all
-            honour it, and a control that only existed on the canvas would be
-            missing exactly where WebGL is not. */}
-        {units.length > 1 && (
-          <button
-            type="button"
-            aria-pressed={compareMode}
-            onClick={() => setCompareMode((value) => !value)}
-            className={`ml-auto flex min-h-11 items-center gap-2 rounded-full border px-3.5 py-1.5 transition-colors duration-200 ${
-              compareMode ? 'border-accent bg-accent/15' : 'border-[var(--color-line)] hover:border-content/30'
-            }`}
-          >
-            <span className="font-body text-[11px] font-bold uppercase tracking-[0.1em] text-content/70">
-              Compare
-            </span>
-            {selection.length > 1 && (
-              <span className="font-body text-[11px] text-accent">{selection.length}</span>
-            )}
-          </button>
-        )}
-      </div>
-
-      {/* Shown at the cap even with compare mode off, because modifier-click
-          reaches the cap too and a tap that silently does nothing reads as a
-          broken control rather than as a limit. */}
-      {(compareMode || selection.length >= COMPARE_MAX) && (
-        <p className="-mt-4 font-body text-xs text-content/70">
-          {selection.length >= COMPARE_MAX
-            ? `Comparing ${COMPARE_MAX} units — remove one to add another.`
-            : 'Tap units on the plan or in the list to compare them side by side.'}
-        </p>
-      )}
-
+    <div className="flex flex-col gap-4">
       {/* Plan and detail sit side by side from lg up. Clicking a unit and then
           having to look away from the model to read what you clicked is the
           single worst moment in the old stacked layout — on a tall viewer the
           answer was below the fold entirely. Two columns keep the question and
           the answer in one glance. Below lg there is no room for that, so the
           panel falls back underneath, which is where it always was. */}
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start xl:grid-cols-[minmax(0,1fr)_21rem] xl:gap-8 2xl:grid-cols-[minmax(0,1fr)_24rem]">
-        <div ref={planRef} className="min-w-0">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(18rem,1fr)] lg:items-start">
+        <div ref={planRef} className="relative min-w-0">
+          <div className="absolute left-1/2 top-6 z-20 flex max-w-[calc(100%-2rem)] -translate-x-1/2 gap-2 overflow-x-auto rounded-full border border-white/10 bg-black/72 p-1.5 shadow-[0_16px_35px_-24px_rgba(0,0,0,.9)] backdrop-blur-md">
+            {UNIT_STATUSES.map((status) => {
+              const count = counts[status.value] ?? 0
+              const isActive = statusFilter === status.value
+              return (
+                <button
+                  key={status.value}
+                  type="button"
+                  disabled={!count}
+                  aria-pressed={isActive}
+                  onClick={() => setStatusFilter(isActive ? null : status.value)}
+                  className={`flex min-h-10 shrink-0 items-center gap-2 rounded-full border px-3.5 py-1.5 transition-colors duration-200 disabled:opacity-25 ${
+                    isActive ? 'border-white/30 bg-white/12' : 'border-white/10 hover:border-white/25 hover:bg-white/5'
+                  }`}
+                >
+                  <span aria-hidden className={`size-2.5 rounded-sm ${status.swatch}`} />
+                  <span className="font-body text-[10px] font-bold uppercase tracking-[0.12em] text-white/65">{status.label}</span>
+                  <span className="font-body text-[10px] text-white/40">{count}</span>
+                </button>
+              )
+            })}
+            {statusFilter && (
+              <button type="button" onClick={() => setStatusFilter(null)} aria-label="Clear status filter" className="grid size-10 shrink-0 place-items-center rounded-full text-sm text-white/60 hover:bg-white/10 hover:text-white">×</button>
+            )}
+          </div>
           {/* Tier 1 — the interactive plan, mounted once it scrolls into
               reach so WebGL is never spun up for a visitor who never gets
               here. See the observer above. */}

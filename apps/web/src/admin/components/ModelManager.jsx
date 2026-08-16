@@ -206,7 +206,7 @@ export default function ModelManager({ building, onChange, folder }) {
 
   return (
     <div className="rounded-lg border border-white/10 bg-void/40 p-3">
-      <span className="text-xs font-bold uppercase tracking-wide text-bone/45">
+      <span className="text-xs font-bold uppercase tracking-wide text-bone-3">
         Interactive 3D model — upload a .glb and bind its shapes to units
       </span>
 
@@ -222,7 +222,7 @@ export default function ModelManager({ building, onChange, folder }) {
         </button>
         {model?.url && (
           <>
-            <span className="text-[11px] text-bone/40">
+            <span className="text-[11px] text-bone-3">
               {formatBytes(model.fileSize)} · {Number(model.triangles ?? 0).toLocaleString()} triangles ·{' '}
               {report.matched.length} of {units.length} units bound
             </span>
@@ -246,7 +246,7 @@ export default function ModelManager({ building, onChange, folder }) {
               onClick={() => {
                 if (confirm('Remove the 3D model? The building falls back to its 2D floor plan.')) setModel(null)
               }}
-              className="text-[11px] text-bone/40 hover:text-red-400"
+              className="text-[11px] text-bone-3 hover:text-red-400"
             >
               Remove
             </button>
@@ -343,10 +343,10 @@ export default function ModelManager({ building, onChange, folder }) {
 
               {report.unmodelled.length > 0 && (
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-bone/45">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-bone-3">
                     {report.unmodelled.length} unit{report.unmodelled.length === 1 ? '' : 's'} with no shape in the model
                   </p>
-                  <p className="mt-1 text-[11px] text-bone/35">
+                  <p className="mt-1 text-[11px] text-bone-3">
                     These still appear in the unit list and on the 2D plan — they just cannot be clicked in 3D.
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2">
@@ -382,7 +382,7 @@ export default function ModelManager({ building, onChange, folder }) {
             )}
             <Suspense
               fallback={
-                <div className="flex h-64 items-center justify-center rounded-lg border border-white/10 text-xs text-bone/40">
+                <div className="flex h-64 items-center justify-center rounded-lg border border-white/10 text-xs text-bone-3">
                   Loading preview…
                 </div>
               }
@@ -423,13 +423,13 @@ export default function ModelManager({ building, onChange, folder }) {
               >
                 {model.poster ? 'Update preview image' : 'Use this view as preview image'}
               </button>
-              <span className="text-[11px] text-bone/35">
+              <span className="text-[11px] text-bone-3">
                 {model.poster
                   ? 'Visitors see this still before tapping into 3D.'
                   : 'Orbit to a good angle, then capture the still visitors see before tapping into 3D.'}
               </span>
             </div>
-            <p className="mt-2 text-[11px] text-bone/35">
+            <p className="mt-2 text-[11px] text-bone-3">
               This is exactly what a visitor sees. Unbound shapes are highlighted in orange.
             </p>
           </div>
@@ -467,7 +467,7 @@ function OrientationControl({ model, setModel }) {
     <div className="mt-4 rounded-xl border border-white/10 bg-black/20 px-4 py-3">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <span className="text-[11px] font-bold uppercase tracking-wide text-bone/70">Orientation</span>
-        <span className="text-[11px] text-bone/40">
+        <span className="text-[11px] text-bone-3">
           Turn the model until north points up in the plan.
         </span>
       </div>
@@ -528,14 +528,14 @@ function OrientationControl({ model, setModel }) {
           <button
             type="button"
             onClick={() => set(null)}
-            className="text-[11px] text-bone/40 hover:text-ember"
+            className="text-[11px] text-bone-3 hover:text-ember"
           >
             Clear
           </button>
         )}
       </div>
 
-      <p className="mt-2 text-[11px] text-bone/35">
+      <p className="mt-2 text-[11px] text-bone-3">
         {value == null
           ? 'Not set — the model is shown exactly as uploaded and no compass or unit aspect is published.'
           : `North is ${value}° clockwise from the model's own front. Visitors see a compass and each unit's aspect.`}

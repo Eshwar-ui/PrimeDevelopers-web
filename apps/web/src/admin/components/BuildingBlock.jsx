@@ -103,7 +103,7 @@ export default function BuildingBlock({ building, onChange, folder }) {
 
       {/* ── 2. Details: entered once, used everywhere ──────────── */}
       <div className="rounded-lg border border-white/10 bg-void/40 p-3">
-        <span className="text-xs font-bold uppercase tracking-wide text-bone/45">
+        <span className="text-xs font-bold uppercase tracking-wide text-bone-3">
           Units — these details drive the 3D model, the plan view, the unit list and the detail card
         </span>
 
@@ -175,7 +175,7 @@ export default function BuildingBlock({ building, onChange, folder }) {
                         {isBound ? 'Linked to 3D model' : 'No shape in model'}
                       </span>
                       {!isBound && (
-                        <span className="text-[11px] text-bone/35">
+                        <span className="text-[11px] text-bone-3">
                           Still shown in the unit list — link it in the 3D model panel above.
                         </span>
                       )}
@@ -190,7 +190,7 @@ export default function BuildingBlock({ building, onChange, folder }) {
                       >
                         {unit.x != null ? 'Reposition on map' : 'Place on map'}
                       </button>
-                      <span className="text-[11px] text-bone/35">
+                      <span className="text-[11px] text-bone-3">
                         {unit.x != null ? `Placed at ${unit.x.toFixed(0)}%, ${unit.y.toFixed(0)}%` : 'Not placed yet'}
                       </span>
                     </div>
@@ -204,10 +204,10 @@ export default function BuildingBlock({ building, onChange, folder }) {
 
       {/* ── 3. Fallback only ───────────────────────────────────── */}
       <div className="rounded-lg border border-white/10 bg-void/40 p-3">
-        <span className="text-xs font-bold uppercase tracking-wide text-bone/45">
+        <span className="text-xs font-bold uppercase tracking-wide text-bone-3">
           2D floor plan image — fallback only
         </span>
-        <p className="mt-1 text-[11px] leading-relaxed text-bone/40">
+        <p className="mt-1 text-[11px] leading-relaxed text-bone-3">
           {hasModel
             ? 'Not needed for this building. Visitors get the 3D model, and its plan view is generated from the same model — this image is only used if the model fails to load on an old device.'
             : 'Used when a building has no 3D model. Upload the plan, then place each unit on it.'}

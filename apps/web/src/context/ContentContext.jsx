@@ -84,7 +84,6 @@ const DEFAULTS = {
     email: '',
     phone: '',
     studio: '',
-    ctaHeading: '',
     quickLinks: [],
     socials: [],
     copyrightLeft: '',
@@ -197,6 +196,34 @@ export function ContentProvider({ children }) {
   const [news, setNews] = useState(null)
   const [error, setError] = useState(null)
 
+  // Two timers, both governing the splash and neither faking progress.
+  //
+  // `minimumElapsed` is a floor, not a delay: on a warm API the content lands in
+  // a few hundred milliseconds, and a splash that appears and vanishes inside
+  // that reads as a flicker rather than as an entrance. 1.2s is long enough for
+  // the mark to resolve once.
+  //
+  // `slowStart` is the ceiling nobody can control. The API sleeps when idle, so
+  // the first visit after a quiet spell waits on a cold start that can run past
+  // half a minute. There is no percentage to show — the server either answers or
+  // it does not — so at six seconds the screen stops looking broken and says
+  // what it is waiting for instead.
+  //
+  // Timers rather than rAF, deliberately: rAF does not fire in a tab that is not
+  // rendering, which would leave a backgrounded first visit stuck on the splash
+  // until it was focused (DESIGN.md §9).
+  const [minimumElapsed, setMinimumElapsed] = useState(false)
+  const [slowStart, setSlowStart] = useState(false)
+
+  useEffect(() => {
+    const floor = setTimeout(() => setMinimumElapsed(true), 1200)
+    const slow = setTimeout(() => setSlowStart(true), 6000)
+    return () => {
+      clearTimeout(floor)
+      clearTimeout(slow)
+    }
+  }, [])
+
   // Signed-in admins read the admin endpoints, which include unpublished
   // drafts; everyone else reads the public ones, which don't. Under Supabase
   // this distinction was invisible — the same query returned different rows
@@ -268,8 +295,16 @@ export function ContentProvider({ children }) {
     )
   }
 
-  if (!value.ready) {
-    return <LogoLoader />
+  if (!value.ready || !minimumElapsed) {
+    return (
+      <LogoLoader
+        hint={
+          slowStart
+            ? 'Waking the server — the first visit after a quiet spell takes a moment.'
+            : null
+        }
+      />
+    )
   }
 
   return <ContentContext.Provider value={value}>{children}</ContentContext.Provider>

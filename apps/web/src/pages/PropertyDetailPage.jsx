@@ -451,17 +451,41 @@ export default function PropertyDetailPage() {
           <h2 className="mt-6 max-w-[24ch] font-display text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] text-content md:text-[3rem]">
             {d.establishedSites.heading}
           </h2>
-          <div className="mt-12 grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-5">
+          {/* Hovering a card takes it to ~40vw and the other three give up the
+              width to pay for it, so nothing is ever covered: the row is a flex
+              strip from md up and the hovered card's `flex-grow` goes 1 → 2.6.
+              At 2.6 of 5.6 total it takes 46% of the free space, which lands
+              between 37vw and 40vw from `lg` to `2xl` — the gaps and gutters
+              are fixed pixels, so the share drifts slightly with the viewport.
+
+              The row's height never changes, which is what keeps every card on
+              the one baseline: the open card gets wider, not taller.
+
+              The photo scales *inside* the card as it opens. Growing the frame
+              alone only uncrops the picture — the zoom is what makes it read as
+              the card coming forward.
+
+              Below md it stays the two-column grid: a quarter-width card is
+              unusable on a phone and there is no hover there to open it. */}
+          <div className="mt-12 grid grid-cols-2 gap-4 md:flex md:h-[26rem] md:gap-5">
             {gallery.slice(0, 4).map((src, i) => (
-              <div key={i} className="group overflow-hidden rounded-2xl bg-surface-alt">
+              <div
+                key={i}
+                // `flex-grow` is the animated property, not `transform`. Every
+                // `scale-*` utility in Tailwind v4 compiles to the standalone
+                // `scale:` property rather than into `transform:`, so a
+                // `transition-[transform]` on a scaled element animates nothing
+                // and the change lands in a single frame.
+                className="group overflow-hidden rounded-2xl bg-surface-alt transition-[flex-grow] duration-700 ease-brand motion-reduce:transition-none md:min-w-0 md:flex-1 md:hover:flex-[2.6]"
+              >
                 <img
-                  src={sized(src, 'card')}
+                  // 1600 rather than the `card` 1200: open, this is the widest
+                  // card on the site, and at 2x on a wide display 1200 is soft.
+                  src={sized(src, 1600)}
                   alt=""
                   loading="lazy"
                   decoding="async"
-                  // Full colour, scale-only hover — the grayscale-to-colour
-                  // reveal is gone site-wide in the redesign.
-                  className="h-48 w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04] md:h-56"
+                  className="h-48 w-full object-cover transition-[scale] duration-700 ease-brand group-hover:scale-[1.06] motion-reduce:transition-none md:h-full"
                 />
               </div>
             ))}

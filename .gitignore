@@ -43,3 +43,5 @@ test-model.glb
 .env.bak
 .env.*.bak
 *.env.bak
+
+.impeccable

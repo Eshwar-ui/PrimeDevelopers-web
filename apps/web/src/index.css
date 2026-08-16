@@ -4,6 +4,32 @@
    which a manual toggle has to be able to override, so the variant is rebound
    to a class we own on <html>. */
 @custom-variant dark (&:where(.dark, .dark *));
+/* Public-page section entrances. Sections begin readable in the DOM; the
+   controller opts only below-the-fold sections into motion before paint. */
+[data-section-reveal="pending"] {
+  opacity: 0.001;
+  clip-path: inset(0 0 8% 0);
+  filter: blur(7px);
+}
+
+[data-section-reveal="revealed"] {
+  opacity: 1;
+  clip-path: inset(0);
+  filter: blur(0);
+  transition:
+    opacity 0.72s var(--ease-brand),
+    clip-path 0.9s var(--ease-brand),
+    filter 0.72s var(--ease-brand);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-section-reveal] {
+    opacity: 1;
+    clip-path: none;
+    filter: none;
+    transition: none;
+  }
+}
 /* Branded bootstrap state: the official logomark resolves from a quiet
    silhouette into full colour without a generic spinner or layout shift. */
 .prime-logo-loader {
@@ -151,19 +177,46 @@
 @theme {
   /* Dark canvas family — same lightness steps as the brand's neutral darks,
      but hue-shifted toward CG Blue (~200°) instead of true neutral gray, so
-     the cinematic grounds read as branded rather than generic dark-mode. */
-  --color-void: #141c21; /* deepest ground */
-  --color-ink: #182328; /* standard dark section */
-  --color-carbon: #23333b; /* raised dark surface / cards */
-  --color-carbon-2: #2b3f48; /* card hover */
+     the cinematic grounds read as branded rather than generic dark-mode.
 
-  /* Light family — white / bright-gray */
+     Revalued to a measured six-step ladder. The previous family spanned a
+     1.32:1 ratio end to end, which is not enough range for anything in it to
+     read as sitting above anything else: `void` and `ink` were 1.08 apart, and
+     `carbon-2` — the card *hover* state — was 1.19 from its own resting colour,
+     so that hover was close to imperceptible. The ladder below spans 2.21:1 and
+     takes the hover step to 1.57. Same blue-shifted hue near 205°, so the
+     grounds stay branded rather than generic. */
+  --color-void: #0b1216; /* base — deepest ground */
+  --color-sunken: #10191f; /* recessed band */
+  --color-ink: #17242c; /* standard dark section */
+  --color-carbon: #20313b; /* raised dark surface / cards */
+  --color-overlay: #2a404c; /* modal / popover over content */
+  --color-carbon-2: #34505e; /* card hover */
+
+  /* Light family — white / bright-gray.
+     `bone-2` and `bone-3` are fixed light tints for type on a dark ground, and
+     they exist because opacity was doing this job without defined stops: the
+     three most-used tints in the codebase — bone/35, /40 and /45, 69 call sites
+     between them — all measured under 4.5:1. These two are named steps that
+     hold on every ground in the ladder. Pigments, not role tokens, because the
+     surfaces they sit on are dark in *both* themes. */
   --color-bone: #ffffff; /* white — text on dark, light bands */
+  --color-bone-2: #afc0c9; /* secondary type on dark — 5.79 worst case */
+  --color-bone-3: #9bacb7; /* tertiary type on dark — 4.64 worst case */
   --color-bone-deep: #eeeeee; /* bright gray — deeper panels */
 
   /* Accents */
   --color-accent: #0073a4; /* CG Blue — interaction */
-  --color-accent-soft: #3e9bc7; /* lighter tint for hovers/secondary */
+  /* Lifted from #3e9bc7. That value cleared AA on void and surface but measured
+     4.18 on `carbon` — the card ground, which is exactly where property names
+     and "Read more" links live. This one holds 4.7 at its worst. */
+  --color-accent-soft: #63b4dc; /* the accent on any dark ground */
+  --color-accent-hi: #8ccbec; /* its hover */
+  /* No separate `on-accent` token: white fails as a foreground on every
+     saturated fill in this palette — the best reaches 2.31:1 — and the ink that
+     does work is `void` itself at 8.17:1. The codebase already spells that
+     `dark:text-void`, so the rule has a name; a second token for the same value
+     would only be one more thing to keep in step. */
   --color-ember: #fca42e; /* deep saffron — stats, energy, data */
   --color-ember-soft: #fdbe66;
 
@@ -178,7 +231,9 @@
 
   /* Hairlines */
   --color-line: rgba(32, 32, 32, 0.12); /* on bone */
-  --color-line-inv: rgba(255, 255, 255, 0.13); /* on dark */
+  --color-line-inv: rgba(255, 255, 255, 0.14); /* on dark */
+  --color-line-subtle: rgba(255, 255, 255, 0.08); /* quieter division on dark */
+  --color-line-strong: rgba(255, 255, 255, 0.24); /* emphasis rule on dark */
 
   --font-display: "Rubik", system-ui, sans-serif;
   --font-body: "Arimo", Arial, sans-serif;
@@ -205,6 +260,12 @@
 
      The relationship, not just the values, is what carries over: `alt`
      always recedes behind `surface`, in either theme. */
+  /* `base` is the page itself, behind every section. It exists because the
+     light theme had no use for the distinction — the page and its sections are
+     both white — while the dark theme needs it: sections have to sit *on*
+     something, and pointing the document at `surface` meant they sat on
+     themselves. Identical to `surface` here; it separates under .dark. */
+  --color-base: #ffffff; /* the document ground */
   --color-surface: #ffffff; /* section grounds and cards */
   --color-surface-alt: #eeeeee; /* recessed band behind them */
   --color-content: #2f2f2f; /* primary ink */
@@ -258,11 +319,15 @@
    values in both themes, so `text-bone` on a dark band stays legible and
    `text-white` on the accent button stays white. */
 :root.dark {
-  --color-surface: #1b262c;
-  --color-surface-alt: #131b20;
-  --color-content: #e6edf0;
-  --color-invert: #e6edf0;
-  --color-invert-fg: #162025;
+  /* The three grounds now sit at distinct rungs of the ladder rather than
+     within 1.13:1 of each other: the document is the deepest step, sections sit
+     a step above it, and a recessed band drops back between the two. */
+  --color-base: #0b1216;
+  --color-surface: #17242c;
+  --color-surface-alt: #10191f;
+  --color-content: #e9f0f3;
+  --color-invert: #e9f0f3;
+  --color-invert-fg: #0b1216;
 
   /* Hairlines flip polarity: a dark rule is invisible on a dark ground. */
   --color-line: rgba(255, 255, 255, 0.14);
@@ -276,9 +341,9 @@
      labels, every "Read More". Dark mode lifts it to the tint the palette
      already keeps for secondary use, which measures 4.9:1 here. The brand blue
      is unchanged in light mode, where it was designed to sit. */
-  --color-accent: #3e9bc7;
-  --color-prime: #3e9bc7;
-  --color-prime-deep: #62b4dc;
+  --color-accent: #63b4dc;
+  --color-prime: #63b4dc;
+  --color-prime-deep: #8ccbec;
 }
 
 /* The page ground is a role token, not a fixed colour.
@@ -292,12 +357,12 @@
    the content and the footer. */
 html {
   scroll-behavior: auto; /* Lenis owns scrolling */
-  background: var(--color-surface);
+  background: var(--color-base);
 }
 
 body {
   margin: 0;
-  background: var(--color-surface);
+  background: var(--color-base);
   color: var(--color-content);
   font-family: var(--font-body);
   font-feature-settings: "ss01", "cv01";

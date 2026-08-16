@@ -181,7 +181,6 @@ async function main() {
       email: 'hello@primedevelopers.com',
       phone: '+1 (512) 419-2837',
       studio: 'East 6th Street, Austin, TX',
-      ctaHeading: "Let's build\nsomething *lasting.*",
       quickLinks: [
         { label: 'Home', href: '/' },
         { label: 'About', href: '/about' },

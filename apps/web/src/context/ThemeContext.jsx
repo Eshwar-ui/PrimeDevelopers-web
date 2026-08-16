@@ -23,7 +23,9 @@ export function ThemeProvider({ children }) {
     document.documentElement.style.colorScheme = theme
     document.querySelector('meta[name="theme-color"]')?.setAttribute(
       'content',
-      theme === 'dark' ? '#131b20' : '#ffffff'
+      // Matches --color-base, the document ground, so the browser chrome sits on
+      // the same colour the page actually starts with.
+      theme === 'dark' ? '#0b1216' : '#ffffff'
     )
   }, [theme])
 

@@ -15,36 +15,6 @@ gsap.registerPlugin(ScrollTrigger)
 // past three of these stops reading as a teaser and starts being the index.
 const TEASER_COUNT = 3
 
-// Spec-row glyphs. The stats behind them are free text an admin typed, so the
-// icon is chosen by what the label says and falls back to a neutral mark —
-// a wrong icon reads as a data error, a neutral one reads as a bullet.
-const SPEC_ICONS = [
-  [/\b(sf|sft|sq|m²|m2|size|area|acre)\b/i, 'M3 8V3h5M21 8V3h-5M3 16v5h5M21 16v5h-5'],
-  [/\b(floor|storey|story|level)\b/i, 'M12 3 2 8l10 5 10-5-10-5ZM2 14l10 5 10-5'],
-  [/\b(bed|bedroom)\b/i, 'M2 18v-6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v6M2 18v2M22 18v2M6 10V7h12v3'],
-  [/\b(bath|shower)\b/i, 'M4 12h16v3a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4v-3ZM7 12V6a2 2 0 0 1 4 0'],
-  [/\b(unit|suite)\b/i, 'M4 21V7l8-4 8 4v14M9 21v-5h6v5'],
-]
-const FALLBACK_ICON = 'M12 4l8 8-8 8-8-8 8-8Z'
-
-function SpecIcon({ label }) {
-  const match = SPEC_ICONS.find(([test]) => test.test(label ?? ''))
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="size-4.5 shrink-0 text-content/70"
-    >
-      <path d={match ? match[1] : FALLBACK_ICON} />
-    </svg>
-  )
-}
-
 function MailIcon() {
   return (
     <svg
@@ -158,10 +128,20 @@ export default function Properties() {
         duration: 0.9,
         ease: 'power3.out',
         stagger: 0.12,
+        // A `.from()` leaves its inline transform behind permanently, and an
+        // inline style always beats a utility class (DESIGN.md §9).
+        clearProps: 'transform,opacity',
         scrollTrigger: { trigger: scope.current, start: 'top 75%' },
       })
     },
-    { scope }
+    // Keyed to the card count, and that is what makes this animation exist at
+    // all. The properties arrive from the CMS after mount, so on the first pass
+    // there are no `[data-card]` elements and the component has in fact returned
+    // null — GSAP logged "target not found" and "Invalid scope", built a tween
+    // over nothing, and never ran again, so the cards simply appeared. The
+    // failure was silent in exactly the way a missing entrance always is: the
+    // content is all there, it just never moved.
+    { scope, dependencies: [properties.length], revertOnUpdate: true }
   )
 
   if (properties.length === 0) return null
@@ -198,12 +178,6 @@ export default function Properties() {
       <div className="mt-10 flex flex-col gap-7">
         {properties.map((p) => {
           const overview = p.detail?.overview ?? {}
-          const specs = (overview.stats ?? [])
-            .filter((s) => s.value || s.label)
-            .filter((s) => {
-              const text = [s.value, s.label].filter(Boolean).join(' ')
-              return !/\b(total|available)\s+(units?|suites?)\b|\b(units?|suites?)\s+(total|available)\b/i.test(text)
-            })
           const blurb = p.detail?.tagline || overview.body
           const open = () => navigate(`/properties/${p.slug}`)
           // The button is part of the card's shape, so it always renders. What
@@ -270,30 +244,13 @@ export default function Properties() {
                   </div>
                 )}
 
-                {specs.length > 0 && (
-                  <ul className="mt-5 grid grid-cols-2 gap-x-5 gap-y-3 border-y border-line py-4 sm:grid-cols-3">
-                    {/* Indexed, not keyed on the label: these are free text an
-                        admin typed, so two blank or repeated labels are a
-                        content mistake, not an impossible one — and React
-                        answers duplicate keys by dropping a row. */}
-                    {specs.map((s, i) => (
-                      <li key={`${s.label ?? ''}-${i}`} className="flex items-center gap-2">
-                        <SpecIcon label={s.label} />
-                        <span className="font-body text-[13px] font-medium text-content/75">
-                          {[s.value, s.label].filter(Boolean).join(' ')}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-
                 {blurb && (
-                  <p className="mt-4 max-w-[62ch] font-body text-[14px] leading-[1.65] text-content/70 line-clamp-2">
+                  <p className="mt-5 max-w-[62ch] font-body text-[14px] leading-[1.65] text-content/70 line-clamp-2">
                     {blurb}
                   </p>
                 )}
 
-                <div className="mt-5 flex flex-wrap items-center gap-3">
+                <div className="mt-7 flex flex-wrap items-center gap-3">
                   <a
                     href={`/properties/${p.slug}`}
                     onClick={(e) => {

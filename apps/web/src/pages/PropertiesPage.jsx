@@ -1,13 +1,13 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { flushSync } from 'react-dom'
-import { motion, AnimatePresence } from 'motion/react'
+import { motion, AnimatePresence, useReducedMotion, useInView } from 'motion/react'
 import { useSection, useProperties, useCategories } from '../context/ContentContext'
 import { renderEmphasis } from '../lib/emphasis'
 import { sized } from '../lib/images'
 import { lenis } from '../hooks/useSmoothScroll'
 import MaskedHeading from '../components/MaskedHeading'
-import { rise, stagger } from '../lib/motion'
+import { rise, stagger, inViewOnce } from '../lib/motion'
 import PrimePill from '../components/PrimePill'
 import PropertyStrip from '../components/PropertyStrip'
 import Marquee from '../components/Marquee'
@@ -30,14 +30,62 @@ const specsFor = (p) => {
   return [`${p.buildings} buildings`, `${p.sold} sold`, `${p.available} available`]
 }
 
+/**
+ * A block the reader scrolls to, revealed in the site's shared vocabulary —
+ * `stagger` over `rise`, held until the block is properly in frame.
+ *
+ * Driven by `useInView` into an `animate` variant label rather than by the
+ * `whileInView` prop, and that is not a stylistic preference. `whileInView`
+ * animates the element it sits on perfectly well — the property cards below use
+ * it — but it does **not** put the subtree into a variant state, so `variants`
+ * on the children resolves against nothing and framer never writes a style for
+ * them at all. The symptom is silent: the markup looks right, the parent gets
+ * its props, and the children simply render at their resting position, so the
+ * stagger appears to work while doing nothing. Resolving the label into
+ * `animate` is what the hero above already does, and it propagates.
+ *
+ * The reduced-motion gate is explicit because framer honours `variants` exactly
+ * as authored; with the props dropped the children have no parent state to
+ * follow and no `animate` of their own, so they render where they belong
+ * (DESIGN.md §5).
+ */
+function RevealGroup({ className, children }) {
+  const ref = useRef(null)
+  const reduced = useReducedMotion()
+  const inView = useInView(ref, inViewOnce)
+
+  return (
+    <motion.div
+      ref={ref}
+      className={className}
+      variants={reduced ? undefined : stagger}
+      initial={reduced ? undefined : 'hidden'}
+      animate={reduced ? undefined : inView ? 'show' : 'hidden'}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
 function Card({ p, onOpen }) {
+  const reduced = useReducedMotion()
+  const reveal = reduced
+    ? {}
+    : { initial: { opacity: 0, y: 24 }, whileInView: { opacity: 1, y: 0 }, viewport: inViewOnce }
+
   return (
     <motion.article
       layout
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
+      {...reveal}
+      // `whileInView`, not `animate`. On mount every card in the list animated
+      // at once, so a card six rows down finished its entrance while it was
+      // still two screens below the fold and was simply *there* when the reader
+      // arrived. Tied to the viewport, each row now meets the reader.
+      //
+      // `exit` stays on the presence tree: filtering removes cards, and that is
+      // a different event from scrolling to one.
       exit={{ opacity: 0, scale: 0.96 }}
-      transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
       onClick={onOpen}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
@@ -235,34 +283,56 @@ export default function PropertiesPage() {
 
       {/* ── The curated collection ───────────────────────────── */}
       <section id="collection" data-band="light" className="bg-surface px-6 py-20 md:px-12 md:py-28">
-        <div className="grid gap-8 md:grid-cols-[1.1fr_1fr] md:items-end">
+        {/* The section-level reveal in `SectionRevealController` un-blurs this
+            whole band the moment its top edge enters view — and this band is
+            over 1700px tall, so on its own it means the grid at the bottom
+            finished animating about 1500px before anyone scrolled to it. The
+            section entrance introduces the band; these interior reveals are
+            what actually meet the reader on the way down. */}
+        <RevealGroup className="grid gap-8 md:grid-cols-[1.1fr_1fr] md:items-end">
           <div>
+            {/* inline-block because a transform on an inline box is ignored
+                outright — the lift would silently do nothing here. */}
             {p.curatedEyebrow && (
-              <span className="font-body text-[14px] uppercase tracking-[0.14em] text-accent">
+              <motion.span
+                variants={rise}
+                className="inline-block font-body text-[14px] uppercase tracking-[0.14em] text-accent"
+              >
                 {p.curatedEyebrow}
-              </span>
+              </motion.span>
             )}
-            <h2 className="mt-4 font-display text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] text-content md:text-[3rem]">
+            {/* Safe as a motion child, unlike the hero above: this heading is
+                `renderEmphasis`, not `MaskedHeading`, so there are no per-word
+                masks for a block-level lift to drag along with their words. */}
+            <motion.h2
+              variants={rise}
+              className="mt-4 font-display text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] text-content md:text-[3rem]"
+            >
               {renderEmphasis(p.curatedHeading)}
-            </h2>
+            </motion.h2>
           </div>
           {p.curatedParagraph && (
-            <p className="font-body text-[16px] leading-[1.7] text-content/70">
+            <motion.p variants={rise} className="font-body text-[16px] leading-[1.7] text-content/70">
               {p.curatedParagraph}
-            </p>
+            </motion.p>
           )}
-        </div>
+        </RevealGroup>
 
         {/* Not in the Figma, which draws the grid unfiltered — kept because the
             page already shipped with it and dropping it would quietly remove a
             way to navigate the list. Restyled for the light ground. */}
         {categories.length > 2 && (
-          <div className="mt-12 flex flex-wrap gap-2.5">
+          <RevealGroup className="mt-12 flex flex-wrap gap-2.5">
             {categories.map((c) => {
               const active = c === filter
               return (
-                <button
+                // `variants` only — no `animate`. Clicking a pill re-renders the
+                // row, and an explicit animate prop here would re-run the
+                // entrance on every filter change; driven by the parent's
+                // variant state it settles at `show` and stays there.
+                <motion.button
                   key={c}
+                  variants={rise}
                   type="button"
                   onClick={() => setFilter(c)}
                   className={`min-h-11 rounded-full border px-5 py-2 font-body text-[13px] font-medium uppercase tracking-[0.1em] transition-colors duration-300 ${
@@ -272,10 +342,10 @@ export default function PropertiesPage() {
                   }`}
                 >
                   {c}
-                </button>
+                </motion.button>
               )
             })}
-          </div>
+          </RevealGroup>
         )}
 
         <motion.div layout className="mt-12 grid grid-cols-1 gap-7 md:grid-cols-2 lg:grid-cols-3">

@@ -17,7 +17,7 @@ export const SECTIONS = [
         <Section title="Copy">
           <TextField label="Eyebrow" value={value.eyebrow} onChange={(eyebrow) => onChange({ eyebrow })} />
           <TextAreaField label="Heading" rows={2} value={value.heading} onChange={(heading) => onChange({ heading })} />
-          <p className="-mt-3 text-[11px] text-bone/35">{emphasisHint}</p>
+          <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
           <TextAreaField label="Paragraph" value={value.paragraph} onChange={(paragraph) => onChange({ paragraph })} />
           <div className="grid grid-cols-2 gap-4">
             <TextField label="Button label" value={value.ctaLabel} onChange={(ctaLabel) => onChange({ ctaLabel })} />
@@ -75,13 +75,13 @@ export const SECTIONS = [
       <>
         <Section title="Copy">
           <TextAreaField label="Heading" rows={2} value={value.heading} onChange={(heading) => onChange({ heading })} />
-          <p className="-mt-3 text-[11px] text-bone/35">{emphasisHint}</p>
+          <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
           <TextAreaField label="Paragraph" value={value.paragraph1} onChange={(paragraph1) => onChange({ paragraph1 })} />
         </Section>
         <Section title="Film" description="Plays on click. Leave the link empty to show the still on its own.">
           <ImageUploader label="Poster still" value={value.videoPoster} onChange={(videoPoster) => onChange({ videoPoster })} folder="site/about" />
           <TextField label="Video link" value={value.videoUrl} onChange={(videoUrl) => onChange({ videoUrl })} />
-          <p className="-mt-3 text-[11px] text-bone/35">A YouTube or Vimeo link, or a direct link to an .mp4 file.</p>
+          <p className="-mt-3 text-[11px] text-bone-3">A YouTube or Vimeo link, or a direct link to an .mp4 file.</p>
         </Section>
         <Section title="Stats">
           <RepeatableList
@@ -107,7 +107,7 @@ export const SECTIONS = [
     Editor: ({ value, onChange }) => (
       <Section title="Copy">
         <TextAreaField label="Heading" rows={2} value={value.heading} onChange={(heading) => onChange({ heading })} />
-        <p className="-mt-3 text-[11px] text-bone/35">{emphasisHint}</p>
+        <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
       </Section>
     ),
   },
@@ -150,7 +150,7 @@ export const SECTIONS = [
         <Section title="Copy">
           <TextField label="Eyebrow" value={value.eyebrow} onChange={(eyebrow) => onChange({ eyebrow })} />
           <TextAreaField label="Heading" rows={2} value={value.heading} onChange={(heading) => onChange({ heading })} />
-          <p className="-mt-3 text-[11px] text-bone/35">{emphasisHint}</p>
+          <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
           <TextAreaField label="Paragraph" rows={4} value={value.paragraph} onChange={(paragraph) => onChange({ paragraph })} />
         </Section>
         <Section title="Highlights" description="The numbered list under the paragraph — numbering is automatic.">
@@ -192,7 +192,7 @@ export const SECTIONS = [
                 </div>
                 <TextField label="Rating (0–5)" type="number" value={item.rating ?? 5} onChange={(rating) => set({ ...item, rating })} />
                 <ImageUploader label="Portrait" value={item.avatar} onChange={(avatar) => set({ ...item, avatar })} folder="site/testimonials" />
-                <p className="-mt-3 text-[11px] text-bone/35">Optional — initials are shown when no portrait is uploaded.</p>
+                <p className="-mt-3 text-[11px] text-bone-3">Optional — initials are shown when no portrait is uploaded.</p>
               </div>
             )}
           />
@@ -219,7 +219,7 @@ export const SECTIONS = [
       <>
         <Section title="Copy">
           <TextAreaField label="Heading" rows={2} value={value.heading} onChange={(heading) => onChange({ heading })} />
-          <p className="-mt-3 text-[11px] text-bone/35">{emphasisHint}</p>
+          <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
           <TextAreaField label="Paragraph" value={value.paragraph} onChange={(paragraph) => onChange({ paragraph })} />
           <div className="grid grid-cols-2 gap-4">
             <TextField label="Button label" value={value.ctaLabel} onChange={(ctaLabel) => onChange({ ctaLabel })} />
@@ -256,7 +256,7 @@ export const SECTIONS = [
   {
     key: 'footer',
     label: 'Footer',
-    description: 'Contact details, links, and closing statement in the footer.',
+    description: 'Contact details and links in the footer.',
     Editor: ({ value, onChange }) => (
       <>
         <Section title="Contact details">
@@ -265,10 +265,6 @@ export const SECTIONS = [
             <TextField label="Phone" value={value.phone} onChange={(phone) => onChange({ phone })} />
           </div>
           <TextField label="Studio address" value={value.studio} onChange={(studio) => onChange({ studio })} />
-        </Section>
-        <Section title="Closing statement">
-          <TextAreaField label="Heading" rows={2} value={value.ctaHeading} onChange={(ctaHeading) => onChange({ ctaHeading })} />
-          <p className="-mt-3 text-[11px] text-bone/35">{emphasisHint}</p>
         </Section>
         <Section title="Quick links">
           <RepeatableList
@@ -316,13 +312,13 @@ export const SECTIONS = [
         <Section title="Hero">
           <TextField label="Eyebrow" value={value.heroEyebrow} onChange={(heroEyebrow) => onChange({ heroEyebrow })} />
           <TextAreaField label="Heading" rows={2} value={value.heroHeading} onChange={(heroHeading) => onChange({ heroHeading })} />
-          <p className="-mt-3 text-[11px] text-bone/35">{emphasisHint}</p>
+          <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
           <TextAreaField label="Paragraph" value={value.heroParagraph} onChange={(heroParagraph) => onChange({ heroParagraph })} />
           <ImageUploader label="Hero image" value={value.heroImage} onChange={(heroImage) => onChange({ heroImage })} folder="site/about" />
         </Section>
         <Section title="The firm">
           <TextAreaField label="Heading" rows={2} value={value.firmHeading} onChange={(firmHeading) => onChange({ firmHeading })} />
-          <p className="-mt-3 text-[11px] text-bone/35">{emphasisHint}</p>
+          <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
           <TextAreaField label="Paragraph 1" value={value.firmParagraph1} onChange={(firmParagraph1) => onChange({ firmParagraph1 })} />
           <TextAreaField label="Paragraph 2" value={value.firmParagraph2} onChange={(firmParagraph2) => onChange({ firmParagraph2 })} />
           <TextField label="Button label" value={value.ctaLabel} onChange={(ctaLabel) => onChange({ ctaLabel })} />
@@ -375,7 +371,7 @@ export const SECTIONS = [
         </Section>
         <Section title="Closing band">
           <TextAreaField label="Heading" rows={2} value={value.closingHeading} onChange={(closingHeading) => onChange({ closingHeading })} />
-          <p className="-mt-3 text-[11px] text-bone/35">{emphasisHint}</p>
+          <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
           <ImageUploader label="Background image" value={value.closingImage} onChange={(closingImage) => onChange({ closingImage })} folder="site/about" />
         </Section>
       </>
@@ -390,7 +386,7 @@ export const SECTIONS = [
         <Section title="Hero">
           <TextField label="Eyebrow" value={value.heroEyebrow} onChange={(heroEyebrow) => onChange({ heroEyebrow })} />
           <TextAreaField label="Heading" rows={2} value={value.heroHeading} onChange={(heroHeading) => onChange({ heroHeading })} />
-          <p className="-mt-3 text-[11px] text-bone/35">{emphasisHint}</p>
+          <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
           <TextAreaField label="Paragraph" value={value.heroParagraph} onChange={(heroParagraph) => onChange({ heroParagraph })} />
         </Section>
         <Section title="Contact details">
@@ -426,7 +422,7 @@ export const SECTIONS = [
         <Section title="Hero">
           <TextField label="Eyebrow" value={value.heroEyebrow} onChange={(heroEyebrow) => onChange({ heroEyebrow })} />
           <TextAreaField label="Heading" rows={2} value={value.heroHeading} onChange={(heroHeading) => onChange({ heroHeading })} />
-          <p className="-mt-3 text-[11px] text-bone/35">{emphasisHint}</p>
+          <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
           <TextAreaField label="Paragraph" value={value.heroParagraph} onChange={(heroParagraph) => onChange({ heroParagraph })} />
           <ImageUploader label="Banner image" value={value.heroImage} onChange={(heroImage) => onChange({ heroImage })} folder="site/enterprise" />
           <div className="grid grid-cols-2 gap-4">
@@ -467,7 +463,7 @@ export const SECTIONS = [
         </Section>
         <Section title="Closing band">
           <TextAreaField label="Heading" rows={2} value={value.closingHeading} onChange={(closingHeading) => onChange({ closingHeading })} />
-          <p className="-mt-3 text-[11px] text-bone/35">{emphasisHint}</p>
+          <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
           <div className="grid grid-cols-2 gap-4">
             <TextField label="Button label" value={value.closingLabel} onChange={(closingLabel) => onChange({ closingLabel })} />
             <TextField label="Button link" value={value.closingHref} onChange={(closingHref) => onChange({ closingHref })} />
@@ -485,7 +481,7 @@ export const SECTIONS = [
         <Section title="Hero">
           <TextField label="Eyebrow" value={value.heroEyebrow} onChange={(heroEyebrow) => onChange({ heroEyebrow })} />
           <TextAreaField label="Heading" rows={2} value={value.heroHeading} onChange={(heroHeading) => onChange({ heroHeading })} />
-          <p className="-mt-3 text-[11px] text-bone/35">{emphasisHint}</p>
+          <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
           <TextAreaField label="Paragraph" value={value.heroParagraph} onChange={(heroParagraph) => onChange({ heroParagraph })} />
         </Section>
         <Section title="Hero buttons">
@@ -502,7 +498,7 @@ export const SECTIONS = [
         <Section title="The collection">
           <TextField label="Eyebrow" value={value.curatedEyebrow} onChange={(curatedEyebrow) => onChange({ curatedEyebrow })} />
           <TextAreaField label="Heading" rows={2} value={value.curatedHeading} onChange={(curatedHeading) => onChange({ curatedHeading })} />
-          <p className="-mt-3 text-[11px] text-bone/35">{emphasisHint}</p>
+          <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
           <TextAreaField label="Paragraph" value={value.curatedParagraph} onChange={(curatedParagraph) => onChange({ curatedParagraph })} />
         </Section>
       </>
@@ -516,7 +512,7 @@ export const SECTIONS = [
       <Section title="Hero">
         <TextField label="Eyebrow" value={value.heroEyebrow} onChange={(heroEyebrow) => onChange({ heroEyebrow })} />
         <TextAreaField label="Heading" rows={2} value={value.heroHeading} onChange={(heroHeading) => onChange({ heroHeading })} />
-        <p className="-mt-3 text-[11px] text-bone/35">{emphasisHint}</p>
+        <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
         <TextAreaField label="Paragraph" value={value.heroParagraph} onChange={(heroParagraph) => onChange({ heroParagraph })} />
       </Section>
     ),

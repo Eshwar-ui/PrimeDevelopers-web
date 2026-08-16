@@ -15,7 +15,7 @@ export default function ContentIndexPage() {
             className="rounded-2xl border border-white/10 bg-carbon p-6 transition-colors hover:border-white/25"
           >
             <p className="font-display text-lg font-medium">{s.label}</p>
-            <p className="mt-2 text-sm text-bone/45">{s.description}</p>
+            <p className="mt-2 text-sm text-bone-3">{s.description}</p>
           </Link>
         ))}
       </div>

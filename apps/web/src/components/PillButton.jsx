@@ -10,7 +10,7 @@ const variants = {
   ember: 'bg-ember text-void',
   ink: 'bg-ink text-bone',
   bone: 'bg-bone text-void',
-  prime: 'bg-prime text-white', // CG Blue — Prime Developer light theme
+  prime: 'bg-prime text-white dark:text-void', // CG Blue — Prime Developer light theme
   outline: 'border border-content/25 bg-transparent text-content',
 }
 

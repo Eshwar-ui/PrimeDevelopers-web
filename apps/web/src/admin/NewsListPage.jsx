@@ -66,7 +66,7 @@ export default function NewsListPage() {
                   </span>
                 )}
               </div>
-              <p className="text-xs text-bone/45">{post.excerpt}</p>
+              <p className="text-xs text-bone-3">{post.excerpt}</p>
             </div>
             <div className="flex shrink-0 items-center gap-4 text-xs font-bold uppercase tracking-wide">
               <Link to={`/admin/news/${post.id}`} className="text-bone/60 hover:text-bone">

@@ -14,7 +14,7 @@ const fields = [
 ]
 
 const FIELD =
-  'contact-field h-12 rounded-xl border border-[var(--color-line)] bg-carbon px-4 font-body text-[15px] text-bone outline-none transition-[border-color,box-shadow] placeholder:text-bone/35 focus:border-accent/75 focus:ring-[3px] focus:ring-accent/10'
+  'contact-field h-12 rounded-xl border border-[var(--color-line)] bg-carbon px-4 font-body text-[15px] text-bone outline-none transition-[border-color,box-shadow] placeholder:text-bone-3 focus:border-accent/75 focus:ring-[3px] focus:ring-accent/10'
 const FIELD_LABEL = 'font-display text-[15px] font-semibold text-content'
 
 function ContactIcon({ type }) {
@@ -51,6 +51,12 @@ export default function ContactPage() {
   const unitBuilding = searchParams.get('building')
   const unitStatus = searchParams.get('status')
   const propertyId = searchParams.get('property') || null
+  // Carried from the footer's single-field enquiry box. Validated here rather
+  // than trusted: the value arrives from the URL, so anything that is not
+  // plausibly an address is dropped instead of being written into a required
+  // field the visitor then has to notice and clear.
+  const presetEmail = searchParams.get('email')
+  const prefillEmail = presetEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(presetEmail) ? presetEmail : ''
   const sourcePath = searchParams.get('from')?.startsWith('/') ? searchParams.get('from') : null
   const heroImage = homeHero.slides?.[4]?.image ?? homeHero.slides?.[0]?.image
 
@@ -95,7 +101,11 @@ export default function ContactPage() {
   return (
     <div
       data-band="light"
-      className="bg-ink text-bone [--color-content:#e6edf0] [--color-line:rgba(255,255,255,0.14)] [--color-surface-alt:#131b20] [--color-surface:#1b262c]"
+      // This page forces the dark role tokens on regardless of theme, and it did
+      // it with the literal hexes those tokens happened to hold — so it silently
+      // kept the old palette the moment the tokens moved. Pointed at the tokens
+      // themselves now, which is what the role layer is for.
+      className="bg-ink text-bone [--color-content:var(--color-bone)] [--color-line:var(--color-line-inv)] [--color-surface-alt:#10191f] [--color-surface:#17242c]"
     >
       <section
         id="contact-hero"
@@ -167,6 +177,7 @@ export default function ContactPage() {
                       type={field.type}
                       required={field.name === 'name' || field.name === 'email'}
                       placeholder={field.placeholder}
+                      defaultValue={field.name === 'email' ? prefillEmail : undefined}
                       className={FIELD}
                     />
                   </label>
@@ -179,7 +190,7 @@ export default function ContactPage() {
                     required
                     defaultValue={unitLabel ? `I'd like more information about Unit ${unitLabel}.` : ''}
                     placeholder="Type your message"
-                    className="contact-field min-h-28 resize-none rounded-xl border border-[var(--color-line)] bg-carbon px-4 py-3 font-body text-[15px] text-bone outline-none transition-[border-color,box-shadow] placeholder:text-bone/35 focus:border-accent/75 focus:ring-[3px] focus:ring-accent/10"
+                    className="contact-field min-h-28 resize-none rounded-xl border border-[var(--color-line)] bg-carbon px-4 py-3 font-body text-[15px] text-bone outline-none transition-[border-color,box-shadow] placeholder:text-bone-3 focus:border-accent/75 focus:ring-[3px] focus:ring-accent/10"
                   />
                 </label>
               </div>
@@ -190,7 +201,7 @@ export default function ContactPage() {
                 <button
                   type="submit"
                   disabled={status === 'sending'}
-                  className="group inline-flex h-12 w-full items-center justify-center gap-4 rounded-full sm:w-auto bg-accent pl-6 pr-4 font-body text-[14px] font-semibold text-white transition-colors hover:bg-prime-deep active:scale-[0.98] disabled:opacity-60"
+                  className="group inline-flex h-12 w-full items-center justify-center gap-4 rounded-full sm:w-auto bg-accent pl-6 pr-4 font-body text-[14px] font-semibold text-white dark:text-void transition-colors hover:bg-prime-deep active:scale-[0.98] disabled:opacity-60"
                 >
                   {status === 'sending' ? 'Sending...' : 'Send Enquiry'}
                   <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-1" />

@@ -169,7 +169,7 @@ export default function EnterprisePage() {
         </section>
       )}
 
-      <section className="relative overflow-hidden bg-accent px-6 py-24 text-white md:px-12 md:py-36">
+      <section className="relative overflow-hidden bg-accent px-6 py-24 text-white dark:text-void md:px-12 md:py-36">
         <div className="absolute -right-32 -top-40 size-[32rem] rounded-full bg-white/12 blur-3xl" />
         <div className="relative mx-auto flex max-w-[1560px] flex-col gap-12 md:flex-row md:items-end md:justify-between">
           <h2 className="max-w-[15ch] text-balance font-display text-[clamp(2.5rem,5.5vw,5.8rem)] font-bold uppercase leading-[0.94] tracking-[-0.05em]">{renderEmphasis(page.closingHeading || 'Tell us which door you want to come through', '')}</h2>

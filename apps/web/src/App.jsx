@@ -12,8 +12,12 @@ import Services from './components/Services'
 import Gallery from './components/Gallery'
 import Testimonials from './components/Testimonials'
 import NewsTeaser from './components/NewsTeaser'
-import CallToAction from './components/CallToAction'
+// CallToAction is no longer rendered: the closing panel moved into <Footer/>, so
+// it runs on every route instead of the homepage alone. The component and its
+// `cta_home` copy are both kept — the footer panel reads the same section, and
+// deleting the file would take the photographic treatment with it.
 import Footer from './components/Footer'
+import SectionRevealController from './components/SectionRevealController'
 
 // The home page's sections stay eagerly imported above: they are what the
 // overwhelming majority of visits render, and deferring them would only add a
@@ -73,7 +77,6 @@ function Home() {
       <Gallery />
       <Testimonials />
       <NewsTeaser />
-      <CallToAction />
     </>
   )
 }
@@ -145,6 +148,7 @@ function PublicSite() {
   return (
     <>
       <Navbar />
+      <SectionRevealController />
       {/* Holds the page open through the frame where neither route is mounted.
           Without it the footer flies up to meet the header and drops back. */}
       <main className="min-h-dvh">

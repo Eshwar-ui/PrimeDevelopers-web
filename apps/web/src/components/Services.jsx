@@ -36,12 +36,21 @@ export default function Services() {
 
   useGSAP(
     () => {
+      // Gated, where it previously was not. A `.from()` puts the cards at
+      // opacity 0 the moment it is created and only ScrollTrigger takes them
+      // back — so with reduced motion requested the reader still got the full
+      // entrance, and anything that stopped the trigger firing left four blank
+      // panels rather than an un-animated strip. Returning early leaves them
+      // exactly where the markup puts them.
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+
       gsap.from('[data-service]', {
         y: 28,
         opacity: 0,
         duration: 0.7,
         ease: 'power3.out',
         stagger: 0.09,
+        clearProps: 'transform,opacity',
         scrollTrigger: { trigger: scope.current, start: 'top 85%' },
       })
     },

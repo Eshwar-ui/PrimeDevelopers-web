@@ -53,7 +53,7 @@ export default function BrochureRequestModal({ property, onClose }) {
               <input className={FIELD} name="name" required maxLength={200} placeholder="Full name" autoComplete="name" />
               <input className={FIELD} name="email" type="email" required maxLength={320} placeholder="Email address" autoComplete="email" />
               <input className={FIELD} name="phone" type="tel" required maxLength={50} placeholder="Phone number" autoComplete="tel" />
-              <button type="submit" disabled={status === 'sending'} className="group mt-1 inline-flex h-14 w-full items-center justify-between sm:w-fit gap-4 rounded-full bg-[linear-gradient(96deg,#0073a4_0%,#1aa1d2_100%)] py-1.5 pl-7 pr-1.5 text-white disabled:opacity-60">
+              <button type="submit" disabled={status === 'sending'} className="primary-button-flood group mt-1 inline-flex h-14 w-full items-center justify-between sm:w-fit gap-4 rounded-full bg-[linear-gradient(96deg,#0073a4_0%,#1aa1d2_100%)] py-1.5 pl-7 pr-1.5 text-white disabled:opacity-60">
                 <span className="font-body text-[14px] font-bold uppercase tracking-[0.04em]">{status === 'sending' ? 'Sending…' : 'Email brochure'}</span>
                 <span className="flex size-11 items-center justify-center rounded-full bg-white text-charcoal"><ArrowRight className="size-4 -rotate-45" /></span>
               </button>

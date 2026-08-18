@@ -114,7 +114,7 @@ const isSharedTransition = document.documentElement.classList.contains('property
 
             {property.detail?.tagline && <p data-property-copy className="mt-7 max-w-[44rem] text-pretty font-body text-[16px] leading-[1.75] text-white/72 md:text-[18px]">{property.detail.tagline}</p>}
             <div data-property-actions className="mt-9 flex flex-wrap items-center gap-4">
-              <button type="button" onClick={onEnquire} className="group inline-flex h-14 items-center gap-5 rounded-full bg-accent py-1.5 pl-7 pr-1.5 font-body text-[14px] font-bold uppercase tracking-[0.05em] text-white dark:text-void transition duration-300 hover:bg-prime-deep active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
+              <button type="button" onClick={onEnquire} className="primary-button-flood group inline-flex h-14 items-center gap-5 rounded-full bg-accent py-1.5 pl-7 pr-1.5 font-body text-[14px] font-bold uppercase tracking-[0.05em] text-white dark:text-void transition duration-300 hover:bg-prime-deep active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
                 Enquire
                 <span className="grid size-11 place-items-center rounded-full bg-white text-charcoal"><ArrowRight className="size-4 -rotate-45 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" /></span>
               </button>

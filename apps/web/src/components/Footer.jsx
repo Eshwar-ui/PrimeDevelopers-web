@@ -88,6 +88,9 @@ export default function Footer() {
 
   const isExternal = (href) => /^(https?:)?\/\//i.test(href ?? '')
   const portfolio = properties.slice(0, 5)
+  const directoryLinks = quickLinks.some((link) => link.href === '/learn')
+    ? quickLinks
+    : [...quickLinks, { label: 'Learn', href: '/learn' }]
 
   useGSAP(
     () => {
@@ -224,7 +227,7 @@ export default function Footer() {
             src={watermark}
             alt=""
             aria-hidden
-            className="pointer-events-none absolute -bottom-24 -left-16 z-0 w-[24rem] max-w-none select-none opacity-[0.05] brightness-0 invert sm:-bottom-28 sm:-left-12 sm:w-[30rem] md:w-[36rem]"
+            className="pointer-events-none absolute -bottom-24 -right-20 z-0 w-[24rem] max-w-none select-none opacity-[0.055] brightness-0 invert sm:-bottom-28 sm:-right-16 sm:w-[30rem] md:-right-20 md:w-[36rem]"
           />
 
           <div className="relative z-10 mx-auto max-w-6xl">
@@ -239,7 +242,7 @@ export default function Footer() {
                   alt="Prime Developers"
                   width="576"
                   height="144"
-                  className="h-7 w-auto select-none"
+                  className="h-9 w-auto select-none sm:h-10"
                 />
 
                 {studio && (
@@ -285,11 +288,11 @@ export default function Footer() {
                   is worse than one column fewer — where the properties are real,
                   editable, and the thing a visitor here is shopping for. */}
               <div className="grid grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-3">
-                {quickLinks.length > 0 && (
+                {directoryLinks.length > 0 && (
                   <nav data-col aria-label="Quick links" className="flex flex-col gap-5">
                     <ColumnTitle>Quick links</ColumnTitle>
                     <ul className="flex flex-col gap-1">
-                      {quickLinks.map((l) => (
+                      {directoryLinks.map((l) => (
                         <li key={`${l.href}|${l.label}`}>
                           <FooterLink href={l.href} label={l.label} onNavigate={handleNav} />
                         </li>

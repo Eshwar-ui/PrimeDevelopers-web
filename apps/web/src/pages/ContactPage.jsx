@@ -201,7 +201,7 @@ export default function ContactPage() {
                 <button
                   type="submit"
                   disabled={status === 'sending'}
-                  className="group inline-flex h-12 w-full items-center justify-center gap-4 rounded-full sm:w-auto bg-accent pl-6 pr-4 font-body text-[14px] font-semibold text-white dark:text-void transition-colors hover:bg-prime-deep active:scale-[0.98] disabled:opacity-60"
+                  className="primary-button-flood group inline-flex h-12 w-full items-center justify-center gap-4 rounded-full sm:w-auto bg-accent pl-6 pr-4 font-body text-[14px] font-semibold text-white dark:text-void transition-colors hover:bg-prime-deep active:scale-[0.98] disabled:opacity-60"
                 >
                   {status === 'sending' ? 'Sending...' : 'Send Enquiry'}
                   <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-1" />

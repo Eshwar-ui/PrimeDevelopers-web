@@ -433,6 +433,61 @@ html {
   color: var(--color-void);
 }
 
+/* Primary CTA color flood. The oversized ellipse begins below the pill and
+   rises through it, so the hover reads as a material tint change rather than
+   a flat color swap. Content remains in a stacking layer above the flood. */
+.primary-button-flood {
+  --button-flood: var(--color-bone);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.primary-button-flood::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: -10%;
+  bottom: -220%;
+  width: 120%;
+  height: 220%;
+  border-radius: 50%;
+  background: var(--button-flood);
+  transform: translateY(15%) scaleX(0.62);
+  transition: transform 420ms var(--ease-brand);
+  pointer-events: none;
+}
+
+
+
+.primary-button-flood:hover::before,
+.primary-button-flood:focus-visible::before {
+  transform: translateY(-86%) scaleX(1.12);
+}
+
+.primary-button-flood:hover,
+.primary-button-flood:focus-visible {
+  color: var(--color-void);
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  .primary-button-flood::before {
+    inset: 0;
+    width: auto;
+    height: auto;
+    border-radius: inherit;
+    opacity: 0;
+    transform: none;
+    transition: opacity 120ms linear;
+  }
+
+  .primary-button-flood:hover::before,
+  .primary-button-flood:focus-visible::before {
+    opacity: 1;
+    transform: none;
+  }
+}
 /* ── Motion primitives ─────────────────────────────────────────── */
 
 /* Projects card image swap — hero-style bottom-to-top slide. */

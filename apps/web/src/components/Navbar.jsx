@@ -49,7 +49,10 @@ export default function Navbar() {
   // The lockup doubles as the Home link, so the rail only needs an explicit
   // Home entry when the admin-managed list doesn't already carry one.
   const linksWithHome = links.some((l) => l.to === '/') ? links : [{ label: 'Home', to: '/' }, ...links]
-  const navLinks = linksWithHome.filter((link) => link.to !== '/contact')
+  const linksWithAcademy = linksWithHome.some((l) => l.to === '/learn')
+    ? linksWithHome
+    : [...linksWithHome, { label: 'Learn', to: '/learn' }]
+  const navLinks = linksWithAcademy.filter((link) => link.to !== '/contact')
 
   const handleNav = (e, link) => {
     e.preventDefault()
@@ -258,9 +261,10 @@ export default function Navbar() {
   const idle = onLight ? 'text-charcoal/75 hover:text-charcoal' : 'text-bone/75 hover:text-bone'
   const current = onLight ? 'text-accent' : 'text-accent-soft'
   const enquire = onLight
-    ? 'bg-charcoal text-white hover:bg-[#1b1b1b]'
-    : 'bg-white text-charcoal hover:bg-bone-deep'
-  const enquireDot = onLight ? 'bg-white text-charcoal' : 'bg-charcoal text-white'
+    ? 'bg-charcoal text-white'
+    : 'bg-white text-charcoal'
+  const enquireDot = 'bg-charcoal text-white'
+  const enquireFlood = 'bg-charcoal'
   const burger = onLight ? 'bg-charcoal' : 'bg-bone'
 
   // At rest the header is a bare overlay reading on the hero's white bay. Once
@@ -336,13 +340,14 @@ export default function Navbar() {
             <a
               href="/contact"
               onClick={goContact}
-              className={`group hidden min-h-11 shrink-0 items-center gap-3 rounded-full py-1.5 pl-6 pr-1.5 transition-colors duration-500 lg:inline-flex ${enquire}`}
+              className={`group relative hidden min-h-11 shrink-0 items-center gap-3 overflow-hidden rounded-full py-1.5 pl-6 pr-1.5 transition-[color,transform,box-shadow] duration-300 ease-brand hover:ring-1 hover:ring-inset hover:ring-charcoal focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-charcoal active:scale-[0.97] lg:inline-flex ${enquire}`}
             >
-              <span className="font-body text-[15px] font-medium">Enquire</span>
+              <span aria-hidden className={`absolute right-1.5 size-9 rounded-full transition-transform duration-500 ease-brand group-hover:scale-[12] group-focus-visible:scale-[12] motion-reduce:transition-none ${enquireFlood}`} />
+              <span className="relative z-10 font-body text-[15px] font-medium transition-[color,transform] duration-300 ease-brand group-hover:translate-x-1 group-hover:!text-white group-focus-visible:translate-x-1 group-focus-visible:!text-white motion-reduce:transform-none">Enquire</span>
               <span
-                className={`flex size-9 items-center justify-center rounded-full transition-colors duration-500 ${enquireDot}`}
+                className={`relative z-10 flex size-9 items-center justify-center rounded-full transition-colors duration-200 group-hover:bg-transparent group-hover:!text-white group-focus-visible:bg-transparent group-focus-visible:!text-white ${enquireDot}`}
               >
-                <ArrowRight className="size-4 transition-transform duration-300 ease-out group-hover:translate-x-0.5" />
+                <ArrowRight className="size-4 transition-transform duration-300 ease-brand group-hover:translate-x-1 group-focus-visible:translate-x-1 motion-reduce:transform-none" />
               </span>
             </a>
           </div>
@@ -405,7 +410,7 @@ export default function Navbar() {
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 + navLinks.length * 0.08, ease: 'easeOut' }}
-              className="mt-8 inline-flex w-fit items-center gap-3 rounded-full bg-white py-1.5 pl-6 pr-1.5 text-charcoal"
+              className="mt-8 inline-flex w-fit items-center gap-3 rounded-full bg-white py-1.5 pl-6 pr-1.5 text-charcoal active:scale-[0.97]"
             >
               <span className="font-body text-[15px] font-medium">Enquire</span>
               <span className="flex size-9 items-center justify-center rounded-full bg-charcoal text-white">

@@ -142,6 +142,43 @@ export const SECTIONS = [
     ),
   },
   {
+    key: 'academy',
+    label: 'Property Academy',
+    description: 'Plain-language real-estate terms, examples, and their dedicated YouTube videos.',
+    Editor: ({ value, onChange }) => (
+      <>
+        <Section title="Introduction">
+          <TextAreaField label="Heading" rows={2} value={value.heading} onChange={(heading) => onChange({ heading })} />
+          <TextAreaField label="Paragraph" rows={3} value={value.paragraph} onChange={(paragraph) => onChange({ paragraph })} />
+        </Section>
+        <Section title="Terms" description="Use a short, unique URL slug. Related terms are comma-separated slugs, such as flex-space,parking-ratio.">
+          <RepeatableList
+            items={value.terms ?? []}
+            onChange={(terms) => onChange({ terms })}
+            makeItem={() => ({ slug: '', term: '', category: '', videoUrl: '', shortDefinition: '', explanation: '', example: '', whyItMatters: '', related: '' })}
+            addLabel="Add term"
+            renderItem={(item, set) => (
+              <div className="flex flex-col gap-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <TextField label="Term" value={item.term} onChange={(term) => set({ ...item, term })} />
+                  <TextField label="URL slug" value={item.slug} onChange={(slug) => set({ ...item, slug })} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <TextField label="Category" value={item.category} onChange={(category) => set({ ...item, category })} />
+                  <TextField label="YouTube link" value={item.videoUrl} onChange={(videoUrl) => set({ ...item, videoUrl })} />
+                </div>
+                <TextAreaField label="Short definition" rows={2} value={item.shortDefinition} onChange={(shortDefinition) => set({ ...item, shortDefinition })} />
+                <TextAreaField label="Full explanation" rows={5} value={item.explanation} onChange={(explanation) => set({ ...item, explanation })} />
+                <TextAreaField label="Practical example" rows={3} value={item.example} onChange={(example) => set({ ...item, example })} />
+                <TextAreaField label="Why it matters" rows={3} value={item.whyItMatters} onChange={(whyItMatters) => set({ ...item, whyItMatters })} />
+                <TextField label="Related term slugs" value={item.related} onChange={(related) => set({ ...item, related })} />
+              </div>
+            )}
+          />
+        </Section>
+      </>
+    ),
+  },  {
     key: 'gallery',
     label: 'Gallery',
     description: 'The homepage photo gallery — photos shown there come from the Properties list.',

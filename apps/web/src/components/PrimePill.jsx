@@ -30,7 +30,7 @@ export default function PrimePill({
       <a
         href={href}
         onClick={onClick}
-        className={`inline-flex items-center justify-center rounded-full border border-content/25 px-8 text-content transition-colors duration-300 hover:border-accent hover:text-accent ${HEIGHT} ${LABEL} ${className}`}
+        className={`inline-flex items-center justify-center rounded-full border border-content/25 px-8 text-content outline-none transition-[color,border-color,background-color,transform] duration-200 ease-brand hover:-translate-y-0.5 hover:border-accent hover:bg-accent/5 hover:text-accent active:translate-y-0 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-3 focus-visible:ring-offset-surface motion-reduce:transform-none ${HEIGHT} ${LABEL} ${className}`}
       >
         {children}
       </a>
@@ -41,15 +41,15 @@ export default function PrimePill({
     <a
       href={href}
       onClick={onClick}
-      className={`group inline-flex items-center gap-4 rounded-full bg-[linear-gradient(96deg,#0073a4_0%,#1aa1d2_100%)] py-1.5 pl-7 pr-1.5 text-white shadow-[0_12px_26px_-16px_rgba(0,115,164,0.95)] transition-shadow duration-300 hover:shadow-[0_16px_32px_-14px_rgba(0,115,164,0.8)] ${className}`}
+      className={`primary-button-flood group relative inline-flex items-center gap-4 overflow-hidden rounded-full bg-[linear-gradient(96deg,#0073a4_0%,#1aa1d2_100%)] py-1.5 pl-7 pr-1.5 text-white shadow-[0_12px_26px_-16px_rgba(0,115,164,0.95)] outline-none transition-[color,transform,box-shadow] duration-200 ease-brand hover:-translate-y-0.5 hover:shadow-[0_18px_34px_-14px_rgba(0,115,164,0.82)] active:translate-y-0 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-3 focus-visible:ring-offset-surface motion-reduce:transform-none ${className}`}
     >
       <span className={LABEL}>{children}</span>
       {/* charcoal, not `text-content`: the disc is hardcoded white in both
           themes, so its foreground has to be a pigment rather than a role token
           — under dark mode `--color-content` lifts to near-white and the arrow
           all but vanishes into the disc. */}
-      <span className="flex size-11 items-center justify-center rounded-full bg-white text-charcoal">
-        <ArrowRight className="size-4 -rotate-45 transition-transform duration-300 ease-out group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+      <span className="flex size-11 items-center justify-center rounded-full bg-white text-charcoal transition-transform duration-200 ease-brand group-hover:translate-x-0.5 group-active:scale-95 motion-reduce:transform-none">
+        <ArrowRight className="size-4 -rotate-45 transition-transform duration-200 ease-brand group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-active:translate-x-0 motion-reduce:transform-none" />
       </span>
     </a>
   )

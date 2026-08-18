@@ -65,7 +65,7 @@ export default function UnitDetailCard({ unit, units = [], aspect = null, onEnqu
       </div>
       {canEnquire && (
         <div className="mt-auto px-7 pb-7 lg:px-8 lg:pb-8">
-          <button type="button" onClick={() => onEnquire(unit)} className="min-h-14 w-full rounded-full bg-accent px-5 py-3 font-body text-[12px] font-bold uppercase tracking-[0.1em] text-white transition-colors duration-300 hover:bg-prime-deep dark:text-void">
+          <button type="button" onClick={() => onEnquire(unit)} className="primary-button-flood min-h-14 w-full rounded-full bg-accent px-5 py-3 font-body text-[12px] font-bold uppercase tracking-[0.1em] text-white transition-colors duration-300 hover:bg-prime-deep dark:text-void">
             Enquire about {unit.label || 'this unit'}
           </button>
         </div>

@@ -9,6 +9,7 @@ import Marquee from './components/Marquee'
 import About from './components/About'
 import Properties from './components/Properties'
 import Services from './components/Services'
+import AcademyTeaser from './components/AcademyTeaser'
 import Gallery from './components/Gallery'
 import Testimonials from './components/Testimonials'
 import NewsTeaser from './components/NewsTeaser'
@@ -34,6 +35,8 @@ const PropertyDetailPage = lazy(() => import('./pages/PropertyDetailPage'))
 const ContactPage = lazy(() => import('./pages/ContactPage'))
 const NewsPage = lazy(() => import('./pages/NewsPage'))
 const NewsPostPage = lazy(() => import('./pages/NewsPostPage'))
+const LearnPage = lazy(() => import('./pages/LearnPage'))
+const LearnTermPage = lazy(() => import('./pages/LearnTermPage'))
 
 const LoginPage = lazy(() => import('./admin/LoginPage'))
 const AdminLayout = lazy(() => import('./admin/AdminLayout'))
@@ -74,6 +77,7 @@ function Home() {
       <About />
       <Properties />
       <Services />
+      <AcademyTeaser />
       <Gallery />
       <Testimonials />
       <NewsTeaser />
@@ -185,6 +189,8 @@ function PublicSite() {
                 <Route path="/properties/:slug" element={<PropertyDetailPage />} />
                 <Route path="/news" element={<NewsPage />} />
                 <Route path="/news/:slug" element={<NewsPostPage />} />
+                <Route path="/learn" element={<LearnPage />} />
+                <Route path="/learn/:slug" element={<LearnTermPage />} />
                 <Route path="/contact" element={<ContactPage />} />
 
                 {/* Legacy routes — pre-rename links keep working */}

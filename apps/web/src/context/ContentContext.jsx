@@ -46,7 +46,36 @@ const DEFAULTS = {
       { icon: 'clock', title: '24/7 Support', body: 'Responsive care whenever you need it.' },
     ],
   },
-  // eyebrow/paragraph/features postdate the live row the same way services_home
+  academy: {
+    heading: 'Real estate, explained clearly.',
+    paragraph: 'A practical guide to the terms you will hear while comparing properties, leases, and investment opportunities.',
+    terms: [
+      {
+        slug: 'flex-space', term: 'Flex Space', category: 'Property types', videoUrl: '',
+        shortDefinition: 'A property combining warehouse, showroom, office, or light-production space in one adaptable unit.',
+        explanation: 'Flex space supports more than one business function under the same roof. The mix can change by tenant, making it useful for companies that need an office in front and storage, assembly, or distribution space behind it.',
+        example: 'A contractor leases one unit with offices for the project team, a customer showroom, and warehouse space for equipment and materials.',
+        whyItMatters: 'The office-to-warehouse mix affects rent, operating efficiency, loading access, and how easily the unit can adapt as the business changes.',
+        related: 'parking-ratio, nnn-lease',
+      },
+      {
+        slug: 'nnn-lease', term: 'NNN Lease', category: 'Leasing', videoUrl: '',
+        shortDefinition: 'A triple-net lease where the tenant pays base rent plus its share of property taxes, insurance, and common-area expenses.',
+        explanation: 'NNN refers to three expense categories commonly passed through to tenants: real-estate taxes, building insurance, and maintenance or common-area costs. The lease defines what is included and how the tenant share is calculated.',
+        example: 'A suite is advertised at a base rent, with an additional estimated NNN charge per square foot covering the tenant’s allocated operating expenses.',
+        whyItMatters: 'Base rent alone can understate total occupancy cost. Ask for the current estimate, historical expenses, reconciliation process, and any caps or exclusions.',
+        related: 'flex-space, parking-ratio',
+      },
+      {
+        slug: 'parking-ratio', term: 'Parking Ratio', category: 'Property metrics', videoUrl: '',
+        shortDefinition: 'The number of parking spaces available relative to building area, commonly stated per 1,000 square feet.',
+        explanation: 'A parking ratio of 4:1,000 means four spaces for every 1,000 square feet of building area. The useful ratio depends on property type, local requirements, employee density, customer traffic, and whether spaces are shared or reserved.',
+        example: 'A 10,000-square-foot office with a 4:1,000 ratio is associated with approximately 40 spaces, subject to the lease and site plan.',
+        whyItMatters: 'A space can fit the business physically but still fail operationally if employees, customers, or fleet vehicles cannot park reliably.',
+        related: 'flex-space, nnn-lease',
+      },
+    ],
+  },  // eyebrow/paragraph/features postdate the live row the same way services_home
   // does, so they carry their copy here; heading stays blank and comes from the
   // row, which has always had one.
   gallery: {
@@ -322,4 +351,5 @@ export const useCategories = () => useContentContext().categories
 export const useProperty = (slug) => useContentContext().getProperty(slug)
 export const useNews = () => useContentContext().news
 export const useNewsPost = (slug) => useContentContext().getNewsPost(slug)
+export const useAcademyTerms = () => useContentContext().getSection('academy').terms ?? []
 export const useContentRefetch = () => useContentContext().refetch

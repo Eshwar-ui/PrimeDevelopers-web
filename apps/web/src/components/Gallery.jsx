@@ -188,7 +188,7 @@ export default function Gallery() {
             onClick={() => goTo(index + 1)}
             disabled={atEnd}
             aria-label="Next"
-            className="flex size-13 items-center justify-center rounded-full bg-accent text-white transition-colors duration-300 dark:text-void enabled:hover:bg-prime-deep disabled:opacity-35"
+            className="primary-button-flood flex size-13 items-center justify-center rounded-full bg-accent text-white transition-colors duration-300 dark:text-void enabled:hover:bg-prime-deep disabled:opacity-35"
           >
             <Chevron dir="right" />
           </button>

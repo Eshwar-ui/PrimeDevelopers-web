@@ -340,7 +340,7 @@ export default function Navbar() {
             <a
               href="/contact"
               onClick={goContact}
-              className={`group relative hidden min-h-11 shrink-0 items-center gap-3 overflow-hidden rounded-full py-1.5 pl-6 pr-1.5 transition-[color,transform,box-shadow] duration-300 ease-brand hover:ring-1 hover:ring-inset hover:ring-charcoal focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-charcoal active:scale-[0.97] lg:inline-flex ${enquire}`}
+              className={`group relative hidden min-h-11 shrink-0 items-center gap-3 overflow-hidden rounded-full py-1.5 pl-6 pr-1.5 transition-[color,transform] duration-300 ease-brand active:scale-[0.97] lg:inline-flex ${enquire}`}
             >
               <span aria-hidden className={`absolute right-1.5 size-9 rounded-full transition-transform duration-500 ease-brand group-hover:scale-[12] group-focus-visible:scale-[12] motion-reduce:transition-none ${enquireFlood}`} />
               <span className="relative z-10 font-body text-[15px] font-medium transition-[color,transform] duration-300 ease-brand group-hover:translate-x-1 group-hover:!text-white group-focus-visible:translate-x-1 group-focus-visible:!text-white motion-reduce:transform-none">Enquire</span>

@@ -5,20 +5,22 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useSmoothScroll, lenis } from './hooks/useSmoothScroll'
 import Navbar from './components/Navbar'
 import Hero from './components/Hero'
-import Marquee from './components/Marquee'
-import About from './components/About'
+import Partners from './components/Partners'
+
+import FeaturedProperty from './components/FeaturedProperty'
 import Properties from './components/Properties'
 import Services from './components/Services'
 import AcademyTeaser from './components/AcademyTeaser'
 import Gallery from './components/Gallery'
 import Testimonials from './components/Testimonials'
-import NewsTeaser from './components/NewsTeaser'
+import LatestUpdates from './components/LatestUpdates'
 // CallToAction is no longer rendered: the closing panel moved into <Footer/>, so
 // it runs on every route instead of the homepage alone. The component and its
 // `cta_home` copy are both kept — the footer panel reads the same section, and
 // deleting the file would take the photographic treatment with it.
 import Footer from './components/Footer'
 import SectionRevealController from './components/SectionRevealController'
+import LandingParallaxChapter from './components/LandingParallaxChapter'
 
 // The home page's sections stay eagerly imported above: they are what the
 // overwhelming majority of visits render, and deferring them would only add a
@@ -32,11 +34,13 @@ const AboutPage = lazy(() => import('./pages/AboutPage'))
 const EnterprisePage = lazy(() => import('./pages/EnterprisePage'))
 const PropertiesPage = lazy(() => import('./pages/PropertiesPage'))
 const PropertyDetailPage = lazy(() => import('./pages/PropertyDetailPage'))
+const PropertyInfoPage = lazy(() => import('./pages/PropertyInfoPage'))
 const ContactPage = lazy(() => import('./pages/ContactPage'))
 const NewsPage = lazy(() => import('./pages/NewsPage'))
 const NewsPostPage = lazy(() => import('./pages/NewsPostPage'))
 const LearnPage = lazy(() => import('./pages/LearnPage'))
 const LearnTermPage = lazy(() => import('./pages/LearnTermPage'))
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 
 const LoginPage = lazy(() => import('./admin/LoginPage'))
 const AdminLayout = lazy(() => import('./admin/AdminLayout'))
@@ -71,17 +75,39 @@ function RouteFallback() {
 
 function Home() {
   return (
-    <>
+    <div data-landing-page>
       <Hero />
-      <Marquee />
-      <About />
-      <Properties />
-      <Services />
-      <AcademyTeaser />
-      <Gallery />
-      <Testimonials />
-      <NewsTeaser />
-    </>
+      {/* The chapter's ground matches the section's darkest edge. The parallax
+          shifts the section a couple of dozen pixels inside a clipped box, so
+          whatever colour is set here is what shows at the seams. */}
+      <LandingParallaxChapter depth={28} className="bg-void">
+        <Partners />
+      </LandingParallaxChapter>
+      <LandingParallaxChapter depth={22}>
+        <FeaturedProperty />
+      </LandingParallaxChapter>
+      <LandingParallaxChapter depth={26}>
+        <Properties />
+      </LandingParallaxChapter>
+      <LandingParallaxChapter depth={42}>
+        <Gallery />
+      </LandingParallaxChapter>
+      <LandingParallaxChapter depth={30}>
+        <Services />
+      </LandingParallaxChapter>
+      {/* Neither of these two is in the comp either; both are kept by request
+          and restyled to match. They sit after the design's own sections so the
+          approved page reads end to end before the additions begin. */}
+      <LandingParallaxChapter depth={24}>
+        <AcademyTeaser />
+      </LandingParallaxChapter>
+      <LandingParallaxChapter depth={36}>
+        <Testimonials />
+      </LandingParallaxChapter>
+      <LandingParallaxChapter depth={26}>
+        <LatestUpdates />
+      </LandingParallaxChapter>
+    </div>
   )
 }
 
@@ -187,6 +213,11 @@ function PublicSite() {
                 <Route path="/enterprise" element={<EnterprisePage />} />
                 <Route path="/properties" element={<PropertiesPage />} />
                 <Route path="/properties/:slug" element={<PropertyDetailPage />} />
+                {/* The media set behind a listing — site plan, floor plans, rate
+                    sheets, photography. Keyed by slug so further properties can
+                    be added to `data/centroPlazaInfo` without a new route; a
+                    slug with no set redirects back to its listing. */}
+                <Route path="/properties/:slug/info" element={<PropertyInfoPage />} />
                 <Route path="/news" element={<NewsPage />} />
                 <Route path="/news/:slug" element={<NewsPostPage />} />
                 <Route path="/learn" element={<LearnPage />} />
@@ -198,6 +229,7 @@ function PublicSite() {
                 <Route path="/projects/:slug" element={<RedirectSlug to="/properties" />} />
                 <Route path="/blog" element={<Navigate to="/news" replace />} />
                 <Route path="/blog/:slug" element={<RedirectSlug to="/news" />} />
+                <Route path="*" element={<NotFoundPage />} />
               </Routes>
             </Suspense>
           </motion.div>

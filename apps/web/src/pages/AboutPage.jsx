@@ -40,10 +40,10 @@ export default function AboutPage() {
   const go = useSectionNav()
 
   // The bay has to be exactly as wide as the pill it seats, and the pill's label
-  // is CMS copy — unknowable up front, which is the same reason the homepage
-  // measures its notch off the live nav CTA rather than hardcoding a width. A
-  // fixed value here would either clip a long label or leave a slot of dead page
-  // ground beside a short one.
+  // is CMS copy — unknowable up front. A fixed value here would either clip a
+  // long label or leave a slot of dead page ground beside a short one. Measured
+  // off the live element for that reason; the homepage hero used to do the same
+  // against the nav CTA, before it became a full-bleed frame with no bay in it.
   const pillRef = useRef(null)
   const [bayW, setBayW] = useState(0)
 

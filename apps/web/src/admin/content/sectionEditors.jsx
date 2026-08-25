@@ -1,7 +1,7 @@
-import { Section, TextField, TextAreaField, SelectField } from '../components/Field'
+import { Section, TextField, TextAreaField, SelectField, CheckboxField } from '../components/Field'
 import ImageUploader from '../components/ImageUploader'
 import RepeatableList from '../components/RepeatableList'
-import { SERVICE_ICONS } from '../../lib/serviceIcons'
+import { PLATFORM_KEYS } from '../../lib/platforms'
 
 // Shared hint for the *word* → italic accent-color convention used across
 // headings, so admins get the same visual flourish as the original hardcoded copy.
@@ -46,34 +46,43 @@ export const SECTIONS = [
   },
   {
     key: 'marquee',
-    label: 'Marquee',
-    description: 'Scrolling client-logo strip.',
+    label: 'Partner logos',
+    description:
+      'Every partner mark, shown as one wall on the homepage. The grid sizes itself to how many there are, up to about twenty.',
     Editor: ({ value, onChange }) => (
-      <>
-        <Section title="Logos">
-          <RepeatableList
-            items={value.logos}
-            onChange={(logos) => onChange({ logos })}
-            makeItem={() => ({ image: '', alt: '' })}
-            addLabel="Add logo"
-            renderItem={(item, set) => (
-              <div className="flex flex-col gap-3">
-                <ImageUploader value={item.image} onChange={(image) => set({ ...item, image })} folder="site/logos" />
-                <TextField label="Alt text" value={item.alt} onChange={(alt) => set({ ...item, alt })} />
-              </div>
-            )}
-          />
-        </Section>
-      </>
+      <Section
+        title="Logos"
+        description="Each mark sits on a white panel, which is what lets logos with a white background baked into the file sit alongside ones with a transparent background."
+      >
+        <RepeatableList
+          items={value.logos}
+          onChange={(logos) => onChange({ logos })}
+          makeItem={() => ({ image: '', alt: '', darkPanel: false })}
+          addLabel="Add logo"
+          renderItem={(item, set) => (
+            <div className="flex flex-col gap-3">
+              <ImageUploader value={item.image} onChange={(image) => set({ ...item, image })} folder="site/logos" />
+              <TextField label="Alt text" value={item.alt} onChange={(alt) => set({ ...item, alt })} />
+              <CheckboxField
+                label="Light logo — put it on a dark panel"
+                value={item.darkPanel}
+                onChange={(darkPanel) => set({ ...item, darkPanel })}
+                hint="For a mark drawn in white or a very pale colour, which would disappear on the white panel. Almost every logo is dark artwork and should leave this unticked. If the file also has a dark background baked into it rather than being transparent, ask the brand for a transparent version — otherwise its box may not match the panel exactly."
+              />
+            </div>
+          )}
+        />
+      </Section>
     ),
   },
   {
     key: 'about_home',
-    label: 'About (homepage section)',
-    description: 'The "Ethos" section on the homepage.',
+    label: 'Partners section copy',
+    description: 'The kicker above the homepage logo wall, plus the film and the statistics — neither of which the homepage shows any more.',
     Editor: ({ value, onChange }) => (
       <>
         <Section title="Copy">
+          <TextField label="Eyebrow" value={value.eyebrow} onChange={(eyebrow) => onChange({ eyebrow })} />
           <TextAreaField label="Heading" rows={2} value={value.heading} onChange={(heading) => onChange({ heading })} />
           <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
           <TextAreaField label="Paragraph" value={value.paragraph1} onChange={(paragraph1) => onChange({ paragraph1 })} />
@@ -83,7 +92,7 @@ export const SECTIONS = [
           <TextField label="Video link" value={value.videoUrl} onChange={(videoUrl) => onChange({ videoUrl })} />
           <p className="-mt-3 text-[11px] text-bone-3">A YouTube or Vimeo link, or a direct link to an .mp4 file.</p>
         </Section>
-        <Section title="Stats">
+        <Section title="Stats" description="Not shown on the homepage any more — the partners section is the logo wall alone. Kept here and still used elsewhere.">
           <RepeatableList
             items={value.stats}
             onChange={(stats) => onChange({ stats })}
@@ -112,28 +121,66 @@ export const SECTIONS = [
     ),
   },
   {
-    key: 'services_home',
-    label: 'Services (homepage strip)',
-    description: 'The four support promises between the property teaser and the gallery.',
+    key: 'featured_home',
+    label: 'Featured property (homepage panel)',
+    description: 'The single property lifted out of the list into a bordered panel. Clear the heading to hide the panel entirely.',
     Editor: ({ value, onChange }) => (
       <>
         <Section title="Copy">
           <TextField label="Eyebrow" value={value.eyebrow} onChange={(eyebrow) => onChange({ eyebrow })} />
           <TextAreaField label="Heading" rows={2} value={value.heading} onChange={(heading) => onChange({ heading })} />
+          <p className="-mt-3 text-[11px] text-bone-3">
+            Wrap the property name in *asterisks* to set it in saffron, e.g. &quot;Grow Your Business at *Centro Plaza*&quot;. A line break puts it on its own line.
+          </p>
+          <TextField label="Subheading" value={value.subheading} onChange={(subheading) => onChange({ subheading })} />
+          <p className="-mt-3 text-[11px] text-bone-3">Asterisks here set the wrapped words in blue instead.</p>
+          <TextAreaField label="Paragraph" rows={3} value={value.paragraph} onChange={(paragraph) => onChange({ paragraph })} />
         </Section>
-        <Section title="Cards">
+        <Section title="Buttons">
+          <div className="grid grid-cols-2 gap-4">
+            <TextField label="Primary label" value={value.ctaLabel} onChange={(ctaLabel) => onChange({ ctaLabel })} />
+            <TextField label="Primary link" value={value.ctaHref} onChange={(ctaHref) => onChange({ ctaHref })} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <TextField label="Secondary label" value={value.secondaryLabel} onChange={(secondaryLabel) => onChange({ secondaryLabel })} />
+            <TextField label="Secondary link" value={value.secondaryHref} onChange={(secondaryHref) => onChange({ secondaryHref })} />
+          </div>
+          <p className="-mt-3 text-[11px] text-bone-3">Leave a label empty to hide that button.</p>
+        </Section>
+        <Section title="Photograph">
+          <ImageUploader value={value.image} onChange={(image) => onChange({ image })} folder="site/featured" />
+          <TextField label="Alt text" value={value.imageAlt} onChange={(imageAlt) => onChange({ imageAlt })} />
+          <p className="-mt-3 text-[11px] text-bone-3">Describe the photo for screen readers. Leave empty if it adds nothing the copy does not already say.</p>
+        </Section>
+      </>
+    ),
+  },
+  {
+    key: 'services_home',
+    label: 'More ways to build (homepage strip)',
+    description: 'The four photographic cards — interiors, collaborations, franchise, invest.',
+    Editor: ({ value, onChange }) => (
+      <>
+        <Section title="Copy">
+          <TextField label="Eyebrow" value={value.eyebrow} onChange={(eyebrow) => onChange({ eyebrow })} />
+          <TextAreaField label="Heading" rows={2} value={value.heading} onChange={(heading) => onChange({ heading })} />
+          <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
+          <TextAreaField label="Paragraph" rows={3} value={value.paragraph} onChange={(paragraph) => onChange({ paragraph })} />
+        </Section>
+        <Section title="Cards" description="A photograph and a name each. Cards with no photograph show the Prime mark until one is uploaded.">
           <RepeatableList
             items={value.items}
             onChange={(items) => onChange({ items })}
-            makeItem={() => ({ icon: SERVICE_ICONS[0], title: '', body: '' })}
+            makeItem={() => ({ title: '', image: '', href: '' })}
             addLabel="Add card"
             renderItem={(item, set) => (
               <div className="flex flex-col gap-3">
+                <ImageUploader value={item.image} onChange={(image) => set({ ...item, image })} folder="site/services" />
                 <div className="grid grid-cols-2 gap-3">
-                  <SelectField label="Icon" value={item.icon} onChange={(icon) => set({ ...item, icon })} options={SERVICE_ICONS} />
                   <TextField label="Title" value={item.title} onChange={(title) => set({ ...item, title })} />
+                  <TextField label="Link" value={item.href} onChange={(href) => set({ ...item, href })} />
                 </div>
-                <TextAreaField label="Body" value={item.body} onChange={(body) => set({ ...item, body })} />
+                <p className="-mt-3 text-[11px] text-bone-3">Leave the link empty and the card is shown but not clickable.</p>
               </div>
             )}
           />
@@ -180,28 +227,16 @@ export const SECTIONS = [
     ),
   },  {
     key: 'gallery',
-    label: 'Gallery',
-    description: 'The homepage photo gallery — photos shown there come from the Properties list.',
+    label: 'Explore our properties (homepage mosaic)',
+    description: 'The four-photo mosaic — photos and names come from the Properties list, in their sort order.',
     Editor: ({ value, onChange }) => (
-      <>
-        <Section title="Copy">
-          <TextField label="Eyebrow" value={value.eyebrow} onChange={(eyebrow) => onChange({ eyebrow })} />
-          <TextAreaField label="Heading" rows={2} value={value.heading} onChange={(heading) => onChange({ heading })} />
-          <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
-          <TextAreaField label="Paragraph" rows={4} value={value.paragraph} onChange={(paragraph) => onChange({ paragraph })} />
-        </Section>
-        <Section title="Highlights" description="The numbered list under the paragraph — numbering is automatic.">
-          <RepeatableList
-            items={value.features}
-            onChange={(features) => onChange({ features })}
-            makeItem={() => ({ title: '' })}
-            addLabel="Add highlight"
-            renderItem={(item, set) => (
-              <TextField label="Title" value={item.title} onChange={(title) => set({ ...item, title })} />
-            )}
-          />
-        </Section>
-      </>
+      <Section title="Copy">
+        <TextAreaField label="Heading" rows={2} value={value.heading} onChange={(heading) => onChange({ heading })} />
+        <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
+        <TextAreaField label="Paragraph" rows={4} value={value.paragraph} onChange={(paragraph) => onChange({ paragraph })} />
+        <TextField label="Button label" value={value.ctaLabel} onChange={(ctaLabel) => onChange({ ctaLabel })} />
+        <p className="-mt-3 text-[11px] text-bone-3">The button always goes to the properties page.</p>
+      </Section>
     ),
   },
   {
@@ -211,6 +246,7 @@ export const SECTIONS = [
     Editor: ({ value, onChange }) => (
       <>
         <Section title="Copy">
+          <TextField label="Eyebrow" value={value.eyebrow} onChange={(eyebrow) => onChange({ eyebrow })} />
           <TextField label="Heading" value={value.heading} onChange={(heading) => onChange({ heading })} />
           <TextAreaField label="Paragraph" value={value.paragraph} onChange={(paragraph) => onChange({ paragraph })} />
         </Section>
@@ -239,13 +275,52 @@ export const SECTIONS = [
   },
   {
     key: 'news_home',
-    label: 'News (homepage teaser)',
-    description: 'Heading above the homepage news teaser — the posts themselves come from the News list.',
+    label: 'Latest updates (homepage)',
+    description:
+      'One stream mixing your journal posts with social posts you add here. Journal posts come from the News list automatically — you only add the social ones.',
     Editor: ({ value, onChange }) => (
-      <Section title="Copy">
-        <TextField label="Heading" value={value.heading} onChange={(heading) => onChange({ heading })} />
-        <TextAreaField label="Paragraph" value={value.paragraph} onChange={(paragraph) => onChange({ paragraph })} />
-      </Section>
+      <>
+        <Section title="Copy">
+          <TextField label="Heading" value={value.heading} onChange={(heading) => onChange({ heading })} />
+          <TextAreaField label="Paragraph" value={value.paragraph} onChange={(paragraph) => onChange({ paragraph })} />
+        </Section>
+        <Section
+          title="Social posts"
+          description="Add a post from Instagram, Facebook or anywhere else. Cards are ordered newest first across both journal and social, so the date is what decides where a post lands — not the order of this list. Six show on the homepage."
+        >
+          <RepeatableList
+            items={value.items}
+            onChange={(items) => onChange({ items })}
+            makeItem={() => ({ platform: 'instagram', image: '', title: '', caption: '', href: '', postedAt: '' })}
+            addLabel="Add post"
+            renderItem={(item, set) => (
+              <div className="flex flex-col gap-3">
+                <ImageUploader value={item.image} onChange={(image) => set({ ...item, image })} folder="site/updates" />
+                <div className="grid grid-cols-2 gap-3">
+                  <SelectField
+                    label="Platform"
+                    value={item.platform}
+                    onChange={(platform) => set({ ...item, platform })}
+                    options={PLATFORM_KEYS}
+                  />
+                  <TextField
+                    label="Date posted"
+                    type="date"
+                    value={item.postedAt}
+                    onChange={(postedAt) => set({ ...item, postedAt })}
+                  />
+                </div>
+                <TextField label="Title" value={item.title} onChange={(title) => set({ ...item, title })} />
+                <TextAreaField label="Caption" rows={2} value={item.caption} onChange={(caption) => set({ ...item, caption })} />
+                <TextField label="Link to the post" value={item.href} onChange={(href) => set({ ...item, href })} />
+                <p className="-mt-3 text-[11px] text-bone-3">
+                  Paste the post&apos;s own URL — the card opens it in a new tab. Leave the date empty and the post falls to the end of the stream.
+                </p>
+              </div>
+            )}
+          />
+        </Section>
+      </>
     ),
   },
   {

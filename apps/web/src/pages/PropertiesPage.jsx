@@ -10,7 +10,7 @@ import MaskedHeading from '../components/MaskedHeading'
 import { rise, stagger, inViewOnce } from '../lib/motion'
 import PrimePill from '../components/PrimePill'
 import PropertyStrip from '../components/PropertyStrip'
-import Marquee from '../components/Marquee'
+// import Marquee from '../components/Marquee'
 import Services from '../components/Services'
 
 // The band unfurls a beat behind the copy. Starting them together reads as two
@@ -357,7 +357,7 @@ export default function PropertiesPage() {
         </motion.div>
       </section>
 
-      <Marquee />
+      {/* <Marquee /> */}
       <Services />
     </div>
   )

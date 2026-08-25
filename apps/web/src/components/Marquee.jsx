@@ -10,10 +10,7 @@ import { sized } from '../lib/images'
 // Parallax wrapper adds a subtle vertical drift on scroll for depth.
 export default function Marquee() {
   const { logos } = useSection('marquee')
-  const visibleLogos = logos.filter((logo) => {
-    const identity = ((logo.alt ?? '') + ' ' + (logo.image ?? '')).toLowerCase()
-    return !identity.includes('lego')
-  })
+  const visibleLogos = logos.filter((logo) => logo.image)
   const track = useRef(null)
 
   useGSAP(() => {

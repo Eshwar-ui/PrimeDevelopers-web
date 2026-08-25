@@ -14,6 +14,10 @@ const DEFAULTS = {
   // row doesn't carry is exactly what the defaults are for. Setting either in
   // the admin still overrides it.
   about_home: {
+    // `eyebrow` postdates the live row, so it carries its copy here for the
+    // same reason the film does — an empty default would leave the section's
+    // kicker missing until someone opened the admin.
+    eyebrow: 'Our Partners',
     heading: '',
     paragraph1: '',
     videoUrl: '/about-video.mp4',
@@ -21,29 +25,42 @@ const DEFAULTS = {
     stats: [],
   },
   properties_home: { heading: '' },
+  // The one property lifted out of the list into a panel of its own. Ships with
+  // its copy so the section renders before anyone has touched the admin; blank
+  // the heading there and the whole panel hides itself, which is how the client
+  // switches the feature off between developments.
+  featured_home: {
+    eyebrow: 'Featured Property',
+    // *asterisks* mark the saffron half — the property's own name.
+    heading: 'Grow Your Business at\n*Centro Plaza*',
+    subheading: 'Premium Commercial Spaces in a *Prime Location.*',
+    paragraph:
+      'Discover modern retail and office spaces designed for visibility, accessibility, and long-term business growth. Secure your space at Centro Plaza today.',
+    ctaLabel: 'Explore Property',
+    ctaHref: '/properties/centro-plaza',
+    secondaryLabel: 'Schedule a Visit',
+    secondaryHref: '/contact',
+    image: '',
+    imageAlt: '',
+  },
   // Ships with its copy rather than waiting on a seed, for the same reason
   // about_home's film does: the live content row predates this key entirely, so
   // an empty default would hide the section until someone opened the admin.
+  // The items carry `image` and `href` now rather than `icon` and `body`. The
+  // section became four photographs with a name under each, so the icon name
+  // has nothing to render and the body copy has nowhere to sit. Old rows still
+  // merge cleanly — an `icon` the component no longer reads is simply ignored,
+  // and a missing `image` falls back to a branded tile rather than a hole.
   services_home: {
     eyebrow: 'Our Services',
-    heading: 'Expert support across every stage of your property journey.',
+    heading: 'More Ways to Build, Grow & Invest',
+    paragraph:
+      'From transforming spaces to building partnerships and investment opportunities, we offer flexible ways to create long-term value together.',
     items: [
-      {
-        icon: 'compass',
-        title: 'Expert Guidance',
-        body: 'Personalized advice from experienced real estate professionals.',
-      },
-      {
-        icon: 'map-pin',
-        title: 'Premium Locations',
-        body: 'Access to prime neighborhoods and sought-after developments.',
-      },
-      {
-        icon: 'shield-check',
-        title: 'Trusted Partners',
-        body: 'Vetted vendors and partners for a seamless experience.',
-      },
-      { icon: 'clock', title: '24/7 Support', body: 'Responsive care whenever you need it.' },
+      { title: 'Interiors', image: '', href: '/enterprise' },
+      { title: 'Collaborations', image: '', href: '/enterprise' },
+      { title: 'Franchise', image: '', href: '/enterprise' },
+      { title: 'Invest', image: '', href: '/contact' },
     ],
   },
   academy: {
@@ -78,22 +95,33 @@ const DEFAULTS = {
   },  // eyebrow/paragraph/features postdate the live row the same way services_home
   // does, so they carry their copy here; heading stays blank and comes from the
   // row, which has always had one.
+  // `features` is no longer read — the section is a photographic mosaic now,
+  // not a spec list. Left in the shape so an existing row carrying it still
+  // merges without complaint.
   gallery: {
-    heading: '',
+    heading: 'Explore Our Properties',
     eyebrow: 'Curated Portfolio',
     paragraph:
-      'Explore our collection of award-winning architectural designs, bespoke luxury interiors, and breath-taking coastal estates. Each space is custom-crafted to redefine modern premium living in Texas.',
-    features: [{ title: 'High-End Modern Materials' }, { title: 'Bespoke Light Integration' }],
+      'Discover our portfolio of commercial spaces, retail destinations, and thoughtfully developed properties designed for long-term value and business growth.',
+    ctaLabel: 'See more projects',
+    features: [],
   },
   testimonials: {
-    heading: 'What Our Clients Say',
+    eyebrow: 'Testimonials',
+    heading: 'Trusted by Property Owners & Investors',
     paragraph:
-      'Real stories from homeowners and investors who have partnered with Prime to bring their vision to life.',
+      'Real stories from the owners, tenants and investors who have built with Prime across Central Texas.',
     items: [],
   },
-  news_home: {
-    heading: 'News & Insights',
-    paragraph: 'Stay updated on the latest real estate trends and market insights.',
+  // Still keyed `news_home` because the live row under that name already holds
+  // this section's heading and paragraph, and renaming the key would strand
+  // them. What the section shows has widened: journal posts merge with `items`,
+  // which are social posts an admin has pointed at by URL.
+  news_home: {
+    heading: 'Latest from Prime',
+    paragraph:
+      'Site progress, leasing news and open days — from our journal and across our channels.',
+    items: [],
   },
   // No cta_home row exists yet, so this object is what the panel actually
   // renders — an empty `image` here meant the photo column never mounted and

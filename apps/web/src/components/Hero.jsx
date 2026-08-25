@@ -3,160 +3,133 @@ import { motion } from 'motion/react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
-import ArrowRight from './ArrowRight'
-import { invertedCorner } from '../lib/notch'
-import { sized } from '../lib/images'
 import { rise, stagger } from '../lib/motion'
 import PrimePill from './PrimePill'
-import TexasFlag from './TexasFlag'
 import MaskedHeading, { WORD_STAGGER, wordCount } from './MaskedHeading'
+import TexasFlag from './TexasFlag'
 import { lenis } from '../hooks/useSmoothScroll'
 import { useSection } from '../context/ContentContext'
 
 gsap.registerPlugin(ScrollTrigger)
 
-const SLIDE_MS = 6000
-const RAIL_MS = 900
+// How long a slide holds before the next one crosses in, and how long that
+// crossing takes. The fade is deliberately a large fraction of the dwell: with
+// no dots, arrows or thumbnails on the frame, the change is the only thing
+// telling the visitor there is more than one property, and a fast cut would
+// read as a glitch rather than as the page breathing.
+const SLIDE_MS = 6500
+const FADE_MS = 1600
 
-// Slides of headroom rendered past the live position in each direction, so the
-// track always has something to move into mid-transition.
-const RAIL_SPAN = 4
-
-// Positive modulo. `pos` runs negative once the back arrow is used, and JS's %
-// keeps the sign of the dividend, which would index off the front of the list.
+// Positive modulo — `pos` only ever runs forward here, but the helper is what
+// keeps that an implementation detail rather than an assumption.
 const mod = (n, m) => ((n % m) + m) % m
 
-// Two of these finish the notch: one rounds the panel's top edge where the bay
-// ends, the other rounds its left edge where the bay lifts away. Both take the
-// default origin, since both sweep away from their bottom-right.
-//
-// Kept to a clean alpha edge with no shading of its own: the notch's shadow is
-// a drop-shadow on the group, which traces this silhouette exactly. Baking a
-// band into the gradient as well would double up at the joints.
-const corner = invertedCorner()
+/* ── Legibility, not colour ─────────────────────────────────────────────
+   This used to be a full sky grade — saturated blue at the crown through
+   violet to rose at the horizon — reproducing the comp's colour treatment
+   over whatever photograph the CMS held. It is gone. The client's read was
+   that the blue slab across the top was glare sitting on top of the picture
+   rather than part of it, and they are right that these are already dusk
+   photographs with their own sky; re-colouring one is spending the best part
+   of the image to imitate it.
 
-// drop-shadow follows the rendered alpha rather than a box, so one filter on
-// the group shades every edge of the notch — including the two arcs, which no
-// box-shadow can trace. The second, tight pass is a contact shadow that keeps
-// the edge legible where the image behind it is pale.
-const notchShadow = {
-  filter: 'drop-shadow(0 2px 9px var(--edge-shade)) drop-shadow(0 0 1px var(--edge-shade))',
-}
+   What is left does one job: keep white type legible on a photograph nobody
+   has seen yet. Neutral, so it deepens the photograph instead of tinting it.
+   Bringing the brand blue back is one constant, not a rewrite.
+
+   Every stop ramps to zero *alpha* on its own RGB rather than to
+   `transparent`. `transparent` is rgba(0,0,0,0), so interpolating toward it
+   in sRGB drags the midpoint through grey and lays a dirty band across the
+   horizon — the one part of the frame the eye is actually reading. */
+
+// The top scrim. Holds through the header and the headline, then clears before
+// the roofline. Alphas are set against the worst case rather than against this
+// photograph: a blown-out midday sky is white, and 0.52 over white still
+// measures about 4:1 — enough for a 70px headline, which needs 3.
+const SHADE = `linear-gradient(180deg,
+  rgba(6,11,20,0.62) 0%,
+  rgba(6,11,20,0.52) 20%,
+  rgba(6,11,20,0.34) 34%,
+  rgba(6,11,20,0.12) 48%,
+  rgba(6,11,20,0) 60%)`
+
+// A second, softer deepening centred on the copy. The lede is 15px and needs
+// 4.5:1, which the scrim alone does not guarantee against a white sky. Stacked
+// alphas multiply rather than add — the pair reads as 1-(1-a₁)(1-a₂), so 0.34
+// under 0.34 composites to 0.56, which clears the bar with room (DESIGN.md §9).
+const VEIL = `radial-gradient(128% 82% at 50% 24%,
+  rgba(6,11,20,0.34) 0%,
+  rgba(6,11,20,0.22) 44%,
+  rgba(6,11,20,0) 74%)`
+
+/* The design's Rectangle 8 — a band across the bottom third — carried further
+   than the comp draws it: this reaches the page's own ground colour, fully
+   opaque, by the hero's bottom edge. That is what removes the seam. Stopping
+   short, as it did at 0.58, left a lit wet parking lot butting straight into
+   the next section and a hard line across the page where the photograph ran
+   out.
+
+   Painted as a solid `bg-base` element wearing an alpha mask rather than as a
+   gradient ramping to `transparent`. Two reasons, and both are load-bearing:
+
+   - `transparent` is rgba(0,0,0,0), so a gradient interpolating toward it
+     drags its RGB toward black on the way. Against the dark theme that is
+     nearly invisible; in the light theme, where `--color-base` is white, the
+     midpoint lands on grey and lays a dirty band across the join (DESIGN.md §9).
+   - The colour has to be the *token*, not a literal. The section below is
+     `bg-base`, which is #0b1216 in dark and white in light. A hardcoded dark
+     fade would seam correctly in one theme and paint a black bar above a white
+     section in the other.
+
+   The mask is weighted late — barely present through the first half, solid
+   over the last few percent — so the photograph keeps its reflections and only
+   the final stretch belongs to the page. */
+const FADE_MASK = `linear-gradient(180deg,
+  rgba(0,0,0,0) 0%,
+  rgba(0,0,0,0.14) 24%,
+  rgba(0,0,0,0.46) 48%,
+  rgba(0,0,0,0.84) 68%,
+  rgba(0,0,0,1) 82%)`
 
 export default function Hero() {
   const hero = useSection('hero')
   const slides = hero.slides.length ? hero.slides : [{ image: '', place: '', kind: '' }]
-  // `pos` is the track's position along the looped rail. The live slide is what
-  // it lands on modulo one set, and it may go negative — the back arrow walks
-  // it left, which the rail renders a lead set to accommodate.
-  const [pos, setPos] = useState(0)
-  const [snapping, setSnapping] = useState(false)
-  const [paused, setPaused] = useState(false)
+  const [index, setIndex] = useState(0)
   const scope = useRef(null)
-  const panelRef = useRef(null)
-  const railRef = useRef(null)
-  const [panelLeft, setPanelLeft] = useState(0)
+  const bgRef = useRef(null)
 
   const count = slides.length
-  const index = mod(pos, count)
 
-  // The rail is rendered as a window of whole sets around wherever the track
-  // currently is, with headroom on both sides. Whole sets so the repeat stays
-  // aligned, and grown on demand because tapping an arrow repeatedly outruns
-  // the snap and the track must never walk off the end of what exists. The
-  // extra images are the same handful of sources, so they come from cache.
-  const first = -Math.ceil((Math.max(0, -pos) + RAIL_SPAN) / count) * count
-  const last = Math.ceil((Math.max(0, pos) + RAIL_SPAN + 1) / count) * count - 1
-  const rail = Array.from({ length: last - first + 1 }, (_, k) => slides[mod(k + first, count)])
-
-  // Dots travel forward to reach a slide, wrapping past the end rather than
-  // rewinding — a jump backwards on a tap reads as a mistake. The arrows are
-  // the deliberate exception: back means back.
-  const goTo = (target) => setPos((p) => p + mod(target - mod(p, count), count))
-  const step = (n) => setPos((p) => p + n)
-
-  // The notch is cut in panel-local coordinates, but the thing it has to clear
-  // — the header's Enquire CTA — is positioned against the viewport. Measuring
-  // where the panel starts is what lets one be expressed in terms of the other.
+  // Auto-advance. No controls are drawn — the design has none — so this is the
+  // whole transport, and it is deliberately not paused on hover: there is
+  // nothing on the frame for a pointer to be resting on, and a carousel that
+  // silently stops because the cursor happened to be over it is a bug the
+  // visitor cannot see the cause of.
   useEffect(() => {
-    const measure = () => {
-      const el = panelRef.current
-      if (el) setPanelLeft(Math.round(el.getBoundingClientRect().left))
-    }
-    measure()
-    const id = requestAnimationFrame(measure)
-    window.addEventListener('resize', measure)
-    return () => {
-      cancelAnimationFrame(id)
-      window.removeEventListener('resize', measure)
-    }
-  }, [])
-
-  // Auto-advance; keyed on `index` rather than `pos` so the loop's silent snap
-  // back doesn't restart the dwell and stutter the cycle once per lap. Hovering
-  // the rail pauses it so browsing stays calm.
-  useEffect(() => {
-    if (paused || count < 2) return
-    const id = setTimeout(() => setPos((p) => p + 1), SLIDE_MS)
+    if (count < 2) return
+    const id = setTimeout(() => setIndex((i) => mod(i + 1, count)), SLIDE_MS)
     return () => clearTimeout(id)
-  }, [index, paused, count])
+  }, [index, count])
 
-  // Once the track has walked outside the first set in either direction, fold
-  // it back with the transition suppressed. It lands on a congruent position —
-  // pixel-identical frame — so the seam is invisible. Driven by a timer rather
-  // than transitionend, which never fires in a background tab and would let
-  // `pos` wander further than the rendered rail.
-  useEffect(() => {
-    if (pos >= 0 && pos < count) return
-    const id = setTimeout(() => {
-      setSnapping(true)
-      setPos((p) => mod(p, count))
-    }, RAIL_MS)
-    return () => clearTimeout(id)
-  }, [pos, count])
-
-  // Two frames: one to paint at the rewound position with no transition, then
-  // restore it. A single frame can land before the browser has painted.
-  useEffect(() => {
-    if (!snapping) return
-    let inner
-    const outer = requestAnimationFrame(() => {
-      inner = requestAnimationFrame(() => setSnapping(false))
-    })
-    return () => {
-      cancelAnimationFrame(outer)
-      cancelAnimationFrame(inner)
-    }
-  }, [snapping])
-
-  // Scroll-scrubbed drift inside each frame. Two triggers, not one per image:
-  // every thumbnail shares a row, and the panel's stack shares a frame, so each
-  // group can ride a single scrubbed tween. Selector strings resolve within the
-  // scope, and useGSAP reverts them when the rail's length changes.
+  // Scroll-scrubbed drift on the whole backdrop rather than per image: every
+  // slide shares one frame, so one tween moves the set. The wrapper is taller
+  // than the section and hung above it, which is what gives the drift somewhere
+  // to travel without ever uncovering an edge.
   useGSAP(
     () => {
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-      const drift = (selector, trigger, distance) => {
-        // The rail is absent when there's only one slide, and a ScrollTrigger
-        // with a null trigger silently falls back to the tween target.
-        if (!trigger) return
-        gsap.fromTo(
-          selector,
-          { yPercent: -distance },
-          {
-            yPercent: distance,
-            ease: 'none',
-            scrollTrigger: { trigger, start: 'top bottom', end: 'bottom top', scrub: true },
-          }
-        )
-      }
-      drift('[data-parallax="panel"]', panelRef.current, 6)
-      drift('[data-parallax="thumb"]', railRef.current, 5)
+      gsap.fromTo(
+        bgRef.current,
+        { yPercent: -1.5 },
+        {
+          yPercent: 1.5,
+          ease: 'none',
+          scrollTrigger: { trigger: scope.current, start: 'top top', end: 'bottom top', scrub: true },
+        }
+      )
     },
-    { scope, dependencies: [rail.length] }
+    { scope }
   )
-
-  const active = slides[index] ?? slides[0]
 
   const onCta = (e) => {
     if (!hero.ctaHref?.startsWith('#')) return
@@ -165,254 +138,170 @@ export default function Hero() {
   }
 
   return (
+    // `isolate` is load-bearing rather than tidy: the grade layers below stack
+    // against this section, and without it a future blend mode or a negative
+    // z-index inside would resolve against the document and paint through the
+    // page rather than through the photograph.
+    //
+    // No data-band="light" — this used to be a white section and is now a
+    // photograph, so the fixed header keeps its bone chrome over it, which is
+    // what the design draws.
+    // 1024px exactly — the height of the comp's frame, not a fraction of the
+    // viewport. That makes the hero a fixed object rather than a responsive
+    // one, and everything inside it that used to be measured in `dvh` had to
+    // stop being: with the frame no longer tied to the window, a short window
+    // has nothing to squeeze and a `dvh` term would only shrink the type for
+    // no reason (DESIGN.md §2). The `min-h` floor went with them — a minimum
+    // under a fixed height can never apply.
     <section
       id="hero"
-      data-band="light"
       ref={scope}
-      className="relative w-full overflow-hidden bg-surface text-content [--edge-shade:rgba(18,30,38,0.26)] lg:h-dvh lg:max-h-240 lg:min-h-152"
+      className="relative isolate h-256 w-full overflow-hidden bg-void"
     >
-      <div className="mx-auto grid max-w-[1560px] grid-cols-1 gap-12 px-6 pb-8 pt-28 md:px-12 lg:h-full lg:grid-cols-[1.06fr_1fr] lg:gap-7 lg:pb-7 lg:pt-5">
-        {/* ── copy column ─────────────────────────────────────────── */}
-        {/* min-w-0: grid items default to min-width:auto, and the thumbnail
-            rail's shrink-0 children would otherwise set a min-content width
-            wide enough to swallow the visual column whole. */}
-        <motion.div
-          variants={stagger}
-          initial="hidden"
-          animate="show"
-          // justify-between: once the rail hits its ceiling, whatever height is
-          // still spare is shared out between every block rather than pooling
-          // into one visible band above the thumbnails.
-          className="min-w-0 lg:flex lg:h-full lg:flex-col lg:justify-between lg:pt-[clamp(4rem,11dvh,6.5rem)]"
-        >
-          <h1
-            className="font-display font-bold uppercase leading-[1.03] tracking-tight text-content"
-            // Governed by whichever runs out first, width or height, so a
-            // short-and-wide window shrinks the headline instead of pushing
-            // the thumbnail rail off the fold.
-            style={{ fontSize: 'clamp(2.25rem, min(4.9vw, 9.5dvh), 4.35rem)' }}
-          >
-            <MaskedHeading text={hero.heading} />
-            {/* The flag is masked with the words so it arrives as the last beat
-                of the line rather than being present before the type it
-                belongs to. */}
-            <span className="inline-block overflow-hidden pb-[0.08em] align-bottom -mb-[0.08em]">
-              <span
-                className="word-rise inline-block"
-                style={{ animationDelay: `${wordCount(hero.heading) * WORD_STAGGER}s` }}
-              >
-                <TexasFlag className="inline-block h-[0.62em] w-auto translate-y-[0.07em] rounded-[0.07em]" />
-              </span>
-            </span>
-          </h1>
-
-          <motion.p
-            variants={rise}
-            className="mt-7 max-w-120 font-body text-[15px] leading-relaxed text-content/70"
-          >
-            {hero.paragraph}
-          </motion.p>
-
-          <motion.div variants={rise}>
-            <PrimePill
-              href={hero.ctaHref}
-              onClick={onCta}
-              className="mt-[clamp(1.5rem,4dvh,2.25rem)]"
-            >
-              {hero.ctaLabel}
-            </PrimePill>
-          </motion.div>
-
-          {/* ── thumbnail rail — the slide index, tracking the main visual ── */}
-          {count > 1 && (
-            <motion.div
-              variants={rise}
-              onMouseEnter={() => setPaused(true)}
-              onMouseLeave={() => setPaused(false)}
-              // The rail claims the column's leftover height rather than being
-              // pushed to the bottom by a margin, so a taller window grows the
-              // thumbnails instead of opening a gap above them.
-              ref={railRef}
-              // Thumbnail width is a division of the rail, not a fixed length:
-              // the column is a fraction of the viewport, so anything fixed
-              // only fits at one window size and clips the last one everywhere
-              // else. Two across on narrow screens, three from sm up.
-              className="mt-12 [--thumb:calc((100%_-_1.25rem)/2)] sm:[--thumb:calc((100%_-_2.5rem)/3)] lg:mt-0 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:pt-10"
-            >
-              <div className="overflow-hidden lg:max-h-56 lg:min-h-22 lg:flex-1">
-                <div
-                  className={`flex gap-5 ease-brand lg:h-full ${
-                    snapping ? '' : 'transition-transform duration-900'
-                  }`}
-                  // Offset by `first`, since the rail starts a set or more to
-                  // the left of position zero.
-                  style={{
-                    transform: `translateX(calc(${first - pos} * (var(--thumb) + 1.25rem)))`,
-                  }}
-                >
-                  {rail.map((slide, k) => (
-                    <button
-                      key={k}
-                      type="button"
-                      // This tile's own position on the rail, not the slide
-                      // index — every visible tile is at or ahead of `pos`, so
-                      // a click never rewinds.
-                      onClick={() => setPos(k + first)}
-                      aria-label={`Show ${slide.place || `slide ${mod(k + first, count) + 1}`}`}
-                      aria-current={k + first === pos ? 'true' : undefined}
-                      className={`relative h-[7.1rem] w-(--thumb) shrink-0 overflow-hidden rounded-[14px] bg-surface-alt transition-opacity duration-500 lg:h-full ${
-                        mod(k + first, count) === index ? '' : 'opacity-70 hover:opacity-100'
-                      }`}
-                    >
-                      {slide.image && (
-                        <img
-                          data-parallax="thumb"
-                          // A rail tile, not a full-bleed slide: `thumb` keeps
-                          // this a ~30KB request instead of the ~115KB the
-                          // blanket 1920px transform would hand it, and `lazy`
-                          // puts it behind the panel image in the fetch queue
-                          // rather than alongside it.
-                          src={sized(slide.image, 'thumb')}
-                          alt=""
-                          loading="lazy"
-                          decoding="async"
-                          // Oversized and centred so the scroll drift always
-                          // has frame left to travel into.
-                          className="absolute inset-x-0 top-[-10%] h-[120%] w-full object-cover"
-                        />
-                      )}
-                      <span
-                        aria-hidden
-                        style={{ boxShadow: 'inset 0 0 14px var(--edge-shade)' }}
-                        className="pointer-events-none absolute inset-0 rounded-[14px]"
-                      />
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Index left, transport right — the dots read as position and
-                  the arrows as controls, so splitting them to opposite ends
-                  keeps the two jobs from being mistaken for one cluster. */}
-              <div className="mt-5 flex items-center justify-between gap-6">
-                <div className="flex items-center gap-2.5">
-                  {slides.map((slide, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => goTo(i)}
-                      aria-label={`Go to ${slide.place || `slide ${i + 1}`}`}
-                      className={`size-1.75 rounded-full transition-colors duration-300 ${
-                        i === index ? 'bg-accent' : 'bg-content/20 hover:bg-content/40'
-                      }`}
-                    />
-                  ))}
-                </div>
-
-                <div className="flex shrink-0 items-center gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => step(-1)}
-                    aria-label="Previous property"
-                    className="flex size-8.5 shrink-0 items-center justify-center rounded-full border border-content/15 text-content transition-colors duration-300 hover:border-accent hover:text-accent"
-                  >
-                    <ArrowRight className="size-3.5 rotate-180" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => step(1)}
-                    aria-label="Next property"
-                    className="flex size-8.5 shrink-0 items-center justify-center rounded-full border border-content/15 text-content transition-colors duration-300 hover:border-accent hover:text-accent"
-                  >
-                    <ArrowRight className="size-3.5" />
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </motion.div>
-
-        {/* ── visual column ───────────────────────────────────────── */}
-        <div
-          ref={panelRef}
-          style={{ '--notch-w': `calc(var(--nav-bay, 65.5rem) - ${panelLeft}px)` }}
-          // lg:rounded-tl-none — once the notch is cut, the panel's own
-          // top-left corner falls inside it. Left rounded, its arc and the
-          // inner shadow tracing it show through as a phantom corner.
-          className="panel-wipe relative h-96 min-w-0 overflow-hidden rounded-(--notch-r) bg-surface-alt [--notch-h:4.25rem] [--notch-r:28px] sm:h-128 lg:h-full lg:rounded-tl-none"
-        >
-          {slides.map((slide, i) => (
-            <img
-              key={i}
-              data-parallax="panel"
-              src={slide.image}
-              alt={i === index ? slide.place : ''}
-              // The first panel image is the LCP element. `fetchPriority` is
-              // what stops the browser treating it as one more image among a
-              // dozen and scheduling it behind the rail — it used to finish
-              // last of the hero's requests despite being the only one at full
-              // size on screen. Every other slide is stacked at opacity-0
-              // behind it, so those are lazy: they are not visible, and racing
-              // the one that is buys nothing.
-              fetchPriority={i === 0 ? 'high' : 'auto'}
-              loading={i === 0 ? 'eager' : 'lazy'}
-              decoding="async"
-              className={`absolute inset-x-0 top-[-10%] h-[120%] w-full object-cover transition-opacity duration-900 ease-out ${
-                i === index ? 'opacity-100' : 'opacity-0'
-              }`}
-            />
-          ))}
-
-          {/* Inner shadow along the panel's own edges. It has to be its own
-              layer: an inset box-shadow on the panel would paint beneath the
-              images, not over them. */}
-          <span
-            aria-hidden
-            style={{ boxShadow: 'inset 0 0 22px var(--edge-shade)' }}
-            className="pointer-events-none absolute inset-0 rounded-(--notch-r) lg:rounded-tl-none"
+      {/* ── the photograph ──────────────────────────────────────────────
+          Oversized and hung above the section so the scroll drift always has
+          frame left to travel into. */}
+      {/* Trimmed to a 2% overhang either side. The image fits this wrapper's
+          height, so every percent the wrapper hangs past the section is a
+          percent of the photograph the fixed frame never shows — and the
+          drift only needs somewhere to go, not a lot of it. */}
+      <div ref={bgRef} aria-hidden={false} className="absolute inset-x-0 -top-[2%] h-[104%]">
+        {/* The image fills the frame's height exactly — no bottom crop.
+            It used to be rendered 16% taller than its frame and pinned to the
+            top, which pushed the building down the frame to open sky for the
+            colour grade to run through. With the grade gone there is nothing
+            left to make room for, and the crop was never free: these are
+            2.17:1 panoramas in a 1.4:1 frame, so `cover` fills the vertical
+            and throws away the sides, and every extra percent of height was
+            another percent off the width of the building. Fitting the height
+            gives the strip centre back its wings. */}
+        {slides.map((slide, i) => (
+          <img
+            key={i}
+            src={slide.image}
+            // Only the slide on screen describes itself. The five behind it are
+            // the same frame at zero opacity, and announcing all six would read
+            // out a list of properties that nobody can see.
+            alt={i === index ? slide.place : ''}
+            // The first slide is the LCP element of the whole site. Without the
+            // priority hint the browser schedules it as one image among six and
+            // the only one actually on screen finishes last.
+            fetchPriority={i === 0 ? 'high' : 'auto'}
+            loading={i === 0 ? 'eager' : 'lazy'}
+            decoding="async"
+            // The slow push is a *transition* on transform, not a keyframe, and
+            // that is the whole trick: a keyframe belongs to the slide it is on,
+            // so pulling it off the outgoing slide snaps that frame back to
+            // scale 1 while it is still half visible. A transition instead lets
+            // the outgoing slide ease back over the same long duration — across
+            // the 1.6s of the crossfade it retreats by a fraction of a percent,
+            // which is nothing, and the seam disappears.
+            style={{
+              transitionProperty: 'opacity, transform',
+              transitionDuration: `${FADE_MS}ms, 9000ms`,
+              transitionTimingFunction: 'cubic-bezier(0.4,0,0.2,1), linear',
+            }}
+            // Centre origin again, now that the frame is not pinned to the
+            // skyline: with the image fitted to the height, growing from the
+            // top would walk the whole picture downward out of frame over the
+            // dwell. About the middle it breathes evenly on all four edges.
+            className={`absolute inset-0 size-full object-cover ${
+              i === index ? 'scale-[1.075] opacity-100' : 'scale-100 opacity-0'
+            } motion-reduce:scale-100 motion-reduce:transition-none`}
           />
-
-          {/* ── the notch ────────────────────────────────────────────
-              A bay of page-white bitten out of the panel's top-left so the
-              header rail reads on white, closed at all three corners: the
-              bay's own convex radius makes the reflex corner concave, and
-              an inverted corner at each end rounds the panel's top and left
-              edges where they resume. Width comes from --nav-bay, which the
-              Navbar measures off the live CTA — CMS-driven link labels make
-              it unknowable up front. */}
-          <div
-            aria-hidden
-            style={notchShadow}
-            className="pointer-events-none absolute inset-0 hidden lg:block"
-          >
-            <span className="absolute left-0 top-0 h-(--notch-h) w-[min(var(--notch-w),100%)] rounded-br-(--notch-r) bg-surface" />
-            {/* Half a pixel of overlap onto the bay — a butt joint against a
-                fractional calc leaves a hairline of image showing through. */}
-            <span
-              style={corner}
-              className="absolute left-[calc(var(--notch-w)-0.5px)] top-0 size-(--notch-r)"
-            />
-            <span
-              style={corner}
-              className="absolute left-0 top-[calc(var(--notch-h)-0.5px)] size-(--notch-r)"
-            />
-          </div>
-
-          {/* current property caption, floated over the lower-right corner */}
-          <div className="absolute bottom-4 left-4 right-4 w-auto rounded-[18px] sm:left-auto sm:w-64 sm:rounded-[22px] bg-surface p-5 shadow-[0_18px_40px_-26px_rgba(0,0,0,0.5)] lg:w-75 lg:p-6">
-            {hero.eyebrow && (
-              <span className="font-body text-[11px] font-bold uppercase tracking-[0.18em] text-accent">
-                {hero.eyebrow}
-              </span>
-            )}
-            <p className="mt-2 font-display text-[1.3rem] font-bold leading-tight text-content">
-              {active.place}
-            </p>
-            <p className="mt-1 font-body text-[13px] text-content/70">{active.kind}</p>
-          </div>
-        </div>
+        ))}
       </div>
+
+      <span aria-hidden className="pointer-events-none absolute inset-0" style={{ background: SHADE }} />
+      <span aria-hidden className="pointer-events-none absolute inset-0" style={{ background: VEIL }} />
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-[38%] bg-base"
+        style={{ maskImage: FADE_MASK, WebkitMaskImage: FADE_MASK }}
+      />
+
+      {/* ── the copy ────────────────────────────────────────────────────
+          Set high in the frame rather than centred in it, which is what leaves
+          the building the lower two thirds it was photographed for.
+
+          112px, a deliberate 27 above the comp's own 139. The comp draws an
+          85px header; ours is ~88 and carries a taller lockup, so measuring
+          the heading from the top of the frame the way the comp does leaves
+          more air under the rail than the comp actually shows. Pulling the
+          block up closes that back to the gap the design reads as.
+
+          The header is a fixed overlay with no ground of its own, so this
+          number is also the clearance — at 112 the headline still clears the
+          rail by around 24px. Below about 100 it starts to touch it. */}
+      <motion.div
+        variants={stagger}
+        initial="hidden"
+        animate="show"
+        className="relative flex h-full flex-col items-center px-gutter pt-[8rem] text-center md:px-gutter-lg lg:pt-[112px]"
+      >
+        {/* Not a motion child. A block-level lift here would carry each word's
+            mask up with the word inside it, leaving nothing for the word to
+            rise out of — the reveal would run and be invisible.
+
+            The measure is set in `em` rather than px so it scales with the type:
+            at every size the headline breaks in the same place the design breaks
+            it, instead of holding one line at 1440 and three at 1920. */}
+        {/* `w-full` with the cap on top of it, not the cap alone: a bare
+            max-width taller than the column is not a cap at all — the heading
+            lays out at its own measure and an `items-center` parent slides the
+            overflow off one edge instead of wrapping it. On a phone that put
+            the first line half off the right of the screen. */}
+        <h1
+          className="w-full max-w-[12.2em] text-balance font-display font-bold uppercase leading-[1.03] tracking-tight text-bone"
+          // Width alone. The `dvh` term this used to carry existed because the
+          // hero was one screen tall and a short landscape window would push
+          // the CTA off the fold; at a fixed 1024px there is no fold to fall
+          // off, so the term would only shrink the type on short windows for
+          // nothing. 4.9vw lands on the comp's 70px at 1440.
+          style={{ fontSize: 'clamp(2.3rem, 4.9vw, 5.25rem)' }}
+        >
+          <MaskedHeading text={hero.heading} />
+          {/* The state mark, set as the headline's last "word".
+
+              Same two-span structure the words use — mask wrapper outside,
+              `word-rise` inside — so it rises out of the same edge on the same
+              curve, and picks up the reduced-motion opt-out that already
+              disables `.word-rise` without needing its own.
+
+              Its delay comes from `wordCount` rather than a number: the heading
+              is CMS copy, and any fixed beat here would be wrong the moment
+              someone edited it. One stagger step past the last word, so it
+              lands as the phrase finishes rather than alongside it.
+
+              Sized in `em`, so it tracks a headline that clamps between 2.3rem
+              and 5.25rem. Slightly under the cap height — matching it exactly
+              makes the flag read as a block sitting proud of the type.
+
+              MaskedHeading emits a trailing space after every word, so the gap
+              before this is already there. */}
+          <span className="inline-block overflow-hidden pb-[0.08em] align-bottom -mb-[0.08em]">
+            <span
+              className="word-rise inline-block"
+              style={{ animationDelay: `${wordCount(hero.heading) * WORD_STAGGER}s` }}
+            >
+              <TexasFlag className="block h-[0.62em] w-[0.93em] rounded-[0.05em] ring-1 ring-inset ring-black/10" />
+            </span>
+          </span>
+        </h1>
+
+        <motion.p
+          variants={rise}
+          className="mt-4 w-full max-w-[30rem] text-balance font-body leading-relaxed text-bone/85 text-[clamp(0.9375rem,1.05vw,1.0625rem)]"
+        >
+          {hero.paragraph}
+        </motion.p>
+
+        <motion.div variants={rise} className="mt-7">
+          <PrimePill variant="invert" href={hero.ctaHref} onClick={onCta}>
+            {hero.ctaLabel}
+          </PrimePill>
+        </motion.div>
+      </motion.div>
     </section>
   )
 }

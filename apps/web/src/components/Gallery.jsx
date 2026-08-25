@@ -1,197 +1,119 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSection, useProperties } from '../context/ContentContext'
 import { renderEmphasis } from '../lib/emphasis'
 import { sized } from '../lib/images'
 
-function Chevron({ dir }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="size-5"
-    >
-      <path d={dir === 'left' ? 'm15 18-6-6 6-6' : 'm9 18 6-6-6-6'} />
-    </svg>
-  )
-}
+// Four frames in the mosaic — one under the copy, two stacked in the middle,
+// one down the right. A fifth has nowhere to go without breaking the column
+// rhythm the comp is built on.
+const TILES = 4
 
-// Split layout: a fixed information column on the left, and a clipped carousel
-// on the right whose next card deliberately peeks past the section edge.
-//
-// The carousel is a scroll-snap container rather than a transform-driven track.
-// The design's card is a fixed 580px that has to become fluid below desktop,
-// and a transform needs that width in JS — measured, and re-measured on every
-// resize. Snapping lets CSS own the width and keeps the arrows to one scrollTo.
+/**
+ * The portfolio at a glance: three columns of real property photographs with
+ * the section's own copy at the head of the first one.
+ *
+ * Built as three flex columns inside a fixed-height grid, not as a grid of
+ * placed cells. The comp's whole trick is that the three columns end level with
+ * each other while holding different things — copy plus one tall frame, two
+ * half-height frames, one frame plus a button. Row placement cannot express
+ * that: it needs every cell to agree on a row height none of them share. Given
+ * a height, `flex-1` divides whatever is left inside each column and the three
+ * feet land on the same line by construction.
+ */
 export default function Gallery() {
-  const { eyebrow, heading, paragraph, features } = useSection('gallery')
+  const { heading, paragraph, ctaLabel } = useSection('gallery')
   const properties = useProperties()
   const navigate = useNavigate()
-  const trackRef = useRef(null)
-  const [index, setIndex] = useState(0)
 
-  // Derive the active card from scroll position rather than tracking it on
-  // click alone — a swipe or a trackpad flick moves the track too, and the dots
-  // have to follow those as well.
-  const syncIndex = useCallback(() => {
-    const track = trackRef.current
-    if (!track) return
-    const cards = [...track.children]
-    const nearest = cards.reduce(
-      (best, card, i) =>
-        Math.abs(card.offsetLeft - track.scrollLeft) < best.distance
-          ? { i, distance: Math.abs(card.offsetLeft - track.scrollLeft) }
-          : best,
-      { i: 0, distance: Infinity }
-    )
-    setIndex(nearest.i)
-  }, [])
+  const tiles = properties.filter((p) => p.image).slice(0, TILES)
+  if (tiles.length === 0) return null
 
-  useEffect(() => {
-    const track = trackRef.current
-    if (!track) return
-    track.addEventListener('scroll', syncIndex, { passive: true })
-    return () => track.removeEventListener('scroll', syncIndex)
-  }, [syncIndex])
-
-  const goTo = (i) => {
-    const track = trackRef.current
-    const card = track?.children[i]
-    if (card) track.scrollTo({ left: card.offsetLeft, behavior: 'smooth' })
+  const go = (to) => (e) => {
+    e.preventDefault()
+    navigate(to)
   }
 
-  if (properties.length === 0) return null
-
-  const atStart = index === 0
-  const atEnd = index >= properties.length - 1
+  // One frame. `flex-1` inside its column, with a floor for the phone layout
+  // where the columns have unstacked and there is no shared height left to
+  // divide — `flex-1` of nothing is nothing, and the photographs would vanish.
+  const Tile = ({ p }) =>
+    p ? (
+      <a
+        href={`/properties/${p.slug}`}
+        onClick={go(`/properties/${p.slug}`)}
+        className="group relative block min-h-56 flex-1 overflow-hidden rounded-panel bg-surface-alt outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent md:min-h-0"
+      >
+        <img
+          src={sized(p.image, 'card')}
+          alt={p.name}
+          loading="lazy"
+          decoding="async"
+          className="absolute inset-0 size-full object-cover transition-transform duration-700 ease-brand group-hover:scale-[1.06]"
+        />
+        {/* The name arrives on hover or focus only. At rest the mosaic is
+            photographs; a permanent caption on all four turns it back into a
+            list of cards. */}
+        <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-void/85 to-void/0 p-5 pt-12 font-display text-[15px] font-bold text-bone opacity-0 transition-opacity duration-400 ease-brand group-hover:opacity-100 group-focus-visible:opacity-100">
+          {p.name}
+        </span>
+      </a>
+    ) : null
 
   return (
     <section
       id="gallery"
       data-band="light"
-      // Only the left edge is padded on desktop: the carousel has to run past
-      // the right edge for the next card to peek, which a symmetric pad
-      // would cut off.
-      className="overflow-hidden bg-surface py-16 pl-6 text-content md:py-10 md:pl-[100px]"
+      className="bg-base px-gutter py-20 text-content md:px-gutter-lg md:py-28"
     >
-      <div className="flex flex-col gap-10 pr-6 md:flex-row md:items-center md:gap-20 md:pr-0">
-        {/* Left — information column */}
-        <div className="shrink-0 md:w-[400px] md:py-16">
-          {eyebrow && <p className="eyebrow text-accent">{eyebrow}</p>}
-
-          <h2 className="mt-3 font-display text-[2.5rem] font-bold leading-[1.15] tracking-[-0.02em] text-content">
-            {renderEmphasis(heading)}
-          </h2>
-
-          {paragraph && (
-            <p className="mt-6 font-body text-[16px] leading-[1.55] text-content/70">{paragraph}</p>
-          )}
-
-          {features?.length > 0 && (
-            <ul className="mt-8">
-              {features.map((f, i) => (
-                <li
-                  key={f.title}
-                  className="flex items-center gap-3 border-t border-line py-4 last:border-b"
-                >
-                  <span className="numeral text-[15px] font-bold text-content">
-                    {String(i + 1).padStart(2, '0')}
-                  </span>
-                  <span className="font-body text-[16px] text-content/80">{f.title}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        {/* Right — clipped carousel */}
-        <div className="min-w-0 flex-1">
-          <div
-            ref={trackRef}
-            // relative is load-bearing, not cosmetic: the arrows and dots
-            // compare each card's offsetLeft against the track's scrollLeft,
-            // and offsetLeft is measured from the nearest *positioned*
-            // ancestor. Without this the cards resolve against a container
-            // outside the scroller and every jump overshoots by the left
-            // column's width.
-            className="relative flex snap-x snap-mandatory gap-6 overflow-x-auto overscroll-x-contain"
-          >
-            {properties.map((p) => (
-              <figure
-                key={p.slug}
-                role="link"
-                tabIndex={0}
-                onClick={() => navigate(`/properties/${p.slug}`)}
-                onKeyDown={(e) => e.key === 'Enter' && navigate(`/properties/${p.slug}`)}
-                className="group w-[85vw] shrink-0 cursor-pointer snap-start sm:w-[420px] md:w-[580px]"
-              >
-                <div className="overflow-hidden rounded-2xl">
-                  <img
-                    src={sized(p.image, 'card')}
-                    alt={p.name}
-                    // The rail scrolls horizontally, so most of these start off
-                    // screen — `lazy` is doing real work here rather than being
-                    // boilerplate.
-                    loading="lazy"
-                    decoding="async"
-                    className="h-[260px] w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04] md:h-[400px]"
-                  />
-                </div>
-                <figcaption className="mt-4">
-                  <p className="font-display text-[20px] font-bold leading-tight tracking-[-0.01em] text-content">
-                    {p.name}
-                  </p>
-                  {p.address && (
-                    <p className="mt-1.5 font-body text-[15px] text-content/70">{p.address}</p>
-                  )}
-                </figcaption>
-              </figure>
-            ))}
+      {/* The height is the composition. 43vw is the comp's own proportion —
+          590px of content across a 1360px window — clamped so it neither
+          collapses on a small laptop nor grows into a whole screen of
+          photographs on a wide monitor. Below `md` it is dropped entirely and
+          the columns stack at their natural heights. */}
+      <div className="mx-auto grid max-w-[1560px] gap-4 md:h-[clamp(30rem,43vw,44rem)] md:grid-cols-3">
+        {/* ── column one — the copy, then one tall frame ─────────── */}
+        <div className="flex flex-col gap-4">
+          <div className="md:pr-4">
+            <h2
+              className="text-balance font-display font-bold leading-[1.1] tracking-[-0.02em] text-content"
+              // Smaller than the other section headings on the page, because
+              // this one lives in a third of the measure rather than across it.
+              // At the old 3.1vw "Explore Our Properties" took three lines in
+              // its column and pushed the frame below it out of register with
+              // the other two.
+              style={{ fontSize: 'clamp(1.6rem, 2.5vw, 2.4rem)' }}
+            >
+              {renderEmphasis(heading, 'text-ember')}
+            </h2>
+            {paragraph && (
+              <p className="mt-4 max-w-[46ch] font-body text-[14px] leading-[1.7] text-content/55">
+                {paragraph}
+              </p>
+            )}
           </div>
-        </div>
-      </div>
-
-      {/* Controls — dots track the left column, arrows sit under the carousel */}
-      <div className="mt-8 flex items-center justify-between gap-6 pr-6 md:mt-6 md:pr-[100px]">
-        <div className="flex items-center gap-2">
-          {properties.map((p, i) => (
-            <button
-              key={p.slug}
-              type="button"
-              onClick={() => goTo(i)}
-              aria-label={`Show ${p.name}`}
-              aria-current={i === index}
-              className={`rounded-full transition-all duration-300 ${
-                i === index ? 'size-2.5 bg-accent' : 'size-2 bg-content/20 hover:bg-content/40'
-              }`}
-            />
-          ))}
+          <Tile p={tiles[0]} />
         </div>
 
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={() => goTo(index - 1)}
-            disabled={atStart}
-            aria-label="Previous"
-            className="flex size-13 items-center justify-center rounded-full border border-line text-content transition-colors duration-300 enabled:hover:border-content/40 disabled:opacity-35"
+        {/* ── column two — two frames, evenly split ──────────────── */}
+        <div className="flex flex-col gap-4">
+          <Tile p={tiles[1]} />
+          <Tile p={tiles[2]} />
+        </div>
+
+        {/* ── column three — one frame, and the way out ──────────── */}
+        <div className="flex flex-col gap-4">
+          <Tile p={tiles[3]} />
+          {/* Full column width and a real slab of height, as drawn. This is the
+              section's only action and the last thing in its reading order, so
+              it is sized to be what you land on rather than a link tucked under
+              a corner. `shrink-0` keeps the frame above from squeezing it. */}
+          <a
+            href="/properties"
+            onClick={go('/properties')}
+            className="flex min-h-16 shrink-0 items-center justify-center rounded-full border border-content/25 px-6 text-center font-body text-[15px] font-medium uppercase tracking-[0.08em] text-content outline-none transition-[background-color,border-color,color] duration-300 ease-brand hover:border-accent hover:bg-accent/10 hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent md:min-h-20"
           >
-            <Chevron dir="left" />
-          </button>
-          <button
-            type="button"
-            onClick={() => goTo(index + 1)}
-            disabled={atEnd}
-            aria-label="Next"
-            className="primary-button-flood flex size-13 items-center justify-center rounded-full bg-accent text-white transition-colors duration-300 dark:text-void enabled:hover:bg-prime-deep disabled:opacity-35"
-          >
-            <Chevron dir="right" />
-          </button>
+            {ctaLabel || 'See more projects'}
+          </a>
         </div>
       </div>
     </section>

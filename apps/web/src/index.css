@@ -728,3 +728,84 @@ html.property-route-transition::view-transition-new(*) {
   -webkit-box-shadow: 0 0 0 1000px #23333b inset;
   transition: background-color 9999s ease-out 0s;
 }
+
+/* ── Property teaser cards ──────────────────────────────────────────
+   On desktop the photograph runs 62% of the card and dissolves into the
+   card's own ground instead of stopping at a hard edge, so the detail panel
+   reads as standing on the same surface rather than beside a cropped picture.
+
+   The ramp runs from 55% of the photograph to 98% — around 250px on a
+   1160px card — and it is shaped rather than straight. Five intermediate
+   stops hold it near full opacity through the first third, then let it fall
+   away increasingly fast.
+
+   The shaping is what makes it read as smooth, more than the length does. A
+   plain two-stop ramp changes slope instantly at both ends, and the eye
+   catches those two corners as edges however far apart they are: the fade
+   looked like a band with a line at each side of it. Easing the curve removes
+   the corners, so the photograph stops without anywhere to point at.
+
+   It still has to finish before the panel does anything. Fully gone by 98% of
+   the photograph is about 61% of the card, and the panel starts at 62% with
+   its own padding after that. That clearance is not decorative: the last
+   stretch of a fade still carries a few percent of image, and on these frames
+   that image is bright sky — when the panel overlapped it, the property name
+   sat on a lilac smear.
+
+   The mask lives here rather than inline because it must not exist below
+   `lg`. There the image is a plain block stacked above the copy at full
+   width, and a right-edge fade on that just eats the right of the photo —
+   it has nothing to dissolve into.
+
+   The overlay layout waits for `lg` rather than `md` for the same reason the
+   photograph is 62% and not 70%: at 820px the card is 620 wide, so a 38%
+   panel is 236px, and the property names break to three lines standing over
+   four-line addresses. Stacked is the better answer until there is room for
+   the split.
+
+   Two directions because the cards alternate sides down the page. The
+   `-webkit-` pair is still worth carrying: unprefixed `mask-image` only
+   reached Safari in 15.4, and this is the difference between a fade and a
+   photograph that vanishes entirely. */
+@media (min-width: 64rem) {
+  .card-photo-fade {
+    -webkit-mask-image: linear-gradient(
+      90deg,
+      #000 55%,
+      rgba(0, 0, 0, 0.94) 66%,
+      rgba(0, 0, 0, 0.78) 76%,
+      rgba(0, 0, 0, 0.52) 84%,
+      rgba(0, 0, 0, 0.24) 91%,
+      transparent 98%
+    );
+    mask-image: linear-gradient(
+      90deg,
+      #000 55%,
+      rgba(0, 0, 0, 0.94) 66%,
+      rgba(0, 0, 0, 0.78) 76%,
+      rgba(0, 0, 0, 0.52) 84%,
+      rgba(0, 0, 0, 0.24) 91%,
+      transparent 98%
+    );
+  }
+  .card-photo-fade-flip {
+    -webkit-mask-image: linear-gradient(
+      270deg,
+      #000 55%,
+      rgba(0, 0, 0, 0.94) 66%,
+      rgba(0, 0, 0, 0.78) 76%,
+      rgba(0, 0, 0, 0.52) 84%,
+      rgba(0, 0, 0, 0.24) 91%,
+      transparent 98%
+    );
+    mask-image: linear-gradient(
+      270deg,
+      #000 55%,
+      rgba(0, 0, 0, 0.94) 66%,
+      rgba(0, 0, 0, 0.78) 76%,
+      rgba(0, 0, 0, 0.52) 84%,
+      rgba(0, 0, 0, 0.24) 91%,
+      transparent 98%
+    );
+  }
+}

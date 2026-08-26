@@ -118,6 +118,36 @@ const FRAMES = {
 // `rounded-full` clips — so the corners never leak the gradient underneath.
 const RING_STROKE = 'radial-gradient(closest-side, transparent calc(100% - 1.5px), #000 calc(100% - 1.5px))'
 
+/**
+ * The tinted bands filling the gap between consecutive rings — blue on the
+ * inside pair, white on the outside pair.
+ *
+ * Derived from RINGS rather than written out, so moving a radius moves the band
+ * with it instead of leaving a wash floating between the wrong two arcs.
+ */
+const BANDS = RINGS.slice(1).map((ring, i) => ({
+  inner: RINGS[i].radius,
+  outer: ring.radius,
+  // Low alphas on purpose: these sit under the arcs and the discs and are meant
+  // to read as depth in the dark ground, not as two coloured rings competing
+  // with the marks. White needs the smaller share — on this ground it lifts far
+  // faster than the blue does.
+  tint: i === 0 ? 'rgba(0, 115, 164, 0.26)' : 'rgba(255, 255, 255, 0.075)',
+}))
+
+/**
+ * Carves a filled disc down to the annulus between two radii.
+ *
+ * `closest-side` puts 100% exactly on the outer ring — where the arc stroke
+ * already sits — and the inner stop is that ring's share of it. The short ramp
+ * past the inner edge keeps the band from ending on a hard line against the
+ * arc it starts from.
+ */
+const bandMask = (inner, outer) => {
+  const start = (inner / outer) * 100
+  return `radial-gradient(closest-side, transparent ${start}%, #000 ${Math.min(start + 9, 99)}%, #000 100%)`
+}
+
 // Why a conic gradient instead of a plain `border`: a uniform ring looks
 // identical at every angle, so rotating one animates nothing.
 const RING_SWEEP =
@@ -306,6 +336,34 @@ export default function Partners() {
           // That band keeps the flat grid instead.
           className="relative mt-12 aspect-[10/19] w-full md:hidden lg:mt-14 lg:block lg:aspect-[100/44]"
         >
+          {/* Behind the arcs and the discs, because DOM order is what stacks
+              them here. Same two-element trick the arcs use: the outer element
+              carries the horizon fade, the inner one the shape. Nesting the two
+              masks composes them without `mask-composite`, which is the one
+              part of this the older Safaris do not agree on. */}
+          {unit > 0 &&
+            BANDS.map((band) => (
+              <span
+                key={band.outer}
+                className="absolute left-0 top-0 aspect-square"
+                style={{
+                  width: (band.outer / 100) * unit * 2,
+                  transform: `translate(${origin.x - (band.outer / 100) * unit}px, ${origin.y - (band.outer / 100) * unit}px)`,
+                  maskImage: frame.fade,
+                  WebkitMaskImage: frame.fade,
+                }}
+              >
+                <span
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    backgroundColor: band.tint,
+                    maskImage: bandMask(band.inner, band.outer),
+                    WebkitMaskImage: bandMask(band.inner, band.outer),
+                  }}
+                />
+              </span>
+            ))}
+
           {RINGS.map((ring) => (
             // Two elements, because they need two different transforms. The
             // outer one is centred on the origin and scales in on entry; the

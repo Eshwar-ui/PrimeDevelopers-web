@@ -12,6 +12,12 @@ dist
 dist-ssr
 *.local
 
+# This is a pnpm workspace — pnpm-lock.yaml is the only lockfile that belongs
+# in the repo. An npm/yarn one only shows up from running the wrong install
+# command and would fight pnpm's resolution if committed.
+package-lock.json
+yarn.lock
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

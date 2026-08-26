@@ -16,13 +16,21 @@ const PATHS = {
   mail: 'M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z',
   email: 'M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z',
   link: 'M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z',
+  // Not a brand mark — the one entry here that stands for our own writing
+  // rather than someone else's platform. Drawn to the same 24-unit box and
+  // solid fill as the rest so a row of badges reads as one set.
+  article:
+    'M4 3h11a2 2 0 0 1 2 2v14a2 2 0 0 0 2 2H6a2 2 0 0 1-2-2V3zm2.75 3.5v2h6.5v-2h-6.5zm0 4v1.5h6.5v-1.5h-6.5zm0 3.5v1.5h4.5V14h-4.5zM19 9h1.5a1.5 1.5 0 0 1 1.5 1.5V19a1 1 0 0 1-2 0V9z',
 }
 
-export default function SocialIcon({ platform, className = '' }) {
+// `style` is passed through so a caller can set the glyph's colour to a value
+// that is not a palette token — the per-platform brand tints on the updates
+// section are six one-off colours that have no business in the theme.
+export default function SocialIcon({ platform, className = '', style }) {
   const key = (platform ?? '').trim().toLowerCase()
   const d = PATHS[key] ?? PATHS.link
   return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} style={style} aria-hidden>
       <path d={d} />
     </svg>
   )

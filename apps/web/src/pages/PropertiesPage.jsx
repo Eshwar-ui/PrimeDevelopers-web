@@ -1,15 +1,16 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence } from 'motion/react'
+import { flushSync } from 'react-dom'
+import { motion, AnimatePresence, useReducedMotion, useInView } from 'motion/react'
 import { useSection, useProperties, useCategories } from '../context/ContentContext'
 import { renderEmphasis } from '../lib/emphasis'
 import { sized } from '../lib/images'
 import { lenis } from '../hooks/useSmoothScroll'
 import MaskedHeading from '../components/MaskedHeading'
-import { rise, stagger } from '../lib/motion'
+import { rise, stagger, inViewOnce } from '../lib/motion'
 import PrimePill from '../components/PrimePill'
 import PropertyStrip from '../components/PropertyStrip'
-import Marquee from '../components/Marquee'
+// import Marquee from '../components/Marquee'
 import Services from '../components/Services'
 
 // The band unfurls a beat behind the copy. Starting them together reads as two
@@ -29,21 +30,81 @@ const specsFor = (p) => {
   return [`${p.buildings} buildings`, `${p.sold} sold`, `${p.available} available`]
 }
 
+/**
+ * A block the reader scrolls to, revealed in the site's shared vocabulary —
+ * `stagger` over `rise`, held until the block is properly in frame.
+ *
+ * Driven by `useInView` into an `animate` variant label rather than by the
+ * `whileInView` prop, and that is not a stylistic preference. `whileInView`
+ * animates the element it sits on perfectly well — the property cards below use
+ * it — but it does **not** put the subtree into a variant state, so `variants`
+ * on the children resolves against nothing and framer never writes a style for
+ * them at all. The symptom is silent: the markup looks right, the parent gets
+ * its props, and the children simply render at their resting position, so the
+ * stagger appears to work while doing nothing. Resolving the label into
+ * `animate` is what the hero above already does, and it propagates.
+ *
+ * The reduced-motion gate is explicit because framer honours `variants` exactly
+ * as authored; with the props dropped the children have no parent state to
+ * follow and no `animate` of their own, so they render where they belong
+ * (DESIGN.md §5).
+ */
+function RevealGroup({ className, children }) {
+  const ref = useRef(null)
+  const reduced = useReducedMotion()
+  const inView = useInView(ref, inViewOnce)
+
+  return (
+    <motion.div
+      ref={ref}
+      className={className}
+      variants={reduced ? undefined : stagger}
+      initial={reduced ? undefined : 'hidden'}
+      animate={reduced ? undefined : inView ? 'show' : 'hidden'}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
 function Card({ p, onOpen }) {
+  const reduced = useReducedMotion()
+  const reveal = reduced
+    ? {}
+    : { initial: { opacity: 0, y: 24 }, whileInView: { opacity: 1, y: 0 }, viewport: inViewOnce }
+
   return (
     <motion.article
       layout
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
+      {...reveal}
+      // `whileInView`, not `animate`. On mount every card in the list animated
+      // at once, so a card six rows down finished its entrance while it was
+      // still two screens below the fold and was simply *there* when the reader
+      // arrived. Tied to the viewport, each row now meets the reader.
+      //
+      // `exit` stays on the presence tree: filtering removes cards, and that is
+      // a different event from scrolling to one.
       exit={{ opacity: 0, scale: 0.96 }}
-      transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
       onClick={onOpen}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onOpen()
+        }
+      }}
+      role="link"
+      tabIndex={0}
+      aria-label={`Open ${p.name}`}
       className="group flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-[var(--color-line)] bg-surface transition-shadow duration-300 hover:shadow-[0_22px_48px_-30px_rgba(0,0,0,0.45)]"
     >
-      <div className="relative h-60 overflow-hidden bg-surface-alt">
+      <div
+        className="relative h-60 overflow-hidden bg-surface-alt"
+      >
         {p.image && (
           <img
             src={sized(p.image, 'card')}
+            style={{ viewTransitionName: `property-image-${p.slug}` }}
             alt={p.name}
             loading="lazy"
             decoding="async"
@@ -56,7 +117,10 @@ function Card({ p, onOpen }) {
       </div>
 
       <div className="flex flex-1 flex-col p-6">
-        <h3 className="font-display text-[1.55rem] font-bold leading-tight tracking-[-0.01em] text-content">
+        <h3
+          style={{ viewTransitionName: `property-title-${p.slug}` }}
+          className="font-display text-[1.55rem] font-bold leading-tight tracking-[-0.01em] text-content"
+        >
           {p.name}
         </h3>
         <p className="mt-2 font-body text-[15px] text-accent">{p.address}</p>
@@ -80,7 +144,48 @@ export default function PropertiesPage() {
   const [filter, setFilter] = useState('All')
   const navigate = useNavigate()
   const list = filter === 'All' ? properties : properties.filter((pr) => pr.category === filter)
+  const openProperty = async (property) => {
+    const path = `/properties/${property.slug}`
+    const root = document.documentElement
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
+    // The route is lazy and AnimatePresence holds the outgoing listing for its
+    // exit. Warm the chunk first, then keep the View Transition update pending
+    // until the matching hero is truly mounted; otherwise Chrome snapshots the
+    // outgoing page twice and there is no destination element to morph into.
+    await import('./PropertyDetailPage')
+
+    if (!document.startViewTransition || reduced) {
+      navigate(path)
+      return
+    }
+
+    root.classList.add('property-route-transition')
+    flushSync(() => {
+      window.dispatchEvent(new CustomEvent('prime:property-transition', { detail: true }))
+    })
+    const transition = document.startViewTransition(async () => {
+      flushSync(() => navigate(path))
+
+      await new Promise((resolve) => {
+        const deadline = performance.now() + 1600
+        const waitForHero = () => {
+          const hero = document.querySelector(`[data-property-hero="${property.slug}"]`)
+          if (hero || performance.now() >= deadline) {
+            resolve()
+            return
+          }
+          setTimeout(waitForHero, 16)
+        }
+        waitForHero()
+      })
+    })
+
+    transition.finished.finally(() => {
+      root.classList.remove('property-route-transition')
+      window.dispatchEvent(new CustomEvent('prime:property-transition', { detail: false }))
+    })
+  }
   // The band defaults to the listings themselves rather than a second set of
   // uploads: it is the properties carousel, so the properties are the obvious
   // content, and it means the strip is populated the moment the page exists.
@@ -178,59 +283,81 @@ export default function PropertiesPage() {
 
       {/* ── The curated collection ───────────────────────────── */}
       <section id="collection" data-band="light" className="bg-surface px-6 py-20 md:px-12 md:py-28">
-        <div className="grid gap-8 md:grid-cols-[1.1fr_1fr] md:items-end">
+        {/* The section-level reveal in `SectionRevealController` un-blurs this
+            whole band the moment its top edge enters view — and this band is
+            over 1700px tall, so on its own it means the grid at the bottom
+            finished animating about 1500px before anyone scrolled to it. The
+            section entrance introduces the band; these interior reveals are
+            what actually meet the reader on the way down. */}
+        <RevealGroup className="grid gap-8 md:grid-cols-[1.1fr_1fr] md:items-end">
           <div>
+            {/* inline-block because a transform on an inline box is ignored
+                outright — the lift would silently do nothing here. */}
             {p.curatedEyebrow && (
-              <span className="font-body text-[14px] uppercase tracking-[0.14em] text-accent">
+              <motion.span
+                variants={rise}
+                className="inline-block font-body text-[14px] uppercase tracking-[0.14em] text-accent"
+              >
                 {p.curatedEyebrow}
-              </span>
+              </motion.span>
             )}
-            <h2 className="mt-4 font-display text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] text-content md:text-[3rem]">
+            {/* Safe as a motion child, unlike the hero above: this heading is
+                `renderEmphasis`, not `MaskedHeading`, so there are no per-word
+                masks for a block-level lift to drag along with their words. */}
+            <motion.h2
+              variants={rise}
+              className="mt-4 font-display text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] text-content md:text-[3rem]"
+            >
               {renderEmphasis(p.curatedHeading)}
-            </h2>
+            </motion.h2>
           </div>
           {p.curatedParagraph && (
-            <p className="font-body text-[16px] leading-[1.7] text-content/70">
+            <motion.p variants={rise} className="font-body text-[16px] leading-[1.7] text-content/70">
               {p.curatedParagraph}
-            </p>
+            </motion.p>
           )}
-        </div>
+        </RevealGroup>
 
         {/* Not in the Figma, which draws the grid unfiltered — kept because the
             page already shipped with it and dropping it would quietly remove a
             way to navigate the list. Restyled for the light ground. */}
         {categories.length > 2 && (
-          <div className="mt-12 flex flex-wrap gap-2.5">
+          <RevealGroup className="mt-12 flex flex-wrap gap-2.5">
             {categories.map((c) => {
               const active = c === filter
               return (
-                <button
+                // `variants` only — no `animate`. Clicking a pill re-renders the
+                // row, and an explicit animate prop here would re-run the
+                // entrance on every filter change; driven by the parent's
+                // variant state it settles at `show` and stays there.
+                <motion.button
                   key={c}
+                  variants={rise}
                   type="button"
                   onClick={() => setFilter(c)}
-                  className={`rounded-full border px-5 py-2 font-body text-[13px] font-medium uppercase tracking-[0.1em] transition-colors duration-300 ${
+                  className={`min-h-11 rounded-full border px-5 py-2 font-body text-[13px] font-medium uppercase tracking-[0.1em] transition-colors duration-300 ${
                     active
                       ? 'border-accent bg-accent text-white dark:text-void'
                       : 'border-[var(--color-line)] text-content/70 hover:border-content/35 hover:text-content'
                   }`}
                 >
                   {c}
-                </button>
+                </motion.button>
               )
             })}
-          </div>
+          </RevealGroup>
         )}
 
         <motion.div layout className="mt-12 grid grid-cols-1 gap-7 md:grid-cols-2 lg:grid-cols-3">
           <AnimatePresence mode="popLayout">
             {list.map((pr) => (
-              <Card key={pr.slug} p={pr} onOpen={() => navigate(`/properties/${pr.slug}`)} />
+              <Card key={pr.slug} p={pr} onOpen={() => openProperty(pr)} />
             ))}
           </AnimatePresence>
         </motion.div>
       </section>
 
-      <Marquee />
+      {/* <Marquee /> */}
       <Services />
     </div>
   )

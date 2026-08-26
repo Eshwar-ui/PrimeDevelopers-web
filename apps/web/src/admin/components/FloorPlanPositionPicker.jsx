@@ -14,7 +14,7 @@ export default function FloorPlanPositionPicker({ image, units, placingIndex, on
 
   if (!image) {
     return (
-      <div className="flex h-32 items-center justify-center rounded-lg border border-dashed border-white/15 text-center text-xs text-bone/40">
+      <div className="flex h-32 items-center justify-center rounded-lg border border-dashed border-white/15 text-center text-xs text-bone-3">
         Upload a floor plan image above to place units on it.
       </div>
     )

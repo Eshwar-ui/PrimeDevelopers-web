@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { motion, AnimatePresence } from 'motion/react'
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react'
+import gsap from 'gsap'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { lenis } from '../hooks/useSmoothScroll'
 import { useSection } from '../context/ContentContext'
 import { useTheme } from '../context/ThemeContext'
 import ArrowRight from './ArrowRight'
-import ThemeToggle from './ThemeToggle'
+import { WhatsappLogo } from '@phosphor-icons/react'
 import logoOnDark from '../assets/prime-logo.svg'
 import logoOnLight from '../assets/prime-logo-dark.svg'
 
@@ -13,31 +14,59 @@ import logoOnLight from '../assets/prime-logo-dark.svg'
 // structural, tied to actual DOM ids on the homepage, not admin-editable.
 const sections = ['about', 'properties']
 
-// Fraction of its bounds the rail occupies at rest, before scrolling widens it
-// to the full measure. Also fixes where the hero's notch ends, so the two stay
-// in step by construction rather than by measurement.
-const COLLAPSED = 0.7
+// The rail used to sit short on the homepage and widen as you scrolled, so it
+// fitted inside the bay the old hero cut out of its photograph for it. That
+// hero is gone — the new one is a full-bleed frame with nothing cut out of it —
+// and with it the `COLLAPSED` fraction and the `--nav-bay` measurement that
+// told the hero where to stop cutting. The header now runs the full measure on
+// every route, which is what the design draws.
 
 export default function Navbar() {
   const { links } = useSection('navbar')
+  const contact = useSection('contact_page')
   const { isDark } = useTheme()
   const [active, setActive] = useState(null)
   const [overLight, setOverLight] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [whatsappOpen, setWhatsappOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const inBand = useRef(new Set())
-  const boundsRef = useRef(null)
-  const railRef = useRef(null)
   const navigate = useNavigate()
   const { pathname } = useLocation()
+  const prefersReducedMotion = useReducedMotion()
 
-  // Only the homepage hero cuts a bay for the rail to sit in; everywhere else
-  // the header runs the full measure.
-  const isHome = pathname === '/'
+  useEffect(() => {
+    if (!menuOpen) return undefined
+    const previousOverflow = document.body.style.overflow
+    const onKeyDown = (event) => event.key === 'Escape' && setMenuOpen(false)
+    document.body.style.overflow = 'hidden'
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [menuOpen])
+
+  useEffect(() => {
+    if (!whatsappOpen) return undefined
+    const onKeyDown = (event) => event.key === 'Escape' && setWhatsappOpen(false)
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [whatsappOpen])
 
   // The lockup doubles as the Home link, so the rail only needs an explicit
   // Home entry when the admin-managed list doesn't already carry one.
-  const navLinks = links.some((l) => l.to === '/') ? links : [{ label: 'Home', to: '/' }, ...links]
+  const linksWithHome = links.some((l) => l.to === '/') ? links : [{ label: 'Home', to: '/' }, ...links]
+  const linksWithAcademy = linksWithHome.some((l) => l.to === '/learn')
+    ? linksWithHome
+    : [...linksWithHome, { label: 'Learn', to: '/learn' }]
+  const navLinks = linksWithAcademy.filter((link) => link.to !== '/contact')
+  const phoneHref = contact.phone ? `tel:${contact.phone.replace(/[^d+]/g, '')}` : null
+  const whatsapp = contact.socials?.find((item) => item.label?.trim().toLowerCase() === 'whatsapp')
+  const whatsappChatHref = whatsapp?.href && whatsapp.href !== '#' ? whatsapp.href : null
+  const whatsappJoinHref = whatsappChatHref
+    ? `${whatsappChatHref}${whatsappChatHref.includes('?') ? '&' : '?'}text=${encodeURIComponent("Hi, I'd like to join the Prime Developer WhatsApp group.")}`
+    : null
 
   const handleNav = (e, link) => {
     e.preventDefault()
@@ -71,6 +100,24 @@ export default function Navbar() {
   const isActive = (link) =>
     link.to ? pathname === link.to : pathname === '/' && active === link.section
 
+  const animateNavLabel = (event, entering) => {
+    const label = event.currentTarget.querySelector('[data-nav-label]')
+    if (!label) return
+
+    gsap.killTweensOf(label)
+    if (prefersReducedMotion) {
+      gsap.set(label, { clearProps: 'transform' })
+      return
+    }
+
+    gsap.to(label, {
+      y: entering ? -2 : 0,
+      duration: entering ? 0.32 : 0.5,
+      ease: 'power4.out',
+      overwrite: true,
+      onComplete: entering ? undefined : () => gsap.set(label, { clearProps: 'transform' }),
+    })
+  }
   // Active home-section highlight.
   useEffect(() => {
     inBand.current.clear()
@@ -242,65 +289,18 @@ export default function Navbar() {
     }
   }, [pathname])
 
-  // The rail spans COLLAPSED of its bounds at rest and widens to the full
-  // bounds across the first half-screen of scrolling. Written straight to the
-  // node rather than held in state — this runs on every scroll frame, and a
-  // re-render per frame is not worth a number nothing else reads.
+  // At the very top the header is a bare overlay standing on the hero's own
+  // photograph. Once that has scrolled away the links would be reading against
+  // whatever the page happens to be showing, so the bar takes a ground of its
+  // own. Boolean, so this re-renders on the flip rather than on every frame.
   useEffect(() => {
-    const el = railRef.current
-    if (!el) return
-    const update = () => {
-      // Past the top the hero's white bay is gone from under the rail, so the
-      // header stops being a transparent overlay and carries its own surface.
-      // Boolean, so this only re-renders on the flip, not every frame.
-      setScrolled(window.scrollY > 16)
-      // The collapse exists to sit inside the homepage hero's notch. Every
-      // other hero is a plain band with nothing cut out of it, so holding the
-      // rail short there just pulls the CTA in off the measure and leaves the
-      // header narrower than the page it sits on.
-      //
-      // Also skipped on mobile, where the bar is a logo and a burger and has
-      // nothing to gain from the expansion.
-      if (!isHome || window.innerWidth < 768) {
-        el.style.width = '100%'
-        return
-      }
-      const distance = window.innerHeight * 0.5
-      const progress = distance > 0 ? Math.min(1, Math.max(0, window.scrollY / distance)) : 1
-      el.style.width = `${(COLLAPSED + (1 - COLLAPSED) * progress) * 100}%`
-    }
+    const update = () => setScrolled(window.scrollY > 16)
     update()
     // Lenis scrolls the window for real, so the native event is authoritative
     // and there's no need to wait on the instance existing.
     window.addEventListener('scroll', update, { passive: true })
-    window.addEventListener('resize', update)
-    return () => {
-      window.removeEventListener('scroll', update)
-      window.removeEventListener('resize', update)
-    }
-  }, [pathname, isHome])
-
-  // The hero cuts a white bay from its visual so this rail reads on white, and
-  // it has to clear the CTA. Derived from the bounds rather than measured off
-  // the button, which now slides right as the rail expands — the bay must stay
-  // put. Justified layout means the CTA's resting edge is the bounds' edge, so
-  // the CMS-driven label widths no longer enter into it.
-  useEffect(() => {
-    const measure = () => {
-      const el = boundsRef.current
-      if (!el) return
-      const { left, width } = el.getBoundingClientRect()
-      const restingEdge = left + width * COLLAPSED
-      document.documentElement.style.setProperty('--nav-bay', `${Math.round(restingEdge + 20)}px`)
-    }
-    measure()
-    const id = requestAnimationFrame(measure)
-    window.addEventListener('resize', measure)
-    return () => {
-      cancelAnimationFrame(id)
-      window.removeEventListener('resize', measure)
-    }
-  }, [])
+    return () => window.removeEventListener('scroll', update)
+  }, [pathname])
 
   // Over a light band → charcoal chrome. Over dark, or with the full-screen
   // mobile menu open, → bone chrome.
@@ -314,16 +314,16 @@ export default function Navbar() {
   const idle = onLight ? 'text-charcoal/75 hover:text-charcoal' : 'text-bone/75 hover:text-bone'
   const current = onLight ? 'text-accent' : 'text-accent-soft'
   const enquire = onLight
-    ? 'bg-charcoal text-white hover:bg-[#1b1b1b]'
-    : 'bg-white text-charcoal hover:bg-bone-deep'
-  const enquireDot = onLight ? 'bg-white text-charcoal' : 'bg-charcoal text-white'
+    ? 'border-charcoal/10 shadow-[0_8px_24px_-16px_rgba(32,32,32,0.65)] hover:shadow-[0_13px_28px_-15px_rgba(32,32,32,0.55)]'
+    : 'border-white/60 shadow-[0_10px_28px_-16px_rgba(0,0,0,0.6)] hover:shadow-[0_15px_32px_-15px_rgba(0,0,0,0.5)]'
   const burger = onLight ? 'bg-charcoal' : 'bg-bone'
 
-  // At rest the header is a bare overlay reading on the hero's white bay. Once
-  // that bay has scrolled away the links would otherwise sit on whatever the
-  // page happens to be showing — imagery, the caption card, the carousel
-  // controls — so the bar takes a surface of its own, tinted to the band it is
-  // over. Suppressed while the mobile menu is open, which paints its own ground.
+  // At rest the header is a bare overlay reading on the hero's graded sky,
+  // which is dark enough at the crown to carry bone type on its own. Once that
+  // has scrolled away the links would otherwise sit on whatever the page
+  // happens to be showing, so the bar takes a surface of its own, tinted to the
+  // band it is over. Suppressed while the mobile menu is open, which paints its
+  // own ground.
   const surfaced = scrolled && !menuOpen
   const shell = !surfaced
     ? 'bg-transparent'
@@ -345,41 +345,44 @@ export default function Navbar() {
             with it outside, the lockup and the headline drift apart by the
             padding once the viewport passes 1560. */}
         <div className="mx-auto max-w-[1560px] px-6 md:px-12">
-          {/* Bounds are fixed; the rail inside them is what grows. Measuring
-              the wrapper rather than the rail gives the notch a reference that
-              doesn't move as the rail expands. */}
-          <div ref={boundsRef}>
-            <div
-              ref={railRef}
-              // Matches what the effect below will write, so an interior page
-              // never paints one frame of a short rail before widening it.
-              style={{ width: isHome ? `${COLLAPSED * 100}%` : '100%' }}
-              className="flex items-center justify-between gap-6"
-            >
+          <div className="relative flex items-center justify-between gap-6">
           <a href="/" onClick={goHome} className="shrink-0" aria-label="Prime Developer — home">
             <img
               src={logo}
               alt="Prime Developer"
-              className={`w-auto transition-[height,opacity] duration-500 ${
-                surfaced ? 'h-8 md:h-10' : 'h-9 md:h-12'
-              }`}
+              className="h-8 w-auto transition-opacity duration-500 md:h-10"
             />
           </a>
 
           {/* Desktop rail */}
-          <nav className="hidden md:block">
-            <ul className="flex items-center gap-7 lg:gap-9">
+          <nav className="absolute left-1/2 hidden -translate-x-1/2 lg:block">
+            <ul className="flex items-center gap-5 lg:gap-6">
               {navLinks.map((link) => (
                 <li key={link.label}>
                   <a
                     href={link.to ?? `/#${link.section}`}
                     onClick={(e) => handleNav(e, link)}
                     aria-current={isActive(link) ? 'page' : undefined}
-                    className={`block font-body text-[15px] font-medium transition-colors duration-300 ${
+                    onMouseEnter={(event) => animateNavLabel(event, true)}
+                    onMouseLeave={(event) => animateNavLabel(event, false)}
+                    onFocus={(event) => animateNavLabel(event, true)}
+                    onBlur={(event) => animateNavLabel(event, false)}
+                    className={`group relative block rounded-sm py-2 font-body text-[15px] font-medium transition-colors duration-200 ease-brand focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent ${
                       isActive(link) ? current : idle
                     }`}
                   >
-                    {link.label}
+                    <span aria-hidden className="pointer-events-none absolute inset-x-1 top-1/2 h-5 -translate-y-1/2 scale-x-75 rounded-full bg-accent/15 opacity-0 blur-md transition-[opacity,transform] duration-500 ease-brand group-hover:scale-x-110 group-hover:opacity-100 group-focus-visible:scale-x-110 group-focus-visible:opacity-100 motion-reduce:transition-opacity" />
+                    <span data-nav-label className="relative block">
+                      {link.label}
+                    </span>
+                    <span
+                      aria-hidden
+                      className={`absolute inset-x-0 bottom-0 h-px origin-left bg-current transition-[transform,opacity] duration-500 ease-brand motion-reduce:transition-none ${
+                        isActive(link)
+                          ? 'scale-x-100 opacity-100'
+                          : 'scale-x-0 opacity-0 group-hover:scale-x-100 group-hover:opacity-100 group-focus-visible:scale-x-100 group-focus-visible:opacity-100'
+                      }`}
+                    />
                   </a>
                 </li>
               ))}
@@ -387,18 +390,43 @@ export default function Navbar() {
           </nav>
 
           <div className="flex shrink-0 items-center gap-1 md:gap-2">
-            <ThemeToggle tone={onLight ? 'dark' : 'light'} />
+            {phoneHref && (
+              <a
+                href={phoneHref}
+                aria-label={`Call ${contact.phone}`}
+                className={`group hidden min-h-11 items-center gap-2 font-body text-[13px] font-medium transition-colors duration-300 ease-brand xl:inline-flex ${idle}`}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden className="size-4 transition-transform duration-300 ease-brand group-hover:-rotate-6 group-hover:scale-110 motion-reduce:transform-none">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 4.5 9.6 8l-1.7 1.7a15.7 15.7 0 0 0 6.4 6.4l1.7-1.7 3.5 2.1v2.2a1.8 1.8 0 0 1-1.8 1.8A14.2 14.2 0 0 1 3.5 6.3a1.8 1.8 0 0 1 1.8-1.8h2.2Z" />
+                </svg>
+                <span>{contact.phone}</span>
+              </a>
+            )}
+
+            {whatsappChatHref && (
+              <button
+                type="button"
+                onClick={() => setWhatsappOpen(true)}
+                aria-label="Open WhatsApp options"
+                aria-haspopup="dialog"
+                className={`group hidden size-11 items-center justify-center rounded-full border transition-[color,background-color,border-color,transform,box-shadow] duration-300 ease-brand hover:scale-105 hover:border-[#25D366] hover:bg-[#25D366] hover:text-white hover:shadow-[0_10px_24px_-10px_rgba(37,211,102,0.9)] focus-visible:border-[#25D366] focus-visible:bg-[#25D366] focus-visible:text-white active:scale-95 lg:inline-flex ${
+                  onLight ? 'border-charcoal/20 text-charcoal/70' : 'border-bone/25 text-bone/80'
+                }`}
+              >
+                <WhatsappLogo weight="fill" className="size-5 transition-transform duration-300 ease-brand group-hover:scale-110 motion-reduce:transform-none" />
+              </button>
+            )}
 
             <a
               href="/contact"
               onClick={goContact}
-              className={`group hidden shrink-0 items-center gap-3 rounded-full py-1.5 pl-6 pr-1.5 transition-colors duration-500 md:inline-flex ${enquire}`}
+              className={`group relative isolate hidden min-h-12 shrink-0 items-center gap-5 overflow-hidden rounded-full border bg-white px-6 font-body text-[15px] font-semibold tracking-[-0.01em] text-charcoal transition-[color,transform,box-shadow] duration-300 ease-brand hover:-translate-y-px hover:text-white focus-visible:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent active:translate-y-px active:scale-[0.985] motion-reduce:transform-none lg:inline-flex ${enquire}`}
             >
-              <span className="font-body text-[15px] font-medium">Enquire</span>
-              <span
-                className={`flex size-9 items-center justify-center rounded-full transition-colors duration-500 ${enquireDot}`}
-              >
-                <ArrowRight className="size-4 transition-transform duration-300 ease-out group-hover:translate-x-0.5" />
+              <span aria-hidden className="absolute inset-0 z-0 origin-right scale-x-0 rounded-full bg-charcoal transition-transform duration-300 ease-brand group-hover:scale-x-100 group-focus-visible:scale-x-100 motion-reduce:transition-none" />
+              <span className="relative z-10 transition-transform duration-300 ease-brand group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5 motion-reduce:transform-none">Enquire</span>
+              <span className="relative z-10 size-5 overflow-hidden" aria-hidden>
+                <ArrowRight className="absolute inset-0 size-5 transition-transform duration-300 ease-brand group-hover:translate-x-6 group-focus-visible:translate-x-6 motion-reduce:transform-none" />
+                <ArrowRight className="absolute inset-0 size-5 -translate-x-6 transition-transform duration-300 ease-brand group-hover:translate-x-0 group-focus-visible:translate-x-0 motion-reduce:hidden" />
               </span>
             </a>
           </div>
@@ -409,7 +437,7 @@ export default function Navbar() {
             onClick={() => setMenuOpen((o) => !o)}
             aria-label={menuOpen ? 'Close menu' : 'Open menu'}
             aria-expanded={menuOpen}
-            className="flex size-11 items-center justify-center md:hidden"
+            className="flex size-11 items-center justify-center lg:hidden"
           >
             <span className="relative h-3 w-6">
               <span
@@ -424,7 +452,6 @@ export default function Navbar() {
               />
             </span>
             </button>
-            </div>
           </div>
         </div>
       </motion.header>
@@ -437,7 +464,7 @@ export default function Navbar() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-40 flex flex-col justify-center gap-3 bg-void px-8 md:hidden"
+            className="fixed inset-0 z-40 flex flex-col justify-center gap-3 bg-void px-6 sm:px-8 lg:hidden"
           >
             {navLinks.map((link, i) => (
               <motion.a
@@ -447,7 +474,7 @@ export default function Navbar() {
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 + i * 0.08, ease: 'easeOut' }}
-                className="font-display text-5xl font-light tracking-[-0.02em] text-bone"
+                className="flex min-h-11 items-center font-display text-[clamp(2.25rem,10vw,3rem)] font-light tracking-[-0.02em] text-bone"
               >
                 <span className="numeral mr-4 align-middle text-base text-accent-soft">
                   0{i + 1}
@@ -455,20 +482,93 @@ export default function Navbar() {
                 {link.label}
               </motion.a>
             ))}
+            {(phoneHref || whatsappChatHref) && (
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 + navLinks.length * 0.08 }}
+                className="mt-7 flex flex-wrap gap-3"
+              >
+                {phoneHref && (
+                  <a href={phoneHref} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-bone/20 px-5 font-body text-sm text-bone">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden className="size-4">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 4.5 9.6 8l-1.7 1.7a15.7 15.7 0 0 0 6.4 6.4l1.7-1.7 3.5 2.1v2.2a1.8 1.8 0 0 1-1.8 1.8A14.2 14.2 0 0 1 3.5 6.3a1.8 1.8 0 0 1 1.8-1.8h2.2Z" />
+                    </svg>
+                    {contact.phone}
+                  </a>
+                )}
+                {whatsappChatHref && (
+                  <button type="button" onClick={() => setWhatsappOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#25D366] px-5 font-body text-sm font-medium text-white">
+                    <WhatsappLogo weight="fill" className="size-5" />
+                    WhatsApp
+                  </button>
+                )}
+              </motion.div>
+            )}
+
             <motion.a
               href="/contact"
               onClick={goContact}
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 + navLinks.length * 0.08, ease: 'easeOut' }}
-              className="mt-8 inline-flex w-fit items-center gap-3 rounded-full bg-white py-1.5 pl-6 pr-1.5 text-charcoal"
+              className="group relative isolate mt-8 inline-flex min-h-12 w-fit items-center gap-5 overflow-hidden rounded-full border border-white/60 bg-white px-6 font-body text-[15px] font-semibold tracking-[-0.01em] text-charcoal shadow-[0_10px_28px_-16px_rgba(0,0,0,0.6)] transition-[color,transform,box-shadow] duration-300 ease-brand hover:-translate-y-px hover:text-white hover:shadow-[0_15px_32px_-15px_rgba(0,0,0,0.5)] focus-visible:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent active:translate-y-px active:scale-[0.985] motion-reduce:transform-none"
             >
-              <span className="font-body text-[15px] font-medium">Enquire</span>
-              <span className="flex size-9 items-center justify-center rounded-full bg-charcoal text-white">
-                <ArrowRight className="size-4" />
+              <span aria-hidden className="absolute inset-0 z-0 origin-right scale-x-0 rounded-full bg-charcoal transition-transform duration-300 ease-brand group-hover:scale-x-100 group-focus-visible:scale-x-100 motion-reduce:transition-none" />
+              <span className="relative z-10 transition-transform duration-300 ease-brand group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5 motion-reduce:transform-none">Enquire</span>
+              <span className="relative z-10 size-5 overflow-hidden" aria-hidden>
+                <ArrowRight className="absolute inset-0 size-5 transition-transform duration-300 ease-brand group-hover:translate-x-6 group-focus-visible:translate-x-6 motion-reduce:transform-none" />
+                <ArrowRight className="absolute inset-0 size-5 -translate-x-6 transition-transform duration-300 ease-brand group-hover:translate-x-0 group-focus-visible:translate-x-0 motion-reduce:hidden" />
               </span>
             </motion.a>
           </motion.nav>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {whatsappOpen && (
+          <motion.div
+            className="fixed inset-0 z-[70] grid place-items-center bg-void/65 px-5 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onMouseDown={(event) => event.target === event.currentTarget && setWhatsappOpen(false)}
+          >
+            <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="whatsapp-dialog-title"
+              initial={{ opacity: 0, y: 16, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.98 }}
+              transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+              className="w-full max-w-sm rounded-panel border border-bone/10 bg-void p-6 text-bone shadow-[0_28px_80px_-28px_rgba(0,0,0,0.85)]"
+            >
+              <div className="flex items-start justify-between gap-5">
+                <div className="flex size-11 items-center justify-center rounded-full bg-[#25D366] text-white">
+                  <WhatsappLogo weight="fill" className="size-6" />
+                </div>
+                <button type="button" onClick={() => setWhatsappOpen(false)} aria-label="Close WhatsApp options" className="grid size-10 place-items-center rounded-full text-bone/55 transition-colors hover:bg-white/10 hover:text-bone focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden className="size-5">
+                    <path strokeLinecap="round" d="m6 6 12 12M18 6 6 18" />
+                  </svg>
+                </button>
+              </div>
+              <h2 id="whatsapp-dialog-title" className="mt-5 font-display text-2xl font-semibold tracking-[-0.02em]">Stay updated on WhatsApp</h2>
+              <p className="mt-2 font-body text-sm leading-relaxed text-bone/65">Join the updates group for the latest property announcements, project updates, and news from Prime Developer. Prefer a private conversation? You can chat directly with our team.</p>
+              <div className="mt-6 grid gap-3">
+                <a href={whatsappJoinHref} target="_blank" rel="noreferrer" onClick={() => setWhatsappOpen(false)} className="group flex min-h-12 items-center justify-between rounded-xl bg-[#25D366] px-4 font-body text-sm font-semibold text-white transition-transform duration-300 ease-brand hover:-translate-y-0.5 active:translate-y-0 motion-reduce:transform-none">
+                  Join the updates group
+                  <ArrowRight className="size-4 transition-transform duration-300 ease-brand group-hover:translate-x-1 motion-reduce:transform-none" />
+                </a>
+                <a href={whatsappChatHref} target="_blank" rel="noreferrer" onClick={() => setWhatsappOpen(false)} className="group flex min-h-12 items-center justify-between rounded-xl border border-bone/15 px-4 font-body text-sm font-semibold text-bone transition-colors duration-300 hover:border-bone/35 hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+                  Chat with our team
+                  <ArrowRight className="size-4 transition-transform duration-300 ease-brand group-hover:translate-x-1 motion-reduce:transform-none" />
+                </a>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </>

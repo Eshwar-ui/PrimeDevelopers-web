@@ -48,7 +48,7 @@ export default function ImageUploader({ value, onChange, folder, label }) {
             <button
               type="button"
               onClick={() => onChange('')}
-              className="text-left text-[11px] text-bone/40 hover:text-bone/70"
+              className="text-left text-[11px] text-bone-3 hover:text-bone/70"
             >
               Remove
             </button>

@@ -10,6 +10,7 @@ import { sized } from '../lib/images'
 // Parallax wrapper adds a subtle vertical drift on scroll for depth.
 export default function Marquee() {
   const { logos } = useSection('marquee')
+  const visibleLogos = logos.filter((logo) => logo.image)
   const track = useRef(null)
 
   useGSAP(() => {
@@ -21,7 +22,7 @@ export default function Marquee() {
     })
   })
 
-  if (logos.length === 0) return null
+  if (visibleLogos.length === 0) return null
 
   return (
     // No top hairline: the hero above is white too, so a rule there reads as a
@@ -43,7 +44,7 @@ export default function Marquee() {
               Deliberately not lazy: they are ~5KB each and `w-auto`, so
               deferring them would leave the track at the wrong width when GSAP
               measures it for the -50% loop, and break the seam. */}
-          {[...logos, ...logos].map((logo, i) => (
+          {[...visibleLogos, ...visibleLogos].map((logo, i) => (
             <img
               key={i}
               src={sized(logo.image, 'logo')}

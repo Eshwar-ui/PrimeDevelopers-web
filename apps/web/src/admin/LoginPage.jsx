@@ -39,7 +39,7 @@ export default function LoginPage() {
 
         <div className="mt-8 flex flex-col gap-5">
           <label className="flex flex-col gap-2">
-            <span className="text-xs font-bold uppercase tracking-wide text-bone/40">Email</span>
+            <span className="text-xs font-bold uppercase tracking-wide text-bone-3">Email</span>
             <input
               type="email"
               required
@@ -49,7 +49,7 @@ export default function LoginPage() {
             />
           </label>
           <label className="flex flex-col gap-2">
-            <span className="text-xs font-bold uppercase tracking-wide text-bone/40">Password</span>
+            <span className="text-xs font-bold uppercase tracking-wide text-bone-3">Password</span>
             <input
               type="password"
               required

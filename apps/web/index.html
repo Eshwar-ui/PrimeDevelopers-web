@@ -8,7 +8,7 @@
       name="description"
       content="Prime Developers — building the landmarks of Texas since 2017. Iconic commercial and residential real estate across the Dallas–Fort Worth and Austin markets."
     />
-    <meta name="theme-color" content="#1a1a1a" />
+    <meta name="theme-color" content="#0b1216" />
 
     <!-- The two remaining third-party origins. Each costs a DNS lookup, TCP
          handshake and TLS negotiation before its first request can be sent;
@@ -79,21 +79,24 @@
   </head>
   <body>
     <div id="root"></div>
-    <!-- Runs before first paint so a returning dark-mode visitor never sees a
-         white flash while the bundle loads. Kept deliberately tiny and inline;
-         anything deferred is already too late. Mirrored by ThemeContext. -->
+    <!-- Runs before first paint so nobody sees a white flash while the bundle
+         loads. Kept deliberately tiny and inline; anything deferred is already
+         too late. Mirrored by ThemeContext, and the two must not disagree.
+
+         Dark unless the visitor has explicitly stored light — the site's own
+         default, not the operating system's. The catch falls through to dark
+         for the same reason: with storage blocked there is no stored choice to
+         honour, and dark is what the page is designed as. -->
     <script>
       (function () {
+        var dark = true
         try {
-          var stored = localStorage.getItem('prime-theme')
-          var dark =
-            stored === 'dark' ||
-            (!stored && window.matchMedia('(prefers-color-scheme: dark)').matches)
-          if (dark) document.documentElement.classList.add('dark')
-          document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
+          dark = localStorage.getItem('prime-theme') !== 'light'
         } catch (e) {
-          /* private mode with storage blocked — fall through to the light default */
+          /* private mode with storage blocked — keep the default */
         }
+        if (dark) document.documentElement.classList.add('dark')
+        document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
       })()
     </script>
     <script type="module" src="/src/main.jsx"></script>

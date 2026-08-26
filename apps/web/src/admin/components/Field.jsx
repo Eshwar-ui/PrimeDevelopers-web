@@ -1,7 +1,7 @@
 export function TextField({ label, value, onChange, type = 'text', placeholder, required }) {
   return (
     <label className="flex flex-col gap-1.5">
-      {label && <span className="text-xs font-bold uppercase tracking-wide text-bone/45">{label}</span>}
+      {label && <span className="text-xs font-bold uppercase tracking-wide text-bone-3">{label}</span>}
       <input
         type={type}
         value={value ?? ''}
@@ -17,7 +17,7 @@ export function TextField({ label, value, onChange, type = 'text', placeholder, 
 export function TextAreaField({ label, value, onChange, rows = 3, placeholder }) {
   return (
     <label className="flex flex-col gap-1.5">
-      {label && <span className="text-xs font-bold uppercase tracking-wide text-bone/45">{label}</span>}
+      {label && <span className="text-xs font-bold uppercase tracking-wide text-bone-3">{label}</span>}
       <textarea
         value={value ?? ''}
         onChange={(e) => onChange(e.target.value)}
@@ -33,7 +33,7 @@ export function SelectField({ label, value, onChange, options }) {
   const normalized = options.map((o) => (typeof o === 'string' ? { value: o, label: o } : o))
   return (
     <label className="flex flex-col gap-1.5">
-      {label && <span className="text-xs font-bold uppercase tracking-wide text-bone/45">{label}</span>}
+      {label && <span className="text-xs font-bold uppercase tracking-wide text-bone-3">{label}</span>}
       <select
         value={value ?? ''}
         onChange={(e) => onChange(e.target.value)}
@@ -49,11 +49,32 @@ export function SelectField({ label, value, onChange, options }) {
   )
 }
 
+export function CheckboxField({ label, value, onChange, hint }) {
+  return (
+    <label className="flex cursor-pointer items-start gap-3">
+      <input
+        type="checkbox"
+        checked={Boolean(value)}
+        onChange={(e) => onChange(e.target.checked)}
+        // accent-color rather than a hand-built control: the native box already
+        // carries the focus ring, the keyboard behaviour and the indeterminate
+        // state, and a div pretending to be a checkbox has to reimplement all
+        // three to end up somewhere worse.
+        className="mt-0.5 size-4 shrink-0 accent-[var(--color-ember)]"
+      />
+      <span className="flex flex-col gap-0.5">
+        <span className="text-xs font-bold uppercase tracking-wide text-bone-3">{label}</span>
+        {hint && <span className="text-[11px] leading-snug text-bone-3/80">{hint}</span>}
+      </span>
+    </label>
+  )
+}
+
 export function Section({ title, description, children }) {
   return (
     <fieldset className="rounded-2xl border border-white/10 bg-carbon p-6">
       <legend className="px-1 font-display text-base font-medium text-bone">{title}</legend>
-      {description && <p className="mt-1 text-xs text-bone/45">{description}</p>}
+      {description && <p className="mt-1 text-xs text-bone-3">{description}</p>}
       <div className="mt-5 flex flex-col gap-5">{children}</div>
     </fieldset>
   )

@@ -35,7 +35,11 @@ export const WIDTHS = {
   // them to half the copy column on phones and a third of it from `sm` up,
   // which is ~350px CSS at the top end — so 200 would now be visibly soft.
   thumb: 700,
-  logo: 400, // marquee client logos — up to 200x48 CSS
+  // Partner-wall marks. Was 400, sized for the old marquee's 200x48 strip. A
+  // wall cell is ~248px CSS at five columns, so 400 held at 1x and went soft on
+  // retina; 600 covers 2x, and the largest source in the set (Qahwah, 512px)
+  // upscales only slightly to reach it.
+  logo: 600,
   // Cards top out at ~735px CSS in the gallery, so this stays comfortably
   // retina. Sized generously on purpose: every card is lazy-loaded now, so the
   // extra weight lands after first paint rather than competing with it.

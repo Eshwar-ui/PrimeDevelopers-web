@@ -56,7 +56,7 @@ export default function LeadsPage() {
       {error && <p className="mt-6 text-sm text-red-400">{error}</p>}
 
       <div className="mt-8 flex flex-col gap-3">
-        {leads?.length === 0 && <p className="text-sm text-bone/40">No submissions yet.</p>}
+        {leads?.length === 0 && <p className="text-sm text-bone-3">No submissions yet.</p>}
         {leads?.map((l) => {
           const attribution = l.unitAttributions?.[0] ?? null
           const unitSlug = attribution ? slugsByProperty[attribution.propertyId] : null
@@ -79,7 +79,7 @@ export default function LeadsPage() {
                         Unit {attribution.unitLabel}
                       </span>
                       {attribution.buildingLabel && (
-                        <span className="text-xs text-bone/40">{attribution.buildingLabel}</span>
+                        <span className="text-xs text-bone-3">{attribution.buildingLabel}</span>
                       )}
                     </div>
                   )}
@@ -90,7 +90,7 @@ export default function LeadsPage() {
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-3 text-xs font-bold uppercase tracking-wide">
-                  <span className="text-bone/35">{new Date(l.createdAt).toLocaleString()}</span>
+                  <span className="text-bone-3">{new Date(l.createdAt).toLocaleString()}</span>
                   <button
                     type="button"
                     onClick={() => markRead(l.id, l.status === 'new' ? 'read' : 'new')}

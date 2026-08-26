@@ -1,16 +1,13 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import LogoLoader from '../components/LogoLoader'
 
 export default function RequireAuth({ children }) {
   const { session, loading } = useAuth()
   const location = useLocation()
 
   if (loading) {
-    return (
-      <div className="flex min-h-[100dvh] items-center justify-center bg-void">
-        <span className="h-8 w-8 animate-spin rounded-full border-2 border-bone/20 border-t-ember" />
-      </div>
-    )
+    return <LogoLoader label="Checking your session" />
   }
 
   if (!session) {

@@ -14,7 +14,28 @@ import { UploadsModule } from './modules/uploads/uploads.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    /**
+     * Environment: local files in development, real process variables in
+     * production.
+     *
+     * On Render none of these files exist — the values are set in the dashboard
+     * (see render.yaml) and arrive as real process variables. dotenv never
+     * overwrites a variable that is already set, so a stray file could not
+     * shadow them even if one were deployed.
+     *
+     * Locally, `.env.<NODE_ENV>` wins over `.env` when it exists. A bare
+     * `nest start` leaves NODE_ENV unset, so it falls back to `development`
+     * rather than looking for `.env.undefined`.
+     *
+     * `.env` keeps the plain name deliberately: the Prisma CLI reads that file
+     * and only that file to resolve `env("DATABASE_URL")` in schema.prisma, so
+     * renaming it would quietly break `db:pull`, `db:migrate` and `generate`.
+     * It is the local-development file; production has no file at all.
+     */
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: [`.env.${process.env.NODE_ENV || 'development'}`, '.env'],
+    }),
 
     // Default ceiling for every route. Login and the public lead endpoint
     // tighten this further with their own @Throttle — they are the

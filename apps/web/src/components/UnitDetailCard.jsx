@@ -19,7 +19,7 @@ const STATUS_COPY = {
 // plan beside it. Unset — stacked under the plan on narrow screens — the card
 // simply grows to its content like any other.
 export default function UnitDetailCard({ unit, units = [], aspect = null, onEnquire, maxHeight = '' }) {
-  if (!unit) return <EmptyPanel units={units} />
+  if (!unit) return <EmptyPanel units={units} maxHeight={maxHeight} />
 
   const meta = unitStatusMeta(unit.status)
   const area = formatArea(unit.size)
@@ -42,51 +42,30 @@ export default function UnitDetailCard({ unit, units = [], aspect = null, onEnqu
   const canEnquire = onEnquire && unit.status !== 'leased' && unit.status !== 'sold'
 
   return (
-    <div
-      className={`flex flex-col overflow-hidden rounded-2xl border border-[var(--color-line)] bg-surface ${maxHeight}`}
-    >
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-[var(--color-line)] px-6 py-5">
-        <span
-          className={`rounded-full px-3 py-1 font-body text-[11px] font-bold uppercase tracking-[0.1em] ${meta.chip}`}
-        >
-          {meta.label}
-        </span>
-        <span className="font-display text-lg font-medium break-words text-content">{unit.label || 'Unit'}</span>
-        {area && <span className="font-body text-sm text-content/70">{area}</span>}
+    <div className={`flex flex-col overflow-hidden rounded-2xl border border-[var(--color-line)] bg-surface shadow-[0_20px_55px_-40px_rgba(20,28,33,.5)] ${maxHeight}`}>
+      <div className="flex items-start justify-between gap-4 px-7 pb-5 pt-8 lg:px-8 lg:pt-9">
+        <span className="font-display text-[clamp(3rem,4vw,4.25rem)] font-bold leading-none tracking-[-0.055em] break-words text-content">{unit.label || 'Unit'}</span>
+        <span className={`mt-1 shrink-0 rounded-full px-4 py-2 font-body text-[12px] font-bold ${meta.chip}`}>{meta.label}</span>
       </div>
 
-      {/* min-h-0 is what actually lets this scroll: without it a flex child
-          refuses to shrink below its content and the panel grows past the
-          plan beside it instead of scrolling inside itself. */}
-      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
-        <p className="font-body text-sm leading-relaxed text-content/70">
-          {unit.description ||
-            (unit.tenant
-              ? unit.status === 'leased'
-                ? `Leased to ${unit.tenant}.`
-                : unit.tenant
-              : STATUS_COPY[unit.status] ?? STATUS_COPY.available)}
+      <div className="min-h-0 flex-1 overflow-y-auto px-7 pb-7 lg:px-8">
+        <p className="font-body text-[15px] font-semibold leading-relaxed text-content/60">
+          {unit.description || (unit.tenant ? (unit.status === 'leased' ? `Leased to ${unit.tenant}.` : unit.tenant) : STATUS_COPY[unit.status] ?? STATUS_COPY.available)}
         </p>
-
         {specs.length > 0 && (
-          <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-4 lg:grid-cols-2">
+          <dl className="mt-7 grid grid-cols-2 gap-x-6 gap-y-6 border-t border-[var(--color-line)] pt-7 lg:grid-cols-1">
             {specs.map(([term, value]) => (
-              <div key={term} className="flex flex-col gap-1">
-                <dt className="eyebrow text-content/70">{term}</dt>
-                <dd className="font-display text-base font-medium break-words text-content">{value}</dd>
+              <div key={term} className="flex flex-col gap-1.5">
+                <dt className="font-body text-[11px] font-bold uppercase tracking-[0.15em] text-content/50">{term}</dt>
+                <dd className={`font-display font-bold tracking-[-0.02em] break-words text-content ${term === 'Size' ? 'text-[clamp(1.75rem,2.4vw,2.4rem)]' : 'text-lg'}`}>{value}</dd>
               </div>
             ))}
           </dl>
         )}
       </div>
-
       {canEnquire && (
-        <div className="border-t border-[var(--color-line)] px-6 py-4">
-          <button
-            type="button"
-            onClick={() => onEnquire(unit)}
-            className="min-h-11 w-full rounded-full bg-accent px-5 py-2.5 font-body text-[12px] font-bold uppercase tracking-[0.14em] text-white transition-colors duration-300 hover:bg-prime-deep dark:text-void"
-          >
+        <div className="mt-auto px-7 pb-7 lg:px-8 lg:pb-8">
+          <button type="button" onClick={() => onEnquire(unit)} className="primary-button-flood min-h-14 w-full rounded-full bg-accent px-5 py-3 font-body text-[12px] font-bold uppercase tracking-[0.1em] text-white transition-colors duration-300 hover:bg-prime-deep dark:text-void">
             Enquire about {unit.label || 'this unit'}
           </button>
         </div>
@@ -98,13 +77,14 @@ export default function UnitDetailCard({ unit, units = [], aspect = null, onEnqu
 // Beside the plan this space exists whether or not anything is selected, so it
 // earns its keep by answering the question a visitor arrives with — how much
 // is actually free here — rather than sitting empty until they click.
-function EmptyPanel({ units }) {
+function EmptyPanel({ units, maxHeight = '' }) {
   const total = units.length
   const available = units.filter((unit) => unit.status === 'available').length
 
   return (
-    <div className="flex flex-col gap-4 rounded-2xl border border-dashed border-[var(--color-line)] bg-surface px-6 py-8">
-      <span className="eyebrow text-content/70">Unit details</span>
+    <div className={`relative flex min-h-[18rem] flex-col justify-end gap-4 overflow-hidden rounded-2xl border border-[var(--color-line)] bg-surface px-7 py-8 shadow-[0_20px_55px_-40px_rgba(20,28,33,.5)] ${maxHeight}`}>
+      <span aria-hidden className="absolute -right-5 -top-10 font-display text-[8rem] font-bold leading-none text-accent/[0.07]">{available}</span>
+      <span className="eyebrow relative text-content/55">Unit details</span>
 
       {total > 0 && (
         <p className="font-display text-2xl leading-snug font-medium text-content/85">

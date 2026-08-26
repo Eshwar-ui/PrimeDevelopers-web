@@ -69,7 +69,7 @@ export default function PropertiesListPage() {
                   </span>
                 )}
               </div>
-              <p className="text-xs text-bone/45">
+              <p className="text-xs text-bone-3">
                 {p.category} · {p.address}
               </p>
             </div>

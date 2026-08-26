@@ -1,118 +1,147 @@
+import { useRef } from 'react'
+import { motion, useReducedMotion, useScroll, useTransform } from 'motion/react'
+import { Quotes, Star } from '@phosphor-icons/react'
 import { useSection } from '../context/ContentContext'
-
-const STAR = 'm12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2Z'
+import { sized } from '../lib/images'
+import watermark from '../assets/watermark-p.svg'
 
 function Stars({ count = 5 }) {
-  // Clamped rather than trusted: rating is free-entry in the admin, and a typo
-  // of 50 would otherwise paint a row of stars across the whole card.
   const filled = Math.max(0, Math.min(5, Math.round(count)))
+
   return (
     <div className="flex items-center gap-1" role="img" aria-label={`${filled} out of 5 stars`}>
-      {Array.from({ length: 5 }, (_, i) => (
-        <svg key={i} viewBox="0 0 24 24" aria-hidden className="size-4">
-          <path d={STAR} className={i < filled ? 'fill-saffron' : 'fill-content/15'} />
-        </svg>
+      {Array.from({ length: 5 }, (_, index) => (
+        <Star
+          key={index}
+          aria-hidden
+          weight={index < filled ? 'fill' : 'regular'}
+          className={index < filled ? 'size-4 text-[#ffb000]' : 'size-4 text-bone/20'}
+        />
       ))}
     </div>
   )
 }
 
-// Drawn rather than typed. A typographic &ldquo; inherits whatever the display
-// face gives it, which is a thin angular mark; the design calls for a pair of
-// rounded, solid speech marks, and only a path guarantees that shape. Sized to
-// the design's 40×32 quote frame.
-function QuoteMark() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="size-9 shrink-0 text-accent/35"
-    >
-      <path d="M16 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z" />
-      <path d="M5 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z" />
-    </svg>
-  )
-}
-
-// Initials stand in when no portrait is uploaded — the design's avatar is a
-// fixed 48px circle, and leaving it empty punches a hole in the card's footer.
 function Avatar({ src, name }) {
   if (src) {
-    return <img src={src} alt="" className="size-12 shrink-0 rounded-full object-cover" />
+    return (
+      <img
+        src={sized(src, 'logo')}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        className="size-12 shrink-0 rounded-full object-cover"
+      />
+    )
   }
-  const initials = name
-    .split(' ')
+
+  const initials = (name ?? '')
+    .split(/\s+/)
+    .filter(Boolean)
     .slice(0, 2)
-    .map((w) => w[0])
+    .map((word) => word[0])
     .join('')
+    .toUpperCase()
+
   return (
-    // prime-deep rather than accent. Both the tile and the accent shift with
-    // the theme and they shift the same way — pale wash against CG Blue on
-    // light, dark wash against the pale tint on dark — so the pair only ever
-    // reached 4.5:1 by a hair on light and fell under it on dark. prime-deep is
-    // the darker step on light and the lighter one on dark, which is the
-    // direction that buys separation in each.
-    <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-prime-soft font-display text-sm font-bold text-prime-deep">
+    <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-accent/15 font-body text-sm font-bold text-accent-soft">
       {initials}
     </span>
   )
 }
 
-// The design lays the quotes out as a single row of three. A fourth wraps onto
-// a row of its own and reads as an orphan, so the homepage shows three and the
-// rest stay available to whatever else wants them.
-const TEASER_COUNT = 3
-
-export default function Testimonials() {
-  const { heading, paragraph, items: all } = useSection('testimonials')
-  const items = all.slice(0, TEASER_COUNT)
-
-  if (items.length === 0) return null
+function ParallaxWatermark({ index }) {
+  const frameRef = useRef(null)
+  const reducedMotion = useReducedMotion()
+  const { scrollYProgress } = useScroll({
+    target: frameRef,
+    offset: ['start end', 'end start'],
+  })
+  const distance = 34 + (index % 3) * 8
+  const y = useTransform(scrollYProgress, [0, 1], [distance, -distance])
+  const rotate = -13 + (index % 3) * 2
 
   return (
-    <section
-      id="testimonials"
-      data-band="light"
-      className="bg-surface-alt px-6 py-16 text-content md:px-[75px] md:py-16"
-    >
-      <div className="mb-10">
-        <h2 className="font-display text-[22px] font-bold leading-tight tracking-[-0.01em] text-content">
-          {heading}
-        </h2>
-        {paragraph && (
-          <p className="mt-4 font-body text-[16px] leading-normal text-content/70">{paragraph}</p>
-        )}
-      </div>
+    <span ref={frameRef} aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+      <motion.img
+        src={watermark}
+        alt=""
+        style={reducedMotion ? { rotate } : { y, rotate }}
+        className="absolute -bottom-24 -right-10 w-60 max-w-none opacity-[0.14] will-change-transform"
+      />
+    </span>
+  )
+}
 
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-        {items.map((t) => (
-          <figure key={t.name} className="flex flex-col rounded-2xl bg-surface p-8">
-            <QuoteMark />
+export default function Testimonials() {
+  const { eyebrow, heading, paragraph, items } = useSection('testimonials')
 
-            <blockquote className="mt-4 flex-1 font-body text-[15px] leading-[1.65] text-content/80">
-              {t.quote}
-            </blockquote>
+  if (!items?.length) return null
 
-            <div className="mt-7">
-              <Stars count={t.rating ?? 5} />
-            </div>
+  return (
+    <section id="testimonials" className="bg-base px-gutter py-20 text-content md:px-gutter-lg md:py-24 lg:py-28">
+      <div className="mx-auto max-w-[1560px]">
+        <header className="mx-auto flex max-w-[1040px] flex-col items-center text-center">
+          {eyebrow && (
+            <p className="flex items-center gap-3 font-body text-xs font-medium uppercase tracking-[0.04em] text-[#00a9ee]">
+              <span aria-hidden className="h-px w-16 bg-[#00a9ee]/55" />
+              {eyebrow}
+              <span aria-hidden className="h-px w-16 bg-[#00a9ee]/55" />
+            </p>
+          )}
 
-            <figcaption className="mt-5 flex items-center gap-3">
-              <Avatar src={t.avatar} name={t.name} />
-              <div className="min-w-0">
-                <p className="font-display text-[16px] font-bold leading-tight text-content">
-                  {t.name}
-                </p>
-                <p className="mt-1 font-body text-[15px] text-content/70">{t.role}</p>
-              </div>
-            </figcaption>
-          </figure>
-        ))}
+          {heading && (
+            <h2 className="mt-5 font-display text-[clamp(2rem,3.15vw,3rem)] font-bold leading-[1.08] tracking-[-0.025em] text-content md:whitespace-nowrap">
+              {heading}
+            </h2>
+          )}
+
+          {paragraph && (
+            <p className="mt-5 max-w-[56ch] font-body text-[14px] leading-[1.55] text-content/60">
+              {paragraph}
+            </p>
+          )}
+        </header>
+
+        <ul className="mt-14 grid gap-6 md:mt-16 md:grid-cols-2 xl:grid-cols-3 xl:gap-7">
+          {items.map((testimonial, index) => (
+            <li key={testimonial.name} className="min-w-0">
+              <figure className="group relative flex h-full min-h-[390px] flex-col overflow-hidden rounded-[20px] bg-[#141e22] px-8 py-9 shadow-[0_14px_40px_-28px_rgba(0,0,0,0.8)] transition-[transform,box-shadow] duration-500 ease-brand hover:-translate-y-1 hover:shadow-[0_24px_54px_-28px_rgba(0,0,0,0.95)] motion-reduce:transform-none md:px-9 md:py-10">
+                <ParallaxWatermark index={index} />
+
+                <Quotes aria-hidden className="relative size-8 text-[#006a9d]" />
+
+                <blockquote className="relative mt-7 flex-1 font-body text-[16px] leading-[1.78] text-white/92">
+                  &ldquo;{testimonial.quote}&rdquo;
+                </blockquote>
+
+                <div className="relative mt-5">
+                  <Stars count={testimonial.rating ?? 5} />
+                </div>
+
+                <figcaption className="relative mt-6 flex items-center gap-3.5">
+                  <Avatar src={testimonial.avatar} name={testimonial.name} />
+                  <div className="min-w-0">
+                    <p className="truncate font-display text-[16px] font-semibold leading-tight text-white">
+                      {testimonial.name}
+                    </p>
+                    {/* The role wraps to a second line rather than truncating.
+                        It reads "Managing Partner · Balcones Capital" — title
+                        then company — so one clipped line loses exactly the
+                        half that identifies who is speaking, and on a 360px
+                        card it was clipping every one of them. The card's
+                        `min-h` already leaves room for the extra line. */}
+                    {testimonial.role && (
+                      <p className="mt-1 line-clamp-2 font-body text-[12px] leading-snug text-[#6d7f9d]">
+                        {testimonial.role}
+                      </p>
+                    )}
+                  </div>
+                </figcaption>
+              </figure>
+            </li>
+          ))}
+        </ul>
       </div>
     </section>
   )

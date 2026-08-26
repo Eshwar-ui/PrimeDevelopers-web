@@ -29,7 +29,7 @@ export default function ThemeToggle({ className = '', tone = 'dark' }) {
       aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
       aria-pressed={isDark}
       title={isDark ? 'Light mode' : 'Dark mode'}
-      className={`relative grid size-10 shrink-0 place-items-center rounded-full transition-colors duration-300 ${ring} ${className}`}
+      className={`group relative grid size-11 shrink-0 place-items-center rounded-full outline-none transition-[color,background-color,transform] duration-200 ease-brand hover:-translate-y-0.5 active:translate-y-0 active:scale-90 focus-visible:ring-2 focus-visible:ring-current focus-visible:ring-offset-2 motion-reduce:transform-none ${ring} ${className}`}
     >
       <svg
         viewBox="0 0 24 24"
@@ -39,7 +39,7 @@ export default function ThemeToggle({ className = '', tone = 'dark' }) {
         strokeWidth="1.7"
         strokeLinecap="round"
         strokeLinejoin="round"
-        className={`absolute size-5 transition-all duration-500 ${
+        className={`absolute size-5 transition-all duration-500 ease-brand group-hover:scale-110 motion-reduce:transition-none ${
           isDark ? 'rotate-90 scale-0 opacity-0' : 'rotate-0 scale-100 opacity-100'
         }`}
       >
@@ -55,7 +55,7 @@ export default function ThemeToggle({ className = '', tone = 'dark' }) {
         strokeWidth="1.7"
         strokeLinecap="round"
         strokeLinejoin="round"
-        className={`absolute size-5 transition-all duration-500 ${
+        className={`absolute size-5 transition-all duration-500 ease-brand group-hover:scale-110 motion-reduce:transition-none ${
           isDark ? 'rotate-0 scale-100 opacity-100' : '-rotate-90 scale-0 opacity-0'
         }`}
       >

@@ -539,8 +539,12 @@ Note this omits prime-tracker's Redis service — nothing here needs BullMQ yet.
 
 ## Phase 6 — Ship the frontend
 
-Set `VITE_API_BASE_URL=https://prime-developers-api.onrender.com` at build time,
-then `pnpm build:web && firebase deploy --only hosting`.
+`pnpm run deploy:web` (build + `firebase deploy --only hosting`). Nothing to set
+by hand: `apps/web/.env.production` holds the build-time values and is committed
+— `vite build` picks it up by mode, while `pnpm dev` gets `.env.development` and
+localhost. The values are public (a `VITE_` variable is inlined into the bundle),
+and vite.config.js fails a production build that would ship a localhost origin,
+which is the failure this arrangement exists to prevent.
 
 Optionally add `.github/workflows/deploy.yml` — the repo has no CI today, and
 manual deploys are how the prod Supabase ref came to exist only inside a built

@@ -1,48 +1,20 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
-import { useSectionNav } from '../hooks/useSectionNav'
 import { useSection, useProperties } from '../context/ContentContext'
-import { renderEmphasis } from '../lib/emphasis'
 import { sized } from '../lib/images'
+import ActionButton from './ActionButton'
+import ArrowRight from './ArrowRight'
+import BrochureRequestModal from './BrochureRequestModal'
 
 gsap.registerPlugin(ScrollTrigger)
 
-// The cards are tall, so the teaser stays short — a homepage section that runs
-// past three of these stops reading as a teaser and starts being the index.
+// The cards are half a screen each, so the teaser stays short — a homepage
+// section that runs past three of these stops reading as a teaser and starts
+// being the index.
 const TEASER_COUNT = 3
-
-// Spec-row glyphs. The stats behind them are free text an admin typed, so the
-// icon is chosen by what the label says and falls back to a neutral mark —
-// a wrong icon reads as a data error, a neutral one reads as a bullet.
-const SPEC_ICONS = [
-  [/\b(sf|sft|sq|m²|m2|size|area|acre)\b/i, 'M3 8V3h5M21 8V3h-5M3 16v5h5M21 16v5h-5'],
-  [/\b(floor|storey|story|level)\b/i, 'M12 3 2 8l10 5 10-5-10-5ZM2 14l10 5 10-5'],
-  [/\b(bed|bedroom)\b/i, 'M2 18v-6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v6M2 18v2M22 18v2M6 10V7h12v3'],
-  [/\b(bath|shower)\b/i, 'M4 12h16v3a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4v-3ZM7 12V6a2 2 0 0 1 4 0'],
-  [/\b(unit|suite)\b/i, 'M4 21V7l8-4 8 4v14M9 21v-5h6v5'],
-]
-const FALLBACK_ICON = 'M12 4l8 8-8 8-8-8 8-8Z'
-
-function SpecIcon({ label }) {
-  const match = SPEC_ICONS.find(([test]) => test.test(label ?? ''))
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="size-4.5 shrink-0 text-content/70"
-    >
-      <path d={match ? match[1] : FALLBACK_ICON} />
-    </svg>
-  )
-}
 
 function DownloadIcon() {
   return (
@@ -51,271 +23,304 @@ function DownloadIcon() {
       aria-hidden
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.7"
+      strokeWidth="1.8"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="size-4 shrink-0"
+      className="size-3.5 shrink-0"
     >
-      <path d="M12 4v12m0 0 4.5-4.5M12 16l-4.5-4.5M4 20h16" />
+      <path d="M12 4v11m0 0 4-4m-4 4-4-4M5 19h14" />
     </svg>
   )
 }
 
 /**
- * The three figures a listing carries — total, sold, available — are not three
- * facts. Across every property in the CMS `sold + available === total` exactly,
- * so printing them as a stack of equal-weight numerals states the same thing
- * three times and leaves the reader to do the subtraction that matters.
+ * The three facts a card can state without opening the property.
  *
- * This leads with the only figure a prospect is actually shopping for, and
- * spends the rest of the space showing how much of the development is already
- * gone — which is the persuasive part, and is invisible in a list.
+ * Assembled from what the CMS already holds rather than from new fields:
+ * `buildings` is the unit count, and the first two of the property's own
+ * overview statistics are whatever that development leads with — square
+ * footage, year, acreage. So a card says three true things about *that*
+ * property instead of three fields someone had to fill in identically for all
+ * of them.
  */
-function AvailabilityMeter({ total, sold, available }) {
-  if (!total) return null
+function chipsFor(p) {
+  const units = p.buildings ? { value: String(p.buildings), label: 'units' } : null
+  const stats = (p.detail?.overview?.stats ?? []).map((s) => ({
+    value: String(s.value ?? ''),
+    label: s.label ?? '',
+  }))
 
-  // Derived rather than trusted. The two are edited by hand in the admin, so
-  // they can disagree with the total; the bar is drawn against whichever
-  // denominator keeps it inside its track.
-  const denominator = Math.max(total, sold + available)
-  const soldPct = denominator > 0 ? Math.round((sold / denominator) * 100) : 0
-  const soldOut = available === 0
+  // A property's own statistics often restate the unit count under a different
+  // name — POW Lewisville carries "77 Total Units" next to a `buildings` of 77 —
+  // and a card that says "77 units · 77 Total Units" reads as a rendering bug
+  // rather than as two facts. Drop any stat whose figure the unit chip is
+  // already showing.
+  const rest = units ? stats.filter((s) => s.value !== units.value) : stats
+  const all = [units, ...rest].filter((c) => c && c.value && c.label)
 
-  return (
-    <div className="shrink-0 rounded-2xl border border-line bg-surface-alt p-5 md:w-52 md:self-center">
-      <p className="eyebrow text-content/70">Availability</p>
-
-      <div className="mt-3 flex items-baseline gap-2">
-        {soldOut ? (
-          <span className="font-display text-[1.6rem] font-bold leading-none text-content/70">
-            Fully sold
-          </span>
-        ) : (
-          <>
-            <span className="numeral text-[2.6rem] leading-none text-accent">{available}</span>
-            <span className="font-body text-[13px] text-content/70">
-              of {total} available
-            </span>
-          </>
-        )}
-      </div>
-
-      {/* role="img" rather than a progressbar: this reports a completed
-          proportion, not a task in flight, and the label already carries the
-          number for anyone not seeing the fill. */}
-      <div
-        role="img"
-        aria-label={`${soldPct}% sold — ${sold} of ${total}`}
-        className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-content/12"
-      >
-        <div
-          className={`h-full rounded-full transition-[width] duration-700 ease-out ${
-            soldOut ? 'bg-content/35' : 'bg-accent'
-          }`}
-          style={{ width: `${soldPct}%` }}
-        />
-      </div>
-
-      <div className="mt-2.5 flex items-center justify-between font-body text-[12px] text-content/70">
-        <span>{sold} sold</span>
-        <span>{soldPct}%</span>
-      </div>
-    </div>
-  )
+  // Fitted to one line rather than capped at a count. The chips are divided by
+  // rules, and a rule is only a divider while it sits *between* two items — the
+  // moment the row wraps, the first chip on the second line carries a vertical
+  // stroke hanging off its left with nothing on the other side of it, which
+  // reads as a rendering fault. The comp's own chips are three short pairs;
+  // real CMS statistics are not ("185,238 SFT Project Size"), so the row takes
+  // as many as fit and stops.
+  const LINE_BUDGET = 34
+  const fitted = []
+  let left = LINE_BUDGET
+  for (const c of all.slice(0, 3)) {
+    const cost = c.value.length + c.label.length + 1
+    if (fitted.length && cost > left) break
+    fitted.push(c)
+    left -= cost
+  }
+  return fitted
 }
 
 export default function Properties() {
   const { heading } = useSection('properties_home')
   const properties = useProperties().slice(0, TEASER_COUNT)
   const scope = useRef(null)
-  const go = useSectionNav()
   const navigate = useNavigate()
+  const [brochureProperty, setBrochureProperty] = useState(null)
 
   useGSAP(
     () => {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
       gsap.from('[data-card]', {
         y: 48,
         opacity: 0,
         duration: 0.9,
         ease: 'power3.out',
         stagger: 0.12,
+        // A `.from()` leaves its inline transform behind permanently, and an
+        // inline style always beats a utility class (DESIGN.md §9).
+        clearProps: 'transform,opacity',
         scrollTrigger: { trigger: scope.current, start: 'top 75%' },
       })
     },
-    { scope }
+    // Keyed to the card count, and that is what makes this animation exist at
+    // all. The properties arrive from the CMS after mount, so on the first pass
+    // there are no `[data-card]` elements and the component has in fact returned
+    // null — GSAP logged "target not found", built a tween over nothing, and
+    // never ran again. The failure was silent in exactly the way a missing
+    // entrance always is: the content is all there, it just never moved.
+    { scope, dependencies: [properties.length], revertOnUpdate: true }
   )
 
   if (properties.length === 0) return null
 
   return (
-    // data-band="light" flips the fixed header to charcoal chrome — the band
-    // is bright gray now, not the carbon it used to be.
     <section
       id="properties"
       data-band="light"
       ref={scope}
-      className="bg-surface-alt px-6 py-20 text-content md:px-[75px] md:py-24"
+      aria-labelledby="properties-heading"
+      className="bg-base px-gutter py-6 text-content md:px-gutter-lg"
     >
-      <div className="flex items-center justify-between gap-6">
-        <h2
-          className="font-display font-bold leading-tight tracking-[-0.01em] text-accent"
-          style={{ fontSize: 'clamp(1.5rem, 2vw, 2.15rem)' }}
-        >
-          {renderEmphasis(heading, '')}
-        </h2>
+      {/* The design draws no heading here — the cards arrive straight out of
+          the featured panel above, and they are legible without one. A landmark
+          still has to be named for anyone navigating by region, though, so the
+          CMS heading becomes the accessible name rather than being dropped. */}
+      <h2 id="properties-heading" className="sr-only">
+        {heading || 'Properties'}
+      </h2>
 
-        <a
-          href="/properties"
-          onClick={(e) => {
+      <div className="mx-auto flex max-w-[1560px] flex-col gap-6">
+        {properties.map((p, i) => {
+          // Alternating sides. Set on the *image* rather than by reversing the
+          // row, so the DOM order stays photo-then-detail on every card — which
+          // is the order it collapses to on a phone, and the order a screen
+          // reader hears regardless of what the grid is doing.
+          const flip = i % 2 === 1
+          const chips = chipsFor(p)
+          const href = `/properties/${p.slug}`
+          const open = (e) => {
             e.preventDefault()
-            go('/properties')
-          }}
-          className="shrink-0 rounded-full border border-content/25 px-6 py-3 font-body text-[12px] font-medium uppercase tracking-[0.12em] text-content transition-colors duration-300 hover:border-content hover:bg-surface md:px-7"
-        >
-          View all
-        </a>
-      </div>
+            navigate(href)
+          }
 
-      <div className="mt-10 flex flex-col gap-7">
-        {properties.map((p) => {
-          const overview = p.detail?.overview ?? {}
-          const specs = (overview.stats ?? []).filter((s) => s.value || s.label)
-          const blurb = p.detail?.tagline || overview.body
-          const open = () => navigate(`/properties/${p.slug}`)
-          // The button is part of the card's shape, so it always renders. What
-          // moves is where it points: a real flyer downloads, and '#' — the
-          // seed's placeholder for "none uploaded yet" — falls through to the
-          // property's own page rather than becoming a dead click.
-          const flyer = overview.flyer && overview.flyer !== '#' ? overview.flyer : null
-
-          // The card's padding is deliberately asymmetric. The image is inset by
-          // the card's own p-3.5 and reads as intentional there; text at that
-          // same distance just looks like it's falling off the edge, so the type
-          // side gets room to breathe.
           return (
-            // Hover is carried by the shadow and the image, never by a
-            // transform on the card: GSAP animates these in on `y` and leaves
-            // an inline `transform` behind, which an inline style always wins
-            // against a utility class — a `hover:-translate-y` here would
-            // silently stop working the moment the reveal had run.
             <article
               key={p.slug}
               data-card
-              className="group flex flex-col gap-4 rounded-[20px] bg-surface p-3 shadow-[0_0_0_0_rgba(0,0,0,0)] transition-shadow duration-500 ease-out hover:shadow-[0_26px_56px_-36px_rgba(0,0,0,0.5)] md:flex-row md:items-stretch md:gap-7 md:p-3.5 md:pr-7"
+              // The accent hairline is the resting state, not a hover: these
+              // are the page's primary content and the border is what separates
+              // a card from the page ground behind it, which is nearly the same
+              // colour.
+              className="group relative overflow-hidden rounded-panel border border-accent/45 bg-surface transition-[border-color,box-shadow] duration-500 ease-brand hover:border-accent/75 hover:shadow-[0_36px_80px_-52px_rgba(0,0,0,0.85)] focus-within:border-accent/75"
             >
               {p.image && (
-                // A real link rather than an onClick on the image: the old
-                // handler was reachable by mouse only, so the largest target on
-                // the card was invisible to the keyboard. Hidden from the
-                // accessibility tree because the heading below already links to
-                // the same place, and two links to one property read as two
-                // properties when they're announced in sequence.
-                <a
-                  href={`/properties/${p.slug}`}
-                  onClick={(e) => {
-                    e.preventDefault()
-                    open()
-                  }}
-                  tabIndex={-1}
-                  aria-hidden="true"
-                  className="relative h-44 w-full shrink-0 overflow-hidden rounded-[14px] sm:h-56 md:h-auto md:w-[27%] md:min-w-56 md:max-w-124 md:self-stretch"
+                // A block in the flow on a phone, lifted out of it from `md` up.
+                // That switch is what lets one element be a stacked banner at
+                // one size and a bled-in backdrop at another: absolute here
+                // would leave the card with no height on mobile, and static
+                // there would push the detail panel below the photograph
+                // instead of onto it.
+                <div
+                  // A ratio rather than `h-56`, because the stacked card is the
+                  // one layout whose width is not fixed. A height in rem holds
+                  // while the card grows from 327px on a phone to 672 on a
+                  // tablet, so the same photograph goes from a 4:3 frame to a
+                  // 2.3:1 letterbox on the way — the crop tightens exactly as
+                  // the screen gets *more* room for it. From `lg` the frame is
+                  // bled in behind the copy and takes its height from the card,
+                  // so the ratio steps aside there.
+                  className={`relative aspect-[4/3] overflow-hidden bg-surface-alt sm:aspect-[16/9] lg:absolute lg:inset-y-0 lg:aspect-auto lg:h-full lg:w-[62%] ${
+                    flip ? 'lg:right-0 card-photo-fade-flip' : 'lg:left-0 card-photo-fade'
+                  }`}
                 >
                   <img
                     src={sized(p.image, 'card')}
                     alt={p.name}
                     loading="lazy"
                     decoding="async"
-                    className="absolute inset-0 size-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.05]"
+                    className="absolute inset-0 size-full object-cover transition-transform duration-700 ease-brand group-hover:scale-[1.04]"
                   />
-                </a>
+                  {/* The stacked card's answer to `card-photo-fade`, turned a
+                      quarter: from `lg` the photograph dissolves sideways into
+                      the panel beside it, and below that it dissolves downward
+                      into the panel underneath. Without it the two meet on a
+                      hard horizontal seam and the card reads as a picture with
+                      a black box stuck to it rather than as one object. */}
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-surface via-surface/55 to-transparent lg:hidden"
+                  />
+                </div>
               )}
 
-              {/* min-w-0 so a long blurb wraps instead of widening the row and
-                  squeezing the stats column off the end. Centred rather than
-                  top-aligned: the image sets the row height, so anchoring the
-                  type to the top pools all the slack under the buttons. */}
-              <div className="min-w-0 flex-1 md:self-center md:py-2">
-                <a
-                  href={`/properties/${p.slug}`}
-                  onClick={(e) => {
-                    e.preventDefault()
-                    open()
-                  }}
-                  // group-hover as well as hover, so pointing anywhere on the
-                  // card lights the name. Without it the image zooms and the
-                  // shadow lifts while the title sits inert, and the card reads
-                  // as several things reacting rather than one.
-                  className="font-display text-[1.45rem] font-bold leading-tight tracking-[-0.01em] text-accent transition-colors duration-300 hover:text-prime-deep group-hover:text-prime-deep"
-                >
-                  {p.name}
-                </a>
+              {/* 38%, starting at 62% — exactly where the photograph ends, with
+                  no overlap at all. `relative` lifts it over the absolute
+                  photograph from `md` up.
 
-                {p.address && (
-                  <p className="mt-1 font-body text-[15px] text-content/70">{p.address}</p>
-                )}
+                  The two used to overlap by six points, on the theory that the
+                  mask had already gone transparent by then. It had not, quite:
+                  the last stretch of a fade still carries a few percent of
+                  image, and on these photographs that stretch is bright sky, so
+                  the panel's first line sat on a lilac smear. The dissolve now
+                  finishes around 61% of the card and the panel starts at 62%.
 
-                {specs.length > 0 && (
-                  <ul className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2">
-                    {/* Indexed, not keyed on the label: these are free text an
-                        admin typed, so two blank or repeated labels are a
-                        content mistake, not an impossible one — and React
-                        answers duplicate keys by dropping a row. */}
-                    {specs.map((s, i) => (
-                      <li key={`${s.label ?? ''}-${i}`} className="flex items-center gap-2">
-                        <SpecIcon label={s.label} />
-                        <span className="font-body text-[15px] text-content/80">
-                          {[s.value, s.label].filter(Boolean).join(' ')}
-                        </span>
+                  The min-height is what actually sets the card's proportion:
+                  the panel holds four short blocks and would collapse to about
+                  a fifth of the card's width in height, which is a letterbox,
+                  not a card. 23rem puts a 1240px card at ~368 tall — the comp
+                  measures 354 on a 1196 card, so the same 0.30 ratio. */}
+              <div
+                className={`relative flex min-w-0 flex-col justify-center gap-4 p-5 sm:gap-5 sm:p-8 lg:min-h-[23rem] lg:w-[38%] lg:p-10 ${
+                  flip ? 'lg:mr-auto' : 'lg:ml-auto'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <h3 className="font-display text-[clamp(1.4rem,2.1vw,1.95rem)] font-bold leading-[1.1] tracking-[-0.02em] text-content">
+                      {/* The stretched link. One clickable region covering the
+                          whole card, anchored on the name so the accessible
+                          name is the property rather than "view property". The
+                          buttons below sit above it on z-index. */}
+                      <a
+                        href={href}
+                        onClick={open}
+                        className="outline-none after:absolute after:inset-0 after:rounded-frame focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-accent"
+                      >
+                        {p.name}
+                      </a>
+                    </h3>
+                    {p.address && (
+                      <p className="mt-2 font-body text-[13px] italic leading-relaxed text-content/60 sm:text-content/50">
+                        {p.address}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Decorative twin of the stretched link above — the whole
+                      card already goes there, so this must not be a second tab
+                      stop announcing the same destination. Solid rather than
+                      outlined, as drawn, and on role tokens so it does not
+                      become a white disc on a white card in the light theme. */}
+                  <span
+                    aria-hidden
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full bg-invert text-invert-fg transition-colors duration-300 group-hover:bg-accent group-hover:text-white"
+                  >
+                    <ArrowRight className="size-4 -rotate-45" />
+                  </span>
+                </div>
+
+                {/* Divided by rules rather than boxed into pills. Three bordered
+                    chips read as three tappable things; these are facts, and the
+                    comp sets them as one line of figures with hairlines between.
+                    The divider hangs off each item after the first, so it cannot
+                    end up trailing the last one. */}
+                {chips.length > 0 && (
+                  <ul
+                    // Two settings of the same three facts.
+                    //
+                    // From `sm` it is the comp's: one line of figures with
+                    // hairlines between them. Below that the line is 287px wide
+                    // and `chipsFor`'s budget was fitted to a 470px panel, so
+                    // the row sits one long CMS label away from wrapping — and
+                    // a wrap is what the divider cannot survive, since the first
+                    // item on the second line carries a rule with nothing on the
+                    // other side of it.
+                    //
+                    // `auto-cols-fr` takes that risk off the table rather than
+                    // guarding against it: three equal columns cannot wrap at
+                    // any label length, and stacking the figure over its name
+                    // gives a long one somewhere to go. It reads as a spec
+                    // strip, which is what a phone wants under a photograph.
+                    className="grid auto-cols-fr grid-flow-col rounded-2xl border border-content/10 bg-content/[0.035] text-center font-body text-[13px] text-content/70 sm:flex sm:flex-wrap sm:items-center sm:gap-y-3 sm:rounded-none sm:border-0 sm:bg-transparent sm:text-left sm:text-[14px]"
+                  >
+                    {chips.map((c, ci) => (
+                      <li
+                        key={c.label}
+                        // py-1.5 on every item from `sm`, not just the divided
+                        // ones, so the rules run taller than the text the way
+                        // the comp draws them and every item keeps the same
+                        // baseline.
+                        className={`px-2 py-3 sm:px-0 sm:py-1.5 ${
+                          ci === 0 ? '' : 'border-l border-content/10 sm:ml-4 sm:border-content/20 sm:pl-4'
+                        }`}
+                      >
+                        <span className="numeral block font-bold text-content sm:inline">{c.value}</span>{' '}
+                        <span className="block sm:inline">{c.label}</span>
                       </li>
                     ))}
                   </ul>
                 )}
 
-                {blurb && (
-                  <p className="mt-3.5 max-w-[68ch] font-body text-[15px] leading-relaxed text-content/85 line-clamp-2">
-                    {blurb}
-                  </p>
-                )}
-
-                <div className="mt-4 flex flex-wrap items-center gap-2.5">
-                  <a
-                    href={`/properties/${p.slug}`}
-                    onClick={(e) => {
-                      e.preventDefault()
-                      open()
-                    }}
-                    className="rounded-xl bg-invert px-5 py-3 font-body text-[15px] font-medium text-invert-fg transition-colors duration-300 hover:opacity-90"
-                  >
+                {/* relative z-10 so these clear the stretched link's ::after
+                    and stay independently clickable. */}
+                {/* Full width and stacked on a phone, the drawn row from `sm`.
+                    Side by side the pair needs about 340px and the panel gives
+                    287, so the second one wrapped anyway — but wrapped to its
+                    own content width, which is a half-length button hanging
+                    under a full-length one. If the row is going to break, it
+                    should break on purpose. */}
+                <div className="relative z-10 mt-1 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+                  <ActionButton href={href} onClick={open} className="w-full sm:w-auto">
                     View property
-                  </a>
+                  </ActionButton>
 
-                  <a
-                    href={flyer ?? `/properties/${p.slug}`}
-                    {...(flyer
-                      ? { target: '_blank', rel: 'noreferrer' }
-                      : {
-                          onClick: (e) => {
-                            e.preventDefault()
-                            open()
-                          },
-                        })}
-                    className="inline-flex items-center gap-2.5 rounded-xl border border-content/15 bg-surface px-5 py-3 font-body text-[15px] font-medium text-content transition-colors duration-300 hover:border-content/40"
+                  <ActionButton
+                    as="button"
+                    type="button"
+                    tone="invert"
+                    className="w-full sm:w-auto"
+                    onClick={() => setBrochureProperty(p)}
                   >
                     Download brochure
                     <DownloadIcon />
-                  </a>
+                  </ActionButton>
                 </div>
               </div>
-
-              <AvailabilityMeter
-                total={p.buildings}
-                sold={p.sold}
-                available={p.available}
-              />
             </article>
           )
         })}
       </div>
+
+      {brochureProperty && (
+        <BrochureRequestModal property={brochureProperty} onClose={() => setBrochureProperty(null)} />
+      )}
     </section>
   )
 }

@@ -52,13 +52,13 @@ export default function ContentSectionPage() {
     <div className="pb-24">
       <div className="flex items-center justify-between">
         <div>
-          <Link to="/admin/content" className="text-xs font-bold uppercase tracking-wide text-bone/40 hover:text-bone/70">
+          <Link to="/admin/content" className="text-xs font-bold uppercase tracking-wide text-bone-3 hover:text-bone/70">
             ← Site content
           </Link>
           <h1 className="mt-2 font-display text-2xl font-medium">{meta.label}</h1>
         </div>
         <div className="flex items-center gap-4">
-          {savedAt && <span className="text-xs text-bone/40">Saved</span>}
+          {savedAt && <span className="text-xs text-bone-3">Saved</span>}
           <button
             type="button"
             onClick={save}

@@ -5,13 +5,63 @@
 // Run with: node --env-file=.env.seed scripts/seed.js
 
 import { createClient } from '@supabase/supabase-js'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const root = path.resolve(__dirname, '..')
-const assets = (p) => path.join(root, 'src/assets', p)
+// `apps/web/src/assets`, not `src/assets`. This pointed at the repo root until
+// the move to a monorepo left it addressing a directory that no longer exists,
+// which meant the seed threw on its very first upload.
+const assets = (p) => path.join(root, 'apps/web/src/assets', p)
+
+/**
+ * The partner wall, in the order it renders.
+ *
+ * `file` is the basename in apps/web/src/assets/logos/ — the extension is
+ * resolved at upload, so a .png dropped in beside the existing .webp files
+ * needs no change here. `alt` is what a screen reader announces, so it is the
+ * brand's name and nothing else. `darkPanel` inverts that one cell of the wall
+ * for a knockout mark that would vanish on the white plane.
+ *
+ * Anything without a file present is skipped with a warning rather than
+ * throwing, so a partial set still seeds the rest of the site.
+ */
+const PARTNER_LOGOS = [
+  // The one knockout in the set: white lettering on a dark ground.
+  { file: 'niva-dental', alt: 'NIVA Dental Specialists', darkPanel: true },
+  { file: 'shipley-donuts', alt: 'Shipley Do-Nuts' },
+  { file: 'brass-tap', alt: 'The Brass Tap' },
+  { file: 'learning-experience', alt: 'The Learning Experience' },
+  { file: 'ups', alt: 'UPS' },
+  // TODO: the blue-and-orange shield crest — its wordmark is not legible at the
+  // size it was supplied at, so this alt is a placeholder and will read out as
+  // nothing useful. Replace it with the brand's name before this goes live.
+  { file: 'shield-crest', alt: '' },
+  { file: 'deutschtuning', alt: 'DT DeutschTuning' },
+  { file: '22yards', alt: '22 Yards' },
+  { file: 'teapioca', alt: 'Teapioca International' },
+  { file: 'sangam', alt: 'Sangam Chettinad' },
+  { file: 'sevenoaks', alt: 'Seven Oaks' },
+  { file: 'society-kitchen', alt: 'Society Kitchen + Kocktails' },
+  { file: 'vivek-flowers', alt: 'Vivek Flowers' },
+  { file: 'parinama-academy', alt: 'Parinama Academy' },
+  { file: 'pizza-depot', alt: 'Pizza Depot' },
+  { file: 'india-bazaar', alt: 'India Bazaar' },
+  { file: 'lava', alt: 'LAVA' },
+  { file: 'bawarchi', alt: 'Bawarchi Indian Cuisine' },
+  { file: 'farm2cook', alt: 'Farm2Cook' },
+  { file: 'lego', alt: 'LEGO' },
+  { file: 'qahwah', alt: 'Qahwah House' },
+]
+
+// Marks the wall does not carry but the property pages still reference in their
+// tenant strips.
+const TENANT_ONLY_LOGOS = []
+
+// Prefer newly supplied source PNGs when an older optimized copy also exists.
+const LOGO_EXTENSIONS = ['png', 'webp', 'svg', 'jpg', 'jpeg']
 
 const url = process.env.SUPABASE_URL
 const key = process.env.SUPABASE_SECRET_KEY
@@ -41,11 +91,32 @@ async function main() {
   }
   const propertyImg = await uploadAsset('property-1-enhanced.png', 'site/property-1.png')
 
-  const logos = {}
-  for (const name of ['22yards', 'farm2cook', 'sevenoaks', 'lego', 'qahwah']) {
-    logos[name] = await uploadAsset(`logos/${name}.webp`, `site/logos/${name}.webp`)
+  // Extension resolved from what is actually on disk rather than assumed, so a
+  // brand that supplied a PNG needs no edit to the list above. Missing files
+  // warn and are skipped: a seed that aborts because one of twenty logos has
+  // not arrived yet takes the properties and page copy down with it.
+  const uploadLogo = async (name) => {
+    const ext = LOGO_EXTENSIONS.find((e) => existsSync(assets(`logos/${name}.${e}`)))
+    if (!ext) {
+      console.warn(`  ! ${name} — no file in apps/web/src/assets/logos/, skipped`)
+      return null
+    }
+    return uploadAsset(`logos/${name}.${ext}`, `site/logos/${name}.${ext}`)
   }
-  console.log('Assets uploaded.')
+
+  const logos = {}
+  const partnerLogos = []
+  for (const entry of PARTNER_LOGOS) {
+    const image = await uploadLogo(entry.file)
+    if (!image) continue
+    logos[entry.file] = image
+    partnerLogos.push({ image, alt: entry.alt, darkPanel: Boolean(entry.darkPanel) })
+  }
+  for (const name of TENANT_ONLY_LOGOS) {
+    const image = await uploadLogo(name)
+    if (image) logos[name] = image
+  }
+  console.log(`Assets uploaded — ${partnerLogos.length}/${PARTNER_LOGOS.length} partner logos.`)
 
   // ── content ──────────────────────────────────────────────────────────
   const content = {
@@ -66,16 +137,13 @@ async function main() {
       ],
     },
     marquee: {
-      logos: [
-        { image: logos['22yards'], alt: '22 Yards' },
-        { image: logos.farm2cook, alt: 'Farm2Cook' },
-        { image: logos.sevenoaks, alt: 'Sevenoaks' },
-        { image: logos.lego, alt: 'Lego' },
-        { image: logos.qahwah, alt: 'Qahwah' },
-      ],
+      // Built from PARTNER_LOGOS at the top of this file — order, alt text and
+      // the one knockout flag all live there rather than being restated here.
+      logos: partnerLogos,
     },
     about_home: {
-      heading: 'Experienced professionals turning raw land into *finished Texas developments*.',
+      eyebrow: 'Our Partners',
+      heading: 'Pioneering real estate projects that redefine the Texan landscape.',
       paragraph1:
         "Since 2017, Prime Developers has grown into one of Texas's most active developers — owning and operating retail, flex, and residential properties across Dallas–Fort Worth and Austin.",
       videoUrl: '/about-video.mp4',
@@ -88,42 +156,55 @@ async function main() {
       ],
     },
     properties_home: { heading: 'Our properties.' },
+    // The panel is left without a photograph on purpose. Seeding a stock
+    // building here would publish an image of somewhere Prime did not build as
+    // its featured development; the panel renders copy-only until the client
+    // uploads the real one.
+    featured_home: {
+      eyebrow: 'Featured Property',
+      heading: 'Grow Your Business at\n*Centro Plaza*',
+      subheading: 'Premium Commercial Spaces in a *Prime Location.*',
+      paragraph:
+        'Discover modern retail and office spaces designed for visibility, accessibility, and long-term business growth. Secure your space at Centro Plaza today.',
+      ctaLabel: 'Explore Property',
+      ctaHref: '/properties/centro-plaza',
+      secondaryLabel: 'Schedule a Visit',
+      secondaryHref: '/contact',
+      image: '',
+      imageAlt: '',
+    },
+    // Photographs are left empty for the same reason — the cards fall back to
+    // the Prime mark, which is honest about the image being missing in a way
+    // that a stock interior shot would not be.
     services_home: {
       eyebrow: 'Our Services',
-      heading: 'Expert support across every stage of your property journey.',
+      heading: 'More Ways to Build, Grow & Invest',
+      paragraph:
+        'From transforming spaces to building partnerships and investment opportunities, we offer flexible ways to create long-term value together.',
       items: [
-        {
-          icon: 'compass',
-          title: 'Expert Guidance',
-          body: 'Personalized advice from experienced real estate professionals.',
-        },
-        {
-          icon: 'map-pin',
-          title: 'Premium Locations',
-          body: 'Access to prime neighborhoods and sought-after developments.',
-        },
-        {
-          icon: 'shield-check',
-          title: 'Trusted Partners',
-          body: 'Vetted vendors and partners for a seamless experience.',
-        },
-        {
-          icon: 'clock',
-          title: '24/7 Support',
-          body: 'Responsive care whenever you need it.',
-        },
+        { title: 'Interiors', image: '', href: '/enterprise' },
+        { title: 'Collaborations', image: '', href: '/enterprise' },
+        { title: 'Franchise', image: '', href: '/enterprise' },
+        { title: 'Invest', image: '', href: '/contact' },
       ],
     },
     gallery: {
       eyebrow: 'Curated Portfolio',
-      heading: 'Image Gallery',
+      heading: 'Explore Our Properties',
       paragraph:
-        'Explore our collection of award-winning architectural designs, bespoke luxury interiors, and breath-taking coastal estates. Each space is custom-crafted to redefine modern premium living in Texas.',
-      features: [{ title: 'High-End Modern Materials' }, { title: 'Bespoke Light Integration' }],
+        'Discover our portfolio of commercial spaces, retail destinations, and thoughtfully developed properties designed for long-term value and business growth.',
+      ctaLabel: 'See more projects',
+      features: [],
     },
+    // `items` is seeded empty on purpose. Every card here carries a link to a
+    // real post on a real account; inventing three would publish links that go
+    // nowhere under the company's own name. The section renders the journal
+    // alone until someone adds the first social post in the admin.
     news_home: {
-      heading: 'News & Insights',
-      paragraph: 'Stay updated on the latest real estate trends and market insights.',
+      heading: 'Latest from Prime',
+      paragraph:
+        'Site progress, leasing news and open days — from our journal and across our channels.',
+      items: [],
     },
     cta_home: {
       heading: 'Ready to Find Your Dream Property?',
@@ -138,9 +219,10 @@ async function main() {
         'https://knghxhtfkbswzhphhigy.supabase.co/storage/v1/object/public/images/site/property-1.png',
     },
     testimonials: {
-      heading: 'What Our Clients Say',
+      eyebrow: 'Testimonials',
+      heading: 'Trusted by Property Owners & Investors',
       paragraph:
-        'Real stories from homeowners and investors who have partnered with Prime to bring their vision to life.',
+        'Real stories from the owners, tenants and investors who have built with Prime across Central Texas.',
       items: [
         {
           quote:
@@ -182,7 +264,6 @@ async function main() {
       email: 'hello@primedevelopers.com',
       phone: '+1 (512) 419-2837',
       studio: 'East 6th Street, Austin, TX',
-      ctaHeading: "Let's build\nsomething *lasting.*",
       quickLinks: [
         { label: 'Home', href: '/' },
         { label: 'About', href: '/about' },
@@ -297,7 +378,10 @@ async function main() {
             { value: '14', label: 'Available Units' },
           ],
         },
-        tenants: [logos['22yards'], logos.farm2cook, logos.sevenoaks, logos.qahwah, logos.lego],
+        // filter(Boolean) because any of these can now be absent: a logo with
+        // no file on disk is skipped rather than throwing, and an undefined in
+        // this array would render as a broken tenant tile.
+        tenants: [logos['22yards'], logos.farm2cook, logos.sevenoaks, logos.qahwah, logos.lego].filter(Boolean),
         highlights: {
           heading: 'Tailored Spaces For Your Success',
           body: '294,512 sq ft across 6–7 buildings on Highway 121, Leora Lane, offering flexible options from 3,375 to 9,270 sq ft. With high visibility and zoning for diverse businesses like car service stations and sign shops, it’s a prime commercial hub accessible from all corners of Dallas Fort Worth.',

@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { api } from '../lib/api'
 import { withTransformedImages } from '../lib/images'
 import { useAuth } from './AuthContext'
+import LogoLoader from '../components/LogoLoader'
 
 // Fallback shape per section so a missing/not-yet-seeded row never crashes a
 // component — every field a component reads is guaranteed to exist.
@@ -13,6 +14,10 @@ const DEFAULTS = {
   // row doesn't carry is exactly what the defaults are for. Setting either in
   // the admin still overrides it.
   about_home: {
+    // `eyebrow` postdates the live row, so it carries its copy here for the
+    // same reason the film does — an empty default would leave the section's
+    // kicker missing until someone opened the admin.
+    eyebrow: 'Our Partners',
     heading: '',
     paragraph1: '',
     videoUrl: '/about-video.mp4',
@@ -20,50 +25,103 @@ const DEFAULTS = {
     stats: [],
   },
   properties_home: { heading: '' },
+  // The one property lifted out of the list into a panel of its own. Ships with
+  // its copy so the section renders before anyone has touched the admin; blank
+  // the heading there and the whole panel hides itself, which is how the client
+  // switches the feature off between developments.
+  featured_home: {
+    eyebrow: 'Featured Property',
+    // *asterisks* mark the saffron half — the property's own name.
+    heading: 'Grow Your Business at\n*Centro Plaza*',
+    subheading: 'Premium Commercial Spaces in a *Prime Location.*',
+    paragraph:
+      'Discover modern retail and office spaces designed for visibility, accessibility, and long-term business growth. Secure your space at Centro Plaza today.',
+    ctaLabel: 'Explore Property',
+    ctaHref: '/properties/centro-plaza',
+    secondaryLabel: 'Schedule a Visit',
+    secondaryHref: '/contact',
+    image: '',
+    imageAlt: '',
+  },
   // Ships with its copy rather than waiting on a seed, for the same reason
   // about_home's film does: the live content row predates this key entirely, so
   // an empty default would hide the section until someone opened the admin.
+  // The items carry `image` and `href` now rather than `icon` and `body`. The
+  // section became four photographs with a name under each, so the icon name
+  // has nothing to render and the body copy has nowhere to sit. Old rows still
+  // merge cleanly — an `icon` the component no longer reads is simply ignored,
+  // and a missing `image` falls back to a branded tile rather than a hole.
   services_home: {
     eyebrow: 'Our Services',
-    heading: 'Expert support across every stage of your property journey.',
+    heading: 'More Ways to Build, Grow & Invest',
+    paragraph:
+      'From transforming spaces to building partnerships and investment opportunities, we offer flexible ways to create long-term value together.',
     items: [
-      {
-        icon: 'compass',
-        title: 'Expert Guidance',
-        body: 'Personalized advice from experienced real estate professionals.',
-      },
-      {
-        icon: 'map-pin',
-        title: 'Premium Locations',
-        body: 'Access to prime neighborhoods and sought-after developments.',
-      },
-      {
-        icon: 'shield-check',
-        title: 'Trusted Partners',
-        body: 'Vetted vendors and partners for a seamless experience.',
-      },
-      { icon: 'clock', title: '24/7 Support', body: 'Responsive care whenever you need it.' },
+      { title: 'Interiors', image: '', href: '/enterprise' },
+      { title: 'Collaborations', image: '', href: '/enterprise' },
+      { title: 'Franchise', image: '', href: '/enterprise' },
+      { title: 'Invest', image: '', href: '/contact' },
     ],
   },
-  // eyebrow/paragraph/features postdate the live row the same way services_home
+  academy: {
+    heading: 'Real estate, explained clearly.',
+    paragraph: 'A practical guide to the terms you will hear while comparing properties, leases, and investment opportunities.',
+    terms: [
+      {
+        slug: 'flex-space', term: 'Flex Space', category: 'Property types', videoUrl: '',
+        shortDefinition: 'A property combining warehouse, showroom, office, or light-production space in one adaptable unit.',
+        explanation: 'Flex space supports more than one business function under the same roof. The mix can change by tenant, making it useful for companies that need an office in front and storage, assembly, or distribution space behind it.',
+        example: 'A contractor leases one unit with offices for the project team, a customer showroom, and warehouse space for equipment and materials.',
+        whyItMatters: 'The office-to-warehouse mix affects rent, operating efficiency, loading access, and how easily the unit can adapt as the business changes.',
+        related: 'parking-ratio, nnn-lease',
+      },
+      {
+        slug: 'nnn-lease', term: 'NNN Lease', category: 'Leasing', videoUrl: '',
+        shortDefinition: 'A triple-net lease where the tenant pays base rent plus its share of property taxes, insurance, and common-area expenses.',
+        explanation: 'NNN refers to three expense categories commonly passed through to tenants: real-estate taxes, building insurance, and maintenance or common-area costs. The lease defines what is included and how the tenant share is calculated.',
+        example: 'A suite is advertised at a base rent, with an additional estimated NNN charge per square foot covering the tenant’s allocated operating expenses.',
+        whyItMatters: 'Base rent alone can understate total occupancy cost. Ask for the current estimate, historical expenses, reconciliation process, and any caps or exclusions.',
+        related: 'flex-space, parking-ratio',
+      },
+      {
+        slug: 'parking-ratio', term: 'Parking Ratio', category: 'Property metrics', videoUrl: '',
+        shortDefinition: 'The number of parking spaces available relative to building area, commonly stated per 1,000 square feet.',
+        explanation: 'A parking ratio of 4:1,000 means four spaces for every 1,000 square feet of building area. The useful ratio depends on property type, local requirements, employee density, customer traffic, and whether spaces are shared or reserved.',
+        example: 'A 10,000-square-foot office with a 4:1,000 ratio is associated with approximately 40 spaces, subject to the lease and site plan.',
+        whyItMatters: 'A space can fit the business physically but still fail operationally if employees, customers, or fleet vehicles cannot park reliably.',
+        related: 'flex-space, nnn-lease',
+      },
+    ],
+  },  // eyebrow/paragraph/features postdate the live row the same way services_home
   // does, so they carry their copy here; heading stays blank and comes from the
   // row, which has always had one.
+  // `features` is no longer read — the section is a photographic mosaic now,
+  // not a spec list. Left in the shape so an existing row carrying it still
+  // merges without complaint.
   gallery: {
-    heading: '',
+    heading: 'Explore Our Properties',
     eyebrow: 'Curated Portfolio',
     paragraph:
-      'Explore our collection of award-winning architectural designs, bespoke luxury interiors, and breath-taking coastal estates. Each space is custom-crafted to redefine modern premium living in Texas.',
-    features: [{ title: 'High-End Modern Materials' }, { title: 'Bespoke Light Integration' }],
+      'Discover our portfolio of commercial spaces, retail destinations, and thoughtfully developed properties designed for long-term value and business growth.',
+    ctaLabel: 'See more projects',
+    features: [],
   },
   testimonials: {
-    heading: 'What Our Clients Say',
+    eyebrow: 'Testimonials',
+    heading: 'Trusted by Property Owners & Investors',
     paragraph:
-      'Real stories from homeowners and investors who have partnered with Prime to bring their vision to life.',
+      'Real stories from the owners, tenants and investors who have built with Prime across Central Texas.',
     items: [],
   },
-  news_home: {
-    heading: 'News & Insights',
-    paragraph: 'Stay updated on the latest real estate trends and market insights.',
+  // Still keyed `news_home` because the live row under that name already holds
+  // this section's heading and paragraph, and renaming the key would strand
+  // them. What the section shows has widened: journal posts merge with `items`,
+  // which are social posts an admin has pointed at by URL.
+  news_home: {
+    heading: 'Latest from Prime',
+    paragraph:
+      'Site progress, leasing news and open days — from our journal and across our channels.',
+    items: [],
   },
   // No cta_home row exists yet, so this object is what the panel actually
   // renders — an empty `image` here meant the photo column never mounted and
@@ -83,7 +141,6 @@ const DEFAULTS = {
     email: '',
     phone: '',
     studio: '',
-    ctaHeading: '',
     quickLinks: [],
     socials: [],
     copyrightLeft: '',
@@ -115,17 +172,52 @@ const DEFAULTS = {
     location: '',
     socials: [],
   },
+  // No enterprise_page row exists and every field here was blank, so /enterprise
+  // rendered a single band containing nothing but its own CTA button: an empty
+  // <h1> above three sections that each hide themselves on an empty array. The
+  // copy ships here for the same reason services_home's and cta_home's does — a
+  // default is what stands in for a row that was never seeded, and every field
+  // is still overridden the moment someone saves the section in the admin.
+  //
+  // `stats` stays empty deliberately. That section hides itself on an empty
+  // array, and the figures it asks for — projects delivered, square footage,
+  // years active — are claims about the business that only the business can
+  // make. Inventing plausible ones would put fabricated numbers on a public
+  // page. Same for `heroImage`: the block is conditional, so an unset one costs
+  // nothing, where picking a photograph is a content decision.
   enterprise_page: {
-    heroEyebrow: '',
-    heroHeading: '',
-    heroParagraph: '',
+    heroEyebrow: 'Expertise',
+    heroHeading: 'Four ways to build with Prime',
+    heroParagraph:
+      'Development is where we started, not where we stop. Interiors, collaborations, franchise and investment each open a different door into the same practice — the same teams, the same standards, and one line of accountability from first drawing to handover.',
     heroImage: '',
     ctaLabel: 'Talk to us',
     ctaHref: '/contact',
-    capabilitiesHeading: '',
-    capabilities: [],
+    capabilitiesHeading: 'What we do',
+    capabilities: [
+      {
+        title: 'Interiors',
+        image: '/images/expertise/interiors.webp',
+        body: 'Bespoke interior design and fit-out, handled in-house. The team that delivers the shell finishes the space, so specification, procurement and snagging answer to one contract rather than three — and the detail you were shown is the detail you get.',
+      },
+      {
+        title: 'Collaborations',
+        image: '/images/expertise/collaborations.webp',
+        body: 'Joint development with landowners and partner developers. You bring the land or the capital; we bring entitlement, design and delivery, structured as a genuine partnership with terms agreed before a drawing is issued.',
+      },
+      {
+        title: 'Franchise',
+        image: '/images/expertise/franchise.webp',
+        body: 'Operate under the Prime name in your own market. Partners take on our processes, supplier network and brand system with hands-on onboarding, held to the standards that earned the name in the first place.',
+      },
+      {
+        title: 'Invest',
+        image: '/images/expertise/invest.webp',
+        body: 'Participate in our commercial and residential pipeline. Opportunities are presented with the whole picture — hold period, exit assumptions, and the risks set out beside the returns — so you can weigh them on the same terms we do.',
+      },
+    ],
     stats: [],
-    closingHeading: '',
+    closingHeading: 'Tell us which door you want to come through',
     closingLabel: 'Start a conversation',
     closingHref: '/contact',
   },
@@ -160,6 +252,34 @@ export function ContentProvider({ children }) {
   const [properties, setProperties] = useState(null)
   const [news, setNews] = useState(null)
   const [error, setError] = useState(null)
+
+  // Two timers, both governing the splash and neither faking progress.
+  //
+  // `minimumElapsed` is a floor, not a delay: on a warm API the content lands in
+  // a few hundred milliseconds, and a splash that appears and vanishes inside
+  // that reads as a flicker rather than as an entrance. 1.2s is long enough for
+  // the mark to resolve once.
+  //
+  // `slowStart` is the ceiling nobody can control. The API sleeps when idle, so
+  // the first visit after a quiet spell waits on a cold start that can run past
+  // half a minute. There is no percentage to show — the server either answers or
+  // it does not — so at six seconds the screen stops looking broken and says
+  // what it is waiting for instead.
+  //
+  // Timers rather than rAF, deliberately: rAF does not fire in a tab that is not
+  // rendering, which would leave a backgrounded first visit stuck on the splash
+  // until it was focused (DESIGN.md §9).
+  const [minimumElapsed, setMinimumElapsed] = useState(false)
+  const [slowStart, setSlowStart] = useState(false)
+
+  useEffect(() => {
+    const floor = setTimeout(() => setMinimumElapsed(true), 1200)
+    const slow = setTimeout(() => setSlowStart(true), 6000)
+    return () => {
+      clearTimeout(floor)
+      clearTimeout(slow)
+    }
+  }, [])
 
   // Signed-in admins read the admin endpoints, which include unpublished
   // drafts; everyone else reads the public ones, which don't. Under Supabase
@@ -232,11 +352,15 @@ export function ContentProvider({ children }) {
     )
   }
 
-  if (!value.ready) {
+  if (!value.ready || !minimumElapsed) {
     return (
-      <div className="flex min-h-[100dvh] items-center justify-center bg-void">
-        <span className="h-8 w-8 animate-spin rounded-full border-2 border-bone/20 border-t-ember" />
-      </div>
+      <LogoLoader
+        hint={
+          slowStart
+            ? 'Waking the server — the first visit after a quiet spell takes a moment.'
+            : null
+        }
+      />
     )
   }
 
@@ -255,4 +379,5 @@ export const useCategories = () => useContentContext().categories
 export const useProperty = (slug) => useContentContext().getProperty(slug)
 export const useNews = () => useContentContext().news
 export const useNewsPost = (slug) => useContentContext().getNewsPost(slug)
+export const useAcademyTerms = () => useContentContext().getSection('academy').terms ?? []
 export const useContentRefetch = () => useContentContext().refetch

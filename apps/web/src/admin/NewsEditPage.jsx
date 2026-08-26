@@ -65,13 +65,13 @@ export default function NewsEditPage() {
     <div className="pb-24">
       <div className="flex items-center justify-between">
         <div>
-          <Link to="/admin/news" className="text-xs font-bold uppercase tracking-wide text-bone/40 hover:text-bone/70">
+          <Link to="/admin/news" className="text-xs font-bold uppercase tracking-wide text-bone-3 hover:text-bone/70">
             ← All posts
           </Link>
           <h1 className="mt-2 font-display text-2xl font-medium">{form.title || 'Untitled post'}</h1>
         </div>
         <div className="flex items-center gap-4">
-          {savedAt && <span className="text-xs text-bone/40">Saved</span>}
+          {savedAt && <span className="text-xs text-bone-3">Saved</span>}
           {form.published && (
             <a
               href={`/news/${form.slug}`}
@@ -112,7 +112,7 @@ export default function NewsEditPage() {
             value={form.body}
             onChange={(body) => patch({ body })}
           />
-          <p className="-mt-3 text-[11px] text-bone/35">Separate paragraphs with a blank line.</p>
+          <p className="-mt-3 text-[11px] text-bone-3">Separate paragraphs with a blank line.</p>
           <ImageUploader label="Cover image" value={form.coverImage} onChange={(coverImage) => patch({ coverImage })} folder="blog" />
           <div className="grid grid-cols-2 gap-5">
             <TextField label="Published date" type="date" value={toDateInput(form.publishedAt)} onChange={(v) => patch({ publishedAt: v })} />

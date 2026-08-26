@@ -4,6 +4,80 @@
    which a manual toggle has to be able to override, so the variant is rebound
    to a class we own on <html>. */
 @custom-variant dark (&:where(.dark, .dark *));
+/* Public-page section entrances. Sections begin readable in the DOM; the
+   controller opts only below-the-fold sections into motion before paint. */
+[data-section-reveal="pending"] {
+  opacity: 0.001;
+  clip-path: inset(0 0 8% 0);
+  filter: blur(7px);
+}
+
+[data-section-reveal="revealed"] {
+  opacity: 1;
+  clip-path: inset(0);
+  filter: blur(0);
+  transition:
+    opacity 0.72s var(--ease-brand),
+    clip-path 0.9s var(--ease-brand),
+    filter 0.72s var(--ease-brand);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-section-reveal] {
+    opacity: 1;
+    clip-path: none;
+    filter: none;
+    transition: none;
+  }
+}
+/* Branded bootstrap state: the official logomark resolves from a quiet
+   silhouette into full colour without a generic spinner or layout shift. */
+.prime-logo-loader {
+  position: relative;
+  width: clamp(3.5rem, 5vw, 4.75rem);
+  aspect-ratio: 929.04 / 1080;
+  filter: drop-shadow(0 0 1.5rem rgb(0 115 164 / 0.16));
+  animation: prime-loader-breathe 1.8s ease-in-out infinite;
+}
+.prime-logo-loader img { display: block; width: 100%; height: 100%; }
+.prime-logo-loader__ghost { opacity: 0.13; filter: grayscale(1); }
+.prime-logo-loader__reveal {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  clip-path: inset(100% 0 0);
+  animation: prime-loader-reveal 1.8s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+.prime-logo-loader__line {
+  position: absolute;
+  left: -12%;
+  right: -12%;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgb(62 155 199 / 0.9), transparent);
+  box-shadow: 0 0 0.75rem rgb(0 115 164 / 0.65);
+  animation: prime-loader-line 1.8s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+@keyframes prime-loader-reveal {
+  0%, 12% { clip-path: inset(100% 0 0); }
+  62%, 82% { clip-path: inset(0); }
+  100% { clip-path: inset(0 0 100%); }
+}
+@keyframes prime-loader-line {
+  0%, 12% { bottom: 0; opacity: 0; }
+  18% { opacity: 1; }
+  62% { bottom: 100%; opacity: 1; }
+  76%, 100% { bottom: 100%; opacity: 0; }
+}
+@keyframes prime-loader-breathe {
+  0%, 100% { transform: scale(0.97); }
+  55% { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .prime-logo-loader, .prime-logo-loader__reveal, .prime-logo-loader__line { animation: none; }
+  .prime-logo-loader__ghost, .prime-logo-loader__line { display: none; }
+  .prime-logo-loader__reveal { clip-path: none; }
+}
 
 /* ─────────────────────────────────────────────────────────────
    Self-hosted brand fonts.
@@ -103,19 +177,46 @@
 @theme {
   /* Dark canvas family — same lightness steps as the brand's neutral darks,
      but hue-shifted toward CG Blue (~200°) instead of true neutral gray, so
-     the cinematic grounds read as branded rather than generic dark-mode. */
-  --color-void: #141c21; /* deepest ground */
-  --color-ink: #182328; /* standard dark section */
-  --color-carbon: #23333b; /* raised dark surface / cards */
-  --color-carbon-2: #2b3f48; /* card hover */
+     the cinematic grounds read as branded rather than generic dark-mode.
 
-  /* Light family — white / bright-gray */
+     Revalued to a measured six-step ladder. The previous family spanned a
+     1.32:1 ratio end to end, which is not enough range for anything in it to
+     read as sitting above anything else: `void` and `ink` were 1.08 apart, and
+     `carbon-2` — the card *hover* state — was 1.19 from its own resting colour,
+     so that hover was close to imperceptible. The ladder below spans 2.21:1 and
+     takes the hover step to 1.57. Same blue-shifted hue near 205°, so the
+     grounds stay branded rather than generic. */
+  --color-void: #0b1216; /* base — deepest ground */
+  --color-sunken: #10191f; /* recessed band */
+  --color-ink: #17242c; /* standard dark section */
+  --color-carbon: #20313b; /* raised dark surface / cards */
+  --color-overlay: #2a404c; /* modal / popover over content */
+  --color-carbon-2: #34505e; /* card hover */
+
+  /* Light family — white / bright-gray.
+     `bone-2` and `bone-3` are fixed light tints for type on a dark ground, and
+     they exist because opacity was doing this job without defined stops: the
+     three most-used tints in the codebase — bone/35, /40 and /45, 69 call sites
+     between them — all measured under 4.5:1. These two are named steps that
+     hold on every ground in the ladder. Pigments, not role tokens, because the
+     surfaces they sit on are dark in *both* themes. */
   --color-bone: #ffffff; /* white — text on dark, light bands */
+  --color-bone-2: #afc0c9; /* secondary type on dark — 5.79 worst case */
+  --color-bone-3: #9bacb7; /* tertiary type on dark — 4.64 worst case */
   --color-bone-deep: #eeeeee; /* bright gray — deeper panels */
 
   /* Accents */
   --color-accent: #0073a4; /* CG Blue — interaction */
-  --color-accent-soft: #3e9bc7; /* lighter tint for hovers/secondary */
+  /* Lifted from #3e9bc7. That value cleared AA on void and surface but measured
+     4.18 on `carbon` — the card ground, which is exactly where property names
+     and "Read more" links live. This one holds 4.7 at its worst. */
+  --color-accent-soft: #63b4dc; /* the accent on any dark ground */
+  --color-accent-hi: #8ccbec; /* its hover */
+  /* No separate `on-accent` token: white fails as a foreground on every
+     saturated fill in this palette — the best reaches 2.31:1 — and the ink that
+     does work is `void` itself at 8.17:1. The codebase already spells that
+     `dark:text-void`, so the rule has a name; a second token for the same value
+     would only be one more thing to keep in step. */
   --color-ember: #fca42e; /* deep saffron — stats, energy, data */
   --color-ember-soft: #fdbe66;
 
@@ -130,7 +231,9 @@
 
   /* Hairlines */
   --color-line: rgba(32, 32, 32, 0.12); /* on bone */
-  --color-line-inv: rgba(255, 255, 255, 0.13); /* on dark */
+  --color-line-inv: rgba(255, 255, 255, 0.14); /* on dark */
+  --color-line-subtle: rgba(255, 255, 255, 0.08); /* quieter division on dark */
+  --color-line-strong: rgba(255, 255, 255, 0.24); /* emphasis rule on dark */
 
   --font-display: "Rubik", system-ui, sans-serif;
   --font-body: "Arimo", Arial, sans-serif;
@@ -157,6 +260,12 @@
 
      The relationship, not just the values, is what carries over: `alt`
      always recedes behind `surface`, in either theme. */
+  /* `base` is the page itself, behind every section. It exists because the
+     light theme had no use for the distinction — the page and its sections are
+     both white — while the dark theme needs it: sections have to sit *on*
+     something, and pointing the document at `surface` meant they sat on
+     themselves. Identical to `surface` here; it separates under .dark. */
+  --color-base: #ffffff; /* the document ground */
   --color-surface: #ffffff; /* section grounds and cards */
   --color-surface-alt: #eeeeee; /* recessed band behind them */
   --color-content: #2f2f2f; /* primary ink */
@@ -210,11 +319,15 @@
    values in both themes, so `text-bone` on a dark band stays legible and
    `text-white` on the accent button stays white. */
 :root.dark {
-  --color-surface: #1b262c;
-  --color-surface-alt: #131b20;
-  --color-content: #e6edf0;
-  --color-invert: #e6edf0;
-  --color-invert-fg: #162025;
+  /* The three grounds now sit at distinct rungs of the ladder rather than
+     within 1.13:1 of each other: the document is the deepest step, sections sit
+     a step above it, and a recessed band drops back between the two. */
+  --color-base: #0b1216;
+  --color-surface: #17242c;
+  --color-surface-alt: #10191f;
+  --color-content: #e9f0f3;
+  --color-invert: #e9f0f3;
+  --color-invert-fg: #0b1216;
 
   /* Hairlines flip polarity: a dark rule is invisible on a dark ground. */
   --color-line: rgba(255, 255, 255, 0.14);
@@ -228,9 +341,9 @@
      labels, every "Read More". Dark mode lifts it to the tint the palette
      already keeps for secondary use, which measures 4.9:1 here. The brand blue
      is unchanged in light mode, where it was designed to sit. */
-  --color-accent: #3e9bc7;
-  --color-prime: #3e9bc7;
-  --color-prime-deep: #62b4dc;
+  --color-accent: #63b4dc;
+  --color-prime: #63b4dc;
+  --color-prime-deep: #8ccbec;
 }
 
 /* The page ground is a role token, not a fixed colour.
@@ -244,12 +357,12 @@
    the content and the footer. */
 html {
   scroll-behavior: auto; /* Lenis owns scrolling */
-  background: var(--color-surface);
+  background: var(--color-base);
 }
 
 body {
   margin: 0;
-  background: var(--color-surface);
+  background: var(--color-base);
   color: var(--color-content);
   font-family: var(--font-body);
   font-feature-settings: "ss01", "cv01";
@@ -320,27 +433,61 @@ html {
   color: var(--color-void);
 }
 
-/* The film-grain plate and the vignette that used to sit here are gone.
-   Both were shot-on-film texture for a site that was dark on every screen: the
-   vignette laid a fixed radial reaching 42% black at the edges over everything,
-   and the grain was 4.5% noise on `screen`. Under the light theme the vignette
-   darkened all four corners of every page — the single biggest reason a light
-   page still read as a dark one — and `screen` blending makes the grain do
-   nothing on white. The redesign is a flat, light system with no equivalent.
-
-   The scroll-progress rail below is the one piece of that furniture kept. */
-
-/* Thin scroll-progress rule pinned to the very top of the viewport */
-.scroll-rail {
-  position: fixed;
-  top: 0;
-  left: 0;
-  height: 2px;
-  z-index: 9999;
-  transform-origin: 0 50%;
-  background: linear-gradient(90deg, var(--color-accent), var(--color-ember));
+/* Primary CTA color flood. The oversized ellipse begins below the pill and
+   rises through it, so the hover reads as a material tint change rather than
+   a flat color swap. Content remains in a stacking layer above the flood. */
+.primary-button-flood {
+  --button-flood: var(--color-bone);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
 }
 
+.primary-button-flood::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: -10%;
+  bottom: -220%;
+  width: 120%;
+  height: 220%;
+  border-radius: 50%;
+  background: var(--button-flood);
+  transform: translateY(15%) scaleX(0.62);
+  transition: transform 420ms var(--ease-brand);
+  pointer-events: none;
+}
+
+
+
+.primary-button-flood:hover::before,
+.primary-button-flood:focus-visible::before {
+  transform: translateY(-86%) scaleX(1.12);
+}
+
+.primary-button-flood:hover,
+.primary-button-flood:focus-visible {
+  color: var(--color-void);
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  .primary-button-flood::before {
+    inset: 0;
+    width: auto;
+    height: auto;
+    border-radius: inherit;
+    opacity: 0;
+    transform: none;
+    transition: opacity 120ms linear;
+  }
+
+  .primary-button-flood:hover::before,
+  .primary-button-flood:focus-visible::before {
+    opacity: 1;
+    transform: none;
+  }
+}
 /* ── Motion primitives ─────────────────────────────────────────── */
 
 /* Projects card image swap — hero-style bottom-to-top slide. */
@@ -477,6 +624,47 @@ html {
   }
 }
 
+/* Property cards morph into their matching full-screen hero. The root fades
+   beneath the named image/title layers; those layers keep their geometry and
+   interpolate independently, so the transition reads as one continuous card. */
+html.property-route-transition::view-transition-old(root) {
+  z-index: 1;
+  animation: property-route-out 0.72s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+html.property-route-transition::view-transition-new(root) {
+  z-index: 2;
+  animation: property-route-in 0.88s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+html.property-route-transition::view-transition-group(*) {
+  animation-duration: 1.05s;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+html.property-route-transition::view-transition-image-pair(*) {
+  isolation: auto;
+}
+html.property-route-transition::view-transition-old(*) {
+  animation: property-shared-old 1.05s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+html.property-route-transition::view-transition-new(*) {
+  animation: property-shared-new 1.05s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes property-route-out {
+  to { opacity: 0.12; transform: scale(0.995); }
+}
+@keyframes property-route-in {
+  from { opacity: 0; transform: scale(1.006); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes property-shared-old {
+  from { opacity: 1; filter: brightness(1); }
+  to { opacity: 0; filter: brightness(0.86); }
+}
+@keyframes property-shared-new {
+  from { opacity: 0; filter: brightness(0.92); }
+  38% { opacity: 0.18; }
+  to { opacity: 1; filter: brightness(1); }
+}
 /* Fallback for engines without the View Transitions API (Safari, Firefox):
    the class is held for the length of the fade and then dropped, so these
    transitions never apply to ordinary hover or scroll work. */
@@ -514,5 +702,110 @@ html {
   *::before,
   *::after {
     transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes expertise-marquee {
+  to { transform: translate3d(-50%, 0, 0); }
+}
+
+.animate-marquee {
+  animation: expertise-marquee 24s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee { animation: none; }
+}
+/* Chrome paints autofilled contact fields with its own blue-gray surface.
+   Keep the form on its dark raised material while preserving readable type. */
+.contact-field:-webkit-autofill,
+.contact-field:-webkit-autofill:hover,
+.contact-field:-webkit-autofill:focus,
+.contact-field:-webkit-autofill:active {
+  -webkit-text-fill-color: #e6edf0;
+  caret-color: #e6edf0;
+  box-shadow: 0 0 0 1000px #23333b inset;
+  -webkit-box-shadow: 0 0 0 1000px #23333b inset;
+  transition: background-color 9999s ease-out 0s;
+}
+
+/* ── Property teaser cards ──────────────────────────────────────────
+   On desktop the photograph runs 62% of the card and dissolves into the
+   card's own ground instead of stopping at a hard edge, so the detail panel
+   reads as standing on the same surface rather than beside a cropped picture.
+
+   The ramp runs from 55% of the photograph to 98% — around 250px on a
+   1160px card — and it is shaped rather than straight. Five intermediate
+   stops hold it near full opacity through the first third, then let it fall
+   away increasingly fast.
+
+   The shaping is what makes it read as smooth, more than the length does. A
+   plain two-stop ramp changes slope instantly at both ends, and the eye
+   catches those two corners as edges however far apart they are: the fade
+   looked like a band with a line at each side of it. Easing the curve removes
+   the corners, so the photograph stops without anywhere to point at.
+
+   It still has to finish before the panel does anything. Fully gone by 98% of
+   the photograph is about 61% of the card, and the panel starts at 62% with
+   its own padding after that. That clearance is not decorative: the last
+   stretch of a fade still carries a few percent of image, and on these frames
+   that image is bright sky — when the panel overlapped it, the property name
+   sat on a lilac smear.
+
+   The mask lives here rather than inline because it must not exist below
+   `lg`. There the image is a plain block stacked above the copy at full
+   width, and a right-edge fade on that just eats the right of the photo —
+   it has nothing to dissolve into.
+
+   The overlay layout waits for `lg` rather than `md` for the same reason the
+   photograph is 62% and not 70%: at 820px the card is 620 wide, so a 38%
+   panel is 236px, and the property names break to three lines standing over
+   four-line addresses. Stacked is the better answer until there is room for
+   the split.
+
+   Two directions because the cards alternate sides down the page. The
+   `-webkit-` pair is still worth carrying: unprefixed `mask-image` only
+   reached Safari in 15.4, and this is the difference between a fade and a
+   photograph that vanishes entirely. */
+@media (min-width: 64rem) {
+  .card-photo-fade {
+    -webkit-mask-image: linear-gradient(
+      90deg,
+      #000 55%,
+      rgba(0, 0, 0, 0.94) 66%,
+      rgba(0, 0, 0, 0.78) 76%,
+      rgba(0, 0, 0, 0.52) 84%,
+      rgba(0, 0, 0, 0.24) 91%,
+      transparent 98%
+    );
+    mask-image: linear-gradient(
+      90deg,
+      #000 55%,
+      rgba(0, 0, 0, 0.94) 66%,
+      rgba(0, 0, 0, 0.78) 76%,
+      rgba(0, 0, 0, 0.52) 84%,
+      rgba(0, 0, 0, 0.24) 91%,
+      transparent 98%
+    );
+  }
+  .card-photo-fade-flip {
+    -webkit-mask-image: linear-gradient(
+      270deg,
+      #000 55%,
+      rgba(0, 0, 0, 0.94) 66%,
+      rgba(0, 0, 0, 0.78) 76%,
+      rgba(0, 0, 0, 0.52) 84%,
+      rgba(0, 0, 0, 0.24) 91%,
+      transparent 98%
+    );
+    mask-image: linear-gradient(
+      270deg,
+      #000 55%,
+      rgba(0, 0, 0, 0.94) 66%,
+      rgba(0, 0, 0, 0.78) 76%,
+      rgba(0, 0, 0, 0.52) 84%,
+      rgba(0, 0, 0, 0.24) 91%,
+      transparent 98%
+    );
   }
 }

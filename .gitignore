@@ -24,9 +24,28 @@ dist-ssr
 *.sw?
 
 # Env
+#
+# Deny by default: every .env file is ignored, including any new
+# .env.<something> nobody has thought of yet, so a file holding real
+# credentials cannot be committed by forgetting to add a line here. Files that
+# genuinely belong in the repo are re-included one by one below.
 .env
-.env.local
-.env.seed
+.env.*
+
+# The two web build configs. Committed on purpose: a VITE_ variable is inlined
+# into the bundle and readable by anyone who opens the JavaScript, so there is
+# nothing to protect — and the frontend is built from a developer's machine
+# rather than by CI, so the deployed bundle must not depend on whose local file
+# was current. See apps/web/.env.example.
+!apps/web/.env.development
+!apps/web/.env.production
+
+# Templates. No real values, by definition.
+!.env.example
+
+# The API's secrets stay out: apps/api/.env is local-only and production lives
+# in the Render dashboard (render.yaml, `sync: false`). Both are covered by the
+# deny-by-default above — do not add a negation for them.
 
 # Supabase local dev
 supabase/.temp
@@ -36,10 +55,11 @@ supabase/.branches
 # Kept out of the repo so it never ships to the live site.
 test-model.glb
 
-# Production build inputs (values live in the deploy environment)
-.env.production
-
-# Editor/tool backups of env files — these carry real secrets.
-.env.bak
-.env.*.bak
+# Editor/tool backups of env files — these carry real secrets, and the pattern
+# has to survive the negations above (apps/web/.env.production.bak would
+# otherwise slip through .env.* → !apps/web/.env.production is not a match, but
+# a tool writing "…production.bak" next to it is worth the belt and braces).
 *.env.bak
+*.env.*.bak
+
+.impeccable

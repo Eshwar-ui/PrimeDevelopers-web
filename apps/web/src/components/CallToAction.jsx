@@ -47,21 +47,29 @@ const seamFade = mask(
     ' rgba(0,0,0,0.09) 83%, transparent 90%)'
 )
 
-// The closing panel: a dark inset card on a white band, type left and a single
-// photograph right. Deliberately the only dark surface left on the homepage, so
-// it reads as the end of the page rather than another section of it.
+// The closing panel: a dark inset card, type left and a single photograph right.
+//
+// It no longer floats on a white band. The footer below is dark in both themes
+// now, so this panel's bottom padding is dropped and its bottom corners squared:
+// card and footer read as one continuous dark close rather than two dark blocks
+// with a white sliver trapped between them. The side gutters still run past it,
+// which is what keeps it an inset card rather than a full-bleed band.
+//
+// Only the homepage renders this, and <Footer /> always follows <main>, so the
+// squared edge can never end up against anything but that dark ground.
 export default function CallToAction() {
   const { heading, paragraph, ctaLabel, ctaHref, image } = useSection('cta_home')
 
   if (!heading) return null
 
   return (
-    <section id="cta" data-band="light" className="bg-surface px-6 py-10 md:px-[75px] md:py-16">
-      {/* In light mode this panel is the page's one dark surface and the contrast
-          does the work. Under dark mode that inverts: ink sits within a few
-          points of the ground and the panel edge dissolves, so it steps *up* to
-          carbon instead and stays a raised object either way. */}
-      <div className="relative overflow-hidden rounded-3xl bg-ink text-bone dark:bg-carbon">
+    <section id="cta" data-band="light" className="bg-surface px-6 pt-10 md:px-[75px] md:pt-16">
+      {/* In light mode the contrast against the white gutters does the work.
+          Under dark mode that inverts: ink sits within a few points of the
+          ground and the panel edge dissolves, so it steps *up* to carbon
+          instead and stays a raised object either way — which also gives the
+          join to the footer's void a readable step rather than a dead seam. */}
+      <div className="relative overflow-hidden rounded-3xl rounded-b-none bg-ink text-bone dark:bg-carbon">
         {/* From md up the photo stops being a framed object in a column and
             bleeds off the panel's top, right and bottom edges, dissolving into
             the ground where the copy begins. It sits behind the grid rather
@@ -115,7 +123,7 @@ export default function CallToAction() {
             {ctaLabel && (
               <Link
                 to={ctaHref || '/contact'}
-                className="mt-9 inline-flex items-center gap-3 rounded-xl bg-accent px-8 py-4.5 font-body text-[17px] font-medium text-white dark:text-void transition-colors duration-300 hover:bg-prime-deep"
+                className="primary-button-flood mt-9 inline-flex items-center gap-3 rounded-xl bg-accent px-8 py-4.5 font-body text-[17px] font-medium text-white dark:text-void transition-colors duration-300 hover:bg-prime-deep"
               >
                 {ctaLabel}
                 <svg

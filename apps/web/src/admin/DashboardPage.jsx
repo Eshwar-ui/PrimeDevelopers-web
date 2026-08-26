@@ -23,7 +23,7 @@ export default function DashboardPage() {
             className="rounded-2xl border border-white/10 bg-carbon p-6 transition-colors hover:border-white/25"
           >
             <p className="numeral text-3xl text-ember">{c.value}</p>
-            <p className="mt-2 text-xs font-bold uppercase tracking-wide text-bone/45">{c.label}</p>
+            <p className="mt-2 text-xs font-bold uppercase tracking-wide text-bone-3">{c.label}</p>
           </Link>
         ))}
       </div>

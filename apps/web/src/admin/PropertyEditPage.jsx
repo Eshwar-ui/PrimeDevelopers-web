@@ -10,6 +10,7 @@ import BuildingBlock from './components/BuildingBlock'
 
 const emptyDetail = () => ({
   tagline: '',
+  offer: '',
   overview: { eyebrow: '', heading: '', body: '', flyer: '', stats: [] },
   tenants: [],
   highlights: { heading: '', body: '', bigStats: [], cards: [] },
@@ -81,13 +82,13 @@ export default function PropertyEditPage() {
     <div className="pb-24">
       <div className="flex items-center justify-between">
         <div>
-          <Link to="/admin/properties" className="text-xs font-bold uppercase tracking-wide text-bone/40 hover:text-bone/70">
+          <Link to="/admin/properties" className="text-xs font-bold uppercase tracking-wide text-bone-3 hover:text-bone/70">
             ← All properties
           </Link>
           <h1 className="mt-2 font-display text-2xl font-medium">{form.name || 'Untitled property'}</h1>
         </div>
         <div className="flex items-center gap-4">
-          {savedAt && <span className="text-xs text-bone/40">Saved</span>}
+          {savedAt && <span className="text-xs text-bone-3">Saved</span>}
           {form.published && (
             <a
               href={`/properties/${form.slug}`}
@@ -127,7 +128,7 @@ export default function PropertyEditPage() {
             <TextField label="Address" value={form.address} onChange={(address) => patch({ address })} />
             <div>
               <TextField label="Category" value={form.category} onChange={(category) => patch({ category })} />
-              <p className="mt-1 text-[11px] text-bone/35">Existing: {categories.filter((c) => c !== 'All').join(', ')}</p>
+              <p className="mt-1 text-[11px] text-bone-3">Existing: {categories.filter((c) => c !== 'All').join(', ')}</p>
             </div>
             <TextField
               label="Buildings"
@@ -163,7 +164,7 @@ export default function PropertyEditPage() {
         <Section title="Images">
           <ImageUploader label="Main image" value={form.image} onChange={(image) => patch({ image })} folder={`projects/${form.slug}`} />
           <div>
-            <span className="text-xs font-bold uppercase tracking-wide text-bone/45">Gallery</span>
+            <span className="text-xs font-bold uppercase tracking-wide text-bone-3">Gallery</span>
             <div className="mt-3">
               <RepeatableList
                 items={form.gallery}
@@ -186,13 +187,20 @@ export default function PropertyEditPage() {
           />
         </Section>
 
+        <Section title="Promotion">
+          <TextField
+            label="Offer message (leave blank to hide)"
+            value={form.detail.offer}
+            onChange={(offer) => setForm((f) => ({ ...f, detail: { ...f.detail, offer } }))}
+          />
+        </Section>
         <Section title="Overview">
           <TextField label="Eyebrow" value={form.detail.overview.eyebrow} onChange={(eyebrow) => patchDetail('overview', { eyebrow })} />
           <TextField label="Heading" value={form.detail.overview.heading} onChange={(heading) => patchDetail('overview', { heading })} />
           <TextAreaField label="Body" value={form.detail.overview.body} onChange={(body) => patchDetail('overview', { body })} />
           <TextField label="Flyer URL" value={form.detail.overview.flyer} onChange={(flyer) => patchDetail('overview', { flyer })} />
           <div>
-            <span className="text-xs font-bold uppercase tracking-wide text-bone/45">Stats</span>
+            <span className="text-xs font-bold uppercase tracking-wide text-bone-3">Stats</span>
             <div className="mt-3">
               <RepeatableList
                 items={form.detail.overview.stats}
@@ -224,7 +232,7 @@ export default function PropertyEditPage() {
           <TextField label="Heading" value={form.detail.highlights.heading} onChange={(heading) => patchDetail('highlights', { heading })} />
           <TextAreaField label="Body" value={form.detail.highlights.body} onChange={(body) => patchDetail('highlights', { body })} />
           <div>
-            <span className="text-xs font-bold uppercase tracking-wide text-bone/45">Big stats</span>
+            <span className="text-xs font-bold uppercase tracking-wide text-bone-3">Big stats</span>
             <div className="mt-3">
               <RepeatableList
                 items={form.detail.highlights.bigStats}
@@ -241,7 +249,7 @@ export default function PropertyEditPage() {
             </div>
           </div>
           <div>
-            <span className="text-xs font-bold uppercase tracking-wide text-bone/45">Cards</span>
+            <span className="text-xs font-bold uppercase tracking-wide text-bone-3">Cards</span>
             <div className="mt-3">
               <RepeatableList
                 items={form.detail.highlights.cards}
@@ -263,7 +271,7 @@ export default function PropertyEditPage() {
           <TextField label="Heading" value={form.detail.floorPlans.heading} onChange={(heading) => patchDetail('floorPlans', { heading })} />
           <TextAreaField label="Body" value={form.detail.floorPlans.body} onChange={(body) => patchDetail('floorPlans', { body })} />
           <div>
-            <span className="text-xs font-bold uppercase tracking-wide text-bone/45">Buildings</span>
+            <span className="text-xs font-bold uppercase tracking-wide text-bone-3">Buildings</span>
             <div className="mt-3">
               <RepeatableList
                 items={form.detail.floorPlans.buildings}
@@ -314,7 +322,7 @@ export default function PropertyEditPage() {
             onChange={(mapQuery) => patchDetail('neighborhoods', { mapQuery })}
           />
           <div>
-            <span className="text-xs font-bold uppercase tracking-wide text-bone/45">Nearby places</span>
+            <span className="text-xs font-bold uppercase tracking-wide text-bone-3">Nearby places</span>
             <div className="mt-3">
               <RepeatableList
                 items={form.detail.neighborhoods.items}

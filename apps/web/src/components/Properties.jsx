@@ -158,7 +158,15 @@ export default function Properties() {
                 // there would push the detail panel below the photograph
                 // instead of onto it.
                 <div
-                  className={`relative h-56 overflow-hidden bg-surface-alt sm:h-72 lg:absolute lg:inset-y-0 lg:h-full lg:w-[62%] ${
+                  // A ratio rather than `h-56`, because the stacked card is the
+                  // one layout whose width is not fixed. A height in rem holds
+                  // while the card grows from 327px on a phone to 672 on a
+                  // tablet, so the same photograph goes from a 4:3 frame to a
+                  // 2.3:1 letterbox on the way — the crop tightens exactly as
+                  // the screen gets *more* room for it. From `lg` the frame is
+                  // bled in behind the copy and takes its height from the card,
+                  // so the ratio steps aside there.
+                  className={`relative aspect-[4/3] overflow-hidden bg-surface-alt sm:aspect-[16/9] lg:absolute lg:inset-y-0 lg:aspect-auto lg:h-full lg:w-[62%] ${
                     flip ? 'lg:right-0 card-photo-fade-flip' : 'lg:left-0 card-photo-fade'
                   }`}
                 >
@@ -168,6 +176,16 @@ export default function Properties() {
                     loading="lazy"
                     decoding="async"
                     className="absolute inset-0 size-full object-cover transition-transform duration-700 ease-brand group-hover:scale-[1.04]"
+                  />
+                  {/* The stacked card's answer to `card-photo-fade`, turned a
+                      quarter: from `lg` the photograph dissolves sideways into
+                      the panel beside it, and below that it dissolves downward
+                      into the panel underneath. Without it the two meet on a
+                      hard horizontal seam and the card reads as a picture with
+                      a black box stuck to it rather than as one object. */}
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-surface via-surface/55 to-transparent lg:hidden"
                   />
                 </div>
               )}
@@ -189,7 +207,7 @@ export default function Properties() {
                   not a card. 23rem puts a 1240px card at ~368 tall — the comp
                   measures 354 on a 1196 card, so the same 0.30 ratio. */}
               <div
-                className={`relative flex min-w-0 flex-col justify-center gap-5 p-6 sm:p-8 lg:min-h-[23rem] lg:w-[38%] lg:p-10 ${
+                className={`relative flex min-w-0 flex-col justify-center gap-4 p-5 sm:gap-5 sm:p-8 lg:min-h-[23rem] lg:w-[38%] lg:p-10 ${
                   flip ? 'lg:mr-auto' : 'lg:ml-auto'
                 }`}
               >
@@ -209,7 +227,7 @@ export default function Properties() {
                       </a>
                     </h3>
                     {p.address && (
-                      <p className="mt-2 font-body text-[13px] italic leading-relaxed text-content/50">
+                      <p className="mt-2 font-body text-[13px] italic leading-relaxed text-content/60 sm:text-content/50">
                         {p.address}
                       </p>
                     )}
@@ -234,17 +252,37 @@ export default function Properties() {
                     The divider hangs off each item after the first, so it cannot
                     end up trailing the last one. */}
                 {chips.length > 0 && (
-                  <ul className="flex flex-wrap items-center gap-y-3 font-body text-[14px] text-content/70">
+                  <ul
+                    // Two settings of the same three facts.
+                    //
+                    // From `sm` it is the comp's: one line of figures with
+                    // hairlines between them. Below that the line is 287px wide
+                    // and `chipsFor`'s budget was fitted to a 470px panel, so
+                    // the row sits one long CMS label away from wrapping — and
+                    // a wrap is what the divider cannot survive, since the first
+                    // item on the second line carries a rule with nothing on the
+                    // other side of it.
+                    //
+                    // `auto-cols-fr` takes that risk off the table rather than
+                    // guarding against it: three equal columns cannot wrap at
+                    // any label length, and stacking the figure over its name
+                    // gives a long one somewhere to go. It reads as a spec
+                    // strip, which is what a phone wants under a photograph.
+                    className="grid auto-cols-fr grid-flow-col rounded-2xl border border-content/10 bg-content/[0.035] text-center font-body text-[13px] text-content/70 sm:flex sm:flex-wrap sm:items-center sm:gap-y-3 sm:rounded-none sm:border-0 sm:bg-transparent sm:text-left sm:text-[14px]"
+                  >
                     {chips.map((c, ci) => (
                       <li
                         key={c.label}
-                        // py-1.5 on every item, not just the divided ones, so
-                        // the rules run taller than the text the way the comp
-                        // draws them and every item keeps the same baseline.
-                        className={`py-1.5 ${ci === 0 ? '' : 'ml-4 border-l border-content/20 pl-4'}`}
+                        // py-1.5 on every item from `sm`, not just the divided
+                        // ones, so the rules run taller than the text the way
+                        // the comp draws them and every item keeps the same
+                        // baseline.
+                        className={`px-2 py-3 sm:px-0 sm:py-1.5 ${
+                          ci === 0 ? '' : 'border-l border-content/10 sm:ml-4 sm:border-content/20 sm:pl-4'
+                        }`}
                       >
-                        <span className="numeral font-bold text-content">{c.value}</span>{' '}
-                        {c.label}
+                        <span className="numeral block font-bold text-content sm:inline">{c.value}</span>{' '}
+                        <span className="block sm:inline">{c.label}</span>
                       </li>
                     ))}
                   </ul>
@@ -252,12 +290,24 @@ export default function Properties() {
 
                 {/* relative z-10 so these clear the stretched link's ::after
                     and stay independently clickable. */}
-                <div className="relative z-10 mt-1 flex flex-wrap items-center gap-3">
-                  <ActionButton href={href} onClick={open}>
+                {/* Full width and stacked on a phone, the drawn row from `sm`.
+                    Side by side the pair needs about 340px and the panel gives
+                    287, so the second one wrapped anyway — but wrapped to its
+                    own content width, which is a half-length button hanging
+                    under a full-length one. If the row is going to break, it
+                    should break on purpose. */}
+                <div className="relative z-10 mt-1 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+                  <ActionButton href={href} onClick={open} className="w-full sm:w-auto">
                     View property
                   </ActionButton>
 
-                  <ActionButton as="button" type="button" tone="invert" onClick={() => setBrochureProperty(p)}>
+                  <ActionButton
+                    as="button"
+                    type="button"
+                    tone="invert"
+                    className="w-full sm:w-auto"
+                    onClick={() => setBrochureProperty(p)}
+                  >
                     Download brochure
                     <DownloadIcon />
                   </ActionButton>

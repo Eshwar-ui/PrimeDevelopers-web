@@ -246,10 +246,8 @@ export default function Navbar() {
   const idle = onLight ? 'text-charcoal/75 hover:text-charcoal' : 'text-bone/75 hover:text-bone'
   const current = onLight ? 'text-accent' : 'text-accent-soft'
   const enquire = onLight
-    ? 'bg-charcoal text-white'
-    : 'bg-white text-charcoal'
-  const enquireDot = 'bg-charcoal text-white'
-  const enquireFlood = 'bg-charcoal'
+    ? 'border-charcoal/10 shadow-[0_8px_24px_-16px_rgba(32,32,32,0.65)] hover:shadow-[0_13px_28px_-15px_rgba(32,32,32,0.55)]'
+    : 'border-white/60 shadow-[0_10px_28px_-16px_rgba(0,0,0,0.6)] hover:shadow-[0_15px_32px_-15px_rgba(0,0,0,0.5)]'
   const burger = onLight ? 'bg-charcoal' : 'bg-bone'
 
   // At rest the header is a bare overlay reading on the hero's graded sky,
@@ -354,14 +352,13 @@ export default function Navbar() {
             <a
               href="/contact"
               onClick={goContact}
-              className={`group relative hidden min-h-11 shrink-0 items-center gap-3 overflow-hidden rounded-full py-1.5 pl-6 pr-1.5 transition-[color,transform] duration-300 ease-brand active:scale-[0.97] lg:inline-flex ${enquire}`}
+              className={`group relative isolate hidden min-h-12 shrink-0 items-center gap-5 overflow-hidden rounded-full border bg-white px-6 font-body text-[15px] font-semibold tracking-[-0.01em] text-charcoal transition-[color,transform,box-shadow] duration-300 ease-brand hover:-translate-y-px hover:text-white focus-visible:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent active:translate-y-px active:scale-[0.985] motion-reduce:transform-none lg:inline-flex ${enquire}`}
             >
-              <span aria-hidden className={`absolute right-1.5 size-9 rounded-full transition-transform duration-500 ease-brand group-hover:scale-[12] group-focus-visible:scale-[12] motion-reduce:transition-none ${enquireFlood}`} />
-              <span className="relative z-10 font-body text-[15px] font-medium transition-[color,transform] duration-300 ease-brand group-hover:translate-x-1 group-hover:!text-white group-focus-visible:translate-x-1 group-focus-visible:!text-white motion-reduce:transform-none">Enquire</span>
-              <span
-                className={`relative z-10 flex size-9 items-center justify-center rounded-full transition-colors duration-200 group-hover:bg-transparent group-hover:!text-white group-focus-visible:bg-transparent group-focus-visible:!text-white ${enquireDot}`}
-              >
-                <ArrowRight className="size-4 transition-transform duration-300 ease-brand group-hover:translate-x-1 group-focus-visible:translate-x-1 motion-reduce:transform-none" />
+              <span aria-hidden className="absolute inset-0 z-0 origin-right scale-x-0 rounded-full bg-charcoal transition-transform duration-300 ease-brand group-hover:scale-x-100 group-focus-visible:scale-x-100 motion-reduce:transition-none" />
+              <span className="relative z-10 transition-transform duration-300 ease-brand group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5 motion-reduce:transform-none">Enquire</span>
+              <span className="relative z-10 size-5 overflow-hidden" aria-hidden>
+                <ArrowRight className="absolute inset-0 size-5 transition-transform duration-300 ease-brand group-hover:translate-x-6 group-focus-visible:translate-x-6 motion-reduce:transform-none" />
+                <ArrowRight className="absolute inset-0 size-5 -translate-x-6 transition-transform duration-300 ease-brand group-hover:translate-x-0 group-focus-visible:translate-x-0 motion-reduce:hidden" />
               </span>
             </a>
           </div>
@@ -447,11 +444,13 @@ export default function Navbar() {
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 + navLinks.length * 0.08, ease: 'easeOut' }}
-              className="mt-8 inline-flex w-fit items-center gap-3 rounded-full bg-white py-1.5 pl-6 pr-1.5 text-charcoal active:scale-[0.97]"
+              className="group relative isolate mt-8 inline-flex min-h-12 w-fit items-center gap-5 overflow-hidden rounded-full border border-white/60 bg-white px-6 font-body text-[15px] font-semibold tracking-[-0.01em] text-charcoal shadow-[0_10px_28px_-16px_rgba(0,0,0,0.6)] transition-[color,transform,box-shadow] duration-300 ease-brand hover:-translate-y-px hover:text-white hover:shadow-[0_15px_32px_-15px_rgba(0,0,0,0.5)] focus-visible:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent active:translate-y-px active:scale-[0.985] motion-reduce:transform-none"
             >
-              <span className="font-body text-[15px] font-medium">Enquire</span>
-              <span className="flex size-9 items-center justify-center rounded-full bg-charcoal text-white">
-                <ArrowRight className="size-4" />
+              <span aria-hidden className="absolute inset-0 z-0 origin-right scale-x-0 rounded-full bg-charcoal transition-transform duration-300 ease-brand group-hover:scale-x-100 group-focus-visible:scale-x-100 motion-reduce:transition-none" />
+              <span className="relative z-10 transition-transform duration-300 ease-brand group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5 motion-reduce:transform-none">Enquire</span>
+              <span className="relative z-10 size-5 overflow-hidden" aria-hidden>
+                <ArrowRight className="absolute inset-0 size-5 transition-transform duration-300 ease-brand group-hover:translate-x-6 group-focus-visible:translate-x-6 motion-reduce:transform-none" />
+                <ArrowRight className="absolute inset-0 size-5 -translate-x-6 transition-transform duration-300 ease-brand group-hover:translate-x-0 group-focus-visible:translate-x-0 motion-reduce:hidden" />
               </span>
             </motion.a>
           </motion.nav>

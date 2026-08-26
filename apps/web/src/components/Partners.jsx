@@ -62,10 +62,6 @@ const SLOTS = RINGS.flatMap((ring, ringIndex) =>
   }))
 )
 
-// Dissolves an arc as it nears the horizon rather than letting the container's
-// edge chop it off — the arcs read as continuing past the section, not as
-// circles that were cropped. Lives on the ring's outer element, which never
-// rotates, so the fade stays pinned to the horizon while the stroke turns.
 // The Prime mark at the origin: its width as a share of the orbit's unit, and
 // its own aspect from the SVG's viewBox (929.04 x 1080). Both are needed to
 // anchor it against a horizon that is horizontal in one framing and vertical in
@@ -73,8 +69,25 @@ const SLOTS = RINGS.flatMap((ring, ringIndex) =>
 const MARK_SHARE = 0.045
 const MARK_RATIO = 1080 / 929.04
 
-const fadeToward = (side) =>
+// How an arc ends at the horizon. Both live on the ring's outer element, which
+// never rotates, so the edge stays pinned to the horizon while the stroke turns
+// underneath it — and both are written against the mask box's own 50% line,
+// which is where the origin sits in either framing.
+//
+// The two framings want opposite answers, and the difference is what the
+// horizon actually is. Wide, it is the section's bottom edge with a whole page
+// continuing past it, and a flush cut there draws a hard rule across the
+// design; dissolving instead lets the orbit sink into the ground. Narrow, the
+// horizon is the side of the screen, and there is nothing past it to sink
+// into — a dissolve just looks like the arcs gave up before they got there, so
+// they run to the edge and stop. The half-pixel ramp on that one is the whole
+// softness budget: enough to keep the cut from aliasing into a staircase where
+// an arc meets it at a shallow angle, not enough to read as a fade.
+const dissolveToward = (side) =>
   `linear-gradient(to ${side}, transparent 52%, rgba(0,0,0,0.35) 63%, #000 84%)`
+
+const cutAt = (side) =>
+  `linear-gradient(to ${side}, transparent calc(50% - 0.5px), #000 calc(50% + 0.5px))`
 
 /**
  * The two framings the orbit is drawn in.
@@ -96,7 +109,7 @@ const FRAMES = {
     origin: (w, h) => ({ x: w / 2, y: h }),
     // 90° points away from the horizon; y grows downward in screen space.
     offset: (rad, r) => ({ dx: Math.cos(rad) * r, dy: -Math.sin(rad) * r }),
-    fade: fadeToward('top'),
+    fade: dissolveToward('top'),
     // Where the Prime mark sits relative to the origin, given its own size:
     // standing *on* the horizon and centred along it, never straddling it.
     markAnchor: (mw, mh) => ({ dx: -mw / 2, dy: -mh }),
@@ -107,7 +120,7 @@ const FRAMES = {
     // The same formula with sine and cosine swapped — that *is* the quarter
     // turn. 90° now points right, 0° down the horizon, 180° up it.
     offset: (rad, r) => ({ dx: Math.sin(rad) * r, dy: Math.cos(rad) * r }),
-    fade: fadeToward('right'),
+    fade: cutAt('right'),
     // Same idea rotated: flush against the left horizon, centred down it.
     markAnchor: (mw, mh) => ({ dx: 0, dy: -mh / 2 }),
   },
@@ -302,12 +315,7 @@ export default function Partners() {
 
   return (
     <section id="partners" className="relative isolate overflow-hidden bg-void">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(115%_75%_at_50%_92%,rgba(0,115,164,0.30),transparent_58%)]"
-      />
-
-      <div className="relative mx-auto max-w-[1600px] px-gutter py-14 md:px-gutter-lg md:py-18 xl:py-20">
+      <div className="relative mx-auto max-w-[1600px] px-gutter pb-14 pt-14 md:px-gutter-lg md:pb-18 md:pt-18 lg:pb-0 xl:pt-20">
         {/* The kicker is all the copy this section carries — the heading,
             paragraph and stat row that used to sit under it are `about_home`'s,
             and the About section renders them itself. */}
@@ -334,7 +342,14 @@ export default function Partners() {
           // 768px-wide box wants to be ~1080px tall and leaves half its width
           // empty, and a bottom-hung one is back to the unreadable 30px discs.
           // That band keeps the flat grid instead.
-          className="relative mt-12 aspect-[10/19] w-full md:hidden lg:mt-14 lg:block lg:aspect-[100/44]"
+          //
+          // Both framings sit on a real edge rather than inside the gutter, so
+          // the orbit reads as part of the section instead of a shape parked in
+          // it: the phone one bleeds left to the viewport, and the desktop one
+          // gets the container's bottom padding dropped under it. The phone
+          // orbit needs that literally — its arcs are cut flush and a cut has
+          // to land on an edge to look like one.
+          className="relative -ml-gutter mt-12 aspect-[10/19] w-[calc(100%+var(--spacing-gutter))] md:hidden lg:ml-0 lg:mt-14 lg:block lg:aspect-[100/44] lg:w-full"
         >
           {/* Behind the arcs and the discs, because DOM order is what stacks
               them here. Same two-element trick the arcs use: the outer element

@@ -1,12 +1,13 @@
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useSection, useNews } from '../context/ContentContext'
 import SectionIntro from './SectionIntro'
 import SocialIcon from './SocialIcon'
 import { platformMeta } from '../lib/platforms'
 
-// Two rows of three. The point of the section is that several things are
-// happening at once, which one row of three does not carry and three rows makes
-// look like an archive.
+// One horizontal stream keeps the homepage composed while still surfacing six
+// updates. Responsive card widths leave the next item within reach instead of
+// turning the section into a second archive grid.
 const MAX_CARDS = 6
 
 // Missing and unparseable dates both sort last rather than to 1970 — an update
@@ -62,6 +63,8 @@ export default function LatestUpdates() {
   const { socials = [] } = useSection('footer')
   const { socials: contactSocials = [] } = useSection('contact_page')
   const posts = useNews()
+  const railRef = useRef(null)
+  const [railPosition, setRailPosition] = useState({ atStart: true, atEnd: false })
 
   // Blog posts and curated updates normalised to one shape before they are
   // merged — the sort has to compare them, and a card must not care which side
@@ -109,6 +112,37 @@ export default function LatestUpdates() {
     }, {})
   ).filter((s) => s.href && s.href !== '#')
 
+  useEffect(() => {
+    const rail = railRef.current
+    if (!rail) return undefined
+
+    const updatePosition = () => {
+      const remaining = rail.scrollWidth - rail.clientWidth - rail.scrollLeft
+      setRailPosition({
+        atStart: rail.scrollLeft <= 2,
+        atEnd: remaining <= 2,
+      })
+    }
+
+    updatePosition()
+    rail.addEventListener('scroll', updatePosition, { passive: true })
+    const resizeObserver = new ResizeObserver(updatePosition)
+    resizeObserver.observe(rail)
+
+    return () => {
+      rail.removeEventListener('scroll', updatePosition)
+      resizeObserver.disconnect()
+    }
+  }, [stream.length])
+
+  const scrollRail = (direction) => {
+    const rail = railRef.current
+    const card = rail?.firstElementChild
+    if (!rail || !card) return
+    const gap = Number.parseFloat(getComputedStyle(rail).columnGap) || 0
+    rail.scrollBy({ left: direction * (card.getBoundingClientRect().width + gap), behavior: 'smooth' })
+  }
+
   if (stream.length === 0 && follow.length === 0) return null
 
   return (
@@ -121,7 +155,46 @@ export default function LatestUpdates() {
         <SectionIntro heading={heading} paragraph={paragraph} />
 
         {stream.length > 0 && (
-          <ul className="mt-12 grid grid-cols-1 gap-5 md:mt-14 md:grid-cols-2 md:gap-6 lg:grid-cols-3">
+          <>
+            <div className="mt-10 flex items-center justify-between gap-5 md:mt-12">
+              <p className="flex items-center gap-3 font-body text-[12px] font-bold uppercase tracking-[0.16em] text-content/45">
+                <span aria-hidden className="h-px w-8 bg-content/20" />
+                Scroll to explore
+              </p>
+              <div className="flex items-center gap-2" aria-label="Latest updates navigation">
+                <button
+                  type="button"
+                  onClick={() => scrollRail(-1)}
+                  disabled={railPosition.atStart}
+                  aria-label="Previous updates"
+                  aria-controls="latest-updates-rail"
+                  className="group grid size-11 place-items-center rounded-full border border-content/20 text-content outline-none transition-[color,border-color,background-color,transform,opacity] duration-300 ease-brand hover:border-content hover:bg-content hover:text-base focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-95 disabled:pointer-events-none disabled:opacity-30"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="size-4 transition-transform duration-300 ease-brand group-hover:-translate-x-0.5 motion-reduce:transform-none">
+                    <path d="m14.5 5-7 7 7 7" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollRail(1)}
+                  disabled={railPosition.atEnd}
+                  aria-label="Next updates"
+                  aria-controls="latest-updates-rail"
+                  className="group grid size-11 place-items-center rounded-full border border-content/20 text-content outline-none transition-[color,border-color,background-color,transform,opacity] duration-300 ease-brand hover:border-content hover:bg-content hover:text-base focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-95 disabled:pointer-events-none disabled:opacity-30"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="size-4 transition-transform duration-300 ease-brand group-hover:translate-x-0.5 motion-reduce:transform-none">
+                    <path d="m9.5 5 7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <ul
+              ref={railRef}
+              id="latest-updates-rail"
+              aria-label="Latest updates"
+              className="mt-4 flex snap-x snap-mandatory gap-5 overflow-x-auto overscroll-x-contain pb-5 scroll-smooth [scrollbar-color:color-mix(in_srgb,var(--color-content)_22%,transparent)_transparent] [scrollbar-width:thin] md:mt-5 md:gap-6"
+            >
             {stream.map((u) => {
               const { label, tint } = platformMeta(u.platform)
               const external = !u.to && u.href
@@ -141,7 +214,10 @@ export default function LatestUpdates() {
                   }
 
               return (
-                <li key={u.key}>
+                <li
+                  key={u.key}
+                  className="w-[86%] shrink-0 snap-start sm:w-[66%] md:w-[calc((100%-1.5rem)/2)] lg:w-[calc((100%-3rem)/3)]"
+                >
                   <Wrapper
                     {...linkProps}
                     className="group flex h-full flex-col overflow-hidden rounded-frame border border-content/10 bg-surface p-5 outline-none transition-[border-color,box-shadow] duration-500 ease-brand hover:border-accent/40 hover:shadow-[0_30px_70px_-50px_rgba(0,0,0,0.85)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
@@ -224,7 +300,8 @@ export default function LatestUpdates() {
                 </li>
               )
             })}
-          </ul>
+            </ul>
+          </>
         )}
 
         {/* ── the follow strip ──────────────────────────────────────────

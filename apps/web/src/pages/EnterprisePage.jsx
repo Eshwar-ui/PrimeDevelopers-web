@@ -7,17 +7,14 @@ import PrimePill from '../components/PrimePill'
 import { useProperties, useSection } from '../context/ContentContext'
 import { renderEmphasis } from '../lib/emphasis'
 import { sized } from '../lib/images'
+// The service photographs and the slug they are keyed on both moved to
+// `lib/expertise`: the homepage's services band draws the same four and was
+// falling back to a placeholder because it had no way to reach them.
+import { serviceImage, slugify } from '../lib/expertise'
 
 gsap.registerPlugin(ScrollTrigger)
 
-const slugify = (value = '') => value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
 const serviceNumber = (index) => String(index + 1).padStart(2, '0')
-const SERVICE_IMAGES = {
-  interiors: '/images/expertise/interiors.webp',
-  collaborations: '/images/expertise/collaborations.webp',
-  franchise: '/images/expertise/franchise.webp',
-  invest: '/images/expertise/invest.webp',
-}
 
 export default function EnterprisePage() {
   const page = useSection('enterprise_page')
@@ -25,8 +22,12 @@ export default function EnterprisePage() {
   const scope = useRef(null)
   const services = (page.capabilities ?? []).slice(0, 4)
   const propertyImages = properties.flatMap((property) => [property.image, ...(property.gallery ?? [])]).filter(Boolean)
+  // The shared resolution first — a CMS upload, then the shipped photograph —
+  // and this page's own last resorts after it, which the homepage does not
+  // share: filling an empty service card with a property photograph makes sense
+  // in a full expertise index and would be misleading in a four-up teaser.
   const imageFor = (service, index) =>
-    service.image || SERVICE_IMAGES[slugify(service.title)] || propertyImages[index] || page.heroImage || propertyImages[0]
+    serviceImage(service) || propertyImages[index] || page.heroImage || propertyImages[0]
   const heroImage = page.heroImage || imageFor(services[0] ?? {}, 0)
 
   useGSAP(() => {
@@ -63,7 +64,7 @@ export default function EnterprisePage() {
   }, { scope })
 
   return (
-    <main ref={scope} className="w-full max-w-full overflow-x-hidden bg-surface text-content">
+    <main ref={scope} className="w-full max-w-full overflow-x-hidden bg-base text-content">
       <section className="relative min-h-[100dvh] overflow-hidden bg-void text-white">
         {heroImage && (
           <div data-expertise-visual className="absolute inset-y-0 right-0 w-full lg:w-[58%]">
@@ -90,7 +91,7 @@ export default function EnterprisePage() {
       </section>
 
       {services.length > 0 && (
-        <section data-band="light" className="bg-surface px-6 py-24 md:px-12 md:py-36">
+        <section data-band="light" className="bg-base px-6 py-24 md:px-12 md:py-36">
           <div className="mx-auto max-w-[1560px]">
             <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
               <h2 className="max-w-[15ch] text-balance font-display text-[clamp(2.3rem,5vw,5rem)] font-bold leading-[0.96] tracking-[-0.045em]">{renderEmphasis(page.capabilitiesHeading || 'Choose your way in', '')}</h2>
@@ -127,7 +128,7 @@ export default function EnterprisePage() {
       </div>
 
       {services.length > 0 && (
-        <section data-service-stories data-band="light" className="bg-surface px-6 py-24 md:px-12 md:py-36">
+        <section data-service-stories data-band="light" className="bg-base px-6 py-24 md:px-12 md:py-36">
           <div className="mx-auto grid max-w-[1560px] gap-16 lg:grid-cols-[17rem_minmax(0,1fr)] lg:gap-20">
             <aside data-service-index className="h-fit">
               <p className="font-body text-[12px] font-bold uppercase tracking-[0.2em] text-accent">Our practice</p>

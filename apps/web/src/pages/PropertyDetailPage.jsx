@@ -79,7 +79,7 @@ export default function PropertyDetailPage() {
     return (
       <section
         data-band="light"
-        className="flex min-h-[70vh] flex-col items-center justify-center gap-6 bg-surface px-6 text-center"
+        className="flex min-h-[70vh] flex-col items-center justify-center gap-6 bg-base px-6 text-center"
       >
         <h1 className="font-display text-3xl font-bold tracking-[-0.01em] text-content">
           Property not found
@@ -149,7 +149,7 @@ export default function PropertyDetailPage() {
 
       {/* ── Overview ─────────────────────────────────────────── */}
       {d?.overview?.heading && (
-        <section id="overview" data-band="light" className="bg-surface px-6 py-24 md:px-gutter-lg md:py-36">
+        <section id="overview" data-band="light" className="bg-base px-6 py-24 md:px-gutter-lg md:py-36">
           <div className="grid grid-flow-dense gap-6 lg:grid-cols-12 lg:grid-rows-2">
             {/* Image collage */}
             {gallery.length >= 3 && (
@@ -222,7 +222,7 @@ export default function PropertyDetailPage() {
 
       {/* ── Tenants ──────────────────────────────────────────── */}
       {d?.tenants?.length > 0 && (
-        <section data-band="light" className="border-y border-[var(--color-line)] bg-surface px-6 py-16 md:px-gutter-lg">
+        <section data-band="light" className="border-y border-[var(--color-line)] bg-base px-6 py-16 md:px-gutter-lg">
           <div className="flex flex-wrap items-center justify-center gap-x-16 gap-y-8">
             {d.tenants.map((logo, i) => (
               <img
@@ -401,7 +401,7 @@ export default function PropertyDetailPage() {
           pure white with dark type in *both* themes — a blinding slab midway
           down an otherwise dark page. */}
       {d?.location?.heading && (
-        <section data-band="light" className="bg-surface px-6 py-20 md:px-gutter-lg md:py-28">
+        <section data-band="light" className="bg-base px-6 py-20 md:px-gutter-lg md:py-28">
           <div className="grid gap-12 lg:grid-cols-[1.1fr_1fr] lg:gap-20">
             {/* Image + thumbnails */}
             {gallery.length > 0 && (
@@ -446,7 +446,7 @@ export default function PropertyDetailPage() {
       {/* No top padding: this continues the section above on the same ground
           rather than starting a new one. */}
       {d?.establishedSites?.heading && gallery.length > 0 && (
-        <section data-band="light" className="bg-surface px-6 pb-20 md:px-gutter-lg md:pb-28">
+        <section data-band="light" className="bg-base px-6 pb-20 md:px-gutter-lg md:pb-28">
           <SectionTag>Established Sites</SectionTag>
           <h2 className="mt-6 max-w-[24ch] font-display text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] text-content md:text-[3rem]">
             {d.establishedSites.heading}
@@ -587,7 +587,7 @@ export default function PropertyDetailPage() {
 
       {/* ── Videos ───────────────────────────────────────────── */}
       {d?.videos?.length > 0 && (
-        <section data-band="light" className="bg-surface px-6 py-20 md:px-gutter-lg md:py-28">
+        <section data-band="light" className="bg-base px-6 py-20 md:px-gutter-lg md:py-28">
           <SectionTag>YouTube</SectionTag>
           <h2 className="mt-6 font-display text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] text-content md:text-[3rem]">
             Videos

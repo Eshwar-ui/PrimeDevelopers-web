@@ -44,7 +44,7 @@ export default function PrimePill({
       <a
         href={href}
         onClick={onClick}
-        className={`inline-flex items-center justify-center rounded-full border border-content/25 px-8 text-content outline-none transition-[color,border-color,background-color,transform] duration-200 ease-brand hover:-translate-y-0.5 hover:border-accent hover:bg-accent/5 hover:text-accent active:translate-y-0 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-3 focus-visible:ring-offset-surface motion-reduce:transform-none ${HEIGHT} ${LABEL} ${className}`}
+        className={`inline-flex items-center justify-center rounded-full border border-content/25 px-8 text-content outline-none transition-[color,border-color,background-color,transform] duration-200 ease-brand hover:-translate-y-0.5 hover:border-accent hover:bg-accent/5 hover:text-accent active:translate-y-0 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-3 focus-visible:ring-offset-base motion-reduce:transform-none ${HEIGHT} ${LABEL} ${className}`}
       >
         {children}
       </a>
@@ -74,7 +74,7 @@ export default function PrimePill({
     <a
       href={href}
       onClick={onClick}
-      className={`${LOZENGE} bg-[linear-gradient(96deg,#0073a4_0%,#1aa1d2_100%)] text-white shadow-[0_12px_26px_-16px_rgba(0,115,164,0.95)] hover:shadow-[0_18px_34px_-14px_rgba(0,115,164,0.82)] focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-3 focus-visible:ring-offset-surface ${className}`}
+      className={`${LOZENGE} bg-[linear-gradient(96deg,#0073a4_0%,#1aa1d2_100%)] text-white shadow-[0_12px_26px_-16px_rgba(0,115,164,0.95)] hover:shadow-[0_18px_34px_-14px_rgba(0,115,164,0.82)] focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-3 focus-visible:ring-offset-base ${className}`}
     >
       <span className={LABEL}>{children}</span>
       {/* charcoal, not `text-content`: the disc is hardcoded white in both

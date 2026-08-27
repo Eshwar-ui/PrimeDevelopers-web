@@ -14,7 +14,7 @@ export default function NewsPostPage() {
     return (
       <section
         data-band="light"
-        className="flex min-h-[70vh] flex-col items-center justify-center gap-6 bg-surface px-6 text-center"
+        className="flex min-h-[70vh] flex-col items-center justify-center gap-6 bg-base px-6 text-center"
       >
         <h1 className="font-display text-3xl font-bold tracking-[-0.01em] text-content">
           Post not found
@@ -35,7 +35,7 @@ export default function NewsPostPage() {
     <div>
       <section
         data-band="light"
-        className="relative overflow-hidden bg-surface px-6 pb-16 pt-32 md:px-12 md:pb-20 md:pt-44"
+        className="relative overflow-hidden bg-base px-6 pb-16 pt-32 md:px-12 md:pb-20 md:pt-44"
       >
         <div className="relative mx-auto max-w-[76rem]">
           <Link
@@ -73,7 +73,7 @@ export default function NewsPostPage() {
         </div>
       </section>
 
-      <section data-band="light" className="bg-surface px-6 pb-24 md:px-12">
+      <section data-band="light" className="bg-base px-6 pb-24 md:px-12">
         {/* The same 76rem wrapper the header uses, with the measure applied
             inside it. Centring the column on its own instead leaves the body
             starting well to the right of the headline it belongs to. */}

@@ -9,14 +9,9 @@ import { lenis } from '../hooks/useSmoothScroll'
 import MaskedHeading from '../components/MaskedHeading'
 import { rise, stagger, inViewOnce } from '../lib/motion'
 import PrimePill from '../components/PrimePill'
-import PropertyStrip from '../components/PropertyStrip'
+import PropertiesMapHero from '../components/PropertiesMapHero'
 // import Marquee from '../components/Marquee'
 import Services from '../components/Services'
-
-// The band unfurls a beat behind the copy. Starting them together reads as two
-// animations that happened to fire at once; letting the words get away first
-// makes the photographs feel like the answer to them.
-const STRIP_DELAY = 380
 
 // The three figures under each card name. The design writes them as free text —
 // "2.5 Acres", "Ready", "12 retail slots" — which the integer columns on the
@@ -71,7 +66,11 @@ function Card({ p, onOpen }) {
   const reduced = useReducedMotion()
   const reveal = reduced
     ? {}
-    : { initial: { opacity: 0, y: 24 }, whileInView: { opacity: 1, y: 0 }, viewport: inViewOnce }
+    : {
+        initial: { opacity: 0, y: 24 },
+        whileInView: { opacity: 1, y: 0 },
+        viewport: inViewOnce,
+      }
 
   return (
     <motion.article
@@ -96,11 +95,16 @@ function Card({ p, onOpen }) {
       role="link"
       tabIndex={0}
       aria-label={`Open ${p.name}`}
-      className="group flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-[var(--color-line)] bg-surface transition-shadow duration-300 hover:shadow-[0_22px_48px_-30px_rgba(0,0,0,0.45)]"
+      // The homepage's card, exactly: `rounded-panel`, the accent hairline at
+      // rest rather than on hover, and the same lift on approach. The hairline
+      // is not decoration — these cards are `bg-surface` on a `bg-base` ground,
+      // which in light mode is white on white, so without it a card has no edge
+      // at all. Matching `duration-500 ease-brand` matters as much as the
+      // colours do: the same card reacting at two different speeds on two pages
+      // is what makes a site feel assembled rather than designed.
+      className="group flex cursor-pointer flex-col overflow-hidden rounded-panel border border-accent/45 bg-surface transition-[border-color,box-shadow] duration-500 ease-brand hover:border-accent/75 hover:shadow-[0_36px_80px_-52px_rgba(0,0,0,0.85)] focus-visible:border-accent/75"
     >
-      <div
-        className="relative h-60 overflow-hidden bg-surface-alt"
-      >
+      <div className="relative h-60 overflow-hidden bg-surface-alt">
         {p.image && (
           <img
             src={sized(p.image, 'card')}
@@ -141,8 +145,9 @@ export default function PropertiesPage() {
   const p = useSection('properties_page')
   const properties = useProperties()
   const categories = useCategories()
-  const [filter, setFilter] = useState('All')
   const navigate = useNavigate()
+
+  const [filter, setFilter] = useState('All')
   const list = filter === 'All' ? properties : properties.filter((pr) => pr.category === filter)
   const openProperty = async (property) => {
     const path = `/properties/${property.slug}`
@@ -186,17 +191,6 @@ export default function PropertiesPage() {
       window.dispatchEvent(new CustomEvent('prime:property-transition', { detail: false }))
     })
   }
-  // The band defaults to the listings themselves rather than a second set of
-  // uploads: it is the properties carousel, so the properties are the obvious
-  // content, and it means the strip is populated the moment the page exists.
-  // An explicit `heroSlides` in the CMS overrides that.
-  const slides = p.heroSlides?.length
-    ? p.heroSlides
-    : properties
-        .filter((pr) => pr.image)
-        .slice(0, 5)
-        .map((pr) => ({ image: pr.image, label: pr.name }))
-
   // PrimePill is a plain anchor, which is right for the homepage hero's hash
   // link but would hard-navigate a route. Both handlers take the click back off
   // the browser: one hands it to Lenis so the jump down the page is smooth like
@@ -219,142 +213,151 @@ export default function PropertiesPage() {
   return (
     <div>
       {/* ── Hero ─────────────────────────────────────────────── */}
-      {/* Copy and band share one screen: the band is the bottom of the fold, so
-          whatever height the copy doesn't take, it gets. Bounded like the
-          homepage hero — a very tall window shouldn't strand the copy in a sea
-          of white, and a short one shouldn't crush it — and left to flow below
-          lg, where a full-height fold would squeeze the heading, the lede, two
-          buttons and a photographic band into a phone screen. */}
-      <div className="flex flex-col lg:h-dvh lg:max-h-240 lg:min-h-152">
-        <section
-          id="properties-hero"
-          data-band="light"
-          className="flex flex-1 flex-col justify-center bg-surface px-6 pb-12 pt-32 text-center md:px-12 md:pb-14 md:pt-36"
-        >
-          {/* Same treatment as the homepage hero — display face, bold,
-              uppercase, the same tight leading and tracking — at a smaller
-              size. Governed by whichever runs out first, width or height, for
-              the same reason the home headline is: it now shares a fixed fold
-              with the band below, so a short wide window has to shrink the type
-              rather than push the photographs off the screen. */}
-          <motion.div variants={stagger} initial="hidden" animate="show">
-            {/* Plain, not a motion child: its words carry their own masked rise,
-                and a block-level lift on top would move each mask along with the
-                word inside it — leaving nothing for the word to rise out of. */}
-            <h2 className="mx-auto max-w-[18ch] font-display font-bold uppercase leading-[1.03] tracking-tight text-content [font-size:clamp(1.85rem,min(4.2vw,8dvh),3.4rem)]">
-              <MaskedHeading text={p.heroHeading} accentClass="italic text-accent" />
-            </h2>
+      {/* Copy and map share one screen rather than dividing it. The map is the
+          ground, arriving under the copy toward the bottom of the fold, so
+          there is no band here to give the leftover height to — the section
+          sets its own and centres the copy in the paper above the pins. */}
+      <PropertiesMapHero properties={properties} onOpen={openProperty}>
+        {/* Same treatment as the homepage hero — display face, bold, uppercase,
+            the same tight leading and tracking — at a smaller size. Governed by
+            whichever runs out first, width or height, for the same reason the
+            home headline is: a short wide window has to shrink the type rather
+            than push the buttons down onto the pins. */}
+        <motion.div variants={stagger} initial="hidden" animate="show" className="text-center">
+          {/* Plain, not a motion child: its words carry their own masked rise,
+              and a block-level lift on top would move each mask along with the
+              word inside it — leaving nothing for the word to rise out of. */}
+          <h2 className="mx-auto max-w-[18ch] font-display font-bold uppercase leading-[1.03] tracking-tight text-content [font-size:clamp(1.85rem,min(4.2vw,8dvh),3.4rem)]">
+            <MaskedHeading text={p.heroHeading} accentClass="italic text-accent" />
+          </h2>
 
-            {p.heroParagraph && (
-              /* Type comes from the homepage lede — same 15px, same leading,
-                 same weight of grey — so the two heroes speak at one volume.
-                 Only the measure differs: that lede is set left in a column
-                 beside the visual, where 480px is what makes it a column, while
-                 this one is centred under a full-width heading and at that width
-                 breaks into three stub lines. 40rem is the measure the design
-                 sets, and it lands the same copy on two balanced lines. */
-              <motion.p
-                variants={rise}
-                className="mx-auto mt-7 max-w-[40rem] font-body text-[15px] leading-relaxed text-content/70"
-              >
-                {p.heroParagraph}
-              </motion.p>
-            )}
-
-            <motion.div
+          {p.heroParagraph && (
+            /* Type comes from the homepage lede — same 15px, same leading, same
+               weight of grey — so the two heroes speak at one volume. Only the
+               measure differs: that lede is set left in a column beside the
+               visual, where 480px is what makes it a column, while this one is
+               centred under a full-width heading and at that width breaks into
+               three stub lines. 40rem is the measure the design sets, and it
+               lands the same copy on two balanced lines. */
+            <motion.p
               variants={rise}
-              className="mt-9 flex flex-wrap items-center justify-center gap-4"
+              className="mx-auto mt-7 max-w-[40rem] font-body text-[15px] leading-relaxed text-content/70"
             >
-              <PrimePill href={p.ctaHref || '#collection'} onClick={onBrowse}>
-                {p.ctaLabel}
-              </PrimePill>
-              <PrimePill variant="outline" href={p.ctaSecondaryHref || '/contact'} onClick={onTour}>
-                {p.ctaSecondaryLabel}
-              </PrimePill>
-            </motion.div>
-          </motion.div>
-        </section>
+              {p.heroParagraph}
+            </motion.p>
+          )}
 
-        {/* Outside the hero's padding on purpose — the band is full-bleed. */}
-        <div data-band="light" className="shrink-0 bg-surface">
-          <PropertyStrip slides={slides} delay={STRIP_DELAY} />
-        </div>
-      </div>
+          <motion.div
+            variants={rise}
+            className="mt-9 flex flex-wrap items-center justify-center gap-4"
+          >
+            <PrimePill href={p.ctaHref || '#collection'} onClick={onBrowse}>
+              {p.ctaLabel}
+            </PrimePill>
+            <PrimePill variant="outline" href={p.ctaSecondaryHref || '/contact'} onClick={onTour}>
+              {p.ctaSecondaryLabel}
+            </PrimePill>
+          </motion.div>
+        </motion.div>
+      </PropertiesMapHero>
 
       {/* ── The curated collection ───────────────────────────── */}
-      <section id="collection" data-band="light" className="bg-surface px-6 py-20 md:px-12 md:py-28">
-        {/* The section-level reveal in `SectionRevealController` un-blurs this
+      {/* Ground, gutter, rhythm and measure are the homepage's — `bg-base
+          px-gutter py-20 text-content md:px-gutter-lg md:py-28` is what every
+          section on the landing page sets, and this band was running its own
+          `bg-surface px-6` with no measure at all. The gutter is the visible
+          half: `px-gutter-lg` is 6.25rem against the 3rem this had, so the grid
+          now starts on the same vertical as the homepage's cards instead of
+          sitting 2rem wider than everything else on the site. */}
+      <section
+        id="collection"
+        data-band="light"
+        className="bg-base px-gutter py-20 text-content md:px-gutter-lg md:py-28"
+      >
+        {/* The 1560px measure every homepage section sets. Without it this grid
+            was the one band on the site with no ceiling, so on a wide display it
+            ran three cards across a 2400px row while the landing page above it
+            held its column. */}
+        <div className="mx-auto max-w-[1560px]">
+          {/* The section-level reveal in `SectionRevealController` un-blurs this
             whole band the moment its top edge enters view — and this band is
             over 1700px tall, so on its own it means the grid at the bottom
             finished animating about 1500px before anyone scrolled to it. The
             section entrance introduces the band; these interior reveals are
             what actually meet the reader on the way down. */}
-        <RevealGroup className="grid gap-8 md:grid-cols-[1.1fr_1fr] md:items-end">
-          <div>
-            {/* inline-block because a transform on an inline box is ignored
+          <RevealGroup className="grid gap-8 md:grid-cols-[1.1fr_1fr] md:items-end">
+            <div>
+              {/* inline-block because a transform on an inline box is ignored
                 outright — the lift would silently do nothing here. */}
-            {p.curatedEyebrow && (
-              <motion.span
-                variants={rise}
-                className="inline-block font-body text-[14px] uppercase tracking-[0.14em] text-accent"
-              >
-                {p.curatedEyebrow}
-              </motion.span>
-            )}
-            {/* Safe as a motion child, unlike the hero above: this heading is
+              {p.curatedEyebrow && (
+                <motion.span
+                  variants={rise}
+                  className="inline-block font-body text-[14px] uppercase tracking-[0.14em] text-accent"
+                >
+                  {p.curatedEyebrow}
+                </motion.span>
+              )}
+              {/* Safe as a motion child, unlike the hero above: this heading is
                 `renderEmphasis`, not `MaskedHeading`, so there are no per-word
                 masks for a block-level lift to drag along with their words. */}
-            <motion.h2
-              variants={rise}
-              className="mt-4 font-display text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] text-content md:text-[3rem]"
-            >
-              {renderEmphasis(p.curatedHeading)}
-            </motion.h2>
-          </div>
-          {p.curatedParagraph && (
-            <motion.p variants={rise} className="font-body text-[16px] leading-[1.7] text-content/70">
-              {p.curatedParagraph}
-            </motion.p>
-          )}
-        </RevealGroup>
+              <motion.h2
+                variants={rise}
+                className="mt-4 font-display text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] text-content md:text-[3rem]"
+              >
+                {renderEmphasis(p.curatedHeading)}
+              </motion.h2>
+            </div>
+            {p.curatedParagraph && (
+              <motion.p
+                variants={rise}
+                className="font-body text-[16px] leading-[1.7] text-content/70"
+              >
+                {p.curatedParagraph}
+              </motion.p>
+            )}
+          </RevealGroup>
 
-        {/* Not in the Figma, which draws the grid unfiltered — kept because the
+          {/* Not in the Figma, which draws the grid unfiltered — kept because the
             page already shipped with it and dropping it would quietly remove a
             way to navigate the list. Restyled for the light ground. */}
-        {categories.length > 2 && (
-          <RevealGroup className="mt-12 flex flex-wrap gap-2.5">
-            {categories.map((c) => {
-              const active = c === filter
-              return (
-                // `variants` only — no `animate`. Clicking a pill re-renders the
-                // row, and an explicit animate prop here would re-run the
-                // entrance on every filter change; driven by the parent's
-                // variant state it settles at `show` and stays there.
-                <motion.button
-                  key={c}
-                  variants={rise}
-                  type="button"
-                  onClick={() => setFilter(c)}
-                  className={`min-h-11 rounded-full border px-5 py-2 font-body text-[13px] font-medium uppercase tracking-[0.1em] transition-colors duration-300 ${
-                    active
-                      ? 'border-accent bg-accent text-white dark:text-void'
-                      : 'border-[var(--color-line)] text-content/70 hover:border-content/35 hover:text-content'
-                  }`}
-                >
-                  {c}
-                </motion.button>
-              )
-            })}
-          </RevealGroup>
-        )}
+          {/* Not in the Figma, which draws the grid unfiltered — kept because the
+            page already shipped with it and dropping it would quietly remove a
+            way to navigate the list. Restyled for the light ground. */}
+          {categories.length > 2 && (
+            <RevealGroup className="mt-12 flex flex-wrap gap-2.5">
+              {categories.map((c) => {
+                const active = c === filter
+                return (
+                  // `variants` only — no `animate`. Clicking a pill re-renders the
+                  // row, and an explicit animate prop here would re-run the
+                  // entrance on every filter change; driven by the parent's
+                  // variant state it settles at `show` and stays there.
+                  <motion.button
+                    key={c}
+                    variants={rise}
+                    type="button"
+                    onClick={() => setFilter(c)}
+                    className={`min-h-11 rounded-full border px-5 py-2 font-body text-[13px] font-medium uppercase tracking-[0.1em] transition-colors duration-300 ${
+                      active
+                        ? 'border-accent bg-accent text-white dark:text-void'
+                        : 'border-[var(--color-line)] text-content/70 hover:border-content/35 hover:text-content'
+                    }`}
+                  >
+                    {c}
+                  </motion.button>
+                )
+              })}
+            </RevealGroup>
+          )}
 
-        <motion.div layout className="mt-12 grid grid-cols-1 gap-7 md:grid-cols-2 lg:grid-cols-3">
-          <AnimatePresence mode="popLayout">
-            {list.map((pr) => (
-              <Card key={pr.slug} p={pr} onOpen={() => openProperty(pr)} />
-            ))}
-          </AnimatePresence>
-        </motion.div>
+          <motion.div layout className="mt-12 grid grid-cols-1 gap-7 md:grid-cols-2 lg:grid-cols-3">
+            <AnimatePresence mode="popLayout">
+              {list.map((pr) => (
+                <Card key={pr.slug} p={pr} onOpen={() => openProperty(pr)} />
+              ))}
+            </AnimatePresence>
+          </motion.div>
+        </div>
       </section>
 
       {/* <Marquee /> */}

@@ -44,7 +44,7 @@ export default function LearnPage() {
   }
 
   return (
-    <div className="bg-surface text-content">
+    <div className="bg-base text-content">
       <section data-band="light" className="px-gutter pb-16 pt-36 md:px-gutter-lg md:pb-24 md:pt-44">
         <div className="mx-auto grid max-w-[1360px] gap-12 lg:grid-cols-[1.25fr_0.75fr] lg:items-end">
           <h1 className="max-w-[18ch] text-balance font-display font-bold uppercase leading-[1.03] tracking-tight [font-size:clamp(1.85rem,min(4.2vw,8dvh),3.4rem)]">{heading}</h1>

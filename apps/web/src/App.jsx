@@ -70,7 +70,7 @@ import RequireAuth from './admin/RequireAuth'
 // on screen it *is* the page. Without it the navbar spends the chunk download
 // dressed for a dark ground it is no longer standing on.
 function RouteFallback() {
-  return <div data-band="light" className="min-h-[100dvh] bg-surface" />
+  return <div data-band="light" className="min-h-[100dvh] bg-base" />
 }
 
 function Home() {

@@ -20,7 +20,7 @@ export default function NewsPage() {
 
   return (
     <div>
-      <section id="news-hero" data-band="light" className="bg-surface px-6 pb-14 pt-32 text-center md:px-12 md:pb-16 md:pt-40">
+      <section id="news-hero" data-band="light" className="bg-base px-6 pb-14 pt-32 text-center md:px-12 md:pb-16 md:pt-40">
         <motion.div variants={stagger} initial="hidden" animate="show">
           {p.heroEyebrow && <motion.span variants={rise} className="block font-body text-[14px] uppercase tracking-[0.14em] text-accent">{p.heroEyebrow}</motion.span>}
           <h1 className="mx-auto mt-5 max-w-[18ch] font-display font-bold uppercase leading-[1.03] tracking-tight text-content [font-size:clamp(1.85rem,min(4.2vw,8dvh),3.4rem)]">
@@ -30,7 +30,7 @@ export default function NewsPage() {
         </motion.div>
       </section>
 
-      <section data-band="light" className="bg-surface px-6 pb-24 pt-8 md:px-12 md:pb-36 md:pt-12">
+      <section data-band="light" className="bg-base px-6 pb-24 pt-8 md:px-12 md:pb-36 md:pt-12">
         <div className="mx-auto max-w-[1560px]">
           {!featured ? (
             <div className="mt-14 border-y border-line py-20 text-center">
@@ -58,7 +58,14 @@ export default function NewsPage() {
               {articles.length > 0 && (
                 <div className="mt-8 grid grid-cols-1 gap-5 md:mt-10 md:grid-cols-2 lg:grid-cols-3">
                   {articles.map((post) => (
-                    <Link key={post.slug} to={`/news/${post.slug}`} className="group flex min-h-full flex-col overflow-hidden rounded-2xl border border-line bg-surface transition-colors duration-300 hover:border-accent/55">
+                    // The house content card, same as the homepage's and the
+                    // properties grid's: `rounded-panel`, the accent hairline at
+                    // rest rather than on hover, and the same lift on approach at
+                    // the same speed. The hairline is not decoration — a
+                    // `bg-surface` card on a `bg-base` ground is white on white in
+                    // light mode, so a grey line is the difference between a card
+                    // and no card at all.
+                    <Link key={post.slug} to={`/news/${post.slug}`} className="group flex min-h-full flex-col overflow-hidden rounded-panel border border-accent/45 bg-surface transition-[border-color,box-shadow] duration-500 ease-brand hover:border-accent/75 hover:shadow-[0_36px_80px_-52px_rgba(0,0,0,0.85)]">
                       <div className="h-56 overflow-hidden bg-surface-alt md:h-64">
                         {post.coverImage && <img src={sized(post.coverImage, 'card')} alt={post.title} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]" />}
                       </div>

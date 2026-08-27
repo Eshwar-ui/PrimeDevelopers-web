@@ -140,7 +140,7 @@ export default function Footer() {
       // the edge of the document — the card read as a band that had been cut
       // off rather than as an object the page ends on. It needs the same air
       // beneath it that it already has at either side.
-      className="bg-surface px-4 pb-4 pt-20 md:px-6 md:pb-6 md:pt-28"
+      className="bg-base px-4 pb-4 pt-20 md:px-6 md:pb-6 md:pt-28"
     >
       {/* ── The overlap ──────────────────────────────────────────────────── */}
       <div className="relative">

@@ -29,7 +29,7 @@ export default function PillButton({
       whileHover={{ y: -2 }}
       whileTap={{ scale: 0.975 }}
       transition={{ type: 'spring', stiffness: 460, damping: 28 }}
-      className={`group relative inline-flex items-center overflow-hidden rounded-full px-6 py-3.5 font-body text-[14px] font-bold uppercase tracking-[0.1em] outline-none transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-3 focus-visible:ring-offset-surface motion-reduce:transform-none ${variant === 'outline' ? '' : 'primary-button-flood'} ${variants[variant]} ${className}`}
+      className={`group relative inline-flex items-center overflow-hidden rounded-full px-6 py-3.5 font-body text-[14px] font-bold uppercase tracking-[0.1em] outline-none transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-3 focus-visible:ring-offset-base motion-reduce:transform-none ${variant === 'outline' ? '' : 'primary-button-flood'} ${variants[variant]} ${className}`}
     >
       <span className="relative flex items-center gap-2">
         <span className="transition-transform duration-200 ease-brand group-hover:translate-x-0.5 motion-reduce:transform-none">

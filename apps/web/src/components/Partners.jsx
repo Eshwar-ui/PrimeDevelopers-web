@@ -258,10 +258,10 @@ export default function Partners() {
   // changes between the two framings.
   const [box, setBox] = useState({ w: 0, h: 0 })
 
-  // Matches the `lg:` the container's aspect ratio switches on. Read from the
+  // Matches the `md:` the container's aspect ratio switches on. Read from the
   // same breakpoint rather than inferred from the measured box, so the frame
   // and the CSS can never disagree about which layout is in play.
-  const wide = useMediaQuery('(min-width: 1024px)')
+  const wide = useMediaQuery('(min-width: 768px)')
   const frame = wide ? FRAMES.bottom : FRAMES.left
   const unit = frame.unit(box.w, box.h)
   const origin = frame.origin(box.w, box.h)
@@ -315,7 +315,7 @@ export default function Partners() {
 
   return (
     <section id="partners" className="relative isolate overflow-hidden bg-void">
-      <div className="relative mx-auto max-w-[1600px] px-gutter pb-14 pt-14 md:px-gutter-lg md:pb-18 md:pt-18 lg:pb-0 xl:pt-20">
+      <div className="relative mx-auto max-w-[1600px] px-gutter pb-14 pt-14 md:px-gutter-lg md:pb-0 md:pt-18 xl:pt-20">
         {/* The kicker is all the copy this section carries — the heading,
             paragraph and stat row that used to sit under it are `about_home`'s,
             and the About section renders them itself. */}
@@ -332,24 +332,20 @@ export default function Partners() {
         <div
           ref={orbitRef}
           aria-hidden
-          // Three bands, two framings, and a gap in the middle on purpose.
-          //
-          // Phones get the left-hung orbit: tall and narrow, because its radii
-          // are measured against the height and it grows down the page.
-          // Desktops get the bottom-hung one: wide and shallow, growing across.
-          //
-          // Between them — 768 to 1023 — neither works. A left-hung orbit on a
-          // 768px-wide box wants to be ~1080px tall and leaves half its width
-          // empty, and a bottom-hung one is back to the unreadable 30px discs.
-          // That band keeps the flat grid instead.
+          // Two bands, two framings, no gap: phones get the left-hung orbit
+          // (tall and narrow, radii measured against the height, growing down
+          // the page), and everything from `md` up — tablets included — gets
+          // the same bottom-hung one desktop uses (wide and shallow, growing
+          // across), so there is one consistent treatment above phone width
+          // rather than a flat grid standing in for a size that "doesn't fit".
           //
           // Both framings sit on a real edge rather than inside the gutter, so
           // the orbit reads as part of the section instead of a shape parked in
-          // it: the phone one bleeds left to the viewport, and the desktop one
+          // it: the phone one bleeds left to the viewport, and the wide one
           // gets the container's bottom padding dropped under it. The phone
           // orbit needs that literally — its arcs are cut flush and a cut has
           // to land on an edge to look like one.
-          className="relative -ml-gutter mt-12 aspect-[10/19] w-[calc(100%+var(--spacing-gutter))] md:hidden lg:ml-0 lg:mt-14 lg:block lg:aspect-[100/44] lg:w-full"
+          className="relative -ml-gutter mt-12 aspect-[10/19] w-[calc(100%+var(--spacing-gutter))] md:ml-0 md:mt-14 md:aspect-[100/44] md:w-full"
         >
           {/* Behind the arcs and the discs, because DOM order is what stacks
               them here. Same two-element trick the arcs use: the outer element
@@ -464,30 +460,14 @@ export default function Partners() {
 
         {/* The whole roster, in stable order.
 
-            Visible only in the middle band, where neither framing of the orbit
-            fits. Either side of it the orbit is on screen and this collapses to
-            `sr-only` — still in the DOM, because the orbit is `aria-hidden` and
-            this is the one place the partners are published to assistive tech
-            in a stable order that does not churn as the rings turn. */}
-        <ul
-          className="mt-12 sr-only md:not-sr-only md:grid md:grid-cols-5 md:gap-4 lg:sr-only"
-          aria-label="Our partners"
-        >
+            The orbit is on screen at every width now and is itself
+            `aria-hidden`, so this is the one place the partners are published
+            to assistive tech in a stable order that does not churn as the
+            rings turn — screen-reader only, never visible. */}
+        <ul className="sr-only" aria-label="Our partners">
           {visibleLogos.map((logo, i) => (
-            <li
-              key={logo.image + '-' + i}
-              className={
-                'flex aspect-square items-center justify-center rounded-full p-[14%] ' +
-                (logo.darkPanel ? 'bg-carbon ring-1 ring-white/15' : 'bg-white')
-              }
-            >
-              <img
-                src={sized(logo.image, 'logo')}
-                alt={logo.alt ?? ''}
-                loading="lazy"
-                decoding="async"
-                className="max-h-full max-w-full object-contain"
-              />
+            <li key={logo.image + '-' + i}>
+              <img src={sized(logo.image, 'logo')} alt={logo.alt ?? ''} loading="lazy" decoding="async" />
             </li>
           ))}
         </ul>

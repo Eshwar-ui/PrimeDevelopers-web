@@ -43,8 +43,8 @@ function DownloadIcon() {
  * property instead of three fields someone had to fill in identically for all
  * of them.
  */
-function chipsFor(p) {
-  const units = p.buildings ? { value: String(p.buildings), label: 'units' } : null
+function chipsFor(p, unitsLabel) {
+  const units = p.buildings ? { value: String(p.buildings), label: unitsLabel } : null
   const stats = (p.detail?.overview?.stats ?? []).map((s) => ({
     value: String(s.value ?? ''),
     label: s.label ?? '',
@@ -78,7 +78,7 @@ function chipsFor(p) {
 }
 
 export default function Properties() {
-  const { heading } = useSection('properties_home')
+  const { heading, unitsLabel, viewLabel, brochureLabel } = useSection('properties_home')
   const properties = useProperties().slice(0, TEASER_COUNT)
   const scope = useRef(null)
   const navigate = useNavigate()
@@ -133,7 +133,7 @@ export default function Properties() {
           // is the order it collapses to on a phone, and the order a screen
           // reader hears regardless of what the grid is doing.
           const flip = i % 2 === 1
-          const chips = chipsFor(p)
+          const chips = chipsFor(p, unitsLabel)
           const href = `/properties/${p.slug}`
           const open = (e) => {
             e.preventDefault()
@@ -298,7 +298,7 @@ export default function Properties() {
                     should break on purpose. */}
                 <div className="relative z-10 mt-1 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
                   <ActionButton href={href} onClick={open} className="w-full sm:w-auto">
-                    View property
+                    {viewLabel}
                   </ActionButton>
 
                   <ActionButton
@@ -308,7 +308,7 @@ export default function Properties() {
                     className="w-full sm:w-auto"
                     onClick={() => setBrochureProperty(p)}
                   >
-                    Download brochure
+                    {brochureLabel}
                     <DownloadIcon />
                   </ActionButton>
                 </div>

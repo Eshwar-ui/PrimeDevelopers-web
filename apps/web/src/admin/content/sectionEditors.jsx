@@ -114,10 +114,54 @@ export const SECTIONS = [
     label: 'Properties (homepage teaser)',
     description: 'Heading above the homepage property teaser — properties shown there come from the Properties list.',
     Editor: ({ value, onChange }) => (
-      <Section title="Copy">
-        <TextAreaField label="Heading" rows={2} value={value.heading} onChange={(heading) => onChange({ heading })} />
-        <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
-      </Section>
+      <>
+        <Section title="Copy">
+          <TextAreaField label="Heading" rows={2} value={value.heading} onChange={(heading) => onChange({ heading })} />
+          <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
+        </Section>
+        <Section title="Card labels">
+          <TextField label="Units chip label" value={value.unitsLabel} onChange={(unitsLabel) => onChange({ unitsLabel })} />
+          <div className="grid grid-cols-2 gap-4">
+            <TextField label={'"View property" button'} value={value.viewLabel} onChange={(viewLabel) => onChange({ viewLabel })} />
+            <TextField label={'"Download brochure" button'} value={value.brochureLabel} onChange={(brochureLabel) => onChange({ brochureLabel })} />
+          </div>
+        </Section>
+      </>
+    ),
+  },
+  {
+    key: 'brochure_modal',
+    label: 'Brochure request modal',
+    description: 'The dialog that opens from a property card’s "Download brochure" button.',
+    Editor: ({ value, onChange }) => (
+      <>
+        <Section title="Form">
+          <TextField label="Eyebrow" value={value.eyebrow} onChange={(eyebrow) => onChange({ eyebrow })} />
+          <TextField label="Heading" value={value.heading} onChange={(heading) => onChange({ heading })} />
+          <p className="-mt-3 text-[11px] text-bone-3">Use <code>{'{name}'}</code> where the property's name should appear, e.g. "Receive {'{name}'} by email".</p>
+          <TextAreaField label="Paragraph" value={value.paragraph} onChange={(paragraph) => onChange({ paragraph })} />
+          <div className="grid grid-cols-3 gap-3">
+            <TextField label="Name placeholder" value={value.namePlaceholder} onChange={(namePlaceholder) => onChange({ namePlaceholder })} />
+            <TextField label="Email placeholder" value={value.emailPlaceholder} onChange={(emailPlaceholder) => onChange({ emailPlaceholder })} />
+            <TextField label="Phone placeholder" value={value.phonePlaceholder} onChange={(phonePlaceholder) => onChange({ phonePlaceholder })} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <TextField label="Submit button" value={value.submitLabel} onChange={(submitLabel) => onChange({ submitLabel })} />
+            <TextField label="Submit button (sending)" value={value.sendingLabel} onChange={(sendingLabel) => onChange({ sendingLabel })} />
+          </div>
+          <TextAreaField label="Error message" rows={2} value={value.errorMessage} onChange={(errorMessage) => onChange({ errorMessage })} />
+        </Section>
+        <Section title="Success state">
+          <TextField label="Heading" value={value.successHeading} onChange={(successHeading) => onChange({ successHeading })} />
+          <TextAreaField label="Body" rows={2} value={value.successBody} onChange={(successBody) => onChange({ successBody })} />
+          <p className="-mt-3 text-[11px] text-bone-3">Use <code>{'{name}'}</code> for the property's name here too.</p>
+          <TextField label="Done button" value={value.doneLabel} onChange={(doneLabel) => onChange({ doneLabel })} />
+        </Section>
+        <Section title="Received state" description="Shown when the request was logged but no brochure was emailed — email not set up, no brochure on file, or the send failed.">
+          <TextField label="Heading" value={value.receivedHeading} onChange={(receivedHeading) => onChange({ receivedHeading })} />
+          <TextAreaField label="Body" rows={2} value={value.receivedBody} onChange={(receivedBody) => onChange({ receivedBody })} />
+        </Section>
+      </>
     ),
   },
   {
@@ -197,6 +241,11 @@ export const SECTIONS = [
         <Section title="Introduction">
           <TextAreaField label="Heading" rows={2} value={value.heading} onChange={(heading) => onChange({ heading })} />
           <TextAreaField label="Paragraph" rows={3} value={value.paragraph} onChange={(paragraph) => onChange({ paragraph })} />
+          <TextField
+            label="Homepage teaser link label"
+            value={value.exploreLinkLabel}
+            onChange={(exploreLinkLabel) => onChange({ exploreLinkLabel })}
+          />
         </Section>
         <Section title="Terms" description="Use a short, unique URL slug. Related terms are comma-separated slugs, such as flex-space,parking-ratio.">
           <RepeatableList
@@ -283,6 +332,14 @@ export const SECTIONS = [
         <Section title="Copy">
           <TextField label="Heading" value={value.heading} onChange={(heading) => onChange({ heading })} />
           <TextAreaField label="Paragraph" value={value.paragraph} onChange={(paragraph) => onChange({ paragraph })} />
+          <TextField label="Carousel hint label" value={value.scrollLabel} onChange={(scrollLabel) => onChange({ scrollLabel })} />
+          <TextAreaField
+            label="Follow strip text"
+            rows={2}
+            value={value.followText}
+            onChange={(followText) => onChange({ followText })}
+          />
+          <p className="-mt-3 text-[11px] text-bone-3">Sits next to the social links at the bottom of the section — separate from the paragraph above.</p>
         </Section>
         <Section
           title="Social posts"
@@ -349,20 +406,56 @@ export const SECTIONS = [
     label: 'Navigation',
     description: 'Top navigation links.',
     Editor: ({ value, onChange }) => (
-      <Section title="Links">
-        <RepeatableList
-          items={value.links}
-          onChange={(links) => onChange({ links })}
-          makeItem={() => ({ label: '', to: '/' })}
-          addLabel="Add link"
-          renderItem={(item, set) => (
-            <div className="grid grid-cols-2 gap-3">
-              <TextField label="Label" value={item.label} onChange={(label) => set({ ...item, label })} />
-              <TextField label="Route" value={item.to} onChange={(to) => set({ ...item, to })} />
-            </div>
-          )}
-        />
-      </Section>
+      <>
+        <Section title="Links">
+          <RepeatableList
+            items={value.links}
+            onChange={(links) => onChange({ links })}
+            makeItem={() => ({ label: '', to: '/' })}
+            addLabel="Add link"
+            renderItem={(item, set) => (
+              <div className="grid grid-cols-2 gap-3">
+                <TextField label="Label" value={item.label} onChange={(label) => set({ ...item, label })} />
+                <TextField label="Route" value={item.to} onChange={(to) => set({ ...item, to })} />
+              </div>
+            )}
+          />
+        </Section>
+        <Section title="Enquire button">
+          <TextField label="Button label" value={value.enquireLabel} onChange={(enquireLabel) => onChange({ enquireLabel })} />
+        </Section>
+        <Section title="WhatsApp" description="Shown when the footer's social links include a WhatsApp entry.">
+          <TextAreaField
+            label="Prefilled join message"
+            rows={2}
+            value={value.whatsappMessage}
+            onChange={(whatsappMessage) => onChange({ whatsappMessage })}
+          />
+          <TextField
+            label="Dialog heading"
+            value={value.whatsappDialogHeading}
+            onChange={(whatsappDialogHeading) => onChange({ whatsappDialogHeading })}
+          />
+          <TextAreaField
+            label="Dialog paragraph"
+            rows={3}
+            value={value.whatsappDialogParagraph}
+            onChange={(whatsappDialogParagraph) => onChange({ whatsappDialogParagraph })}
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <TextField
+              label={'"Join the updates group" button'}
+              value={value.whatsappJoinLabel}
+              onChange={(whatsappJoinLabel) => onChange({ whatsappJoinLabel })}
+            />
+            <TextField
+              label={'"Chat with our team" button'}
+              value={value.whatsappChatLabel}
+              onChange={(whatsappChatLabel) => onChange({ whatsappChatLabel })}
+            />
+          </div>
+        </Section>
+      </>
     ),
   },
   {
@@ -379,6 +472,7 @@ export const SECTIONS = [
           <TextField label="Studio address" value={value.studio} onChange={(studio) => onChange({ studio })} />
         </Section>
         <Section title="Quick links">
+          <TextField label="Column heading" value={value.quickLinksHeading} onChange={(quickLinksHeading) => onChange({ quickLinksHeading })} />
           <RepeatableList
             items={value.quickLinks}
             onChange={(quickLinks) => onChange({ quickLinks })}
@@ -392,7 +486,13 @@ export const SECTIONS = [
             )}
           />
         </Section>
+        <Section title="Portfolio column">
+          <TextField label="Column heading" value={value.portfolioHeading} onChange={(portfolioHeading) => onChange({ portfolioHeading })} />
+          <TextField label={'"All properties" link'} value={value.allPropertiesLabel} onChange={(allPropertiesLabel) => onChange({ allPropertiesLabel })} />
+          <p className="-mt-3 text-[11px] text-bone-3">The properties listed here come from the Properties list, in sort order.</p>
+        </Section>
         <Section title="Social links">
+          <TextField label="Column heading" value={value.socialHeading} onChange={(socialHeading) => onChange({ socialHeading })} />
           <RepeatableList
             items={value.socials}
             onChange={(socials) => onChange({ socials })}
@@ -413,6 +513,28 @@ export const SECTIONS = [
           </div>
         </Section>
       </>
+    ),
+  },
+  {
+    key: 'texas_map',
+    label: 'Service area map',
+    description: 'City coordinates for the footer’s Texas map. A property whose city isn’t listed here gets no marker.',
+    Editor: ({ value, onChange }) => (
+      <Section title="Cities" description={"Name must match the city in a property's address (e.g. \"Cedar Park\" for an address ending …, Cedar Park, TX …)."}>
+        <RepeatableList
+          items={value.cities}
+          onChange={(cities) => onChange({ cities })}
+          makeItem={() => ({ name: '', lat: '', lon: '' })}
+          addLabel="Add city"
+          renderItem={(item, set) => (
+            <div className="grid grid-cols-3 gap-3">
+              <TextField label="City" value={item.name} onChange={(name) => set({ ...item, name })} />
+              <TextField label="Latitude" type="number" value={item.lat} onChange={(lat) => set({ ...item, lat })} />
+              <TextField label="Longitude" type="number" value={item.lon} onChange={(lon) => set({ ...item, lon })} />
+            </div>
+          )}
+        />
+      </Section>
     ),
   },
   {
@@ -500,6 +622,8 @@ export const SECTIONS = [
           <TextAreaField label="Heading" rows={2} value={value.heroHeading} onChange={(heroHeading) => onChange({ heroHeading })} />
           <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
           <TextAreaField label="Paragraph" value={value.heroParagraph} onChange={(heroParagraph) => onChange({ heroParagraph })} />
+          <TextField label="Subheading" value={value.heroSubheading} onChange={(heroSubheading) => onChange({ heroSubheading })} />
+          <p className="-mt-3 text-[11px] text-bone-3">The smaller line under the eyebrow (e.g. "Start a Conversation").</p>
         </Section>
         <Section title="Contact details">
           <div className="grid grid-cols-2 gap-4">
@@ -508,7 +632,7 @@ export const SECTIONS = [
           </div>
           <TextField label="Location" value={value.location} onChange={(location) => onChange({ location })} />
         </Section>
-        <Section title="Social links">
+        <Section title="Social links" description="Shown as a row of icons on the contact page.">
           <RepeatableList
             items={value.socials}
             onChange={(socials) => onChange({ socials })}
@@ -521,6 +645,18 @@ export const SECTIONS = [
               </div>
             )}
           />
+        </Section>
+        <Section title="Form panel">
+          <TextField label="Eyebrow" value={value.formEyebrow} onChange={(formEyebrow) => onChange({ formEyebrow })} />
+          <TextAreaField label="Heading" rows={2} value={value.formHeading} onChange={(formHeading) => onChange({ formHeading })} />
+          <TextAreaField label="Paragraph" value={value.formParagraph} onChange={(formParagraph) => onChange({ formParagraph })} />
+        </Section>
+        <Section title="Texas coverage band">
+          <TextField label="Eyebrow" value={value.mapEyebrow} onChange={(mapEyebrow) => onChange({ mapEyebrow })} />
+          <TextAreaField label="Heading" rows={2} value={value.mapHeading} onChange={(mapHeading) => onChange({ mapHeading })} />
+          <TextAreaField label="Paragraph" value={value.mapParagraph} onChange={(mapParagraph) => onChange({ mapParagraph })} />
+          <TextField label="Map search query" value={value.mapQuery} onChange={(mapQuery) => onChange({ mapQuery })} />
+          <p className="-mt-3 text-[11px] text-bone-3">What the embedded Google Map searches for, e.g. "Texas, USA" or a specific city.</p>
         </Section>
       </>
     ),
@@ -544,6 +680,13 @@ export const SECTIONS = [
         </Section>
         <Section title="Capabilities">
           <TextAreaField label="Heading" rows={2} value={value.capabilitiesHeading} onChange={(capabilitiesHeading) => onChange({ capabilitiesHeading })} />
+          <TextAreaField
+            label="Subheading"
+            rows={2}
+            value={value.capabilitiesSubheading}
+            onChange={(capabilitiesSubheading) => onChange({ capabilitiesSubheading })}
+          />
+          <TextField label="Sidebar label" value={value.practiceLabel} onChange={(practiceLabel) => onChange({ practiceLabel })} />
           <RepeatableList
             items={value.capabilities}
             onChange={(capabilities) => onChange({ capabilities })}
@@ -627,6 +770,72 @@ export const SECTIONS = [
         <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
         <TextAreaField label="Paragraph" value={value.heroParagraph} onChange={(heroParagraph) => onChange({ heroParagraph })} />
       </Section>
+    ),
+  },
+  {
+    key: 'property_detail_page',
+    label: 'Property page (shared labels)',
+    description: 'Section labels and the closing call-to-action shared by every property\'s detail page. Per-property content (name, photos, floor plans, etc.) is edited from Properties.',
+    Editor: ({ value, onChange }) => (
+      <>
+        <Section title="Not found">
+          <TextField label="Heading" value={value.notFoundHeading} onChange={(notFoundHeading) => onChange({ notFoundHeading })} />
+          <TextField label="Back link" value={value.notFoundBackLabel} onChange={(notFoundBackLabel) => onChange({ notFoundBackLabel })} />
+        </Section>
+        <Section title="Section labels">
+          <div className="grid grid-cols-2 gap-4">
+            <TextField label="Resources" value={value.resourcesLabel} onChange={(resourcesLabel) => onChange({ resourcesLabel })} />
+            <TextField label={'Overview "Enquire" pill'} value={value.overviewEnquireLabel} onChange={(overviewEnquireLabel) => onChange({ overviewEnquireLabel })} />
+          </div>
+          <TextField label="Highlights eyebrow" value={value.highlightsEyebrow} onChange={(highlightsEyebrow) => onChange({ highlightsEyebrow })} />
+          <TextField label="Established sites" value={value.establishedSitesLabel} onChange={(establishedSitesLabel) => onChange({ establishedSitesLabel })} />
+          <TextField label="Ext. facade" value={value.extFacadeLabel} onChange={(extFacadeLabel) => onChange({ extFacadeLabel })} />
+          <div className="grid grid-cols-2 gap-4">
+            <TextField label="Neighborhoods eyebrow" value={value.neighborhoodsLabel} onChange={(neighborhoodsLabel) => onChange({ neighborhoodsLabel })} />
+            <TextField label="Neighborhoods heading" value={value.neighborhoodsHeading} onChange={(neighborhoodsHeading) => onChange({ neighborhoodsHeading })} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <TextField label="Videos eyebrow" value={value.videosLabel} onChange={(videosLabel) => onChange({ videosLabel })} />
+            <TextField label="Videos heading" value={value.videosHeading} onChange={(videosHeading) => onChange({ videosHeading })} />
+          </div>
+        </Section>
+        <Section title="Closing call to action">
+          <TextField label="Eyebrow" value={value.closingLabel} onChange={(closingLabel) => onChange({ closingLabel })} />
+          <TextField label="Heading" value={value.closingHeading} onChange={(closingHeading) => onChange({ closingHeading })} />
+          <p className="-mt-3 text-[11px] text-bone-3">Use <code>{'{name}'}</code> for the property's name, e.g. "Interested in {'{name}'}?".</p>
+          <TextAreaField label="Paragraph" rows={2} value={value.closingParagraph} onChange={(closingParagraph) => onChange({ closingParagraph })} />
+          <p className="-mt-3 text-[11px] text-bone-3">Use <code>{'{soldPct}'}</code> for the percentage currently reserved.</p>
+          <TextField label="Button label" value={value.closingCtaLabel} onChange={(closingCtaLabel) => onChange({ closingCtaLabel })} />
+        </Section>
+      </>
+    ),
+  },
+  {
+    key: 'property_info_page',
+    label: 'Property info page (shared labels)',
+    description: 'Shared labels and legal text on the /properties/:slug/info template.',
+    Editor: ({ value, onChange }) => (
+      <>
+        <Section title="Section labels">
+          <div className="grid grid-cols-2 gap-4">
+            <TextField label={'"Listings" eyebrow'} value={value.listingsLabel} onChange={(listingsLabel) => onChange({ listingsLabel })} />
+            <TextField label="Listings heading" value={value.elsewhereHeading} onChange={(elsewhereHeading) => onChange({ elsewhereHeading })} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <TextField label={'"Enquiries" eyebrow'} value={value.enquiriesLabel} onChange={(enquiriesLabel) => onChange({ enquiriesLabel })} />
+            <TextField label="Enquiries heading" value={value.talkToTeamHeading} onChange={(talkToTeamHeading) => onChange({ talkToTeamHeading })} />
+          </div>
+          <TextField label="Email link label" value={value.emailLinkLabel} onChange={(emailLinkLabel) => onChange({ emailLinkLabel })} />
+        </Section>
+        <Section title="Legal">
+          <TextAreaField
+            label="Disclaimer"
+            rows={4}
+            value={value.legalDisclaimer}
+            onChange={(legalDisclaimer) => onChange({ legalDisclaimer })}
+          />
+        </Section>
+      </>
     ),
   },
 ]

@@ -24,7 +24,33 @@ const DEFAULTS = {
     videoPoster: '/about-poster.jpg',
     stats: [],
   },
-  properties_home: { heading: '' },
+  properties_home: {
+    heading: '',
+    unitsLabel: 'units',
+    viewLabel: 'View property',
+    brochureLabel: 'Download brochure',
+  },
+  brochure_modal: {
+    eyebrow: 'Property brochure',
+    // `{name}` is substituted with the property's own name at render time.
+    heading: 'Receive {name} by email',
+    paragraph: "Share your details and we'll send the brochure directly to your inbox.",
+    namePlaceholder: 'Full name',
+    emailPlaceholder: 'Email address',
+    phonePlaceholder: 'Phone number',
+    sendingLabel: 'Sending…',
+    submitLabel: 'Email brochure',
+    errorMessage: "We couldn't send the brochure. Please check your details and try again.",
+    successHeading: 'Check your inbox',
+    successBody: 'The {name} brochure has been sent to your email.',
+    // Shown when the request was recorded but no brochure actually went
+    // out — email not configured, no brochure on file, or the send failed.
+    // Promising an inbox delivery that never happens is worse than saying
+    // a person will follow up.
+    receivedHeading: 'Request received',
+    receivedBody: 'Thanks — our team will send the {name} brochure across shortly.',
+    doneLabel: 'Done',
+  },
   // The one property lifted out of the list into a panel of its own. Ships with
   // its copy so the section renders before anyone has touched the admin; blank
   // the heading there and the whole panel hides itself, which is how the client
@@ -66,6 +92,7 @@ const DEFAULTS = {
   academy: {
     heading: 'Real estate, explained clearly.',
     paragraph: 'A practical guide to the terms you will hear while comparing properties, leases, and investment opportunities.',
+    exploreLinkLabel: 'Explore the field guide',
     terms: [
       {
         slug: 'flex-space', term: 'Flex Space', category: 'Property types', videoUrl: '',
@@ -117,11 +144,15 @@ const DEFAULTS = {
   // this section's heading and paragraph, and renaming the key would strand
   // them. What the section shows has widened: journal posts merge with `items`,
   // which are social posts an admin has pointed at by URL.
-  news_home: {
+  news_home: {
     heading: 'Latest from Prime',
     paragraph:
       'Site progress, leasing news and open days — from our journal and across our channels.',
     items: [],
+    scrollLabel: 'Scroll to explore',
+    // Distinct from `paragraph` above — this sits in the "follow strip" at the
+    // bottom of the section, next to the social links, not under the heading.
+    followText: 'Follow along for site progress, leasing news and open days.',
   },
   // No cta_home row exists yet, so this object is what the panel actually
   // renders — an empty `image` here meant the photo column never mounted and
@@ -145,8 +176,52 @@ const DEFAULTS = {
     socials: [],
     copyrightLeft: '',
     copyrightRight: '',
+    quickLinksHeading: 'Quick links',
+    portfolioHeading: 'Portfolio',
+    socialHeading: 'Social',
+    allPropertiesLabel: 'All properties',
   },
-  navbar: { links: [] },
+  navbar: {
+    links: [],
+    // Used at both the desktop and mobile nav's CTA button.
+    enquireLabel: 'Enquire',
+    whatsappMessage: "Hi, I'd like to join the Prime Developer WhatsApp group.",
+    whatsappDialogHeading: 'Stay updated on WhatsApp',
+    whatsappDialogParagraph:
+      'Join the updates group for the latest property announcements, project updates, and news from Prime Developer. Prefer a private conversation? You can chat directly with our team.',
+    whatsappJoinLabel: 'Join the updates group',
+    whatsappChatLabel: 'Chat with our team',
+  },
+  // The map itself is decorative (Footer.jsx), keyed by city so a property's
+  // address resolves to a marker. A city missing from this list silently gets
+  // no marker at all, so it's seeded with every city currently in use.
+  texas_map: {
+    cities: [
+      { name: 'Lewisville', lat: 33.0462, lon: -96.9942 },
+      { name: 'Leander', lat: 30.5788, lon: -97.8531 },
+      { name: 'Cedar Park', lat: 30.5052, lon: -97.8203 },
+      { name: 'Liberty Hill', lat: 30.6649, lon: -97.9225 },
+      { name: 'Austin', lat: 30.2672, lon: -97.7431 },
+      { name: 'Georgetown', lat: 30.6333, lon: -97.6779 },
+      { name: 'Round Rock', lat: 30.5083, lon: -97.6789 },
+      { name: 'Pflugerville', lat: 30.4394, lon: -97.62 },
+      { name: 'Hutto', lat: 30.5427, lon: -97.5467 },
+      { name: 'Taylor', lat: 30.571, lon: -97.4092 },
+      { name: 'Kyle', lat: 29.9891, lon: -97.8772 },
+      { name: 'Buda', lat: 30.0855, lon: -97.8403 },
+      { name: 'San Marcos', lat: 29.8833, lon: -97.9414 },
+      { name: 'Frisco', lat: 33.1507, lon: -96.8236 },
+      { name: 'Anna', lat: 33.3487, lon: -96.5486 },
+      { name: 'Plano', lat: 33.0198, lon: -96.6989 },
+      { name: 'McKinney', lat: 33.1972, lon: -96.6389 },
+      { name: 'Denton', lat: 33.2148, lon: -97.1331 },
+      { name: 'Dallas', lat: 32.7767, lon: -96.797 },
+      { name: 'Fort Worth', lat: 32.7555, lon: -97.3308 },
+      { name: 'Houston', lat: 29.7604, lon: -95.3698 },
+      { name: 'San Antonio', lat: 29.4241, lon: -98.4936 },
+      { name: 'Waco', lat: 31.5493, lon: -97.1467 },
+    ],
+  },
   about_page: {
     heroEyebrow: '',
     heroHeading: '',
@@ -164,13 +239,23 @@ const DEFAULTS = {
     closingImage: '',
   },
   contact_page: {
-    heroEyebrow: '',
-    heroHeading: '',
-    heroParagraph: '',
+    heroEyebrow: "We're here to help",
+    heroHeading: "Let's Build Something Great Together",
+    heroParagraph:
+      'Have a property question, investment opportunity, or project in mind? Our team is ready to help you find the right path forward.',
+    heroSubheading: 'Start a Conversation',
     email: '',
     phone: '',
     location: '',
     socials: [],
+    formEyebrow: 'Send us a message',
+    formHeading: "Tell Us What You're Looking For",
+    formParagraph:
+      'Have a question or opportunity to discuss? Send us a message and our team will get back to you.',
+    mapEyebrow: 'Find us in Texas',
+    mapHeading: "We're here to serve across Texas",
+    mapParagraph: 'Serving investors, businesses and property owners across the Texas market.',
+    mapQuery: 'Texas, USA',
   },
   // No enterprise_page row exists and every field here was blank, so /enterprise
   // rendered a single band containing nothing but its own CTA button: an empty
@@ -194,6 +279,8 @@ const DEFAULTS = {
     ctaLabel: 'Talk to us',
     ctaHref: '/contact',
     capabilitiesHeading: 'What we do',
+    capabilitiesSubheading: 'Each service has its own team, process and direct enquiry route.',
+    practiceLabel: 'Our practice',
     capabilities: [
       {
         title: 'Interiors',
@@ -242,6 +329,37 @@ const DEFAULTS = {
       "Since 2017, Prime Developer has grown into one of Texas's most active real estate developers — owning and operating iconic commercial and residential properties in dynamic, fast-moving markets.",
   },
   news_page: { heroEyebrow: '', heroHeading: '', heroParagraph: '' },
+  // Page-template chrome shared by every property's detail page — not the
+  // per-property `detail.*` content, which has its own admin (PropertyEditPage).
+  property_detail_page: {
+    notFoundHeading: 'Property not found',
+    notFoundBackLabel: '← Back to all properties',
+    resourcesLabel: 'Resources',
+    overviewEnquireLabel: 'Enquire',
+    highlightsEyebrow: 'Property Highlights',
+    establishedSitesLabel: 'Established Sites',
+    extFacadeLabel: 'Ext. Facade',
+    neighborhoodsLabel: 'Head by Areas',
+    neighborhoodsHeading: 'Neighborhoods',
+    videosLabel: 'YouTube',
+    videosHeading: 'Videos',
+    closingLabel: 'Enquire',
+    // `{name}` and `{soldPct}` are substituted at render time.
+    closingHeading: 'Interested in {name}?',
+    closingParagraph: 'Talk to our team about availability, pricing, and tours. ({soldPct}% currently reserved.)',
+    closingCtaLabel: 'Enquire now',
+  },
+  // Shared chrome for the /properties/:slug/info template — independent of
+  // which properties currently have an info set (see PropertyInfoPage.jsx).
+  property_info_page: {
+    listingsLabel: 'Listings',
+    elsewhereHeading: 'Elsewhere',
+    enquiriesLabel: 'Enquiries',
+    talkToTeamHeading: 'Talk to the team',
+    emailLinkLabel: 'Email',
+    legalDisclaimer:
+      'Figures shown on the summary sheets are as published and are subject to change. Real estate investments carry risk and no return is assured; seek independent legal, tax and financial advice before investing.',
+  },
 }
 
 const ContentContext = createContext(null)

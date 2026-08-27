@@ -74,8 +74,12 @@ function FooterLink({ href, label, onNavigate, external }) {
 }
 
 export default function Footer() {
-  const { email, phone, studio, quickLinks, socials, copyrightLeft } = useSection('footer')
+  const {
+    email, phone, studio, quickLinks, socials, copyrightLeft,
+    quickLinksHeading, portfolioHeading, socialHeading, allPropertiesLabel,
+  } = useSection('footer')
   const cta = useSection('cta_home')
+  const { cities } = useSection('texas_map')
   const properties = useProperties()
   const scope = useRef(null)
   const go = useSectionNav()
@@ -192,7 +196,7 @@ export default function Footer() {
                   error rather than like Texas, so the vertical bleed is gone and
                   only the eastern edge runs out. */}
               <div className="relative -mr-6 hidden md:block lg:-mr-10">
-                <TexasMap properties={properties} className="h-auto w-full max-w-[27rem]" />
+                <TexasMap properties={properties} cities={cities} className="h-auto w-full max-w-[27rem]" />
               </div>
             </div>
 
@@ -201,6 +205,7 @@ export default function Footer() {
             <div className="relative -mt-2 flex justify-center px-8 pb-11 md:hidden">
               <TexasMap
                 properties={properties}
+                cities={cities}
                 density="coarse"
                 className="h-auto w-full max-w-[19rem]"
               />
@@ -290,7 +295,7 @@ export default function Footer() {
               <div className="grid grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-3">
                 {directoryLinks.length > 0 && (
                   <nav data-col aria-label="Quick links" className="flex flex-col gap-5">
-                    <ColumnTitle>Quick links</ColumnTitle>
+                    <ColumnTitle>{quickLinksHeading}</ColumnTitle>
                     <ul className="flex flex-col gap-1">
                       {directoryLinks.map((l) => (
                         <li key={`${l.href}|${l.label}`}>
@@ -303,7 +308,7 @@ export default function Footer() {
 
                 {portfolio.length > 0 && (
                   <nav data-col aria-label="Portfolio" className="flex flex-col gap-5">
-                    <ColumnTitle>Portfolio</ColumnTitle>
+                    <ColumnTitle>{portfolioHeading}</ColumnTitle>
                     <ul className="flex flex-col gap-1">
                       {portfolio.map((p) => (
                         <li key={p.slug}>
@@ -320,7 +325,7 @@ export default function Footer() {
                           to="/properties"
                           className="group inline-flex min-h-9 items-center gap-2 font-body text-[15px] text-accent-soft transition-colors duration-300 hover:text-bone focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
                         >
-                          All properties
+                          {allPropertiesLabel}
                           <ArrowIcon className="size-3.5 transition-transform duration-300 ease-brand group-hover:translate-x-1" />
                         </Link>
                       </li>
@@ -330,7 +335,7 @@ export default function Footer() {
 
                 {socials.length > 0 && (
                   <nav data-col aria-label="Social" className="flex flex-col gap-5">
-                    <ColumnTitle>Social</ColumnTitle>
+                    <ColumnTitle>{socialHeading}</ColumnTitle>
                     <ul className="flex flex-col gap-1">
                       {/* Keyed on href *and* label because neither alone is
                           unique: two entries may share a name, and the seeded

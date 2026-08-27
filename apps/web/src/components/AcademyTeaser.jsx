@@ -13,7 +13,7 @@ import SectionIntro from './SectionIntro'
  * and a definition into one texture.
  */
 export default function AcademyTeaser() {
-  const { heading, paragraph, terms = [] } = useSection('academy')
+  const { heading, paragraph, terms = [], exploreLinkLabel } = useSection('academy')
   const featured = terms.slice(0, 3)
   if (!featured.length) return null
 
@@ -30,7 +30,7 @@ export default function AcademyTeaser() {
             to="/learn"
             className="group inline-flex min-h-11 shrink-0 items-center gap-3 font-body text-[13px] font-bold uppercase tracking-[0.12em] text-accent outline-none focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-accent"
           >
-            Explore the field guide
+            {exploreLinkLabel}
             <ArrowRight className="size-4 transition-transform duration-300 ease-brand group-hover:translate-x-1 motion-reduce:transform-none" />
           </Link>
         </div>

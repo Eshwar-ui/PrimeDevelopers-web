@@ -1,4 +1,4 @@
-import { useId } from 'react'
+import { useId, useMemo } from 'react'
 
 /**
  * The state, dotted, with a marker on every Texas city the portfolio actually
@@ -49,37 +49,6 @@ const project = ([lon, lat]) => [(lon - LON_MIN) * K * SCALE, (LAT_MAX - lat) * 
 
 const OUTLINE = `${TEXAS.map((c, i) => `${i ? 'L' : 'M'}${project(c).map((n) => n.toFixed(1)).join(' ')}`).join('')}Z`
 
-/**
- * Cities the portfolio can name. Keyed on the lowercased city as it appears in a
- * property's own address, so a listing added in a town that isn't here simply
- * gets no marker rather than an invented one.
- */
-const CITIES = {
-  lewisville: [-96.9942, 33.0462],
-  leander: [-97.8531, 30.5788],
-  'cedar park': [-97.8203, 30.5052],
-  'liberty hill': [-97.9225, 30.6649],
-  austin: [-97.7431, 30.2672],
-  georgetown: [-97.6779, 30.6333],
-  'round rock': [-97.6789, 30.5083],
-  pflugerville: [-97.62, 30.4394],
-  hutto: [-97.5467, 30.5427],
-  taylor: [-97.4092, 30.571],
-  kyle: [-97.8772, 29.9891],
-  buda: [-97.8403, 30.0855],
-  'san marcos': [-97.9414, 29.8833],
-  frisco: [-96.8236, 33.1507],
-  anna: [-96.5486, 33.3487],
-  plano: [-96.6989, 33.0198],
-  mckinney: [-96.6389, 33.1972],
-  denton: [-97.1331, 33.2148],
-  dallas: [-96.797, 32.7767],
-  'fort worth': [-97.3308, 32.7555],
-  houston: [-95.3698, 29.7604],
-  'san antonio': [-98.4936, 29.4241],
-  waco: [-97.1467, 31.5493],
-}
-
 // "2601 State Hwy 121, Lewisville, TX 75067" → "lewisville". Anchored on the
 // state abbreviation rather than on comma position, because the street half of
 // an address carries a variable number of commas.
@@ -98,11 +67,11 @@ const cityOf = (address) => (address ?? '').match(/,\s*([^,]+?),\s*TX\b/i)?.[1].
  */
 const CLUSTER_RADIUS = 34
 
-function markersFor(properties) {
+function markersFor(properties, cityLookup) {
   const points = []
 
   for (const p of properties ?? []) {
-    const coords = CITIES[cityOf(p.address)]
+    const coords = cityLookup[cityOf(p.address)]
     if (!coords) continue
 
     const [x, y] = project(coords)
@@ -139,8 +108,20 @@ const DENSITY = {
   coarse: { gap: 26, r: 5.4 },
 }
 
-export default function TexasMap({ properties, density = 'fine', className = '' }) {
-  const markers = markersFor(properties)
+export default function TexasMap({ properties, cities = [], density = 'fine', className = '' }) {
+  // Keyed on the lowercased city as it appears in a property's own address, so
+  // a listing added in a town that isn't in `cities` simply gets no marker
+  // rather than an invented one.
+  const cityLookup = useMemo(
+    () =>
+      Object.fromEntries(
+        cities
+          .filter((c) => c.name && c.lat !== '' && c.lon !== '')
+          .map((c) => [c.name.trim().toLowerCase(), [Number(c.lon), Number(c.lat)]])
+      ),
+    [cities]
+  )
+  const markers = markersFor(properties, cityLookup)
   const dots = DENSITY[density] ?? DENSITY.fine
 
   // Both the bleeding desktop map and the stacked mobile one are mounted at

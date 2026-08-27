@@ -2,7 +2,9 @@ import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { motion } from 'motion/react'
 import ArrowRight from '../components/ArrowRight'
+import SocialIcon from '../components/SocialIcon'
 import { useSection } from '../context/ContentContext'
+import { renderEmphasis } from '../lib/emphasis'
 import { rise, stagger } from '../lib/motion'
 import { api } from '../lib/api'
 
@@ -125,17 +127,17 @@ export default function ContactPage() {
             variants={rise}
             className="font-display font-bold leading-[1.06] tracking-[-0.035em] [font-size:clamp(2.35rem,3.8vw,3.75rem)]"
           >
-            Let&apos;s Build Something Great Together
+            {renderEmphasis(c.heroHeading)}
           </motion.h1>
           <motion.p variants={rise} className="mx-auto mt-5 max-w-[660px] font-body text-[17px] leading-[1.55] text-white/80 md:text-[19px]">
-            Have a property question, investment opportunity, or project in mind? Our team is ready to help you find the right path forward.
+            {c.heroParagraph}
           </motion.p>
           <motion.div variants={rise} className="mt-10">
             <span className="font-body text-[12px] font-bold uppercase tracking-[0.18em] text-accent-soft">
-              We&apos;re here to help
+              {c.heroEyebrow}
             </span>
             <h2 className="mt-3 font-display text-[clamp(2rem,3vw,3rem)] font-medium tracking-[-0.025em]">
-              Start a Conversation
+              {c.heroSubheading}
             </h2>
           </motion.div>
         </motion.div>
@@ -149,13 +151,13 @@ export default function ContactPage() {
           >
             <div>
               <span className="font-body text-[12px] font-bold uppercase tracking-[0.18em] text-accent">
-                Send us a message
+                {c.formEyebrow}
               </span>
               <h2 className="mt-4 max-w-[12ch] font-display text-[clamp(2rem,3vw,2.8rem)] font-bold leading-[1.12] tracking-[-0.03em]">
-                Tell Us What You&apos;re Looking For
+                {c.formHeading}
               </h2>
               <p className="mt-5 max-w-[30ch] font-body text-[15px] leading-[1.6] text-content/65">
-                Have a question or opportunity to discuss? Send us a message and our team will get back to you.
+                {c.formParagraph}
               </p>
               <span aria-hidden className="mt-5 block h-0.5 w-24 bg-accent" />
             </div>
@@ -232,18 +234,36 @@ export default function ContactPage() {
               )
             })}
           </div>
+
+          {c.socials.length > 0 && (
+            <ul className="mt-6 flex flex-wrap items-center gap-2.5">
+              {c.socials.map((s) => (
+                <li key={`${s.href}|${s.label}`}>
+                  <a
+                    href={s.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-11 items-center gap-2.5 rounded-full border border-[var(--color-line)] px-4 font-body text-[13px] font-medium text-content/75 outline-none transition-[color,border-color,background-color] duration-300 ease-brand hover:border-accent hover:bg-accent/10 hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  >
+                    <SocialIcon platform={s.label} className="size-4 shrink-0" />
+                    {s.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </section>
 
       <section className="px-6 pb-28 pt-8 md:px-12 md:pb-36 md:pt-12">
         <div className="mx-auto grid max-w-[1100px] gap-10 lg:grid-cols-[280px_1fr] lg:items-center lg:gap-16">
           <div>
-            <span className="font-body text-[12px] font-bold uppercase tracking-[0.18em] text-accent">Find us in Texas</span>
+            <span className="font-body text-[12px] font-bold uppercase tracking-[0.18em] text-accent">{c.mapEyebrow}</span>
             <h2 className="mt-4 max-w-[13ch] font-display text-[clamp(2rem,3.2vw,3rem)] font-bold leading-[1.13] tracking-[-0.03em]">
-              We&apos;re here to serve across Texas
+              {c.mapHeading}
             </h2>
             <p className="mt-5 max-w-[30ch] font-body text-[15px] leading-[1.6] text-content/65">
-              Serving investors, businesses and property owners across the Texas market.
+              {c.mapParagraph}
             </p>
             <span aria-hidden className="mt-5 block h-0.5 w-24 bg-accent" />
           </div>
@@ -251,7 +271,7 @@ export default function ContactPage() {
           <div className="overflow-hidden rounded-[22px] border border-[var(--color-line)] bg-surface-alt shadow-[0_20px_55px_-40px_rgba(20,28,33,.35)]">
             <iframe
               title="Prime Developers service area in Texas"
-              src="https://www.google.com/maps?q=Texas%2C%20USA&z=6&output=embed"
+              src={`https://www.google.com/maps?q=${encodeURIComponent(c.mapQuery)}&z=6&output=embed`}
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"
               className="h-[330px] w-full border-0 md:h-[390px]"

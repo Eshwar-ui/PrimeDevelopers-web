@@ -22,7 +22,8 @@ const sections = ['about', 'properties']
 // every route, which is what the design draws.
 
 export default function Navbar() {
-  const { links } = useSection('navbar')
+  const nav = useSection('navbar')
+  const { links } = nav
   const contact = useSection('contact_page')
   const { isDark } = useTheme()
   const [active, setActive] = useState(null)
@@ -65,7 +66,7 @@ export default function Navbar() {
   const whatsapp = contact.socials?.find((item) => item.label?.trim().toLowerCase() === 'whatsapp')
   const whatsappChatHref = whatsapp?.href && whatsapp.href !== '#' ? whatsapp.href : null
   const whatsappJoinHref = whatsappChatHref
-    ? `${whatsappChatHref}${whatsappChatHref.includes('?') ? '&' : '?'}text=${encodeURIComponent("Hi, I'd like to join the Prime Developer WhatsApp group.")}`
+    ? `${whatsappChatHref}${whatsappChatHref.includes('?') ? '&' : '?'}text=${encodeURIComponent(nav.whatsappMessage)}`
     : null
 
   const handleNav = (e, link) => {
@@ -423,7 +424,7 @@ export default function Navbar() {
               className={`group relative isolate hidden min-h-12 shrink-0 items-center gap-5 overflow-hidden rounded-full border bg-white px-6 font-body text-[15px] font-semibold tracking-[-0.01em] text-charcoal transition-[color,transform,box-shadow] duration-300 ease-brand hover:-translate-y-px hover:text-white focus-visible:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent active:translate-y-px active:scale-[0.985] motion-reduce:transform-none lg:inline-flex ${enquire}`}
             >
               <span aria-hidden className="absolute inset-0 z-0 origin-right scale-x-0 rounded-full bg-charcoal transition-transform duration-300 ease-brand group-hover:scale-x-100 group-focus-visible:scale-x-100 motion-reduce:transition-none" />
-              <span className="relative z-10 transition-transform duration-300 ease-brand group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5 motion-reduce:transform-none">Enquire</span>
+              <span className="relative z-10 transition-transform duration-300 ease-brand group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5 motion-reduce:transform-none">{nav.enquireLabel}</span>
               <span className="relative z-10 size-5 overflow-hidden" aria-hidden>
                 <ArrowRight className="absolute inset-0 size-5 transition-transform duration-300 ease-brand group-hover:translate-x-6 group-focus-visible:translate-x-6 motion-reduce:transform-none" />
                 <ArrowRight className="absolute inset-0 size-5 -translate-x-6 transition-transform duration-300 ease-brand group-hover:translate-x-0 group-focus-visible:translate-x-0 motion-reduce:hidden" />
@@ -515,7 +516,7 @@ export default function Navbar() {
               className="group relative isolate mt-8 inline-flex min-h-12 w-fit items-center gap-5 overflow-hidden rounded-full border border-white/60 bg-white px-6 font-body text-[15px] font-semibold tracking-[-0.01em] text-charcoal shadow-[0_10px_28px_-16px_rgba(0,0,0,0.6)] transition-[color,transform,box-shadow] duration-300 ease-brand hover:-translate-y-px hover:text-white hover:shadow-[0_15px_32px_-15px_rgba(0,0,0,0.5)] focus-visible:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent active:translate-y-px active:scale-[0.985] motion-reduce:transform-none"
             >
               <span aria-hidden className="absolute inset-0 z-0 origin-right scale-x-0 rounded-full bg-charcoal transition-transform duration-300 ease-brand group-hover:scale-x-100 group-focus-visible:scale-x-100 motion-reduce:transition-none" />
-              <span className="relative z-10 transition-transform duration-300 ease-brand group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5 motion-reduce:transform-none">Enquire</span>
+              <span className="relative z-10 transition-transform duration-300 ease-brand group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5 motion-reduce:transform-none">{nav.enquireLabel}</span>
               <span className="relative z-10 size-5 overflow-hidden" aria-hidden>
                 <ArrowRight className="absolute inset-0 size-5 transition-transform duration-300 ease-brand group-hover:translate-x-6 group-focus-visible:translate-x-6 motion-reduce:transform-none" />
                 <ArrowRight className="absolute inset-0 size-5 -translate-x-6 transition-transform duration-300 ease-brand group-hover:translate-x-0 group-focus-visible:translate-x-0 motion-reduce:hidden" />
@@ -555,15 +556,15 @@ export default function Navbar() {
                   </svg>
                 </button>
               </div>
-              <h2 id="whatsapp-dialog-title" className="mt-5 font-display text-2xl font-semibold tracking-[-0.02em]">Stay updated on WhatsApp</h2>
-              <p className="mt-2 font-body text-sm leading-relaxed text-bone/65">Join the updates group for the latest property announcements, project updates, and news from Prime Developer. Prefer a private conversation? You can chat directly with our team.</p>
+              <h2 id="whatsapp-dialog-title" className="mt-5 font-display text-2xl font-semibold tracking-[-0.02em]">{nav.whatsappDialogHeading}</h2>
+              <p className="mt-2 font-body text-sm leading-relaxed text-bone/65">{nav.whatsappDialogParagraph}</p>
               <div className="mt-6 grid gap-3">
                 <a href={whatsappJoinHref} target="_blank" rel="noreferrer" onClick={() => setWhatsappOpen(false)} className="group flex min-h-12 items-center justify-between rounded-xl bg-[#25D366] px-4 font-body text-sm font-semibold text-white transition-transform duration-300 ease-brand hover:-translate-y-0.5 active:translate-y-0 motion-reduce:transform-none">
-                  Join the updates group
+                  {nav.whatsappJoinLabel}
                   <ArrowRight className="size-4 transition-transform duration-300 ease-brand group-hover:translate-x-1 motion-reduce:transform-none" />
                 </a>
                 <a href={whatsappChatHref} target="_blank" rel="noreferrer" onClick={() => setWhatsappOpen(false)} className="group flex min-h-12 items-center justify-between rounded-xl border border-bone/15 px-4 font-body text-sm font-semibold text-bone transition-colors duration-300 hover:border-bone/35 hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
-                  Chat with our team
+                  {nav.whatsappChatLabel}
                   <ArrowRight className="size-4 transition-transform duration-300 ease-brand group-hover:translate-x-1 motion-reduce:transform-none" />
                 </a>
               </div>

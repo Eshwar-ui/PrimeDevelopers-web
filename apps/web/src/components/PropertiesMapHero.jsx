@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { motion, useReducedMotion } from 'motion/react'
 import { citiesFor } from '../lib/texas'
+import { useSection } from '../context/ContentContext'
 import { centreOf, fitZoom, lonLatToWorld } from '../lib/webMercator'
 import StreetMap from './StreetMap'
 import { sized } from '../lib/images'
@@ -93,7 +94,10 @@ function CountPin({ count, up }) {
 
 export default function PropertiesMapHero({ properties, onOpen, children }) {
   const reduced = useReducedMotion()
-  const cities = useMemo(() => citiesFor(properties), [properties])
+  // Same city table the footer map reads, so the two never disagree about
+  // where a town is or whether it exists at all.
+  const { cities: cityTable } = useSection('texas_map')
+  const cities = useMemo(() => citiesFor(properties, cityTable), [properties, cityTable])
 
   // The map is sized from the box it is in rather than from the viewport: the
   // section has padding, and a hero on a phone in landscape is a different

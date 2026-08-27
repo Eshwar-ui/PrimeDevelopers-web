@@ -3,10 +3,12 @@ import { motion } from 'motion/react'
 import { useParams, Link } from 'react-router-dom'
 import CountUp from '../components/CountUp'
 import { rise, stagger, inViewOnce } from '../lib/motion'
-import { useProperty } from '../context/ContentContext'
+import { useProperty, useSection } from '../context/ContentContext'
 import { useSectionNav } from '../hooks/useSectionNav'
 import PrimePill from '../components/PrimePill'
 import FloorPlanSection from '../components/FloorPlanSection'
+import SiteModelSection from '../components/SiteModelSection'
+import { hasSiteModel } from '../lib/siteModel'
 import { sized } from '../lib/images'
 import PropertyHero from '../components/PropertyHero'
 import { youtubeEmbedUrl } from '../lib/video'
@@ -70,6 +72,7 @@ function HighlightIcon({ title }) {
 export default function PropertyDetailPage() {
   const { slug } = useParams()
   const property = useProperty(slug)
+  const t = useSection('property_detail_page')
   const go = useSectionNav()
   const [tab, setTab] = useState(0)
   const [galleryMain, setGalleryMain] = useState(0)
@@ -82,13 +85,13 @@ export default function PropertyDetailPage() {
         className="flex min-h-[70vh] flex-col items-center justify-center gap-6 bg-base px-6 text-center"
       >
         <h1 className="font-display text-3xl font-bold tracking-[-0.01em] text-content">
-          Property not found
+          {t.notFoundHeading}
         </h1>
         <Link
           to="/properties"
           className="font-body text-[14px] uppercase tracking-[0.14em] text-accent transition-colors duration-300 hover:text-prime-deep"
         >
-          ← Back to all properties
+          {t.notFoundBackLabel}
         </Link>
       </section>
     )
@@ -108,44 +111,6 @@ export default function PropertyDetailPage() {
         soldPct={soldPct}
         onEnquire={() => go(`/contact?property=${property.id}&from=/properties/${property.slug}`)}
       />
-
-      {d?.resourceLinks?.length > 0 && (
-        <section data-band="light" className="bg-surface-alt px-6 py-16 md:px-gutter-lg md:py-24">
-          <SectionTag>Resources</SectionTag>
-          <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {d.resourceLinks.map(
-              (link, i) =>
-                link.url &&
-                link.label && (
-                  <a
-                    key={i}
-                    href={link.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="group flex items-center gap-4 rounded-2xl border border-[var(--color-line)] bg-surface p-4 transition-colors duration-300 hover:border-accent"
-                  >
-                    {link.thumbnail ? (
-                      <img
-                        src={link.thumbnail}
-                        alt=""
-                        loading="lazy"
-                        decoding="async"
-                        className="h-12 w-12 shrink-0 rounded-lg object-cover"
-                      />
-                    ) : (
-                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-surface-alt text-accent transition-transform duration-300 group-hover:translate-x-0.5">
-                        →
-                      </span>
-                    )}
-                    <span className="font-body text-sm font-bold uppercase tracking-[0.1em] text-content transition-colors duration-300 group-hover:text-accent">
-                      {link.label}
-                    </span>
-                  </a>
-                )
-            )}
-          </div>
-        </section>
-      )}
 
       {/* ── Overview ─────────────────────────────────────────── */}
       {d?.overview?.heading && (
@@ -184,7 +149,7 @@ export default function PropertyDetailPage() {
                       go(`/contact?property=${property.id}&from=/properties/${property.slug}`)
                     }}
                   >
-                    Enquire
+                    {t.overviewEnquireLabel}
                   </PrimePill>
                 </div>
               )}
@@ -249,7 +214,7 @@ export default function PropertyDetailPage() {
               <motion.div variants={rise} className="flex items-center gap-4">
                 <span aria-hidden className="h-px w-10 shrink-0 bg-accent" />
                 <span className="font-body text-[13px] font-bold uppercase tracking-[0.22em] text-content/70">
-                  Property Highlights
+                  {t.highlightsEyebrow}
                 </span>
               </motion.div>
               <motion.h2
@@ -321,7 +286,19 @@ export default function PropertyDetailPage() {
         </section>
       )}
       {/* ── Floor plans ──────────────────────────────────────── */}
-      {d?.floorPlans?.buildings?.length > 0 && (
+      {/* A property with a tagged whole-site model gets that instead of the
+          per-building tabs below — see SiteModelSection.jsx. The per-building
+          path stays exactly as it is for every property that hasn't been
+          re-tagged onto a site model yet. */}
+      {hasSiteModel(property) ? (
+        <section
+          data-band="light"
+          id="floor-plans"
+          className="bg-surface-alt px-gutter pb-16 pt-8 md:px-gutter-lg md:pb-20 md:pt-10"
+        >
+          <SiteModelSection property={property} />
+        </section>
+      ) : d?.floorPlans?.buildings?.length > 0 && (
         <section
           data-band="light"
           id="floor-plans"
@@ -447,7 +424,7 @@ export default function PropertyDetailPage() {
           rather than starting a new one. */}
       {d?.establishedSites?.heading && gallery.length > 0 && (
         <section data-band="light" className="bg-base px-6 pb-20 md:px-gutter-lg md:pb-28">
-          <SectionTag>Established Sites</SectionTag>
+          <SectionTag>{t.establishedSitesLabel}</SectionTag>
           <h2 className="mt-6 max-w-[24ch] font-display text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] text-content md:text-[3rem]">
             {d.establishedSites.heading}
           </h2>
@@ -501,7 +478,7 @@ export default function PropertyDetailPage() {
           Deliberately carries no data-band, so the navbar goes light over it. */}
       {d?.extFacade?.length > 0 && (
         <section className="bg-void px-6 py-20 text-bone md:px-gutter-lg md:py-28">
-          <SectionTag tone="inv">Ext. Facade</SectionTag>
+          <SectionTag tone="inv">{t.extFacadeLabel}</SectionTag>
           <div className="mt-10 grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-5">
             {d.extFacade.map(
               (src, i) =>
@@ -524,9 +501,9 @@ export default function PropertyDetailPage() {
       {/* ── Neighborhoods + map ──────────────────────────────── */}
       {d?.neighborhoods?.items?.length > 0 && (
         <section data-band="light" className="bg-surface-alt px-6 py-20 md:px-gutter-lg md:py-28">
-          <SectionTag>Head by Areas</SectionTag>
+          <SectionTag>{t.neighborhoodsLabel}</SectionTag>
           <h2 className="mt-6 font-display text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] text-content md:text-[3rem]">
-            Neighborhoods
+            {t.neighborhoodsHeading}
           </h2>
 
           <div className="mt-12 grid gap-10 lg:grid-cols-[1fr_1.2fr] lg:gap-16">
@@ -588,9 +565,9 @@ export default function PropertyDetailPage() {
       {/* ── Videos ───────────────────────────────────────────── */}
       {d?.videos?.length > 0 && (
         <section data-band="light" className="bg-base px-6 py-20 md:px-gutter-lg md:py-28">
-          <SectionTag>YouTube</SectionTag>
+          <SectionTag>{t.videosLabel}</SectionTag>
           <h2 className="mt-6 font-display text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] text-content md:text-[3rem]">
-            Videos
+            {t.videosHeading}
           </h2>
           <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2">
             {d.videos.map(
@@ -609,6 +586,50 @@ export default function PropertyDetailPage() {
                       allowFullScreen
                     />
                   </div>
+                )
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* ── Resources ────────────────────────────────────────────
+          Last of the content sections, immediately before the closing
+          enquiry. These are the take-aways — flyers, rate sheets, the
+          Crexi and LoopNet listings — and they belong at the end, once
+          the page has made its case. Opening the page on them sent a
+          visitor off-site before they had seen the property. */}
+      {d?.resourceLinks?.length > 0 && (
+        <section data-band="light" className="bg-surface-alt px-6 py-16 md:px-gutter-lg md:py-24">
+          <SectionTag>{t.resourcesLabel}</SectionTag>
+          <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {d.resourceLinks.map(
+              (link, i) =>
+                link.url &&
+                link.label && (
+                  <a
+                    key={i}
+                    href={link.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="group flex items-center gap-4 rounded-2xl border border-[var(--color-line)] bg-surface p-4 transition-colors duration-300 hover:border-accent"
+                  >
+                    {link.thumbnail ? (
+                      <img
+                        src={link.thumbnail}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        className="h-12 w-12 shrink-0 rounded-lg object-cover"
+                      />
+                    ) : (
+                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-surface-alt text-accent transition-transform duration-300 group-hover:translate-x-0.5">
+                        →
+                      </span>
+                    )}
+                    <span className="font-body text-sm font-bold uppercase tracking-[0.1em] text-content transition-colors duration-300 group-hover:text-accent">
+                      {link.label}
+                    </span>
+                  </a>
                 )
             )}
           </div>
@@ -639,13 +660,12 @@ export default function PropertyDetailPage() {
 
         <div className="relative flex flex-col items-start gap-10 md:flex-row md:items-end md:justify-between">
           <div>
-            <SectionTag tone="inv">Enquire</SectionTag>
+            <SectionTag tone="inv">{t.closingLabel}</SectionTag>
             <h2 className="mt-6 max-w-[20ch] font-display text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] md:text-[3rem]">
-              Interested in {property.name}?
+              {t.closingHeading.replace('{name}', property.name)}
             </h2>
             <p className="mt-5 max-w-[52ch] font-body text-[16px] leading-[1.7] text-bone/70">
-              Talk to our team about availability, pricing, and tours. ({soldPct}% currently
-              reserved.)
+              {t.closingParagraph.replace('{soldPct}', soldPct)}
             </p>
           </div>
 
@@ -662,7 +682,7 @@ export default function PropertyDetailPage() {
               go('/contact')
             }}
           >
-            Enquire now
+            {t.closingCtaLabel}
           </PrimePill>
         </div>
       </section>

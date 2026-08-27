@@ -1,15 +1,20 @@
-import { useId } from 'react'
-import { CITIES, HEIGHT, OUTLINE, WIDTH, cityOf, project } from '../lib/texas'
+import { useId, useMemo } from 'react'
+import { HEIGHT, OUTLINE, WIDTH, cityIndex, cityOf, project } from '../lib/texas'
 
 /**
  * The state, dotted, with a marker on every Texas city the portfolio actually
  * sits in.
  *
- * The outline, the projection and the city table all come from `lib/texas` —
- * this component draws the state, it does not define it. That split exists
- * because the properties hero now draws the same coastline under a completely
- * different treatment, and two hand-copied projections would drift the first
- * time either was touched.
+ * The outline and the projection come from `lib/texas` — this component draws
+ * the state, it does not define it. That split exists because the properties
+ * hero draws the same coastline under a completely different treatment, and
+ * two hand-copied projections would drift the first time either was touched.
+ *
+ * The city coordinates deliberately do *not* come from there. They arrive as a
+ * `cities` prop sourced from the `texas_map` CMS section, so adding a town is
+ * an admin action rather than a release — which is the whole point, since a
+ * property in a town missing from the table renders no marker and says nothing
+ * about why.
  */
 
 /**
@@ -25,14 +30,14 @@ import { CITIES, HEIGHT, OUTLINE, WIDTH, cityOf, project } from '../lib/texas'
  */
 const CLUSTER_RADIUS = 34
 
-function markersFor(properties) {
+function markersFor(properties, cityLookup) {
   const points = []
 
   for (const p of properties ?? []) {
-    const coords = CITIES[cityOf(p.address)]
-    if (!coords) continue
+    const city = cityLookup[cityOf(p.address)]
+    if (!city) continue
 
-    const [x, y] = project(coords)
+    const [x, y] = project(city.coords)
     const available = Number(p.available) || 0
     const near = points.find((pt) => Math.hypot(pt.x - x, pt.y - y) < CLUSTER_RADIUS)
 
@@ -66,8 +71,12 @@ const DENSITY = {
   coarse: { gap: 26, r: 5.4 },
 }
 
-export default function TexasMap({ properties, density = 'fine', className = '' }) {
-  const markers = markersFor(properties)
+export default function TexasMap({ properties, cities = [], density = 'fine', className = '' }) {
+  // Keyed on the lowercased city as it appears in a property's own address, so
+  // a listing added in a town that isn't in `cities` simply gets no marker
+  // rather than an invented one.
+  const cityLookup = useMemo(() => cityIndex(cities), [cities])
+  const markers = markersFor(properties, cityLookup)
   const dots = DENSITY[density] ?? DENSITY.fine
 
   // Both the bleeding desktop map and the stacked mobile one are mounted at

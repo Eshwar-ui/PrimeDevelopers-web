@@ -95,7 +95,7 @@ export default function EnterprisePage() {
           <div className="mx-auto max-w-[1560px]">
             <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
               <h2 className="max-w-[15ch] text-balance font-display text-[clamp(2.3rem,5vw,5rem)] font-bold leading-[0.96] tracking-[-0.045em]">{renderEmphasis(page.capabilitiesHeading || 'Choose your way in', '')}</h2>
-              <p className="max-w-[42ch] font-body text-[15px] leading-[1.7] text-content/65">Each service has its own team, process and direct enquiry route.</p>
+              <p className="max-w-[42ch] font-body text-[15px] leading-[1.7] text-content/65">{page.capabilitiesSubheading}</p>
             </div>
 
             <div className="mt-14 grid grid-flow-dense grid-cols-1 gap-4 lg:grid-cols-12 lg:grid-rows-2">
@@ -131,7 +131,7 @@ export default function EnterprisePage() {
         <section data-service-stories data-band="light" className="bg-base px-6 py-24 md:px-12 md:py-36">
           <div className="mx-auto grid max-w-[1560px] gap-16 lg:grid-cols-[17rem_minmax(0,1fr)] lg:gap-20">
             <aside data-service-index className="h-fit">
-              <p className="font-body text-[12px] font-bold uppercase tracking-[0.2em] text-accent">Our practice</p>
+              <p className="font-body text-[12px] font-bold uppercase tracking-[0.2em] text-accent">{page.practiceLabel}</p>
               <nav className="mt-8 border-t border-line">
                 {services.map((service, index) => <a key={service.title} href={`#service-${slugify(service.title)}`} className="group flex items-center justify-between border-b border-line py-4 font-body text-[14px] text-content/60 transition-colors hover:text-content"><span>{service.title}</span><span className="text-[11px] tabular-nums text-accent">{serviceNumber(index)}</span></a>)}
               </nav>

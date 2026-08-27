@@ -49,6 +49,14 @@ export const makeUnit = (label = '') => ({
   description: '',
   x: null,
   y: null,
+  // Tenant mark, shown on the unit in the 3D view once it is leased or
+  // sold. Empty means the unit shows its number instead.
+  logo: '',
+  // Which named road this unit fronts, or '' for none set. Unset means
+  // "inherit the building's own facingRoad" — see resolveFacingRoad() in
+  // siteModel.js, which is what every caller should read instead of this
+  // field directly.
+  facingRoad: '',
 })
 
 /**

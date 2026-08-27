@@ -59,7 +59,7 @@ function ExternalIcon() {
  * this table rather than replacing it.
  */
 export default function LatestUpdates() {
-  const { heading, paragraph, items = [] } = useSection('news_home')
+  const { heading, paragraph, items = [], scrollLabel, followText } = useSection('news_home')
   const { socials = [] } = useSection('footer')
   const { socials: contactSocials = [] } = useSection('contact_page')
   const posts = useNews()
@@ -159,7 +159,7 @@ export default function LatestUpdates() {
             <div className="mt-10 flex items-center justify-between gap-5 md:mt-12">
               <p className="flex items-center gap-3 font-body text-[12px] font-bold uppercase tracking-[0.16em] text-content/45">
                 <span aria-hidden className="h-px w-8 bg-content/20" />
-                Scroll to explore
+                {scrollLabel}
               </p>
               <div className="flex items-center gap-2" aria-label="Latest updates navigation">
                 <button
@@ -315,7 +315,7 @@ export default function LatestUpdates() {
         {follow.length > 0 && (
           <div className="mt-12 flex flex-col items-start gap-5 border-t border-content/10 pt-8 sm:flex-row sm:items-center sm:justify-between">
             <p className="font-body text-[14px] text-content/55">
-              Follow along for site progress, leasing news and open days.
+              {followText}
             </p>
             <ul className="flex flex-wrap items-center gap-2.5">
               {follow.map((s) => (

@@ -55,34 +55,30 @@ export const OUTLINE = `${TEXAS.map(
 ).join('')}Z`
 
 /**
- * Cities the portfolio can name. Keyed on the lowercased city as it appears in a
- * property's own address, so a listing added in a town that isn't here simply
- * gets no marker rather than an invented one.
+ * Build the address -> city lookup both maps resolve against.
+ *
+ * `cities` is the `texas_map` CMS section's list, `[{ name, lat, lon }]`, so
+ * adding a town is an admin action rather than a release. Keyed on the
+ * lowercased name so it can be matched straight off a property's own address,
+ * and carrying the name as authored, because "liberty hill" is not how the
+ * town writes it.
+ *
+ * Rows missing a name or either coordinate are dropped rather than defaulted.
+ * A city that fell back to [0, 0] would plant a marker in the Gulf of Guinea
+ * and look like a projection bug rather than a missing field.
  */
-export const CITIES = {
-  lewisville: [-96.9942, 33.0462],
-  leander: [-97.8531, 30.5788],
-  'cedar park': [-97.8203, 30.5052],
-  'liberty hill': [-97.9225, 30.6649],
-  austin: [-97.7431, 30.2672],
-  georgetown: [-97.6779, 30.6333],
-  'round rock': [-97.6789, 30.5083],
-  pflugerville: [-97.62, 30.4394],
-  hutto: [-97.5467, 30.5427],
-  taylor: [-97.4092, 30.571],
-  kyle: [-97.8772, 29.9891],
-  buda: [-97.8403, 30.0855],
-  'san marcos': [-97.9414, 29.8833],
-  frisco: [-96.8236, 33.1507],
-  anna: [-96.5486, 33.3487],
-  plano: [-96.6989, 33.0198],
-  mckinney: [-96.6389, 33.1972],
-  denton: [-97.1331, 33.2148],
-  dallas: [-96.797, 32.7767],
-  'fort worth': [-97.3308, 32.7555],
-  houston: [-95.3698, 29.7604],
-  'san antonio': [-98.4936, 29.4241],
-  waco: [-97.1467, 31.5493],
+export function cityIndex(cities = []) {
+  const index = {}
+
+  for (const c of cities ?? []) {
+    const name = String(c?.name ?? '').trim()
+    const lon = Number(c?.lon)
+    const lat = Number(c?.lat)
+    if (!name || !Number.isFinite(lon) || !Number.isFinite(lat)) continue
+    index[name.toLowerCase()] = { label: name, coords: [lon, lat] }
+  }
+
+  return index
 }
 
 // "2601 State Hwy 121, Lewisville, TX 75067" → "lewisville". Anchored on the
@@ -91,11 +87,6 @@ export const CITIES = {
 export const cityOf = (address) =>
   (address ?? '').match(/,\s*([^,]+?),\s*TX\b/i)?.[1].trim().toLowerCase()
 
-// Title Case for display: the lookup table is lowercased so it can be keyed off
-// a raw address, but "liberty hill" is not how the town writes its own name.
-export const cityLabel = (key) =>
-  (key ?? '').replace(/(^|\s)\w/g, (c) => c.toUpperCase())
-
 /**
  * Every city the portfolio actually stands in, in map order (north to south),
  * with the listings that sit there.
@@ -103,13 +94,15 @@ export const cityLabel = (key) =>
  * The filter bar and the hero map both need this, and they need to agree: a
  * location the dropdown offers and the map cannot draw is a dead option.
  */
-export function citiesFor(properties) {
+export function citiesFor(properties, cities) {
+  const index = cityIndex(cities)
   const found = new Map()
 
   for (const p of properties ?? []) {
     const key = cityOf(p.address)
-    if (!key || !CITIES[key]) continue
-    if (!found.has(key)) found.set(key, { key, label: cityLabel(key), coords: CITIES[key], properties: [] })
+    const city = key ? index[key] : null
+    if (!city) continue
+    if (!found.has(key)) found.set(key, { key, label: city.label, coords: city.coords, properties: [] })
     found.get(key).properties.push(p)
   }
 

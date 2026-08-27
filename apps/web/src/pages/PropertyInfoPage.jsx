@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
 import { motion, AnimatePresence, useInView, useReducedMotion } from 'motion/react'
 import { PROPERTY_INFO, flattenImages } from '../data/centroPlazaInfo'
+import { useSection } from '../context/ContentContext'
 import { rise, stagger, inViewOnce } from '../lib/motion'
 import { sized } from '../lib/images'
 
@@ -238,6 +239,7 @@ function useUnlisted(title) {
 export default function PropertyInfoPage() {
   const { slug } = useParams()
   const info = PROPERTY_INFO[slug]
+  const t = useSection('property_info_page')
 
   useUnlisted(info ? `${info.name} — Property Information` : 'Property Information')
 
@@ -394,33 +396,41 @@ export default function PropertyInfoPage() {
       <section data-band="light" className="bg-surface-alt px-gutter py-20 text-content md:px-gutter-lg md:py-24">
         <div className="mx-auto grid max-w-[1600px] gap-14 lg:grid-cols-2">
           <div>
-            <SectionTag>Listings</SectionTag>
+            <SectionTag>{t.listingsLabel}</SectionTag>
             <h2 className="mt-6 text-[clamp(1.7rem,2.4vw,2.4rem)] font-bold leading-[1.15] tracking-[-0.03em]">
-              Elsewhere
+              {t.elsewhereHeading}
             </h2>
             <ul className="mt-8 flex flex-col">
+              {/* A button, not an anchor, and deliberately so: this page is
+                  handed to named prospects, and an <a href> puts the
+                  destination in the status bar, in the right-click menu and
+                  in anything that copies the link. Opening it from script
+                  keeps the address off the page while the link still works.
+                  The trade is real — no middle-click, no "open in new tab",
+                  and a control that navigates is worse for a screen reader
+                  than a link — which is why it is scoped to this unlisted
+                  page and not applied to the public property pages. */}
               {info.links.map((link) => (
                 <li key={link.href}>
-                  <a
-                    href={link.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between gap-6 border-b border-[var(--color-line)] py-4 font-body text-[15px] text-content transition-colors duration-300 hover:text-accent"
+                  <button
+                    type="button"
+                    onClick={() => window.open(link.href, '_blank', 'noopener,noreferrer')}
+                    className="flex w-full items-center justify-between gap-6 border-b border-[var(--color-line)] py-4 text-left font-body text-[15px] text-content transition-colors duration-300 hover:text-accent"
                   >
                     {link.label}
                     <svg viewBox="0 0 24 24" aria-hidden className="size-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M7 17L17 7M8 7h9v9" />
                     </svg>
-                  </a>
+                  </button>
                 </li>
               ))}
             </ul>
           </div>
 
           <div>
-            <SectionTag>Enquiries</SectionTag>
+            <SectionTag>{t.enquiriesLabel}</SectionTag>
             <h2 className="mt-6 text-[clamp(1.7rem,2.4vw,2.4rem)] font-bold leading-[1.15] tracking-[-0.03em]">
-              Talk to the team
+              {t.talkToTeamHeading}
             </h2>
             <ul className="mt-8 flex flex-col">
               {info.contacts.map((contact) => (
@@ -439,16 +449,14 @@ export default function PropertyInfoPage() {
                   href={`mailto:${info.email}`}
                   className="flex items-center justify-between gap-6 border-b border-[var(--color-line)] py-4 font-body text-[15px] text-content transition-colors duration-300 hover:text-accent"
                 >
-                  Email
+                  {t.emailLinkLabel}
                   <span className="shrink-0 text-content/60">{info.email}</span>
                 </a>
               </li>
             </ul>
 
             <p className="mt-8 max-w-[46rem] font-body text-[12.5px] leading-[1.6] text-content/50">
-              Figures shown on the summary sheets are as published and are subject to change. Real
-              estate investments carry risk and no return is assured; seek independent legal, tax and
-              financial advice before investing.
+              {t.legalDisclaimer}
             </p>
           </div>
         </div>

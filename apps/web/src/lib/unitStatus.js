@@ -55,4 +55,15 @@ export const UNIT_STATUSES = [
 // parking bays, landscaping, water. Never interactive, never highlighted.
 export const SCENERY_HEX = '#8b949a'
 
+// A tagged road on a whole-site model: interactive (a visitor can see which
+// road a building fronts) but never status-coloured or leasable, so it needs
+// its own fixed colour rather than borrowing a unit status. Distinct from
+// SCENERY_HEX so a tagged road doesn't read as untagged scenery.
+export const ROAD_HEX = '#5b7a8c'
+
+// A tagged building on a whole-site model, before a visitor has drilled into
+// one of its units. Warmer than the road colour so the two read as different
+// kinds of thing at a glance, not just different shades of grey.
+export const BUILDING_HEX = '#9c8558'
+
 export const unitStatusMeta = (value) => UNIT_STATUSES.find((s) => s.value === value) ?? UNIT_STATUSES[0]

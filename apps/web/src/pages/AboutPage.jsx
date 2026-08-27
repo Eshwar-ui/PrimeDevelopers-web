@@ -132,7 +132,7 @@ export default function AboutPage() {
       <section
         id="about-hero"
         data-band="light"
-        className="bg-surface px-gutter pb-20 pt-32 text-content [--edge-shade:rgba(18,30,38,0.26)] md:px-gutter-lg md:pb-28 md:pt-40"
+        className="bg-base px-gutter pb-20 pt-32 text-content [--edge-shade:rgba(18,30,38,0.26)] md:px-gutter-lg md:pb-28 md:pt-40"
       >
         <div className="mx-auto grid max-w-[1560px] items-end gap-12 lg:grid-cols-[1.05fr_1fr] lg:gap-16">
           <div data-hero>
@@ -196,7 +196,7 @@ export default function AboutPage() {
                 style={bayShadow}
                 className="pointer-events-none absolute inset-0 hidden lg:block"
               >
-                <span className="absolute bottom-0 left-0 h-(--notch-h) w-[min(var(--notch-w),100%)] rounded-tr-(--notch-r) bg-surface" />
+                <span className="absolute bottom-0 left-0 h-(--notch-h) w-[min(var(--notch-w),100%)] rounded-tr-(--notch-r) bg-base" />
                 {/* Half a pixel of overlap onto the bay — a butt joint against
                     a fractional calc leaves a hairline of image showing. */}
                 <span
@@ -229,7 +229,7 @@ export default function AboutPage() {
       {/* ── The Firm — narrative + stats ─────────────────────── */}
       <section
         data-band="light"
-        className="relative overflow-hidden bg-surface px-gutter py-24 md:px-gutter-lg md:py-32"
+        className="relative overflow-hidden bg-base px-gutter py-24 md:px-gutter-lg md:py-32"
       >
         {/* Flipped per theme rather than fixed. brightness-0 forces the mark to
             black whatever the source SVG's own fill is — right on white, and
@@ -274,7 +274,7 @@ export default function AboutPage() {
             className="mt-20 grid grid-cols-2 gap-px border-y border-[var(--color-line)] bg-line md:grid-cols-4"
           >
             {p.stats.map((s) => (
-              <div key={s.label} className="flex flex-col gap-3 bg-surface px-1 py-9 md:px-8">
+              <div key={s.label} className="flex flex-col gap-3 bg-base px-1 py-9 md:px-8">
                 {/* text-content, not the saffron this used to be: the redesign
                     sets numerals in ink and gives the accent to the label, and
                     saffron on white measures about 1.9:1 besides. */}
@@ -324,7 +324,7 @@ export default function AboutPage() {
       </section>
 
       {/* ── Founders ─────────────────────────────────────────── */}
-      <section data-band="light" className="bg-surface px-gutter py-24 md:px-gutter-lg md:py-32">
+      <section data-band="light" className="bg-base px-gutter py-24 md:px-gutter-lg md:py-32">
         <div className="mx-auto max-w-[1560px]">
           <SectionHeader index="03" title="Founders" tone="ink" className="mb-16" />
 

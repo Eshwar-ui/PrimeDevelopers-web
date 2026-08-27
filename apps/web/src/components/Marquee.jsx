@@ -33,7 +33,7 @@ export default function Marquee() {
     // scrolling through the logos dropped a charcoal scrim over them.
     <section
       data-band="light"
-      className="relative w-full overflow-x-clip border-b border-[var(--color-line)] bg-surface py-14"
+      className="relative w-full overflow-x-clip border-b border-[var(--color-line)] bg-base py-14"
     >
       <Parallax speed={0.15}>
         <div ref={track} className="flex w-max items-center gap-24 pr-24">

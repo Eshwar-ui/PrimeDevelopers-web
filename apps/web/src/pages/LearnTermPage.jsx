@@ -16,7 +16,7 @@ export default function LearnTermPage() {
     .filter(Boolean)
 
   return (
-    <div className="bg-surface text-content">
+    <div className="bg-base text-content">
       <header data-band="light" className="px-gutter pb-14 pt-32 md:px-gutter-lg md:pb-20 md:pt-40">
         <div className="mx-auto max-w-[1200px]">
           <Link to="/learn" className="group inline-flex min-h-11 items-center gap-2 font-body text-sm font-semibold text-content/55 transition-colors hover:text-accent">

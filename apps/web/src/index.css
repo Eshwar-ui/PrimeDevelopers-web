@@ -265,9 +265,9 @@
      both white — while the dark theme needs it: sections have to sit *on*
      something, and pointing the document at `surface` meant they sat on
      themselves. Identical to `surface` here; it separates under .dark. */
-  --color-base: #ffffff; /* the document ground */
-  --color-surface: #ffffff; /* section grounds and cards */
-  --color-surface-alt: #eeeeee; /* recessed band behind them */
+  --color-base: #ffffff; /* the document ground — every section stands on this */
+  --color-surface: #ffffff; /* cards and panels raised off it */
+  --color-surface-alt: #eeeeee; /* a band set apart from the ground */
   --color-content: #2f2f2f; /* primary ink */
   --color-invert: #2f2f2f; /* solid contrast chip (dark pill on light) */
   --color-invert-fg: #ffffff; /* type on that chip */
@@ -319,9 +319,18 @@
    values in both themes, so `text-bone` on a dark band stays legible and
    `text-white` on the accent button stays white. */
 :root.dark {
-  /* The three grounds now sit at distinct rungs of the ladder rather than
-     within 1.13:1 of each other: the document is the deepest step, sections sit
-     a step above it, and a recessed band drops back between the two. */
+  /* The three grounds are a ladder of elevation, and it only reads as one if
+     every page climbs it the same way. `base` is the floor and every section
+     stands on it; `alt` is a band lifted off that floor to set a stretch of
+     page apart; `surface` is the top rung, for the cards and panels that sit on
+     top of either. Deepest → shallowest, in that order.
+
+     Sections used to be painted `surface` on the interior pages while the
+     landing page painted them `base`, which put whole pages on the card rung —
+     so in dark mode a page read as one enormous panel floating on the document,
+     its own cards were the same colour as the ground they sat on, and an `alt`
+     band meant to stand out receded instead. The light theme hid all of it,
+     because `base` and `surface` are the same white there. */
   --color-base: #0b1216;
   --color-surface: #17242c;
   --color-surface-alt: #10191f;

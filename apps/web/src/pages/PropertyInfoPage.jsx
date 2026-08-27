@@ -350,7 +350,7 @@ export default function PropertyInfoPage() {
             key={group.id}
             id={group.id}
             data-band={dark ? undefined : 'light'}
-            className={`px-gutter py-20 md:px-gutter-lg md:py-28 ${dark ? 'bg-void text-bone' : 'bg-surface text-content'}`}
+            className={`px-gutter py-20 md:px-gutter-lg md:py-28 ${dark ? 'bg-void text-bone' : 'bg-base text-content'}`}
           >
             <div className="mx-auto max-w-[1600px]">
               <SectionTag tone={dark ? 'inv' : 'light'}>{group.tag}</SectionTag>

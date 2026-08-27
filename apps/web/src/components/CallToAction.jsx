@@ -63,7 +63,7 @@ export default function CallToAction() {
   if (!heading) return null
 
   return (
-    <section id="cta" data-band="light" className="bg-surface px-6 pt-10 md:px-[75px] md:pt-16">
+    <section id="cta" data-band="light" className="bg-base px-6 pt-10 md:px-[75px] md:pt-16">
       {/* In light mode the contrast against the white gutters does the work.
           Under dark mode that inverts: ink sits within a few points of the
           ground and the panel edge dissolves, so it steps *up* to carbon

@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useSection } from '../context/ContentContext'
 import { sized } from '../lib/images'
+import { serviceImage } from '../lib/expertise'
 import watermark from '../assets/watermark-p.svg'
 import SectionIntro from './SectionIntro'
 
@@ -49,6 +50,12 @@ export default function Services() {
             // together are the message. It just must not be a link, or the
             // keyboard collects four tab stops that do nothing.
             const Tag = item.href ? 'a' : 'div'
+            // The same photograph the Expertise page gives this service. The
+            // CMS rows carry an empty `image`, so this band drew its watermark
+            // placeholder for all four while the pictures sat unused in
+            // `public/images/expertise` — resolved through the shared map, the
+            // two pages now agree, and a CMS upload still overrides both.
+            const image = serviceImage(item)
             return (
               <li key={item.title}>
                 <Tag
@@ -56,17 +63,18 @@ export default function Services() {
                   className="group block outline-none"
                 >
                   <div className="relative overflow-hidden rounded-panel bg-surface-alt">
-                    {item.image ? (
+                    {image ? (
                       <img
-                        src={sized(item.image, 'card')}
+                        src={sized(image, 'card')}
                         alt=""
                         loading="lazy"
                         decoding="async"
                         className="aspect-4/3 w-full object-cover transition-transform duration-700 ease-brand group-hover:scale-[1.06]"
                       />
                     ) : (
-                      // Branded rather than blank. These four photographs have
-                      // not been supplied yet, and an empty grey rectangle
+                      // Branded rather than blank, for a service with no
+                      // photograph — a fifth capability added through the CMS
+                      // before its picture is uploaded. An empty grey rectangle
                       // reads as a broken image; the mark reads as a picture
                       // that is coming. No stand-in photography is invented
                       // here — a stock building presented as Prime's work is a

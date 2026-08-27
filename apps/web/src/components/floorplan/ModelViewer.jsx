@@ -3,8 +3,9 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Html, OrbitControls, OrthographicCamera, PerspectiveCamera, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
-import { SCENERY_HEX, unitStatusMeta } from '../../lib/unitStatus'
+import { BUILDING_HEX, ROAD_HEX, SCENERY_HEX, unitStatusMeta } from '../../lib/unitStatus'
 import { groupBySharedVertices, meshUnitLabel, unitsByMeshName } from '../../lib/units'
+import { sized } from '../../lib/images'
 import { prefersReducedMotion } from '../../lib/webgl'
 import { useTheme } from '../../context/ThemeContext'
 
@@ -18,6 +19,11 @@ const ISO_POLAR = THREE.MathUtils.degToRad(58)
 // Must not start with the unit prefix, or the merged block would be mistaken
 // for a leasable unit and turn up in the admin's unmatched list.
 const MERGED_SCENERY = 'merged-scenery'
+
+// What a building drops back to once the visitor has drilled into a
+// different one. Dark enough to read as context rather than content,
+// light enough that the site's shape is still legible.
+const FOCUS_DIM_HEX = '#37424b'
 
 // A shared constant, not a `= []` default. A fresh literal per render would
 // change identity every time, and selection identity is what the material and
@@ -72,7 +78,14 @@ function mergeScenery(meshes) {
     for (const geometry of prepared) if (geometry !== merged) geometry.dispose()
     if (!merged) return null
 
-    const mesh = new THREE.Mesh(merged, new THREE.MeshStandardMaterial())
+    // Same two-sided/flat-shaded treatment as the addressable meshes
+    // below — the merged scenery is drawn from the same inconsistently
+    // wound geometry, so without it the ground and kerbs tear open in
+    // exactly the same way.
+    const mesh = new THREE.Mesh(
+      merged,
+      new THREE.MeshStandardMaterial({ side: THREE.DoubleSide, flatShading: true }),
+    )
     mesh.name = MERGED_SCENERY
     mesh.matrixAutoUpdate = false
     return mesh
@@ -84,7 +97,7 @@ function mergeScenery(meshes) {
 
 /* ── model ─────────────────────────────────────────────────────────────── */
 
-function Model({ url, units, bindings, rotation, selected, hoveredName, statusFilter, showLabels, flaggedMeshes, onHover, onSelect, onMeshClick, onReady, onFrames, onFacings }) {
+function Model({ url, units, bindings, siteEntries, focusMeshes, isolateFocus, labelKinds, rotation, selected, hoveredName, statusFilter, showLabels, flaggedMeshes, onHover, onSelect, onMeshClick, onReady, onFrames, onFacings }) {
   const { scene } = useGLTF(url, '/draco/')
   const invalidate = useThree((state) => state.invalidate)
 
@@ -114,8 +127,14 @@ function Model({ url, units, bindings, rotation, selected, hoveredName, statusFi
     // work in the admin (which skips merging) and silently do nothing for
     // visitors, which is exactly backwards.
     const bound = new Set(Object.keys(bindings ?? {}).map((name) => name.trim().toLowerCase()))
-    const isAddressable = (mesh) =>
-      meshUnitLabel(mesh.name) !== null || bound.has(String(mesh.name ?? '').trim().toLowerCase())
+    // Whole-site models resolve addressability against `siteEntries` (built
+    // by reconcileSite()/toViewerEntries() in siteModel.js) instead of the
+    // per-building unit-name convention — those exports have no naming
+    // convention at all, only explicit admin bindings.
+    const siteMeshNames = siteEntries ? new Set(siteEntries.map((entry) => entry.meshName)) : null
+    const isAddressable = siteMeshNames
+      ? (mesh) => siteMeshNames.has(mesh.name)
+      : (mesh) => meshUnitLabel(mesh.name) !== null || bound.has(String(mesh.name ?? '').trim().toLowerCase())
 
     const unitMeshes = []
     const sceneryMeshes = []
@@ -243,15 +262,22 @@ function Model({ url, units, bindings, rotation, selected, hoveredName, statusFi
     // into the wrapper the bounds are measured from, so the scene graph has to
     // be rebuilt when either changes. Callers memoise `bindings` (a fresh
     // object every render would rebuild the graph continuously).
-  }, [scene, bindingMode, bindings, rotation])
+  }, [scene, bindingMode, bindings, siteEntries, rotation])
 
   // The merged geometry is built here rather than loaded, so nothing else will
   // free it.
   useEffect(() => () => meshes.merged?.geometry.dispose(), [meshes])
 
+  // Mesh name -> resolved entry. `siteEntries` already IS that resolution
+  // (reconcileSite() + toViewerEntries() in siteModel.js) for a whole-site
+  // model; a per-building model still resolves it itself via the unit-name
+  // convention + bindings map, exactly as before.
   const unitByMesh = useMemo(
-    () => unitsByMeshName(meshes.list.map((mesh) => mesh.name), units, bindings),
-    [meshes, units, bindings],
+    () =>
+      siteEntries
+        ? new Map(siteEntries.map((entry) => [entry.meshName, entry]))
+        : unitsByMeshName(meshes.list.map((mesh) => mesh.name), units, bindings),
+    [meshes, units, bindings, siteEntries],
   )
 
   // Every mesh gets its own material. The model's own materials are discarded
@@ -259,7 +285,31 @@ function Model({ url, units, bindings, rotation, selected, hoveredName, statusFi
   // live status data, not by whatever the modeller happened to assign.
   useLayoutEffect(() => {
     const created = meshes.list.map((mesh) => {
-      const material = new THREE.MeshStandardMaterial({ roughness: 0.92, metalness: 0 })
+      // `side` and `flatShading` are both load-bearing, and both exist
+      // because this line discards the model's own materials — colour
+      // is owned by live status data, not by whatever the modeller
+      // assigned. What that also throws away is the `doubleSided` flag
+      // every material in the client's exports carries, and it carries
+      // it for a reason: the walls are zero-thickness planes wound
+      // inconsistently, so half of them face away from the camera and
+      // are culled. The result is a black tear through the massing
+      // where you see straight into the building.
+      //
+      // Flat shading covers the second half of the same defect. Some
+      // meshes store NORMAL attributes pointing into the solid, so the
+      // face is lit from behind and renders as a flat black rectangle.
+      // Recomputing the normals would fix the direction but round off
+      // every corner — most primitives here are welded, so the
+      // recomputed normals average across faces. Flat shading ignores
+      // the stored normals entirely and derives the face normal from
+      // the derivative of position, which cannot be inverted, and is
+      // the correct look for a massing model regardless.
+      const material = new THREE.MeshStandardMaterial({
+        roughness: 0.92,
+        metalness: 0,
+        side: THREE.DoubleSide,
+        flatShading: true,
+      })
       mesh.material = material
       mesh.castShadow = false
       mesh.receiveShadow = false
@@ -273,6 +323,25 @@ function Model({ url, units, bindings, rotation, selected, hoveredName, statusFi
       const unit = unitByMesh.get(mesh.name)
       const material = mesh.material
       if (!material) continue
+
+      // Drilled into one building: everything else recedes. Dimming
+      // rather than hiding is the default because the site is the
+      // thing that gives a building its position — hide the rest and
+      // the visitor loses where they are standing. `isolateFocus`
+      // offers the other reading for when the unit divisions matter
+      // more than the context.
+      if (focusMeshes && !focusMeshes.has(mesh.name)) {
+        mesh.visible = !isolateFocus
+        material.color.setHex(FOCUS_DIM_HEX)
+        material.transparent = true
+        material.opacity = 0.32
+        material.emissive.setHex(0x000000)
+        material.emissiveIntensity = 0
+        continue
+      }
+      mesh.visible = true
+      material.transparent = false
+      material.opacity = 1
 
       if (!unit) {
         // Admin only: meshes named `unit-*` that resolve to nothing are lit up
@@ -294,6 +363,20 @@ function Model({ url, units, bindings, rotation, selected, hoveredName, statusFi
         continue
       }
 
+      // Roads and buildings on a whole-site model: interactive — a visitor
+      // can see and select one — but never status-coloured. There is no
+      // "available road" to filter by, and a building's colour only matters
+      // before a visitor drills into one of its own units.
+      if (unit.kind === 'road' || unit.kind === 'building') {
+        const hex = unit.kind === 'road' ? ROAD_HEX : BUILDING_HEX
+        const isSelected = selected.has(unit.index)
+        const isHovered = mesh.name === hoveredName
+        material.color.set(hex)
+        material.emissive.set(isSelected || isHovered ? hex : '#000000')
+        material.emissiveIntensity = isSelected ? 0.5 : isHovered ? 0.28 : 0
+        continue
+      }
+
       const meta = unitStatusMeta(unit.status)
       const excluded = statusFilter && unit.status !== statusFilter
       const isSelected = selected.has(unit.index)
@@ -304,7 +387,7 @@ function Model({ url, units, bindings, rotation, selected, hoveredName, statusFi
       material.emissiveIntensity = isSelected ? 0.5 : isHovered ? 0.28 : 0
     }
     invalidate()
-  }, [meshes, unitByMesh, selected, hoveredName, statusFilter, flaggedMeshes, bindingMode, invalidate])
+  }, [meshes, unitByMesh, selected, hoveredName, statusFilter, flaggedMeshes, bindingMode, focusMeshes, isolateFocus, invalidate])
 
   // Deliberately split from the frames effect below. Bounds drive the default
   // camera framing, so they must change only when the *model* changes — if
@@ -402,25 +485,37 @@ function Model({ url, units, bindings, rotation, selected, hoveredName, statusFi
     if (!showLabels) return []
     const boxes = new Map()
     for (const [name, unit] of unitByMesh) {
+      // A whole site has a label for every building, road and unit it
+      // holds — ninety-odd pills stacked over a plot read as noise, not
+      // as information. `labelKinds` narrows them to whatever answers
+      // the question being asked at this zoom: building names across the
+      // site, unit numbers once inside one. Per-building models pass
+      // nothing and label everything, as before.
+      if (labelKinds && unit.kind && !labelKinds.includes(unit.kind)) continue
+      // And nothing outside the building being drilled into, whose
+      // labels would otherwise float over the dimmed context.
+      if (focusMeshes && !focusMeshes.has(name)) continue
       const mesh = meshes.list.find((m) => m.name === name)
       if (!mesh) continue
       const box = new THREE.Box3().setFromObject(mesh)
       const existing = boxes.get(unit.index)
       if (existing) existing.box.union(box)
-      else boxes.set(unit.index, { unit, box })
+      // A site-model entry wraps the unit record; a per-building one is the
+      // record. Both are read here so the mark works in either viewer.
+      else boxes.set(unit.index, { unit, box, logo: unit.logo ?? unit.unit?.logo ?? '' })
     }
     // Lifted clear of the roof by a fraction of the block's own height rather
     // than a fixed 0.35. Model units vary by three orders of magnitude between
     // exports — 0.35 is a comfortable gap in a metres-scale model and invisible
     // in this one, where a unit is 120 tall — so the label sat *on* the roof and
     // read as part of the geometry.
-    return [...boxes.values()].map(({ unit, box }) => {
+    return [...boxes.values()].map(({ unit, box, logo }) => {
       const center = box.getCenter(new THREE.Vector3())
       const size = box.getSize(new THREE.Vector3())
       const lift = Math.max(size.y * 0.25, 0.35)
-      return { unit, position: [center.x, box.max.y + lift, center.z] }
+      return { unit, logo, position: [center.x, box.max.y + lift, center.z] }
     })
-  }, [showLabels, unitByMesh, meshes])
+  }, [showLabels, unitByMesh, meshes, labelKinds, focusMeshes])
 
   const pick = (event) => unitByMesh.get(event.object.name) ?? null
 
@@ -510,7 +605,7 @@ function Model({ url, units, bindings, rotation, selected, hoveredName, statusFi
         }}
       />
 
-      {labels.map(({ unit, position }) => (
+      {labels.map(({ unit, logo, position }) => (
         <Html
           key={unit.index}
           position={position}
@@ -532,7 +627,17 @@ function Model({ url, units, bindings, rotation, selected, hoveredName, statusFi
           // number filled the whole viewer. Dropping it there is also simply
           // correct: a plan is orthographic, every block is equidistant, and
           // equidistant labels belong at one screen size.
-          distanceFactor={isOrthographic ? undefined : labelDistance}
+          // Site models opt out of distance scaling entirely. drei scales
+          // an <Html> by `distanceFactor / distance`, and `labelDistance`
+          // is derived from the whole plot — so the moment the camera
+          // flies down to one building the divisor collapses and a unit
+          // number renders many times its intended size. That was
+          // survivable when the camera never left the default framing;
+          // it is not now that drilling in is the primary gesture. A
+          // fixed screen size is also the honest answer here: once you
+          // are inside a building every unit is the same distance away,
+          // so scaling by distance conveys nothing.
+          distanceFactor={isOrthographic || siteEntries ? undefined : labelDistance}
           // drei defaults these to a z-index of 16,777,271, which paints over
           // the navbar and the mobile nav overlay. Kept low here, and the
           // viewer container isolates its own stacking context as a backstop.
@@ -544,9 +649,29 @@ function Model({ url, units, bindings, rotation, selected, hoveredName, statusFi
               if (node) labelNodes.current.set(unit.index, node)
               else labelNodes.current.delete(unit.index)
             }}
-            className="whitespace-nowrap rounded-full bg-void/85 px-2 py-0.5 font-body text-[10px] font-bold tracking-[0.08em] text-bone"
+            className={
+              logo
+                // A tenant mark needs a light ground for the same reason the
+                // partner wall does: most logos are dark artwork, and half of
+                // them carry a white background baked into the file.
+                ? 'flex items-center justify-center rounded-md bg-white px-1.5 py-1 shadow-[0_2px_10px_-2px_rgba(0,0,0,0.6)]'
+                : 'whitespace-nowrap rounded-full bg-void/85 px-2 py-0.5 font-body text-[10px] font-bold tracking-[0.08em] text-bone'
+            }
           >
-            {unit.label}
+            {logo ? (
+              <>
+                {/* 160px, not the 1920 the CMS transform applies by default.
+                    This badge renders at ~29x16 CSS, and a leased terrace can
+                    carry twenty of them — pulling a desktop-width PNG for each
+                    is the single most wasteful thing on the page. */}
+                <img src={sized(logo, 160)} alt="" className="h-5 w-auto max-w-[4.5rem] object-contain" />
+                {/* The number still reaches anyone reading the page rather
+                    than looking at it — the mark replaces it visually only. */}
+                <span className="sr-only">{unit.label}</span>
+              </>
+            ) : (
+              unit.label
+            )}
           </span>
         </Html>
       ))}
@@ -557,7 +682,7 @@ function Model({ url, units, bindings, rotation, selected, hoveredName, statusFi
           nodes={labelNodes}
           selected={selected}
           hoveredIndex={hoveredUnitIndex}
-          distanceFactor={isOrthographic ? null : labelDistance}
+          distanceFactor={isOrthographic || siteEntries ? null : labelDistance}
         />
       )}
     </group>
@@ -837,7 +962,9 @@ function CameraRig({ bounds, focus, mode, navMode, resetSignal, onDragStart, onD
   const camera = useThree((state) => state.camera)
   const size = useThree((state) => state.size)
   const invalidate = useThree((state) => state.invalidate)
-  const goal = useRef({ target: new THREE.Vector3(), distance: 0, active: false })
+  // `zoom` is null except while focusing in plan view, where it is what
+  // "moving closer" means for an orthographic camera.
+  const goal = useRef({ target: new THREE.Vector3(), distance: 0, zoom: null, active: false })
 
   // Fit plan view from the actual X/Z footprint rather than its bounding
   // sphere. A sphere around a rectangular site reserves empty corners and
@@ -869,7 +996,16 @@ function CameraRig({ bounds, focus, mode, navMode, resetSignal, onDragStart, onD
     // stays a small fraction of the radius so the depth buffer keeps enough
     // precision to separate one block from the next.
     camera.far = Math.max(bounds.radius * 12, 100)
-    camera.near = Math.max(bounds.radius / 2000, 0.05)
+    // radius/400, not radius/2000. A depth buffer spends most of its
+    // precision close to the camera, so what matters is the near:far
+    // *ratio*, and /2000 against a far of radius*12 is a 24,000:1
+    // spread. On a per-building model that is survivable; on a whole
+    // site — a 900-unit plot of shallow, near-coplanar slabs — it puts
+    // the ground and everything sitting on it into the same depth
+    // bucket, and the model renders as interleaved stripes of tarmac
+    // and roof. /400 keeps the ratio near 4,800:1, which is clean, and
+    // still lets the camera come closer than any unit is wide.
+    camera.near = Math.max(bounds.radius / 400, 0.05)
 
     if (mode === '2d') {
       camera.position.set(target.x, target.y + bounds.radius * 4, target.z + 0.001)
@@ -915,20 +1051,61 @@ function CameraRig({ bounds, focus, mode, navMode, resetSignal, onDragStart, onD
   // only moves the target and distance. Snapping to a canonical angle throws
   // away the orientation they just chose, which reads as the app fighting them.
   useEffect(() => {
-    if (!focus || !controls.current || mode === '2d') return
+    if (!focus || !controls.current) return
     const target = new THREE.Vector3(...focus.center)
-    const distance = Math.max(focus.radius * 3.4, (bounds?.radius ?? 10) * 0.4)
+    const siteRadius = bounds?.radius ?? 10
+
+    // Plan view used to opt out of focusing entirely, and for a single
+    // building that was right: every unit is already on screen, so flying
+    // to one only takes the others away. A whole site is the opposite
+    // case — drilling into a building is the entire point of the view,
+    // and the plan is where a leasing map is actually read. An
+    // orthographic camera cannot approach anything, so "closer" here
+    // means zoom: scaled off the fit that frames the whole site, so a
+    // building a tenth of the plot ends up filling roughly the frame.
+    const isPlan = mode === '2d'
+    const zoom = isPlan
+      ? Math.min(planFitZoom * (siteRadius / Math.max(focus.radius, 1e-6)) * 1.15, planFitZoom * 24)
+      : null
+    // Overhead in plan, so the only thing that changes is which part of
+    // the site is under the camera.
+    // A fixed multiple of the radius fits vertically and quietly crops
+    // horizontally: this viewer is taller than it is wide on a desktop,
+    // and a perspective camera's horizontal field of view is the
+    // narrower of the two there. A wide terrace framed to the vertical
+    // FOV therefore runs off both sides — which is exactly the "units
+    // don't fit" case. Solved by fitting whichever axis is tighter.
+    const aspect = size.height > 0 ? size.width / size.height : 1
+    const vFov = THREE.MathUtils.degToRad(camera.fov ?? 42)
+    const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect)
+    const fit = focus.radius / Math.sin(Math.min(vFov, hFov) / 2)
+    // Well under 1. `focus.radius` is a bounding *sphere*, and these
+    // buildings are long, shallow terraces seen from an isometric angle:
+    // the sphere is sized by the length, while what the camera actually
+    // has to cover is the much smaller projected footprint. Fitting the
+    // sphere therefore reserves roughly half the frame for empty ground
+    // and leaves the building looking distant. The factor is empirical —
+    // tuned against Centro Plaza's terraces — which is why it is a named
+    // constant rather than buried in the expression.
+    const TERRACE_FIT = 0.5
+    const distance = isPlan ? siteRadius * 4 : Math.max(fit * TERRACE_FIT, siteRadius * 0.05)
 
     if (prefersReducedMotion()) {
-      const direction = camera.position.clone().sub(controls.current.target).normalize()
+      const direction = isPlan
+        ? new THREE.Vector3(0, 1, 0.00025)
+        : camera.position.clone().sub(controls.current.target).normalize()
       controls.current.target.copy(target)
       camera.position.copy(target).addScaledVector(direction, distance)
+      if (zoom != null) {
+        camera.zoom = zoom
+        camera.updateProjectionMatrix()
+      }
       controls.current.update()
     } else {
-      goal.current = { target, distance, active: true }
+      goal.current = { target, distance, zoom, active: true }
     }
     invalidate()
-  }, [focus, bounds, camera, mode, invalidate])
+  }, [focus, bounds, camera, mode, planFitZoom, size, invalidate])
 
   // Damping needs a *continuous* stream of frames to decay smoothly, but
   // frameloop="demand" only draws when something asks it to. Without this,
@@ -1019,12 +1196,29 @@ function CameraRig({ bounds, focus, mode, navMode, resetSignal, onDragStart, onD
     if (!goal.current.active) return
 
     control.target.lerp(goal.current.target, 0.14)
-    const direction = camera.position.clone().sub(control.target).normalize()
+    // Straight down in plan: the camera's own offset degenerates when it
+    // is already overhead, and normalising a near-zero vector yields NaN,
+    // which puts the camera nowhere and blanks the view.
+    const direction = goal.current.zoom != null
+      ? new THREE.Vector3(0, 1, 0.00025).normalize()
+      : camera.position.clone().sub(control.target).normalize()
     const distance = THREE.MathUtils.lerp(camera.position.distanceTo(control.target), goal.current.distance, 0.14)
     camera.position.copy(control.target).addScaledVector(direction, distance)
+
+    // Orthographic "approach" — see the focus effect.
+    let zoomSettled = true
+    if (goal.current.zoom != null && camera.isOrthographicCamera) {
+      camera.zoom = THREE.MathUtils.lerp(camera.zoom, goal.current.zoom, 0.14)
+      camera.updateProjectionMatrix()
+      zoomSettled = Math.abs(camera.zoom - goal.current.zoom) < goal.current.zoom * 0.005
+    }
     control.update()
 
-    if (control.target.distanceTo(goal.current.target) < 0.02 && Math.abs(distance - goal.current.distance) < 0.02) {
+    if (
+      zoomSettled &&
+      control.target.distanceTo(goal.current.target) < 0.02 &&
+      Math.abs(distance - goal.current.distance) < 0.02
+    ) {
       goal.current.active = false
     }
     invalidate()
@@ -1113,6 +1307,25 @@ export default function ModelViewer({
   url,
   units,
   bindings,
+  // Whole-site models pass their own resolution (reconcileSite() +
+  // toViewerEntries() in siteModel.js) instead of `units`/`bindings` — see
+  // the Model() component's `unitByMesh` for how the two paths converge.
+  siteEntries,
+  // Mesh names belonging to the building currently drilled into. Everything
+  // outside the set recedes — dimmed to context, or hidden entirely when
+  // `isolateFocus` is set. Null means "show the whole site equally".
+  focusMeshes = null,
+  isolateFocus = false,
+  // Which entry kinds get a label pill. Null labels everything.
+  labelKinds = null,
+  // Bumped by the parent to re-frame the whole model — used when the
+  // visitor steps back out of a building to the site as a whole, which
+  // clears `focus` and would otherwise leave the camera where it was.
+  resetToken = 0,
+  // A whole-site export carries its own ground slab, so the viewer's apron
+  // would sit inside it and z-fight. Set for site models, never for the
+  // per-building ones, which genuinely have no ground of their own.
+  groundless = false,
   selection = NO_SELECTION,
   onSelect,
   statusFilter,
@@ -1148,6 +1361,13 @@ export default function ModelViewer({
   // overrides this to pan regardless, since rotation is disabled there.
   const [navMode, setNavMode] = useState('orbit')
   const [resetSignal, setResetSignal] = useState(0)
+  // Folded into the same signal the recenter button uses, so there is one
+  // path back to the default framing rather than two.
+  const firstReset = useRef(true)
+  useEffect(() => {
+    if (firstReset.current) { firstReset.current = false; return }
+    setResetSignal((n) => n + 1)
+  }, [resetToken])
   const [frames, setFrames] = useState(null)
   const [bounds, setBounds] = useState(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -1318,7 +1538,7 @@ export default function ModelViewer({
         <directionalLight position={[1, 2, 1.4]} intensity={1.5} />
         <directionalLight position={[-1.5, 1, -1]} intensity={0.4} />
 
-        <SiteGround bounds={bounds} dark={groundIsDark} />
+        {!groundless && <SiteGround bounds={bounds} dark={groundIsDark} />}
 
         <ModelErrorBoundary onError={onError}>
           <Suspense fallback={null}>
@@ -1326,6 +1546,10 @@ export default function ModelViewer({
               url={url}
               units={units}
               bindings={bindings}
+              siteEntries={siteEntries}
+              focusMeshes={focusMeshes}
+              isolateFocus={isolateFocus}
+              labelKinds={labelKinds}
               rotation={orientation ?? 0}
               selected={selected}
               hoveredName={hovered?.name ?? null}
@@ -1387,12 +1611,26 @@ export default function ModelViewer({
           style={{ left: chip.left, top: chip.top }}
         >
           <div className="flex items-center gap-2">
-            <span aria-hidden className={`size-2 rounded-sm ${unitStatusMeta(chip.unit.status).swatch}`} />
+            {/* Road/building entries (whole-site model) have no status to
+                swatch — a plain dot in their own fixed colour instead. */}
+            <span
+              aria-hidden
+              className={`size-2 rounded-sm ${chip.unit.kind && chip.unit.kind !== 'unit' ? '' : unitStatusMeta(chip.unit.status).swatch}`}
+              style={
+                chip.unit.kind === 'road'
+                  ? { backgroundColor: ROAD_HEX }
+                  : chip.unit.kind === 'building'
+                    ? { backgroundColor: BUILDING_HEX }
+                    : undefined
+              }
+            />
             <span className="font-display text-sm font-medium text-content">{chip.unit.label}</span>
           </div>
           <div className="mt-0.5 font-body text-[11px] text-content/70">
-            {unitStatusMeta(chip.unit.status).label}
-            {chip.unit.size ? ` · ${Number(String(chip.unit.size).replace(/[^\d.]/g, '')).toLocaleString()} sq ft` : ''}
+            {chip.unit.kind === 'road' ? 'Road' : chip.unit.kind === 'building' ? 'Building' : unitStatusMeta(chip.unit.status).label}
+            {(!chip.unit.kind || chip.unit.kind === 'unit') && chip.unit.size
+              ? ` · ${Number(String(chip.unit.size).replace(/[^\d.]/g, '')).toLocaleString()} sq ft`
+              : ''}
           </div>
         </div>
       )}

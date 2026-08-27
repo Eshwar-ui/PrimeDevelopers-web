@@ -10,6 +10,7 @@ import { ContentModule } from './modules/content/content.module';
 import { PropertiesModule } from './modules/properties/properties.module';
 import { NewsModule } from './modules/news/news.module';
 import { LeadsModule } from './modules/leads/leads.module';
+import { MailModule } from './modules/mail/mail.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
 
 @Module({
@@ -49,6 +50,7 @@ import { UploadsModule } from './modules/uploads/uploads.module';
     PropertiesModule,
     NewsModule,
     LeadsModule,
+    MailModule,
     UploadsModule,
   ],
   providers: [

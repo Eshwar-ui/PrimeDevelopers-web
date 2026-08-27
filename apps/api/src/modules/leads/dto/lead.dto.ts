@@ -64,6 +64,35 @@ export class CreateLeadDto {
 }
 
 
+/**
+ * A brochure request. Narrower than CreateLeadDto on purpose: this form asks
+ * for three fields and a property, and the visitor is telling us which
+ * property they want — so propertyId is required here where it is optional
+ * there, and there is no free-text message to bound.
+ */
+export class BrochureRequestDto {
+  @ApiProperty()
+  @IsString()
+  @MaxLength(200)
+  name!: string;
+
+  @ApiProperty()
+  @IsEmail()
+  @MaxLength(320)
+  email!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  phone?: string;
+
+  @ApiProperty()
+  @IsUUID()
+  propertyId!: string;
+}
+
+
 export class UpdateLeadStatusDto {
   @ApiProperty({ enum: LEAD_STATUSES })
   @IsIn(LEAD_STATUSES)

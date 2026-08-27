@@ -154,6 +154,16 @@ export default function BuildingBlock({ building, onChange, folder }) {
                   {/* Everything below is what a prospect actually reads when
                       they tap the unit — each field is optional and simply
                       omitted from the card when left blank. */}
+                  <ImageUploader
+                    label="Tenant logo"
+                    value={unit.logo}
+                    onChange={(logo) => set({ ...unit, logo })}
+                    folder={`${folder}/unit-logos`}
+                  />
+                  <p className="-mt-2 text-[11px] text-bone-3">
+                    Shown on this unit in the 3D model instead of its number — for a unit that is
+                    leased or sold and you want the tenant's mark on the plan.
+                  </p>
                   <TextAreaField
                     label="Unit description"
                     rows={3}

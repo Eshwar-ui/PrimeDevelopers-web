@@ -7,6 +7,7 @@ import { Section, TextField, TextAreaField } from './components/Field'
 import ImageUploader from './components/ImageUploader'
 import RepeatableList from './components/RepeatableList'
 import BuildingBlock from './components/BuildingBlock'
+import SiteModelManager from './components/SiteModelManager'
 
 const emptyDetail = () => ({
   tagline: '',
@@ -15,6 +16,10 @@ const emptyDetail = () => ({
   tenants: [],
   highlights: { heading: '', body: '', bigStats: [], cards: [] },
   floorPlans: { heading: '', body: '', buildings: [] },
+  // One whole-property GLB tagged building/unit/road-wise, replacing the
+  // per-building models in `floorPlans.buildings[].model` when set — see
+  // apps/web/src/lib/siteModel.js. null until an admin uploads one.
+  siteModel: null,
   location: { eyebrow: '', heading: '', sub: '', body: '' },
   establishedSites: { heading: '' },
   neighborhoods: { mapQuery: '', items: [] },
@@ -285,6 +290,9 @@ export default function PropertyEditPage() {
                   parking: 'Yes',
                   planImage: '',
                   unitList: [],
+                  // Named road this building fronts, or '' for none/interior.
+                  // Units inherit this unless they set their own facingRoad.
+                  facingRoad: '',
                 })}
                 addLabel="Add building"
                 renderItem={(item, set, i) => (
@@ -299,6 +307,19 @@ export default function PropertyEditPage() {
             model's own plan view replaces it — so its editor is gone too
             rather than left as controls that change nothing. Existing
             `detail.sitePlan` data is left untouched in the database. */}
+
+        <Section
+          title="Site model (3D)"
+          description="One 3D model for the whole property, tagged building/unit/road-wise. When set, this replaces the per-building models above on the public page."
+        >
+          <SiteModelManager
+            buildings={form.detail.floorPlans.buildings}
+            onBuildingsChange={(buildingsList) => patchDetail('floorPlans', { buildings: buildingsList })}
+            siteModel={form.detail.siteModel}
+            onSiteModelChange={(siteModel) => patch({ detail: { ...form.detail, siteModel } })}
+            folder={`properties/${form.slug}/site-model`}
+          />
+        </Section>
 
         <Section title="Location">
           <TextField label="Eyebrow" value={form.detail.location.eyebrow} onChange={(eyebrow) => patchDetail('location', { eyebrow })} />

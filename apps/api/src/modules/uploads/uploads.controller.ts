@@ -18,8 +18,8 @@ class UploadDto {
 }
 
 // Multer buffers into memory. Fine at these sizes — the largest accepted file
-// is 8 MB and uploads are admin-only, so concurrency is one person at a time.
-const LIMITS = { limits: { fileSize: 8 * 1024 * 1024, files: 1 } };
+// is 10 MB and uploads are admin-only, so concurrency is one person at a time.
+const LIMITS = { limits: { fileSize: 10 * 1024 * 1024, files: 1 } };
 
 @ApiTags('Uploads')
 @ApiBearerAuth()
@@ -41,5 +41,13 @@ export class UploadsController {
   @UseInterceptors(FileInterceptor('file', LIMITS))
   uploadModel(@UploadedFile() file: Express.Multer.File, @Body() dto: UploadDto) {
     return this.uploads.upload('model', file, dto.folder);
+  }
+
+  @Post('document')
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Upload a PDF document, returns its public URL' })
+  @UseInterceptors(FileInterceptor('file', LIMITS))
+  uploadDocument(@UploadedFile() file: Express.Multer.File, @Body() dto: UploadDto) {
+    return this.uploads.upload('document', file, dto.folder);
   }
 }

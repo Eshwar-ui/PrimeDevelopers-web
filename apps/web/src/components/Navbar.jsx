@@ -14,6 +14,19 @@ import logoOnLight from '../assets/prime-logo-dark.svg'
 // structural, tied to actual DOM ids on the homepage, not admin-editable.
 const sections = ['about', 'properties']
 
+// The Expertise tab's four doors, hung off its own nav link the same way
+// `linksWithAcademy` hangs Learn off the admin's list below — structural
+// routing, not admin copy, so it lives here rather than in the CMS. Keyed on
+// `/enterprise` so it rides whatever the admin labels that link "Expertise"
+// or anything else.
+const EXPERTISE_LINK_TO = '/enterprise'
+const EXPERTISE_SECTIONS = [
+  { label: 'Interiors', to: '/enterprise/interiors' },
+  { label: 'Franchise', to: '/enterprise/franchise' },
+  { label: 'Collab', to: '/enterprise/collab' },
+  { label: 'Invest', to: '/enterprise/invest' },
+]
+
 // The rail used to sit short on the homepage and widen as you scrolled, so it
 // fitted inside the bay the old hero cut out of its photograph for it. That
 // hero is gone — the new one is a full-bleed frame with nothing cut out of it —
@@ -99,7 +112,9 @@ export default function Navbar() {
   }
 
   const isActive = (link) =>
-    link.to ? pathname === link.to : pathname === '/' && active === link.section
+    link.to
+      ? pathname === link.to || (link.to === EXPERTISE_LINK_TO && pathname.startsWith(`${EXPERTISE_LINK_TO}/`))
+      : pathname === '/' && active === link.section
 
   const animateNavLabel = (event, entering) => {
     const label = event.currentTarget.querySelector('[data-nav-label]')
@@ -358,35 +373,73 @@ export default function Navbar() {
           {/* Desktop rail */}
           <nav className="absolute left-1/2 hidden -translate-x-1/2 lg:block">
             <ul className="flex items-center gap-5 lg:gap-6">
-              {navLinks.map((link) => (
-                <li key={link.label}>
-                  <a
-                    href={link.to ?? `/#${link.section}`}
-                    onClick={(e) => handleNav(e, link)}
-                    aria-current={isActive(link) ? 'page' : undefined}
-                    onMouseEnter={(event) => animateNavLabel(event, true)}
-                    onMouseLeave={(event) => animateNavLabel(event, false)}
-                    onFocus={(event) => animateNavLabel(event, true)}
-                    onBlur={(event) => animateNavLabel(event, false)}
-                    className={`group relative block rounded-sm py-2 font-body text-[15px] font-medium transition-colors duration-200 ease-brand focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent ${
-                      isActive(link) ? current : idle
-                    }`}
-                  >
-                    <span aria-hidden className="pointer-events-none absolute inset-x-1 top-1/2 h-5 -translate-y-1/2 scale-x-75 rounded-full bg-accent/15 opacity-0 blur-md transition-[opacity,transform] duration-500 ease-brand group-hover:scale-x-110 group-hover:opacity-100 group-focus-visible:scale-x-110 group-focus-visible:opacity-100 motion-reduce:transition-opacity" />
-                    <span data-nav-label className="relative block">
-                      {link.label}
-                    </span>
-                    <span
-                      aria-hidden
-                      className={`absolute inset-x-0 bottom-0 h-px origin-left bg-current transition-[transform,opacity] duration-500 ease-brand motion-reduce:transition-none ${
-                        isActive(link)
-                          ? 'scale-x-100 opacity-100'
-                          : 'scale-x-0 opacity-0 group-hover:scale-x-100 group-hover:opacity-100 group-focus-visible:scale-x-100 group-focus-visible:opacity-100'
+              {navLinks.map((link) => {
+                const hasSubmenu = link.to === EXPERTISE_LINK_TO
+                return (
+                  <li key={link.label} className={hasSubmenu ? 'group/sub relative' : undefined}>
+                    <a
+                      href={link.to ?? `/#${link.section}`}
+                      onClick={(e) => handleNav(e, link)}
+                      aria-current={isActive(link) ? 'page' : undefined}
+                      aria-haspopup={hasSubmenu ? 'true' : undefined}
+                      onMouseEnter={(event) => animateNavLabel(event, true)}
+                      onMouseLeave={(event) => animateNavLabel(event, false)}
+                      onFocus={(event) => animateNavLabel(event, true)}
+                      onBlur={(event) => animateNavLabel(event, false)}
+                      className={`group relative flex items-center gap-1.5 rounded-sm py-2 font-body text-[15px] font-medium transition-colors duration-200 ease-brand focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent ${
+                        isActive(link) ? current : idle
                       }`}
-                    />
-                  </a>
-                </li>
-              ))}
+                    >
+                      <span aria-hidden className="pointer-events-none absolute inset-x-1 top-1/2 h-5 -translate-y-1/2 scale-x-75 rounded-full bg-accent/15 opacity-0 blur-md transition-[opacity,transform] duration-500 ease-brand group-hover:scale-x-110 group-hover:opacity-100 group-focus-visible:scale-x-110 group-focus-visible:opacity-100 motion-reduce:transition-opacity" />
+                      <span data-nav-label className="relative block">
+                        {link.label}
+                      </span>
+                      {hasSubmenu && (
+                        <svg
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.2"
+                          aria-hidden
+                          className="relative size-3 shrink-0 transition-transform duration-300 ease-brand group-hover/sub:rotate-180"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
+                        </svg>
+                      )}
+                      <span
+                        aria-hidden
+                        className={`absolute inset-x-0 bottom-0 h-px origin-left bg-current transition-[transform,opacity] duration-500 ease-brand motion-reduce:transition-none ${
+                          isActive(link)
+                            ? 'scale-x-100 opacity-100'
+                            : 'scale-x-0 opacity-0 group-hover:scale-x-100 group-hover:opacity-100 group-focus-visible:scale-x-100 group-focus-visible:opacity-100'
+                        }`}
+                      />
+                    </a>
+
+                    {hasSubmenu && (
+                      // A gap-free hover bridge: the panel sits a few pixels
+                      // below the link, and without padding standing in for
+                      // that gap the pointer leaving the link's box on its way
+                      // down closes the menu before it ever reaches it.
+                      <div className="absolute left-1/2 top-full w-56 -translate-x-1/2 pt-3 opacity-0 invisible translate-y-1 transition-[opacity,transform] duration-200 ease-brand group-hover/sub:visible group-hover/sub:translate-y-0 group-hover/sub:opacity-100 group-focus-within/sub:visible group-focus-within/sub:translate-y-0 group-focus-within/sub:opacity-100">
+                        <ul className="overflow-hidden rounded-2xl border border-line bg-surface p-1.5 shadow-[0_30px_70px_-30px_rgba(0,0,0,0.45)]">
+                          {EXPERTISE_SECTIONS.map((section) => (
+                            <li key={section.to}>
+                              <a
+                                href={section.to}
+                                onClick={(e) => handleNav(e, section)}
+                                className="block rounded-xl px-4 py-2.5 font-body text-[14px] font-semibold text-content/70 transition-colors duration-150 hover:bg-accent/10 hover:text-accent"
+                              >
+                                {section.label}
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </li>
+                )
+              })}
             </ul>
           </nav>
 
@@ -468,20 +521,40 @@ export default function Navbar() {
             className="fixed inset-0 z-40 flex flex-col justify-center gap-3 bg-void px-6 sm:px-8 lg:hidden"
           >
             {navLinks.map((link, i) => (
-              <motion.a
-                key={link.label}
-                href={link.to ?? `/#${link.section}`}
-                onClick={(e) => handleNav(e, link)}
-                initial={{ opacity: 0, y: 24 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 + i * 0.08, ease: 'easeOut' }}
-                className="flex min-h-11 items-center font-display text-[clamp(2.25rem,10vw,3rem)] font-light tracking-[-0.02em] text-bone"
-              >
-                <span className="numeral mr-4 align-middle text-base text-accent-soft">
-                  0{i + 1}
-                </span>
-                {link.label}
-              </motion.a>
+              <div key={link.label}>
+                <motion.a
+                  href={link.to ?? `/#${link.section}`}
+                  onClick={(e) => handleNav(e, link)}
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 + i * 0.08, ease: 'easeOut' }}
+                  className="flex min-h-11 items-center font-display text-[clamp(2.25rem,10vw,3rem)] font-light tracking-[-0.02em] text-bone"
+                >
+                  <span className="numeral mr-4 align-middle text-base text-accent-soft">
+                    0{i + 1}
+                  </span>
+                  {link.label}
+                </motion.a>
+                {link.to === EXPERTISE_LINK_TO && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 + i * 0.08 + 0.06, ease: 'easeOut' }}
+                    className="ml-11 mt-1 flex flex-wrap gap-x-5 gap-y-1"
+                  >
+                    {EXPERTISE_SECTIONS.map((section) => (
+                      <a
+                        key={section.to}
+                        href={section.to}
+                        onClick={(e) => handleNav(e, section)}
+                        className="min-h-11 py-1 font-body text-lg text-bone/55 transition-colors hover:text-bone"
+                      >
+                        {section.label}
+                      </a>
+                    ))}
+                  </motion.div>
+                )}
+              </div>
             ))}
             {(phoneHref || whatsappChatHref) && (
               <motion.div

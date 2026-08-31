@@ -13,9 +13,9 @@
  * Dallas, and it does not claim to be — which is exactly why it carries no
  * labels. A drawn street grid with invented street names printed on it would be
  * a map that lies; the same grid with nothing written on it is a background,
- * and every fact on this fold — the towns, the counts, the addresses — is
- * carried by the pins and the card standing on top of it, which come from the
- * real listings. The pins themselves are still laid out by true relative
+ * and every fact on this fold — the towns and the counts — is carried by the
+ * pins standing on top of it, which come from the real listings. The pins
+ * themselves are still laid out by true relative
  * geography, so the shape of the portfolio across Texas is honest even though
  * the streets underneath are not a place.
  *
@@ -110,8 +110,11 @@ const CITY = (() => {
   })
 
   // Built-up blocks: a subset of the cells, inset off their streets. Not every
-  // cell, because a fully tiled grid loses the streets in it.
+  // cell, because a fully tiled grid loses the streets in it. A second, darker
+  // tier is mixed in for depth — real blocks are not one flat shade, and two
+  // tones read as "buildings" where one reads as "tinted paper".
   const blocks = []
+  const denseBlocks = []
   const parks = []
 
   for (let i = 0; i < xs.length - 1; i += 1) {
@@ -124,12 +127,29 @@ const CITY = (() => {
 
       const roll = rand()
       const inset = 5
+      const cell = { x: x + inset, y: y + inset, w: w - inset * 2, h: h - inset * 2 }
 
       if (roll > 0.94) {
-        parks.push({ x: x + inset, y: y + inset, w: w - inset * 2, h: h - inset * 2 })
+        parks.push(cell)
+      } else if (roll > 0.8) {
+        denseBlocks.push(cell)
       } else if (roll > 0.42) {
-        blocks.push({ x: x + inset, y: y + inset, w: w - inset * 2, h: h - inset * 2 })
+        blocks.push(cell)
       }
+    }
+  }
+
+  // A scatter of trees inside each park — a few seeded dots rather than one
+  // flat green rectangle, which is what turns "tinted cell" into "park".
+  const trees = []
+  for (const p of parks) {
+    const count = 3 + Math.floor(rand() * 4)
+    for (let t = 0; t < count; t += 1) {
+      trees.push({
+        x: p.x + between(6, Math.max(7, p.w - 6)),
+        y: p.y + between(6, Math.max(7, p.h - 6)),
+        r: between(2.4, 4.2),
+      })
     }
   }
 
@@ -158,7 +178,7 @@ const CITY = (() => {
     `M${W * 0.14} ${-PAD} C ${W * 0.3} ${H * 0.3}, ${W * 0.2} ${H * 0.62}, ${W * 0.44} ${H + PAD}`,
   ]
 
-  return { minor, arterial, blocks, parks, river, freeways }
+  return { minor, arterial, blocks, denseBlocks, parks, trees, river, freeways }
 })()
 
 /**
@@ -168,10 +188,10 @@ const CITY = (() => {
  * the dark set is a genuine night-mode basemap, not the light one dimmed.
  */
 const PALETTE =
-  '[--land:#eceff1] [--block:#e2e7ea] [--park:#dde9dd] [--water:#cfe0ea] ' +
-  '[--road:#ffffff] [--casing:#d7dde1] [--freeway:#f4e6cd] [--freeway-casing:#e2cfa8] ' +
-  'dark:[--land:#0f1a20] dark:[--block:#14222a] dark:[--park:#152521] dark:[--water:#0e2733] ' +
-  'dark:[--road:#22343e] dark:[--casing:#182731] dark:[--freeway:#3a3527] dark:[--freeway-casing:#2a2720]'
+  '[--land:#f3efe6] [--block:#e7e0cf] [--block-dense:#dcd2b8] [--park:#cfe3c4] [--tree:#a9cf9b] [--water:#a9d4e0] [--water-deep:#8fc2d3] ' +
+  '[--road:#ffffff] [--casing:#ddd6c2] [--freeway:#fbc687] [--freeway-casing:#e8a94f] [--freeway-line:#fff3df] ' +
+  'dark:[--land:#0c161c] dark:[--block:#182722] dark:[--block-dense:#20362e] dark:[--park:#122d20] dark:[--tree:#1c4230] dark:[--water:#0c2a38] dark:[--water-deep:#082230] ' +
+  'dark:[--road:#25373c] dark:[--casing:#17262a] dark:[--freeway:#4a3a24] dark:[--freeway-casing:#332818] dark:[--freeway-line:#6b5330]'
 
 export default function StreetMap({ className = '' }) {
   return (
@@ -184,6 +204,15 @@ export default function StreetMap({ className = '' }) {
       focusable="false"
       className={`${PALETTE} ${className}`}
     >
+      <defs>
+        {/* A gradient rather than a flat fill is what keeps the river reading
+            as water instead of as a grey-blue ribbon laid over the streets. */}
+        <linearGradient id="street-map-water" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="var(--water)" />
+          <stop offset="100%" stopColor="var(--water-deep)" />
+        </linearGradient>
+      </defs>
+
       <rect x="0" y="0" width={W} height={H} fill="var(--land)" />
 
       {/* Everything inside the skew. The rotation is what keeps the grid from
@@ -202,6 +231,21 @@ export default function StreetMap({ className = '' }) {
           />
         ))}
 
+        {/* The darker tier, mixed in among the regular blocks rather than
+            clustered — a real district is not zoned in neat groups at this
+            scale. */}
+        {CITY.denseBlocks.map((b) => (
+          <rect
+            key={`d${b.x}-${b.y}`}
+            x={b.x}
+            y={b.y}
+            width={b.w}
+            height={b.h}
+            rx="2"
+            fill="var(--block-dense)"
+          />
+        ))}
+
         {CITY.parks.map((p) => (
           <rect
             key={`p${p.x}-${p.y}`}
@@ -212,6 +256,10 @@ export default function StreetMap({ className = '' }) {
             rx="10"
             fill="var(--park)"
           />
+        ))}
+
+        {CITY.trees.map((t) => (
+          <circle key={`t${t.x}-${t.y}`} cx={t.x} cy={t.y} r={t.r} fill="var(--tree)" />
         ))}
 
         {/* Minor streets, cased then filled — the pale outline is what gives a
@@ -244,15 +292,27 @@ export default function StreetMap({ className = '' }) {
             leaves roads running across open water for its whole length; drawn
             over it, the network simply stops at the bank, which is what a map
             without a bridge there actually looks like. */}
-        <path d={CITY.river} fill="none" stroke="var(--water)" strokeWidth="34" strokeLinecap="round" />
+        <path d={CITY.river} fill="none" stroke="url(#street-map-water)" strokeWidth="34" strokeLinecap="round" />
 
-        {/* And the freeways over the river, because those do bridge it. */}
+        {/* And the freeways over the river, because those do bridge it. A
+            dashed centre line is what a plain wide stroke was missing — it is
+            the one mark that reads as "highway" rather than "thick road" at a
+            glance. */}
         <g fill="none" strokeLinecap="round">
           {CITY.freeways.map((d) => (
             <path key={`fc${d.slice(0, 20)}`} d={d} stroke="var(--freeway-casing)" strokeWidth="17" />
           ))}
           {CITY.freeways.map((d) => (
             <path key={`f${d.slice(0, 20)}`} d={d} stroke="var(--freeway)" strokeWidth="12" />
+          ))}
+          {CITY.freeways.map((d) => (
+            <path
+              key={`fl${d.slice(0, 20)}`}
+              d={d}
+              stroke="var(--freeway-line)"
+              strokeWidth="1.5"
+              strokeDasharray="10 10"
+            />
           ))}
         </g>
       </g>

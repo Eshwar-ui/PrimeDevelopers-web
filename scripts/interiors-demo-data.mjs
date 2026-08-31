@@ -1,0 +1,160 @@
+const INTERIORS = '/images/expertise/interiors.webp'
+const COLLABORATIONS = '/images/expertise/collaborations.webp'
+const FRANCHISE = '/images/expertise/franchise.webp'
+const INVEST = '/images/expertise/invest.webp'
+
+export const interiorsDemoPage = {
+  heading: 'Finish your space, your way — Demo catalog',
+  paragraph:
+    'Demo content for testing tier and category filters, price sorting, before-and-after comparisons, image galleries, specifications, videos, and quote links.',
+  options: [
+    {
+      slug: 'polished-concrete-warm-gray',
+      tier: 'Basic',
+      name: 'Polished Concrete — Warm Gray (Demo)',
+      category: 'Flooring',
+      pricePerSqft: '4.50',
+      thumbnail: INTERIORS,
+      beforeImage: COLLABORATIONS,
+      heroImage: INTERIORS,
+      images: [INVEST, FRANCHISE],
+      description: 'Demo polished concrete entry for testing the slider, thumbnails, video, specifications, and quote handoff.',
+      videoUrl: 'https://www.youtube.com/watch?v=M7lc1UVf-VE',
+      specs: [
+        { label: 'Material', value: 'Sealed polished concrete' },
+        { label: 'Finish', value: 'Warm gray, medium sheen' },
+        { label: 'Maintenance', value: 'Damp-mop; reseal every 3–5 years' },
+      ],
+    },
+    {
+      slug: 'painted-drywall-bright-white',
+      tier: 'Basic',
+      name: 'Painted Drywall — Bright White (Demo)',
+      category: 'Wall finish',
+      pricePerSqft: '2.25',
+      thumbnail: COLLABORATIONS,
+      beforeImage: FRANCHISE,
+      heroImage: COLLABORATIONS,
+      images: [INTERIORS, INVEST],
+      description: 'Demo wall finish for testing Basic filtering and the video-coming-soon state.',
+      videoUrl: '',
+      specs: [
+        { label: 'Material', value: 'Level-4 drywall, eggshell paint' },
+        { label: 'Color', value: 'Bright neutral white' },
+        { label: 'Maintenance', value: 'Wipe-clean; touch up as needed' },
+      ],
+    },
+    {
+      slug: 'luxury-vinyl-plank-natural-oak',
+      tier: 'Mid-range',
+      name: 'Luxury Vinyl Plank — Natural Oak (Demo)',
+      category: 'Flooring',
+      pricePerSqft: '7.80',
+      thumbnail: FRANCHISE,
+      beforeImage: INVEST,
+      heroImage: FRANCHISE,
+      images: [INTERIORS, COLLABORATIONS],
+      description: 'Demo waterproof plank flooring for category filters, price sorting, and related-space links.',
+      videoUrl: '',
+      specs: [
+        { label: 'Material', value: 'Rigid-core LVP, 20 mil wear layer' },
+        { label: 'Color', value: 'Natural oak' },
+        { label: 'Warranty', value: '15-year commercial demo warranty' },
+      ],
+    },
+    {
+      slug: 'acoustic-ceiling-standard-grid',
+      tier: 'Mid-range',
+      name: 'Suspended Acoustic Ceiling — Standard Grid (Demo)',
+      category: 'Ceiling',
+      pricePerSqft: '5.20',
+      thumbnail: INVEST,
+      beforeImage: INTERIORS,
+      heroImage: INVEST,
+      images: [FRANCHISE, COLLABORATIONS],
+      description: 'Demo suspended ceiling option with a separate category and complete detail specification.',
+      videoUrl: '',
+      specs: [
+        { label: 'Material', value: '2×2 mineral-fiber acoustic tile' },
+        { label: 'Grid', value: 'White exposed tee' },
+        { label: 'Acoustics', value: 'NRC 0.70 demo rating' },
+      ],
+    },
+    {
+      slug: 'engineered-hardwood-walnut',
+      tier: 'High-end',
+      name: 'Engineered Hardwood — Wide Plank Walnut (Demo)',
+      category: 'Flooring',
+      pricePerSqft: '16.75',
+      thumbnail: INTERIORS,
+      beforeImage: FRANCHISE,
+      heroImage: INTERIORS,
+      images: [INVEST, COLLABORATIONS],
+      description: 'Demo premium flooring entry for High-end filters and descending price sorting.',
+      videoUrl: '',
+      specs: [
+        { label: 'Material', value: 'Engineered walnut, 7.5-inch plank' },
+        { label: 'Finish', value: 'Low-sheen matte' },
+        { label: 'Maintenance', value: 'Sweep and dry-mop' },
+      ],
+    },
+    {
+      slug: 'glass-storefront-partition',
+      tier: 'High-end',
+      name: 'Glass Storefront Partition System (Demo)',
+      category: 'Fixtures',
+      pricePerSqft: '28.00',
+      thumbnail: COLLABORATIONS,
+      beforeImage: INVEST,
+      heroImage: COLLABORATIONS,
+      images: [INTERIORS, FRANCHISE],
+      description: 'Demo premium fixture entry for the maximum price, High-end tier, and fixture category states.',
+      videoUrl: '',
+      specs: [
+        { label: 'Material', value: 'Tempered glass, aluminum frame' },
+        { label: 'Height', value: 'Full-height demo configuration' },
+        { label: 'Maintenance', value: 'Standard glass cleaning' },
+      ],
+    },
+  ],
+}
+
+export const interiorsDemoGallery = {
+  heading: 'Finished spaces — Demo gallery',
+  entries: [
+    {
+      slug: 'demo-centro-plaza-120',
+      propertySlug: 'centro-plaza',
+      unitLabel: '120',
+      tier: 'Basic',
+      optionSlugs: 'polished-concrete-warm-gray, painted-drywall-bright-white',
+      photos: [INTERIORS, COLLABORATIONS],
+    },
+    {
+      slug: 'demo-reagan-crossing-214',
+      propertySlug: 'reagan-crossing-phase-ii',
+      unitLabel: '214',
+      tier: 'Mid-range',
+      optionSlugs: 'luxury-vinyl-plank-natural-oak, acoustic-ceiling-standard-grid',
+      photos: [FRANCHISE, INVEST],
+    },
+    {
+      slug: 'demo-pow-leander-08',
+      propertySlug: 'pow-leander',
+      unitLabel: '08',
+      tier: 'High-end',
+      optionSlugs: 'engineered-hardwood-walnut, glass-storefront-partition',
+      photos: [COLLABORATIONS, INTERIORS],
+    },
+    {
+      slug: 'demo-centro-plaza-305',
+      propertySlug: 'centro-plaza',
+      unitLabel: '305',
+      tier: 'High-end',
+      optionSlugs: 'glass-storefront-partition, polished-concrete-warm-gray',
+      photos: [INVEST, FRANCHISE],
+    },
+  ],
+}
+
+export const demoImages = { INTERIORS, COLLABORATIONS, FRANCHISE, INVEST }

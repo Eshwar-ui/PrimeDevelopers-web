@@ -69,20 +69,28 @@ export default function LeadsPage() {
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  {/* Written by the floor-plan enquiry flow (FloorPlanSection.jsx)
-                      so sales opens the call already knowing which unit this is
-                      about, rather than establishing it from scratch. Absent on
-                      leads from the plain contact form. */}
-                  {attribution && (
-                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    {/* Every lead has a source now — `contact` is the default
+                        for rows written before this column existed, so it
+                        doubles as "plain enquiry, nothing to distinguish". */}
+                    {l.source && l.source !== 'contact' && (
+                      <span className="rounded-full bg-ember/20 px-2.5 py-0.5 font-body text-[11px] font-bold uppercase tracking-wide text-ember">
+                        {l.source}
+                      </span>
+                    )}
+                    {/* Written by the floor-plan enquiry flow (FloorPlanSection.jsx)
+                        so sales opens the call already knowing which unit this is
+                        about, rather than establishing it from scratch. Absent on
+                        leads from the plain contact form. */}
+                    {attribution && (
                       <span className="rounded-full bg-accent/20 px-2.5 py-0.5 font-body text-[11px] font-bold uppercase tracking-wide text-accent-soft">
                         Unit {attribution.unitLabel}
                       </span>
-                      {attribution.buildingLabel && (
-                        <span className="text-xs text-bone-3">{attribution.buildingLabel}</span>
-                      )}
-                    </div>
-                  )}
+                    )}
+                    {attribution?.buildingLabel && (
+                      <span className="text-xs text-bone-3">{attribution.buildingLabel}</span>
+                    )}
+                  </div>
                   <p className="font-display text-lg font-medium">{l.name}</p>
                   <p className="text-sm text-bone/50">
                     {l.email}
@@ -103,10 +111,17 @@ export default function LeadsPage() {
                   </button>
                 </div>
               </div>
-              {/* Status-at-enquiry and the source page have no dedicated column
-                  on this shared schema — both are folded into the message text
-                  at submission (see ContactPage.jsx), so they surface here too. */}
               {l.message && <p className="mt-4 whitespace-pre-wrap text-sm text-bone/70">{l.message}</p>}
+              {l.context && Object.keys(l.context).length > 0 && (
+                <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 rounded-xl border border-white/10 bg-black/15 p-4 sm:grid-cols-3">
+                  {Object.entries(l.context).map(([key, value]) => (
+                    <div key={key}>
+                      <dt className="font-body text-[10px] font-bold uppercase tracking-wide text-bone-3">{key}</dt>
+                      <dd className="text-sm text-bone/80">{Array.isArray(value) ? value.join(', ') : String(value)}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
               {attribution && unitSlug && (
                 <a
                   href={`/properties/${unitSlug}?unit=${encodeURIComponent(attribution.unitLabel)}`}

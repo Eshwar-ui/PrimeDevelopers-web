@@ -1,23 +1,11 @@
-import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { motion } from 'motion/react'
-import ArrowRight from '../components/ArrowRight'
 import SocialIcon from '../components/SocialIcon'
 import { useSection } from '../context/ContentContext'
 import { renderEmphasis } from '../lib/emphasis'
 import { rise, stagger } from '../lib/motion'
-import { api } from '../lib/api'
-
-const fields = [
-  { name: 'name', label: 'Full Name', type: 'text', placeholder: 'Enter your name' },
-  { name: 'email', label: 'Email Address', type: 'email', placeholder: 'you@gmail.com' },
-  { name: 'phone', label: 'Phone Number', type: 'tel', placeholder: '+1' },
-  { name: 'company', label: 'Company', type: 'text', placeholder: 'Enter your company name' },
-]
-
-const FIELD =
-  'contact-field h-12 rounded-xl border border-[var(--color-line)] bg-carbon px-4 font-body text-[15px] text-bone outline-none transition-[border-color,box-shadow] placeholder:text-bone-3 focus:border-accent/75 focus:ring-[3px] focus:ring-accent/10'
-const FIELD_LABEL = 'font-display text-[15px] font-semibold text-content'
+import QuoteForm from '../components/QuoteForm'
+import { parseSlugList } from '../lib/interiors'
 
 function ContactIcon({ type }) {
   if (type === 'location') {
@@ -46,7 +34,6 @@ function ContactIcon({ type }) {
 export default function ContactPage() {
   const c = useSection('contact_page')
   const homeHero = useSection('hero')
-  const [status, setStatus] = useState('idle')
   const [searchParams] = useSearchParams()
 
   const unitLabel = searchParams.get('unit')
@@ -62,43 +49,16 @@ export default function ContactPage() {
   const sourcePath = searchParams.get('from')?.startsWith('/') ? searchParams.get('from') : null
   const heroImage = homeHero.slides?.[4]?.image ?? homeHero.slides?.[0]?.image
 
+  // Set only by the Interiors typology page's "Add this to my unit quote"
+  // button — everything else that lands here is a plain enquiry.
+  const source = searchParams.get('source') || 'contact'
+  const optionSlugs = parseSlugList(searchParams.get('options') || '')
+
   const contactCards = [
     { type: 'location', title: 'Location', value: c.location, href: null },
     { type: 'phone', title: 'Call Us', value: c.phone, href: c.phone ? `tel:${c.phone.replace(/[^\d+]/g, '')}` : null },
     { type: 'email', title: 'Email Us', value: c.email, href: c.email ? `mailto:${c.email}` : null },
   ]
-
-  const onSubmit = async (event) => {
-    event.preventDefault()
-    setStatus('sending')
-    const form = event.currentTarget
-    const data = new FormData(form)
-    const company = data.get('company')?.trim()
-    const context = unitLabel
-      ? `\n\n[Unit ${unitLabel}${unitBuilding ? ` · ${unitBuilding}` : ''} - ${unitStatus || 'status unknown'} at time of enquiry${sourcePath ? ` · ${window.location.origin}${sourcePath}` : ''}]`
-      : ''
-    const companyContext = company ? `\n\n[Company: ${company}]` : ''
-
-    try {
-      await api.post('/leads', {
-        name: data.get('name'),
-        email: data.get('email'),
-        phone: data.get('phone') || undefined,
-        message: `${data.get('message')}${companyContext}${context}`,
-        ...(unitLabel && propertyId && {
-          propertyId,
-          unitLabel,
-          buildingLabel: unitBuilding || undefined,
-        }),
-      })
-    } catch {
-      setStatus('error')
-      return
-    }
-
-    setStatus('sent')
-    form.reset()
-  }
 
   return (
     <div
@@ -145,72 +105,16 @@ export default function ContactPage() {
 
       <section className="relative px-6 pb-20 md:px-12 md:pb-28">
         <div className="mx-auto -mt-28 max-w-[1100px]">
-          <form
-            onSubmit={onSubmit}
-            className="relative min-w-0 rounded-[28px] border border-[var(--color-line)] bg-surface p-7 shadow-[0_24px_70px_-38px_rgba(20,28,33,.35)] md:p-12 lg:grid lg:grid-cols-[280px_1fr] lg:gap-14"
-          >
-            <div>
-              <span className="font-body text-[12px] font-bold uppercase tracking-[0.18em] text-accent">
-                {c.formEyebrow}
-              </span>
-              <h2 className="mt-4 max-w-[12ch] font-display text-[clamp(2rem,3vw,2.8rem)] font-bold leading-[1.12] tracking-[-0.03em]">
-                {c.formHeading}
-              </h2>
-              <p className="mt-5 max-w-[30ch] font-body text-[15px] leading-[1.6] text-content/65">
-                {c.formParagraph}
-              </p>
-              <span aria-hidden className="mt-5 block h-0.5 w-24 bg-accent" />
-            </div>
-
-            <div className="min-w-0 mt-10 lg:mt-0">
-              {unitLabel && (
-                <div className="mb-6 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3">
-                  <span className="font-body text-[11px] font-bold uppercase tracking-[0.15em] text-accent">Enquiring about</span>
-                  <p className="mt-1 font-display text-[15px] font-semibold">Unit {unitLabel}{unitBuilding ? ` · ${unitBuilding}` : ''}</p>
-                </div>
-              )}
-
-              <div className="grid gap-x-5 gap-y-5 sm:grid-cols-2">
-                {fields.map((field) => (
-                  <label key={field.name} className="flex flex-col gap-2">
-                    <span className={FIELD_LABEL}>{field.label}</span>
-                    <input
-                      name={field.name}
-                      type={field.type}
-                      required={field.name === 'name' || field.name === 'email'}
-                      placeholder={field.placeholder}
-                      defaultValue={field.name === 'email' ? prefillEmail : undefined}
-                      className={FIELD}
-                    />
-                  </label>
-                ))}
-                <label className="flex flex-col gap-2 sm:col-span-2">
-                  <span className={FIELD_LABEL}>Anything else we should know?</span>
-                  <textarea
-                    name="message"
-                    rows={4}
-                    required
-                    defaultValue={unitLabel ? `I'd like more information about Unit ${unitLabel}.` : ''}
-                    placeholder="Type your message"
-                    className="contact-field min-h-28 resize-none rounded-xl border border-[var(--color-line)] bg-carbon px-4 py-3 font-body text-[15px] text-bone outline-none transition-[border-color,box-shadow] placeholder:text-bone-3 focus:border-accent/75 focus:ring-[3px] focus:ring-accent/10"
-                  />
-                </label>
-              </div>
-
-              <div className="mt-7 flex flex-col items-stretch gap-5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
-                {status === 'sent' && <p className="font-body text-[14px] text-accent">Thanks, we&apos;ve received your enquiry.</p>}
-                {status === 'error' && <p role="alert" className="font-body text-[14px] text-red-600">Something went wrong. Please try again.</p>}
-                <button
-                  type="submit"
-                  disabled={status === 'sending'}
-                  className="primary-button-flood group inline-flex h-12 w-full items-center justify-center gap-4 rounded-full sm:w-auto bg-accent pl-6 pr-4 font-body text-[14px] font-semibold text-white dark:text-void transition-colors hover:bg-prime-deep active:scale-[0.98] disabled:opacity-60"
-                >
-                  {status === 'sending' ? 'Sending...' : 'Send Enquiry'}
-                  <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-1" />
-                </button>
-              </div>
-            </div>
-          </form>
+          <QuoteForm
+            source={source}
+            eyebrow={c.formEyebrow}
+            heading={c.formHeading}
+            description={c.formParagraph}
+            unitContext={unitLabel ? { unitLabel, unitBuilding, unitStatus, propertyId, sourcePath } : null}
+            prefillEmail={prefillEmail}
+            prefillMessage={unitLabel ? `I'd like more information about Unit ${unitLabel}.` : ''}
+            context={optionSlugs.length > 0 ? { optionSlugs } : {}}
+          />
 
           <div className="mt-12 grid gap-4 md:grid-cols-3">
             {contactCards.map((card) => {

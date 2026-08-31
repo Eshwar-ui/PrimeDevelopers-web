@@ -132,6 +132,13 @@ model WebsiteLead {
   phone     String?
   message   String?
   status    String   @default("new")
+  // Which shared QuoteForm embed this came through (contact, interiors,
+  // franchise, collab, invest), and whatever structured detail that source
+  // already knew — an interior option slug, a franchise's desired property,
+  // an investment track. Defaults hold for every row written before this
+  // column existed.
+  source    String   @default("contact")
+  context   Json?
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   unitAttributions WebsiteLeadUnitAttribution[]

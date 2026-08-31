@@ -9,7 +9,8 @@
     "deploy:web": "pnpm run build:web && firebase deploy --only hosting",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
-    "seed": "node --env-file=.env.seed scripts/seed.js"
+    "seed": "node --env-file=.env.seed scripts/seed.js",
+    "seed:interiors-demo": "node --env-file=apps/api/.env scripts/seed-interiors-demo.mjs"
   },
   "devDependencies": {
     "@supabase/supabase-js": "^2.110.8"

@@ -2,6 +2,7 @@ import { Section, TextField, TextAreaField, SelectField, CheckboxField } from '.
 import ImageUploader from '../components/ImageUploader'
 import RepeatableList from '../components/RepeatableList'
 import { PLATFORM_KEYS } from '../../lib/platforms'
+import { TIERS } from '../../lib/interiors'
 
 // Shared hint for the *word* → italic accent-color convention used across
 // headings, so admins get the same visual flourish as the original hardcoded copy.
@@ -580,6 +581,239 @@ export const SECTIONS = [
             <TextField label="Button label" value={value.closingLabel} onChange={(closingLabel) => onChange({ closingLabel })} />
             <TextField label="Button link" value={value.closingHref} onChange={(closingHref) => onChange({ closingHref })} />
           </div>
+        </Section>
+      </>
+    ),
+  },
+  {
+    key: 'interiors_page',
+    label: 'Interiors catalog',
+    description: 'The /enterprise/interiors tier grid and every typology detail page — one entry per finish option.',
+    Editor: ({ value, onChange }) => (
+      <>
+        <Section title="Introduction">
+          <TextAreaField label="Heading" rows={2} value={value.heading} onChange={(heading) => onChange({ heading })} />
+          <TextAreaField label="Paragraph" rows={3} value={value.paragraph} onChange={(paragraph) => onChange({ paragraph })} />
+        </Section>
+        <Section title="Finish options" description="Use a short, unique URL slug for each option.">
+          <RepeatableList
+            items={value.options ?? []}
+            onChange={(options) => onChange({ options })}
+            makeItem={() => ({
+              slug: '', tier: TIERS[0], name: '', category: '', pricePerSqft: '',
+              thumbnail: '', beforeImage: '', heroImage: '', images: [], description: '', videoUrl: '', specs: [],
+            })}
+            addLabel="Add option"
+            renderItem={(item, set) => (
+              <div className="flex flex-col gap-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <TextField label="Name" value={item.name} onChange={(name) => set({ ...item, name })} />
+                  <TextField label="URL slug" value={item.slug} onChange={(slug) => set({ ...item, slug })} />
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <SelectField label="Tier" value={item.tier} onChange={(tier) => set({ ...item, tier })} options={TIERS} />
+                  <TextField label="Category" value={item.category} onChange={(category) => set({ ...item, category })} />
+                  <TextField label="Price per sqft" value={item.pricePerSqft} onChange={(pricePerSqft) => set({ ...item, pricePerSqft })} />
+                </div>
+                <ImageUploader label="Thumbnail (grid card)" value={item.thumbnail} onChange={(thumbnail) => set({ ...item, thumbnail })} folder="site/interiors" />
+                <ImageUploader label="Before image (comparison)" value={item.beforeImage} onChange={(beforeImage) => set({ ...item, beforeImage })} folder="site/interiors" />
+                <ImageUploader label="After image (detail hero)" value={item.heroImage} onChange={(heroImage) => set({ ...item, heroImage })} folder="site/interiors" />
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wide text-bone-3">Image set</span>
+                  <div className="mt-2">
+                    <RepeatableList
+                      items={item.images ?? []}
+                      onChange={(images) => set({ ...item, images })}
+                      makeItem={() => ''}
+                      addLabel="Add image"
+                      renderItem={(url, setUrl) => <ImageUploader value={url} onChange={setUrl} folder="site/interiors" />}
+                    />
+                  </div>
+                </div>
+                <TextAreaField label="Description" rows={4} value={item.description} onChange={(description) => set({ ...item, description })} />
+                <TextField label="YouTube link" value={item.videoUrl} onChange={(videoUrl) => set({ ...item, videoUrl })} />
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wide text-bone-3">Specifications</span>
+                  <div className="mt-2">
+                    <RepeatableList
+                      items={item.specs ?? []}
+                      onChange={(specs) => set({ ...item, specs })}
+                      makeItem={() => ({ label: '', value: '' })}
+                      addLabel="Add spec"
+                      renderItem={(spec, setSpec) => (
+                        <div className="grid grid-cols-2 gap-3">
+                          <TextField label="Label" value={spec.label} onChange={(label) => setSpec({ ...spec, label })} />
+                          <TextField label="Value" value={spec.value} onChange={(value) => setSpec({ ...spec, value })} />
+                        </div>
+                      )}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          />
+        </Section>
+      </>
+    ),
+  },
+  {
+    key: 'interiors_gallery',
+    label: 'Interiors — finished spaces',
+    description: 'Real units finished with the catalog above. Shown at /enterprise/interiors/gallery, filterable by property and tier.',
+    Editor: ({ value, onChange }) => (
+      <>
+        <Section title="Copy">
+          <TextField label="Heading" value={value.heading} onChange={(heading) => onChange({ heading })} />
+        </Section>
+        <Section title="Entries" description="Option slugs are comma-separated, matching the slugs set in the Interiors catalog.">
+          <RepeatableList
+            items={value.entries ?? []}
+            onChange={(entries) => onChange({ entries })}
+            makeItem={() => ({ slug: '', propertySlug: '', unitLabel: '', tier: TIERS[0], optionSlugs: '', photos: [] })}
+            addLabel="Add entry"
+            renderItem={(item, set) => (
+              <div className="flex flex-col gap-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <TextField label="URL slug" value={item.slug} onChange={(slug) => set({ ...item, slug })} />
+                  <SelectField label="Tier" value={item.tier} onChange={(tier) => set({ ...item, tier })} options={TIERS} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <TextField label="Property slug" value={item.propertySlug} onChange={(propertySlug) => set({ ...item, propertySlug })} />
+                  <TextField label="Unit label" value={item.unitLabel} onChange={(unitLabel) => set({ ...item, unitLabel })} />
+                </div>
+                <TextField label="Option slugs used" value={item.optionSlugs} onChange={(optionSlugs) => set({ ...item, optionSlugs })} />
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wide text-bone-3">Photos</span>
+                  <div className="mt-2">
+                    <RepeatableList
+                      items={item.photos ?? []}
+                      onChange={(photos) => set({ ...item, photos })}
+                      makeItem={() => ''}
+                      addLabel="Add photo"
+                      renderItem={(url, setUrl) => <ImageUploader value={url} onChange={setUrl} folder="site/interiors-gallery" />}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          />
+        </Section>
+      </>
+    ),
+  },
+  {
+    key: 'franchise_page',
+    label: 'Franchise page',
+    description: 'The /enterprise/franchise page — existing franchisees and the open call for new operators.',
+    Editor: ({ value, onChange }) => (
+      <>
+        <Section title="Hero">
+          <TextField label="Eyebrow" value={value.heroEyebrow} onChange={(heroEyebrow) => onChange({ heroEyebrow })} />
+          <TextAreaField label="Heading" rows={2} value={value.heading} onChange={(heading) => onChange({ heading })} />
+          <TextAreaField label="Paragraph" value={value.paragraph} onChange={(paragraph) => onChange({ paragraph })} />
+          <ImageUploader label="Banner image" value={value.heroImage} onChange={(heroImage) => onChange({ heroImage })} folder="site/franchise" />
+        </Section>
+        <Section title="Existing franchisees" description="Only list a brand once it has actually signed — this shows publicly as fact.">
+          <RepeatableList
+            items={value.existingFranchisees ?? []}
+            onChange={(existingFranchisees) => onChange({ existingFranchisees })}
+            makeItem={() => ({ brandName: '', logo: '', image: '', propertySlug: '', blurb: '' })}
+            addLabel="Add franchisee"
+            renderItem={(item, set) => (
+              <div className="flex flex-col gap-3">
+                <ImageUploader label="Storefront photo" value={item.image} onChange={(image) => set({ ...item, image })} folder="site/franchise" />
+                <ImageUploader label="Logo" value={item.logo} onChange={(logo) => set({ ...item, logo })} folder="site/franchise" />
+                <div className="grid grid-cols-2 gap-3">
+                  <TextField label="Brand name" value={item.brandName} onChange={(brandName) => set({ ...item, brandName })} />
+                  <TextField label="Property slug" value={item.propertySlug} onChange={(propertySlug) => set({ ...item, propertySlug })} />
+                </div>
+                <TextAreaField label="Blurb" value={item.blurb} onChange={(blurb) => set({ ...item, blurb })} />
+              </div>
+            )}
+          />
+        </Section>
+        <Section title="Open to new franchises">
+          <TextAreaField label="Paragraph" value={value.openToNew?.paragraph} onChange={(paragraph) => onChange({ openToNew: { ...value.openToNew, paragraph } })} />
+          <TextField label="Footprint range" value={value.openToNew?.footprintRange} onChange={(footprintRange) => onChange({ openToNew: { ...value.openToNew, footprintRange } })} />
+          <div>
+            <span className="text-xs font-bold uppercase tracking-wide text-bone-3">Why partner with us</span>
+            <div className="mt-2">
+              <RepeatableList
+                items={value.openToNew?.whyPartner ?? []}
+                onChange={(whyPartner) => onChange({ openToNew: { ...value.openToNew, whyPartner } })}
+                makeItem={() => ''}
+                addLabel="Add point"
+                renderItem={(item, set) => <TextField value={item} onChange={set} />}
+              />
+            </div>
+          </div>
+        </Section>
+      </>
+    ),
+  },
+  {
+    key: 'collab_page',
+    label: 'Collab page',
+    description: 'The /enterprise/collab page — joint-venture partnerships.',
+    Editor: ({ value, onChange }) => (
+      <>
+        <Section title="Hero">
+          <TextField label="Eyebrow" value={value.heroEyebrow} onChange={(heroEyebrow) => onChange({ heroEyebrow })} />
+          <TextAreaField label="Heading" rows={2} value={value.heading} onChange={(heading) => onChange({ heading })} />
+          <TextAreaField label="Paragraph" value={value.paragraph} onChange={(paragraph) => onChange({ paragraph })} />
+          <ImageUploader label="Banner image" value={value.heroImage} onChange={(heroImage) => onChange({ heroImage })} folder="site/collab" />
+        </Section>
+        <Section title="Existing partnerships" description="Only list a partnership once it is actually in place — this shows publicly as fact.">
+          <RepeatableList
+            items={value.existingPartnerships ?? []}
+            onChange={(existingPartnerships) => onChange({ existingPartnerships })}
+            makeItem={() => ({ partnerName: '', concept: '', image: '', propertySlug: '', summary: '' })}
+            addLabel="Add partnership"
+            renderItem={(item, set) => (
+              <div className="flex flex-col gap-3">
+                <ImageUploader label="Photo" value={item.image} onChange={(image) => set({ ...item, image })} folder="site/collab" />
+                <div className="grid grid-cols-2 gap-3">
+                  <TextField label="Partner name" value={item.partnerName} onChange={(partnerName) => set({ ...item, partnerName })} />
+                  <TextField label="Concept" value={item.concept} onChange={(concept) => set({ ...item, concept })} />
+                </div>
+                <TextField label="Property slug" value={item.propertySlug} onChange={(propertySlug) => set({ ...item, propertySlug })} />
+                <TextAreaField label="Summary" value={item.summary} onChange={(summary) => set({ ...item, summary })} />
+              </div>
+            )}
+          />
+        </Section>
+        <Section title="How the partnership model works">
+          <TextAreaField label="What we contribute" value={value.howItWorks?.contributesUs} onChange={(contributesUs) => onChange({ howItWorks: { ...value.howItWorks, contributesUs } })} />
+          <TextAreaField label="What the partner contributes" value={value.howItWorks?.contributesPartner} onChange={(contributesPartner) => onChange({ howItWorks: { ...value.howItWorks, contributesPartner } })} />
+          <TextAreaField label="Equity & decision-making" value={value.howItWorks?.equitySplit} onChange={(equitySplit) => onChange({ howItWorks: { ...value.howItWorks, equitySplit } })} />
+          <TextAreaField label="Ideal partner profile" value={value.howItWorks?.idealPartner} onChange={(idealPartner) => onChange({ howItWorks: { ...value.howItWorks, idealPartner } })} />
+        </Section>
+      </>
+    ),
+  },
+  {
+    key: 'invest_page',
+    label: 'Invest page',
+    description: 'The /enterprise/invest page — the two investment tracks.',
+    Editor: ({ value, onChange }) => (
+      <>
+        <Section title="Hero">
+          <TextField label="Eyebrow" value={value.heroEyebrow} onChange={(heroEyebrow) => onChange({ heroEyebrow })} />
+          <TextAreaField label="Heading" rows={2} value={value.heading} onChange={(heading) => onChange({ heading })} />
+          <TextAreaField label="Paragraph" value={value.paragraph} onChange={(paragraph) => onChange({ paragraph })} />
+          <ImageUploader label="Banner image" value={value.heroImage} onChange={(heroImage) => onChange({ heroImage })} folder="site/invest" />
+        </Section>
+        <Section title="Planning-phase investment">
+          <TextAreaField label="Description" value={value.planningPhase?.description} onChange={(description) => onChange({ planningPhase: { ...value.planningPhase, description } })} />
+          <TextField label="Entry cost profile" value={value.planningPhase?.entryCost} onChange={(entryCost) => onChange({ planningPhase: { ...value.planningPhase, entryCost } })} />
+          <TextField label="Timeline" value={value.planningPhase?.timeline} onChange={(timeline) => onChange({ planningPhase: { ...value.planningPhase, timeline } })} />
+          <TextField label="Risk profile" value={value.planningPhase?.riskProfile} onChange={(riskProfile) => onChange({ planningPhase: { ...value.planningPhase, riskProfile } })} />
+        </Section>
+        <Section title="Property CAP / NNN investment">
+          <TextAreaField label="Description" value={value.propertyCap?.description} onChange={(description) => onChange({ propertyCap: { ...value.propertyCap, description } })} />
+          <TextField label="Typical cap rate range" value={value.propertyCap?.capRateRange} onChange={(capRateRange) => onChange({ propertyCap: { ...value.propertyCap, capRateRange } })} />
+          <TextField label="Lease structure" value={value.propertyCap?.leaseStructure} onChange={(leaseStructure) => onChange({ propertyCap: { ...value.propertyCap, leaseStructure } })} />
+          <TextField label="Passive-income note" value={value.propertyCap?.passiveIncomeNote} onChange={(passiveIncomeNote) => onChange({ propertyCap: { ...value.propertyCap, passiveIncomeNote } })} />
         </Section>
       </>
     ),

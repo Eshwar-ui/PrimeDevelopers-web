@@ -8,6 +8,7 @@ import { useSection, useProperties } from '../context/ContentContext'
 import { renderEmphasis } from '../lib/emphasis'
 import SocialIcon from './SocialIcon'
 import TexasMap from './TexasMap'
+import FooterSimilarProperties from './FooterSimilarProperties'
 import logo from '../assets/prime-logo.svg'
 import watermark from '../assets/watermark-p.svg'
 
@@ -231,6 +232,8 @@ export default function Footer() {
           />
 
           <div className="relative z-10 mx-auto max-w-6xl">
+            <FooterSimilarProperties properties={properties} />
+
             <div className="grid gap-12 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1.6fr)] lg:gap-16">
               {/* ── Identity ─────────────────────────────────────────────── */}
               <div data-col>

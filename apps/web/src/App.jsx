@@ -8,6 +8,7 @@ import Hero from './components/Hero'
 import Partners from './components/Partners'
 
 import FeaturedProperty from './components/FeaturedProperty'
+import AvailableUnits from './components/AvailableUnits'
 import Properties from './components/Properties'
 import Services from './components/Services'
 import AcademyTeaser from './components/AcademyTeaser'
@@ -32,6 +33,12 @@ import LandingParallaxChapter from './components/LandingParallaxChapter'
 // navigation costs a fraction of what carrying it on every first paint does.
 const AboutPage = lazy(() => import('./pages/AboutPage'))
 const EnterprisePage = lazy(() => import('./pages/EnterprisePage'))
+const InteriorsPage = lazy(() => import('./pages/InteriorsPage'))
+const InteriorsTypologyPage = lazy(() => import('./pages/InteriorsTypologyPage'))
+const InteriorsGalleryPage = lazy(() => import('./pages/InteriorsGalleryPage'))
+const FranchisePage = lazy(() => import('./pages/FranchisePage'))
+const CollabPage = lazy(() => import('./pages/CollabPage'))
+const InvestPage = lazy(() => import('./pages/InvestPage'))
 const PropertiesPage = lazy(() => import('./pages/PropertiesPage'))
 const PropertyDetailPage = lazy(() => import('./pages/PropertyDetailPage'))
 const PropertyInfoPage = lazy(() => import('./pages/PropertyInfoPage'))
@@ -85,6 +92,9 @@ function Home() {
       </LandingParallaxChapter>
       <LandingParallaxChapter depth={22}>
         <FeaturedProperty />
+      </LandingParallaxChapter>
+      <LandingParallaxChapter depth={24}>
+        <AvailableUnits />
       </LandingParallaxChapter>
       <LandingParallaxChapter depth={26}>
         <Properties />
@@ -211,6 +221,12 @@ function PublicSite() {
                 <Route path="/" element={<Home />} />
                 <Route path="/about" element={<AboutPage />} />
                 <Route path="/enterprise" element={<EnterprisePage />} />
+                <Route path="/enterprise/interiors" element={<InteriorsPage />} />
+                <Route path="/enterprise/interiors/gallery" element={<InteriorsGalleryPage />} />
+                <Route path="/enterprise/interiors/:slug" element={<InteriorsTypologyPage />} />
+                <Route path="/enterprise/franchise" element={<FranchisePage />} />
+                <Route path="/enterprise/collab" element={<CollabPage />} />
+                <Route path="/enterprise/invest" element={<InvestPage />} />
                 <Route path="/properties" element={<PropertiesPage />} />
                 <Route path="/properties/:slug" element={<PropertyDetailPage />} />
                 {/* The media set behind a listing — site plan, floor plans, rate

@@ -57,10 +57,10 @@ const DEFAULTS = {
     paragraph:
       'From transforming spaces to building partnerships and investment opportunities, we offer flexible ways to create long-term value together.',
     items: [
-      { title: 'Interiors', image: '', href: '/enterprise' },
-      { title: 'Collaborations', image: '', href: '/enterprise' },
-      { title: 'Franchise', image: '', href: '/enterprise' },
-      { title: 'Invest', image: '', href: '/contact' },
+      { title: 'Interiors', image: '', href: '/enterprise/interiors' },
+      { title: 'Collaborations', image: '', href: '/enterprise/collab' },
+      { title: 'Franchise', image: '', href: '/enterprise/franchise' },
+      { title: 'Invest', image: '', href: '/enterprise/invest' },
     ],
   },
   academy: {
@@ -117,7 +117,7 @@ const DEFAULTS = {
   // this section's heading and paragraph, and renaming the key would strand
   // them. What the section shows has widened: journal posts merge with `items`,
   // which are social posts an admin has pointed at by URL.
-  news_home: {
+  news_home: {
     heading: 'Latest from Prime',
     paragraph:
       'Site progress, leasing news and open days — from our journal and across our channels.',
@@ -199,27 +199,220 @@ const DEFAULTS = {
         title: 'Interiors',
         image: '/images/expertise/interiors.webp',
         body: 'Bespoke interior design and fit-out, handled in-house. The team that delivers the shell finishes the space, so specification, procurement and snagging answer to one contract rather than three — and the detail you were shown is the detail you get.',
-      },
-      {
-        title: 'Collaborations',
-        image: '/images/expertise/collaborations.webp',
-        body: 'Joint development with landowners and partner developers. You bring the land or the capital; we bring entitlement, design and delivery, structured as a genuine partnership with terms agreed before a drawing is issued.',
+        href: '/enterprise/interiors',
       },
       {
         title: 'Franchise',
         image: '/images/expertise/franchise.webp',
         body: 'Operate under the Prime name in your own market. Partners take on our processes, supplier network and brand system with hands-on onboarding, held to the standards that earned the name in the first place.',
+        href: '/enterprise/franchise',
+      },
+      {
+        title: 'Collab',
+        image: '/images/expertise/collaborations.webp',
+        body: 'Joint development with landowners and partner developers. You bring the land or the capital; we bring entitlement, design and delivery, structured as a genuine partnership with terms agreed before a drawing is issued.',
+        href: '/enterprise/collab',
       },
       {
         title: 'Invest',
         image: '/images/expertise/invest.webp',
         body: 'Participate in our commercial and residential pipeline. Opportunities are presented with the whole picture — hold period, exit assumptions, and the risks set out beside the returns — so you can weigh them on the same terms we do.',
+        href: '/enterprise/invest',
       },
     ],
     stats: [],
     closingHeading: 'Tell us which door you want to come through',
     closingLabel: 'Start a conversation',
     closingHref: '/contact',
+  },
+  // The Interiors catalog — /enterprise/interiors and its typology detail
+  // pages. Ships with a handful of realistic seed options per tier, the same
+  // way `academy` ships with 3 seed terms rather than a full glossary: enough
+  // for the template to render correctly, with the rest added by the admin
+  // once real photography and pricing exist.
+  interiors_page: {
+    heading: 'Finish your space, your way',
+    paragraph:
+      'Three tiers of interior finish-outs, priced per square foot and ready to compare. Browse by tier, see real examples, and fold a finish package into your unit enquiry.',
+    options: [
+      {
+        slug: 'polished-concrete-warm-gray',
+        tier: 'Basic',
+        name: 'Polished Concrete — Warm Gray',
+        category: 'Flooring',
+        pricePerSqft: '4.50',
+        thumbnail: '/images/expertise/interiors.webp',
+        beforeImage: '',
+        heroImage: '/images/expertise/interiors.webp',
+        images: [],
+        description:
+          'A ground-and-sealed concrete slab finished to a warm gray tone. Durable, low-maintenance, and suited to retail and light-industrial units that see heavy foot or cart traffic.',
+        videoUrl: '',
+        specs: [
+          { label: 'Material', value: 'Sealed polished concrete' },
+          { label: 'Maintenance', value: 'Dust-mop and damp-mop; reseal every 3–5 years' },
+        ],
+      },
+      {
+        slug: 'painted-drywall-bright-white',
+        tier: 'Basic',
+        name: 'Painted Drywall — Bright White',
+        category: 'Wall finish',
+        pricePerSqft: '2.25',
+        thumbnail: '/images/expertise/interiors.webp',
+        beforeImage: '',
+        heroImage: '/images/expertise/interiors.webp',
+        images: [],
+        description:
+          'Taped, floated and painted drywall in a bright, neutral white. The standard base finish for a unit that will carry its own branding or signage.',
+        videoUrl: '',
+        specs: [
+          { label: 'Material', value: 'Level-4 finish drywall, eggshell paint' },
+          { label: 'Maintenance', value: 'Wipe-clean; touch-up paint as needed' },
+        ],
+      },
+      {
+        slug: 'luxury-vinyl-plank-natural-oak',
+        tier: 'Mid-range',
+        name: 'Luxury Vinyl Plank — Natural Oak',
+        category: 'Flooring',
+        pricePerSqft: '7.80',
+        thumbnail: '/images/expertise/interiors.webp',
+        beforeImage: '',
+        heroImage: '/images/expertise/interiors.webp',
+        images: [],
+        description:
+          'A wood-look waterproof vinyl plank in a natural oak tone. Warmer underfoot than concrete or tile, with the durability to suit office and showroom space.',
+        videoUrl: '',
+        specs: [
+          { label: 'Material', value: 'Rigid-core luxury vinyl plank, 20 mil wear layer' },
+          { label: 'Maintenance', value: 'Sweep and damp-mop; no refinishing required' },
+        ],
+      },
+      {
+        slug: 'acoustic-ceiling-standard-grid',
+        tier: 'Mid-range',
+        name: 'Suspended Acoustic Ceiling — Standard Grid',
+        category: 'Ceiling',
+        pricePerSqft: '5.20',
+        thumbnail: '/images/expertise/interiors.webp',
+        beforeImage: '',
+        heroImage: '/images/expertise/interiors.webp',
+        images: [],
+        description:
+          'A standard 2×2 suspended grid with acoustic tile, concealing mechanical and electrical runs while damping sound between adjoining suites.',
+        videoUrl: '',
+        specs: [
+          { label: 'Material', value: '2×2 mineral-fiber acoustic tile, white grid' },
+          { label: 'Maintenance', value: 'Replace individual tiles as needed' },
+        ],
+      },
+      {
+        slug: 'engineered-hardwood-walnut',
+        tier: 'High-end',
+        name: 'Engineered Hardwood — Wide Plank Walnut',
+        category: 'Flooring',
+        pricePerSqft: '16.75',
+        thumbnail: '/images/expertise/interiors.webp',
+        beforeImage: '',
+        heroImage: '/images/expertise/interiors.webp',
+        images: [],
+        description:
+          'Wide-plank engineered walnut with a low-sheen finish, for a flagship retail floor, private office, or reception area where the flooring itself is part of the brand.',
+        videoUrl: '',
+        specs: [
+          { label: 'Material', value: 'Engineered walnut, 7.5" plank, matte finish' },
+          { label: 'Maintenance', value: 'Sweep and dry-mop; avoid standing water' },
+        ],
+      },
+      {
+        slug: 'glass-storefront-partition',
+        tier: 'High-end',
+        name: 'Glass Storefront Partition System',
+        category: 'Fixtures',
+        pricePerSqft: '28.00',
+        thumbnail: '/images/expertise/interiors.webp',
+        beforeImage: '',
+        heroImage: '/images/expertise/interiors.webp',
+        images: [],
+        description:
+          "A full-height glass partition system with slim aluminum framing, opening a suite's interior to the storefront or common corridor without sacrificing a defined lease line.",
+        videoUrl: '',
+        specs: [
+          { label: 'Material', value: 'Tempered glass, anodized aluminum frame' },
+          { label: 'Maintenance', value: 'Standard glass cleaning' },
+        ],
+      },
+    ],
+  },
+  // The finished-unit gallery ships empty rather than with example entries —
+  // each entry is a factual claim about a specific real unit ("this space was
+  // finished with these options"), which only the business can make. Same
+  // reasoning as `enterprise_page.stats` above: an invented example here would
+  // read as a real finished unit that does not exist.
+  interiors_gallery: {
+    heading: 'Finished spaces',
+    entries: [],
+  },
+  franchise_page: {
+    heroEyebrow: 'Franchise',
+    heading: 'Bring your brand to Prime',
+    paragraph:
+      'Prime Developer welcomes established franchise concepts and first-time operators into its properties — retail, food & beverage, and service-based businesses that fit a high-traffic, mixed-use setting.',
+    // Falls back to the same photograph the hub's own Franchise tile uses —
+    // see `enterprise_page.capabilities` above — rather than an empty hero.
+    heroImage: '/images/expertise/franchise.webp',
+    // Ships empty for the same reason `enterprise_page.stats` does — a listed
+    // brand and property pairing is a factual claim only the business can
+    // make. The admin adds real franchisees here as they sign.
+    existingFranchisees: [],
+    openToNew: {
+      paragraph:
+        'We work with operators at every stage — from a first location to an established regional brand — and support site selection, buildout coordination, and opening.',
+      footprintRange: '800 – 3,500 sq ft',
+      whyPartner: [
+        'A portfolio of high-traffic retail and mixed-use developments across Texas',
+        'Hands-on support through site selection, buildout, and opening',
+        'A growing network of complementary tenants and brands',
+      ],
+    },
+  },
+  collab_page: {
+    heroEyebrow: 'Collab',
+    heading: 'Build it together, own it together',
+    paragraph:
+      'Collab is not a landlord-tenant relationship. The Prime Developer co-owns and co-operates the business alongside a partner, sharing both the risk and the upside from day one.',
+    heroImage: '/images/expertise/collaborations.webp',
+    existingPartnerships: [],
+    howItWorks: {
+      contributesUs: 'Space, development capital, and delivery expertise — sourcing the site, funding the build-out, and managing construction.',
+      contributesPartner: 'The concept, day-to-day operation, and brand — running the business the partnership is built around.',
+      equitySplit:
+        'Equity and decision-making are structured deal by deal, weighted to what each side contributes in capital, sweat equity, and ongoing operating responsibility.',
+      idealPartner:
+        'An operator with a proven concept or track record, a clear stage of growth, and the capital position to share meaningfully in the investment.',
+    },
+  },
+  invest_page: {
+    heroEyebrow: 'Invest',
+    heading: 'Two ways to put capital to work',
+    paragraph:
+      'Planning-phase equity and stabilized property investment attract different investor profiles and different levels of risk. Each is explained on its own terms below.',
+    heroImage: '/images/expertise/invest.webp',
+    planningPhase: {
+      description:
+        "Entry during a property's planning or pre-development stage, at a lower cost basis, with the upside realized as the project moves through development and stabilizes.",
+      entryCost: 'Lower cost basis than a stabilized asset — capital is deployed ahead of construction.',
+      timeline: 'Multi-year horizon, tracking the project from entitlement through lease-up.',
+      riskProfile: 'Higher risk than a stabilized property, offset by the greater upside of entering before value is built in.',
+    },
+    propertyCap: {
+      description:
+        'Entry into an already-stabilized, income-producing property, earning landlord-style returns through a triple-net (NNN) lease structure — tenants cover taxes, insurance, and maintenance.',
+      capRateRange: 'Typical cap rates vary by asset and market; current ranges are shared directly with qualified investors.',
+      leaseStructure: 'Triple-net (NNN) — tenants pay their share of property taxes, insurance, and common-area maintenance.',
+      passiveIncomeNote: 'Largely passive: the lease structure keeps day-to-day operating involvement to a minimum.',
+    },
   },
   // The live row predates every key below `heroParagraph`, so these ship as
   // defaults rather than waiting on a seed — same reason about_home's film and

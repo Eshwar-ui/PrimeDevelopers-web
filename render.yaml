@@ -17,10 +17,18 @@ services:
     # page. Starter is the real cost of putting a marketing site behind an API.
     plan: starter
 
-    # The Supabase project is in ap-south-1 (Mumbai) — confirmed from the pooler
-    # hostname. Render has no Mumbai region, and Singapore is its nearest, so
-    # this is the right choice rather than merely a default. Expect ~50-80ms per
-    # database round trip; measured 76ms from here during verification.
+    # ⚠️ This no longer matches the database. Singapore was chosen when Supabase
+    # project knghxhtfkbswzhphhigy lived in ap-south-1 (Mumbai) — ~76ms per
+    # round trip. Its replacement, nrtqntqutquapydsnjbm, is in **us-east-2
+    # (Ohio)**, roughly halfway around the world from here.
+    #
+    # The value is left as `singapore` because it describes the service that is
+    # actually deployed: Render cannot move an existing service between regions,
+    # and this field is only read when a service is created from the blueprint.
+    # Editing it alone would make this file describe a deployment that does not
+    # exist. To actually close the gap, delete the service and recreate it from
+    # this blueprint with `region: ohio` — then change this line in the same
+    # commit.
     region: singapore
 
     # Repo root, not apps/api — the pnpm workspace and its lockfile live here,

@@ -166,7 +166,7 @@ const DEFAULTS = {
     ctaLabel: 'Get Started',
     ctaHref: '/contact',
     image:
-      'https://knghxhtfkbswzhphhigy.supabase.co/storage/v1/object/public/images/site/property-1.png',
+      'https://nrtqntqutquapydsnjbm.supabase.co/storage/v1/object/public/images/site/property-1.png',
   },
   footer: {
     email: '',

@@ -2,6 +2,24 @@
 
 **Written:** 30 Jul 2026 · branch `chore/monorepo-restructure`
 
+> ### 🔄 The database in this document no longer exists (2 Sep 2026)
+> Every reference below to Supabase project **`knghxhtfkbswzhphhigy`** is
+> historical. That project was deleted — its API and database hostnames both
+> stopped resolving (NXDOMAIN), the pooler answered Render with
+> `tenant/user postgres.knghxhtfkbswzhphhigy not found`, and the API
+> crash-looped until it was gone from Render's logs entirely.
+>
+> The CMS was rebuilt on **`nrtqntqutquapydsnjbm`**, in **us-east-2 (Ohio)** —
+> a different region from the ap-south-1 project this document describes, which
+> is why `render.yaml` now carries a region warning. Migrations 6–13 were
+> applied (1–5 are the superseded dev lineage), the three storage buckets
+> recreated, and content/properties/news reseeded. Rebuilding on an empty
+> database also exposed one piece of undocumented drift — see migration 13.
+>
+> Names, phases and reasoning below stand. Only the project ref, the region and
+> the storage contents changed; every uploaded asset from the old project is
+> gone. **The admin user has not been recreated yet.**
+
 ## Status at a glance
 
 | Phase | State |

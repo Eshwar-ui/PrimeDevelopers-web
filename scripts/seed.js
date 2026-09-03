@@ -216,7 +216,7 @@ async function main() {
       // string here would write a row that hides the panel's photo, which is
       // worse than no row at all.
       image:
-        'https://knghxhtfkbswzhphhigy.supabase.co/storage/v1/object/public/images/site/property-1.png',
+        'https://nrtqntqutquapydsnjbm.supabase.co/storage/v1/object/public/images/site/property-1.png',
     },
     testimonials: {
       eyebrow: 'Testimonials',

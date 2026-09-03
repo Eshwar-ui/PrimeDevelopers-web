@@ -21,14 +21,14 @@ Render reads `render.yaml` and proposes one service, `prime-developers-api`.
 ## 2. Fill in the five secrets
 
 Render prompts for every var marked `sync: false`. Values come from the
-Supabase dashboard for project `knghxhtfkbswzhphhigy`.
+Supabase dashboard for project `nrtqntqutquapydsnjbm`.
 
 | Variable | Where it comes from |
 |---|---|
 | `DATABASE_URL` | Settings → Database → **Connection pooling**. The `pooler.supabase.com` host. Used for every request. |
-| `DIRECT_URL` | Settings → Database → **Direct connection**, the `db.<ref>.supabase.co` host on 5432. Schema work only. |
+| `DIRECT_URL` | Settings → Database → **Session pooler** (port 5432), *not* "Direct connection". The `db.<ref>.supabase.co` host resolves to IPv6 only and Render's egress is IPv4, so a direct URL here fails to connect. Schema work only. |
 | `JWT_ACCESS_SECRET` | Generate: `openssl rand -hex 64`. Not from Supabase. |
-| `SUPABASE_URL` | `https://knghxhtfkbswzhphhigy.supabase.co` |
+| `SUPABASE_URL` | `https://nrtqntqutquapydsnjbm.supabase.co` |
 | `SUPABASE_SERVICE_ROLE_KEY` | Settings → API → `service_role`. **Server only** — never give this a `VITE_` prefix. |
 
 > **Rotate first.** The database password and service-role key were pasted into

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { motion, AnimatePresence, useReducedMotion } from 'motion/react'
-import gsap from 'gsap'
+import { motion, AnimatePresence } from 'motion/react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { lenis } from '../hooks/useSmoothScroll'
 import { useSection } from '../context/ContentContext'
@@ -27,6 +26,19 @@ const EXPERTISE_SECTIONS = [
   { label: 'Invest', to: '/enterprise/invest' },
 ]
 
+function RollingNavLabel({ children }) {
+  const layerClass =
+    'block whitespace-nowrap transition-transform duration-400 ease-brand group-hover:-translate-y-full group-focus-visible:-translate-y-full motion-reduce:transform-none motion-reduce:transition-none'
+
+  return (
+    <span className="relative block overflow-hidden">
+      <span className={layerClass}>{children}</span>
+      <span aria-hidden className={'absolute left-0 top-full ' + layerClass + ' motion-reduce:hidden'}>
+        {children}
+      </span>
+    </span>
+  )
+}
 // The rail used to sit short on the homepage and widen as you scrolled, so it
 // fitted inside the bay the old hero cut out of its photograph for it. That
 // hero is gone — the new one is a full-bleed frame with nothing cut out of it —
@@ -49,7 +61,6 @@ export default function Navbar() {
   const expertiseRef = useRef(null)
   const navigate = useNavigate()
   const { pathname } = useLocation()
-  const prefersReducedMotion = useReducedMotion()
   // Touch has no real :hover-leave, so the CSS-only submenu below has nothing
   // to tell it to close once a tap has triggered :hover. Devices without a
   // fine, always-on pointer get a JS-driven toggle instead; genuine mouse
@@ -141,24 +152,6 @@ export default function Navbar() {
       ? pathname === link.to || (link.to === EXPERTISE_LINK_TO && pathname.startsWith(`${EXPERTISE_LINK_TO}/`))
       : pathname === '/' && active === link.section
 
-  const animateNavLabel = (event, entering) => {
-    const label = event.currentTarget.querySelector('[data-nav-label]')
-    if (!label) return
-
-    gsap.killTweensOf(label)
-    if (prefersReducedMotion) {
-      gsap.set(label, { clearProps: 'transform' })
-      return
-    }
-
-    gsap.to(label, {
-      y: entering ? -2 : 0,
-      duration: entering ? 0.32 : 0.5,
-      ease: 'power4.out',
-      overwrite: true,
-      onComplete: entering ? undefined : () => gsap.set(label, { clearProps: 'transform' }),
-    })
-  }
   // Active home-section highlight.
   useEffect(() => {
     inBand.current.clear()
@@ -438,18 +431,12 @@ export default function Navbar() {
                       aria-current={isActive(link) ? 'page' : undefined}
                       aria-haspopup={hasSubmenu ? 'true' : undefined}
                       aria-expanded={hasSubmenu ? expertiseOpen : undefined}
-                      onMouseEnter={(event) => animateNavLabel(event, true)}
-                      onMouseLeave={(event) => animateNavLabel(event, false)}
-                      onFocus={(event) => animateNavLabel(event, true)}
-                      onBlur={(event) => animateNavLabel(event, false)}
                       className={`group relative flex items-center gap-1.5 rounded-sm py-2 font-body text-[15px] font-medium transition-colors duration-200 ease-brand focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent ${
                         isActive(link) ? current : idle
                       }`}
                     >
                       <span aria-hidden className="pointer-events-none absolute inset-x-1 top-1/2 h-5 -translate-y-1/2 scale-x-75 rounded-full bg-accent/15 opacity-0 blur-md transition-[opacity,transform] duration-500 ease-brand group-hover:scale-x-110 group-hover:opacity-100 group-focus-visible:scale-x-110 group-focus-visible:opacity-100 motion-reduce:transition-opacity" />
-                      <span data-nav-label className="relative block">
-                        {link.label}
-                      </span>
+                      <RollingNavLabel>{link.label}</RollingNavLabel>
                       {hasSubmenu && (
                         <svg
                           viewBox="0 0 24 24"

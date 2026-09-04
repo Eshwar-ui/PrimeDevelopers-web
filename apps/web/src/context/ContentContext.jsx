@@ -464,6 +464,57 @@ const DEFAULTS = {
       ],
     },
   },
+  // Placeholder quotes so the section has something to show before an admin
+  // seeds real ones — replace or clear from Content → Franchise testimonials.
+  franchise_testimonials: {
+    eyebrow: 'Franchisee Testimonials',
+    heading: 'Hear from our franchise partners',
+    paragraph:
+      'What it actually feels like to open and run a brand inside a Prime Developer property.',
+    items: [
+      {
+        quote:
+          'Prime handled the buildout timeline and coordination end to end, so we could focus entirely on hiring and training before opening day.',
+        name: 'Sample Testimonial 1',
+        role: 'Franchise Owner · Placeholder Brand',
+        rating: 5,
+        avatar: '',
+      },
+      {
+        quote:
+          'The foot traffic and tenant mix they built around us made this our strongest-performing location within the first year.',
+        name: 'Sample Testimonial 2',
+        role: 'Regional Operator · Placeholder Brand',
+        rating: 5,
+        avatar: '',
+      },
+    ],
+  },
+  // Same placeholder pattern as above — replace from Content → Collab testimonials.
+  collab_testimonials: {
+    eyebrow: 'Partner Testimonials',
+    heading: 'Hear from our operating partners',
+    paragraph:
+      'What it actually feels like to build and run a business alongside Prime Developer.',
+    items: [
+      {
+        quote:
+          'This never felt like a landlord relationship. Prime was at the table for every major decision, sharing the risk right alongside us.',
+        name: 'Sample Testimonial 1',
+        role: 'Managing Partner · Placeholder Ventures',
+        rating: 5,
+        avatar: '',
+      },
+      {
+        quote:
+          'They brought the site, the capital, and the construction expertise — we brought the concept. The split made sense from day one.',
+        name: 'Sample Testimonial 2',
+        role: 'Co-Founder · Placeholder Concept',
+        rating: 5,
+        avatar: '',
+      },
+    ],
+  },
   collab_page: {
     heroEyebrow: 'Collab',
     heading: 'Build it together, own it together',
@@ -499,7 +550,37 @@ const DEFAULTS = {
       capRateRange: 'Typical cap rates vary by asset and market; current ranges are shared directly with qualified investors.',
       leaseStructure: 'Triple-net (NNN) — tenants pay their share of property taxes, insurance, and common-area maintenance.',
       passiveIncomeNote: 'Largely passive: the lease structure keeps day-to-day operating involvement to a minimum.',
+      // Ships empty for the same reason `enterprise_page.stats` does — a listed
+      // CAP/NNN opportunity is a claim about a specific real property that
+      // only the business can make. The admin points this at real listings by
+      // slug as they're structured for stabilized-property investment.
+      properties: [],
     },
+  },
+  // Same placeholder pattern as the other testimonial sections — replace from
+  // Content → Invest testimonials.
+  invest_testimonials: {
+    eyebrow: 'Investor Testimonials',
+    heading: 'Hear from our investors',
+    paragraph: 'What it actually feels like to put capital to work alongside Prime Developer.',
+    items: [
+      {
+        quote:
+          'Reporting was clear from the start and every milestone update matched what we were told to expect going in.',
+        name: 'Sample Testimonial 1',
+        role: 'Individual Investor · Planning-Phase Equity',
+        rating: 5,
+        avatar: '',
+      },
+      {
+        quote:
+          'The NNN structure has been exactly as advertised — consistent, largely passive returns with none of the operating overhead.',
+        name: 'Sample Testimonial 2',
+        role: 'Entity Investor · Property CAP / NNN',
+        rating: 5,
+        avatar: '',
+      },
+    ],
   },
   // The live row predates every key below `heroParagraph`, so these ship as
   // defaults rather than waiting on a seed — same reason about_home's film and

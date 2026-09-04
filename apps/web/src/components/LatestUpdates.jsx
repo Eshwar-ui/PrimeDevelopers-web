@@ -9,6 +9,7 @@ import { platformMeta } from '../lib/platforms'
 // updates. Responsive card widths leave the next item within reach instead of
 // turning the section into a second archive grid.
 const MAX_CARDS = 6
+const FOLLOW_PLATFORMS = ['instagram', 'facebook', 'x', 'youtube', 'whatsapp']
 
 // Missing and unparseable dates both sort last rather than to 1970 — an update
 // nobody dated should fall to the end of the stream, not the head of it.
@@ -98,11 +99,7 @@ export default function LatestUpdates() {
   // is where the real WhatsApp number happens to live. Deduped by label,
   // preferring whichever entry has a URL that actually goes somewhere, so a
   // placeholder '#' in one list never wins over a real link in the other.
-  //
-  // Then filtered to real links only. A follow row is a promise that these go
-  // somewhere; rendering the four seeded '#' placeholders would put four dead
-  // buttons on the homepage under the company's own name.
-  const follow = Object.values(
+  const socialByPlatform =
     [...socials, ...contactSocials].reduce((acc, s) => {
       const key = (s.label ?? '').trim().toLowerCase()
       if (!key) return acc
@@ -110,7 +107,15 @@ export default function LatestUpdates() {
       if (!acc[key] || (real(s.href) && !real(acc[key].href))) acc[key] = s
       return acc
     }, {})
-  ).filter((s) => s.href && s.href !== '#')
+
+  // Keep the requested channels visible even before every profile URL has
+  // been entered in the CMS. Missing links render as non-interactive pills;
+  // once an editor adds a real URL, the same pill becomes an external link.
+  const follow = FOLLOW_PLATFORMS.map((platform) => ({
+    platform,
+    label: platformMeta(platform).label,
+    href: socialByPlatform[platform]?.href,
+  }))
 
   useEffect(() => {
     const rail = railRef.current
@@ -318,24 +323,33 @@ export default function LatestUpdates() {
               {followText}
             </p>
             <ul className="flex flex-wrap items-center gap-2.5">
-              {follow.map((s) => (
-                <li key={s.label}>
-                  <a
-                    href={s.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex min-h-11 items-center gap-2.5 rounded-full border border-content/20 px-4 font-body text-[13px] font-medium text-content/75 outline-none transition-[color,border-color,background-color] duration-300 ease-brand hover:border-accent hover:bg-accent/10 hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                  >
-                    <SocialIcon
-                      platform={s.label}
-                      className="size-4 shrink-0"
-                      style={{ color: platformMeta((s.label ?? '').trim().toLowerCase()).tint }}
-                    />
-                    {s.label}
-                    <span className="sr-only">(opens in a new tab)</span>
-                  </a>
-                </li>
-              ))}
+              {follow.map((s) => {
+                const linked = Boolean(s.href) && s.href !== '#'
+                const Wrapper = linked ? 'a' : 'span'
+
+                return (
+                  <li key={s.platform}>
+                    <Wrapper
+                      {...(linked
+                        ? { href: s.href, target: '_blank', rel: 'noopener noreferrer' }
+                        : { 'aria-disabled': true, title: `${s.label} link coming soon` })}
+                      className={`inline-flex min-h-11 items-center gap-2.5 rounded-full border px-4 font-body text-[13px] font-medium outline-none transition-[color,border-color,background-color] duration-300 ease-brand ${
+                        linked
+                          ? 'border-content/20 text-content/75 hover:border-accent hover:bg-accent/10 hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
+                          : 'cursor-default border-content/10 text-content/45'
+                      }`}
+                    >
+                      <SocialIcon
+                        platform={s.platform}
+                        className="size-4 shrink-0"
+                        style={{ color: platformMeta(s.platform).tint }}
+                      />
+                      {s.label}
+                      {linked && <span className="sr-only">(opens in a new tab)</span>}
+                    </Wrapper>
+                  </li>
+                )
+              })}
             </ul>
           </div>
         )}

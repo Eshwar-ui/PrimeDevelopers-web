@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ArrowRight from './ArrowRight'
+import CustomSelect from './CustomSelect'
 import { api } from '../lib/api'
 
 // The base four fields every source shares. `company` is folded into the
@@ -18,22 +19,28 @@ const FIELD_LABEL = 'font-display text-[15px] font-semibold text-content'
 
 function ExtraField({ field }) {
   if (field.type === 'select') {
+    const options = field.options.map((option) => ({
+      value: option.value ?? option,
+      label: option.label ?? option,
+    }))
+
     return (
-      <select name={field.name} required={field.required} defaultValue="" className={FIELD}>
-        <option value="" disabled>
-          {field.placeholder || 'Select one'}
-        </option>
-        {field.options.map((option) => (
-          <option key={option.value ?? option} value={option.value ?? option}>
-            {option.label ?? option}
-          </option>
-        ))}
-      </select>
+      <CustomSelect
+        id={field.name}
+        label={field.label}
+        name={field.name}
+        required={field.required}
+        defaultValue=""
+        placeholder={field.placeholder || 'Select one'}
+        options={options}
+        variant="form"
+      />
     )
   }
   if (field.type === 'textarea') {
     return (
       <textarea
+        id={field.name}
         name={field.name}
         rows={3}
         required={field.required}
@@ -44,6 +51,7 @@ function ExtraField({ field }) {
   }
   return (
     <input
+      id={field.name}
       name={field.name}
       type={field.type || 'text'}
       required={field.required}
@@ -178,10 +186,13 @@ export default function QuoteForm({
               ))}
 
               {extraFields.map((field) => (
-                <label key={field.name} className={`flex flex-col gap-2 ${field.fullWidth ? 'sm:col-span-2' : ''}`}>
-                  <span className={FIELD_LABEL}>{field.label}</span>
+                <div
+                  key={field.name}
+                  className={'flex flex-col gap-2 ' + (field.fullWidth ? 'sm:col-span-2' : '')}
+                >
+                  <label htmlFor={field.name} className={FIELD_LABEL}>{field.label}</label>
                   <ExtraField field={field} />
-                </label>
+                </div>
               ))}
 
               <label className="flex flex-col gap-2 sm:col-span-2">

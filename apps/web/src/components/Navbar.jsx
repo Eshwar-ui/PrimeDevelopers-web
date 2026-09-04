@@ -44,10 +44,19 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [whatsappOpen, setWhatsappOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
+  const [expertiseOpen, setExpertiseOpen] = useState(false)
   const inBand = useRef(new Set())
+  const expertiseRef = useRef(null)
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const prefersReducedMotion = useReducedMotion()
+  // Touch has no real :hover-leave, so the CSS-only submenu below has nothing
+  // to tell it to close once a tap has triggered :hover. Devices without a
+  // fine, always-on pointer get a JS-driven toggle instead; genuine mouse
+  // users keep the zero-JS hover behaviour untouched.
+  const [supportsHover] = useState(
+    () => typeof window !== 'undefined' && (window.matchMedia?.('(hover: hover) and (pointer: fine)').matches ?? true)
+  )
 
   useEffect(() => {
     if (!menuOpen) return undefined
@@ -67,6 +76,22 @@ export default function Navbar() {
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [whatsappOpen])
+
+  useEffect(() => {
+    if (!expertiseOpen) return undefined
+    const onPointerDown = (event) => {
+      if (expertiseRef.current && !expertiseRef.current.contains(event.target)) setExpertiseOpen(false)
+    }
+    const onKeyDown = (event) => event.key === 'Escape' && setExpertiseOpen(false)
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [expertiseOpen])
+
+  useEffect(() => setExpertiseOpen(false), [pathname])
 
   // The lockup doubles as the Home link, so the rail only needs an explicit
   // Home entry when the admin-managed list doesn't already carry one.
@@ -376,12 +401,43 @@ export default function Navbar() {
               {navLinks.map((link) => {
                 const hasSubmenu = link.to === EXPERTISE_LINK_TO
                 return (
-                  <li key={link.label} className={hasSubmenu ? 'group/sub relative' : undefined}>
+                  <li
+                    key={link.label}
+                    ref={hasSubmenu ? expertiseRef : undefined}
+                    className={hasSubmenu ? 'group/sub relative' : undefined}
+                    // Visibility is driven entirely by `expertiseOpen`, not CSS
+                    // :hover — a client-side route change doesn't move the
+                    // pointer, so a still-hovered panel would otherwise have
+                    // nothing telling it the selection was already made.
+                    onMouseEnter={hasSubmenu && supportsHover ? () => setExpertiseOpen(true) : undefined}
+                    onMouseLeave={hasSubmenu && supportsHover ? () => setExpertiseOpen(false) : undefined}
+                    onFocus={hasSubmenu ? () => setExpertiseOpen(true) : undefined}
+                    onBlur={
+                      hasSubmenu
+                        ? (e) => {
+                            if (!e.currentTarget.contains(e.relatedTarget)) setExpertiseOpen(false)
+                          }
+                        : undefined
+                    }
+                  >
                     <a
                       href={link.to ?? `/#${link.section}`}
-                      onClick={(e) => handleNav(e, link)}
+                      onClick={(e) => {
+                        // A touch tap can't hover, so the first tap only opens
+                        // the panel; a second tap (or a mouse click, which
+                        // never sets this — the hover handler above already
+                        // opened it) falls through to the normal navigate.
+                        if (hasSubmenu && !supportsHover && !expertiseOpen) {
+                          e.preventDefault()
+                          setExpertiseOpen(true)
+                          return
+                        }
+                        setExpertiseOpen(false)
+                        handleNav(e, link)
+                      }}
                       aria-current={isActive(link) ? 'page' : undefined}
                       aria-haspopup={hasSubmenu ? 'true' : undefined}
+                      aria-expanded={hasSubmenu ? expertiseOpen : undefined}
                       onMouseEnter={(event) => animateNavLabel(event, true)}
                       onMouseLeave={(event) => animateNavLabel(event, false)}
                       onFocus={(event) => animateNavLabel(event, true)}
@@ -401,7 +457,9 @@ export default function Navbar() {
                           stroke="currentColor"
                           strokeWidth="2.2"
                           aria-hidden
-                          className="relative size-3 shrink-0 transition-transform duration-300 ease-brand group-hover/sub:rotate-180"
+                          className={`relative size-3 shrink-0 transition-transform duration-300 ease-brand ${
+                            expertiseOpen ? 'rotate-180' : ''
+                          }`}
                         >
                           <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
                         </svg>
@@ -421,13 +479,20 @@ export default function Navbar() {
                       // below the link, and without padding standing in for
                       // that gap the pointer leaving the link's box on its way
                       // down closes the menu before it ever reaches it.
-                      <div className="absolute left-1/2 top-full w-56 -translate-x-1/2 pt-3 opacity-0 invisible translate-y-1 transition-[opacity,transform] duration-200 ease-brand group-hover/sub:visible group-hover/sub:translate-y-0 group-hover/sub:opacity-100 group-focus-within/sub:visible group-focus-within/sub:translate-y-0 group-focus-within/sub:opacity-100">
+                      <div
+                        className={`absolute left-1/2 top-full w-56 -translate-x-1/2 pt-3 transition-[opacity,transform] duration-200 ease-brand ${
+                          expertiseOpen ? 'visible translate-y-0 opacity-100' : 'invisible translate-y-1 opacity-0'
+                        }`}
+                      >
                         <ul className="overflow-hidden rounded-2xl border border-line bg-surface p-1.5 shadow-[0_30px_70px_-30px_rgba(0,0,0,0.45)]">
                           {EXPERTISE_SECTIONS.map((section) => (
                             <li key={section.to}>
                               <a
                                 href={section.to}
-                                onClick={(e) => handleNav(e, section)}
+                                onClick={(e) => {
+                                  setExpertiseOpen(false)
+                                  handleNav(e, section)
+                                }}
                                 className="block rounded-xl px-4 py-2.5 font-body text-[14px] font-semibold text-content/70 transition-colors duration-150 hover:bg-accent/10 hover:text-accent"
                               >
                                 {section.label}

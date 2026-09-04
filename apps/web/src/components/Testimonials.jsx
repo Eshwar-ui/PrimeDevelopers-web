@@ -73,13 +73,13 @@ function ParallaxWatermark({ index }) {
   )
 }
 
-export default function Testimonials() {
-  const { eyebrow, heading, paragraph, items } = useSection('testimonials')
+export default function Testimonials({ sectionKey = 'testimonials', id = 'testimonials' }) {
+  const { eyebrow, heading, paragraph, items } = useSection(sectionKey)
 
   if (!items?.length) return null
 
   return (
-    <section id="testimonials" className="bg-base px-gutter py-20 text-content md:px-gutter-lg md:py-24 lg:py-28">
+    <section id={id} className="bg-base px-gutter py-20 text-content md:px-gutter-lg md:py-24 lg:py-28">
       <div className="mx-auto max-w-[1560px]">
         <header className="mx-auto flex max-w-[1040px] flex-col items-center text-center">
           {eyebrow && (
@@ -103,9 +103,16 @@ export default function Testimonials() {
           )}
         </header>
 
-        <ul className="mt-14 grid gap-6 md:mt-16 md:grid-cols-2 xl:grid-cols-3 xl:gap-7">
+        <ul
+          aria-label="Client testimonials"
+          tabIndex={0}
+          className="mt-14 flex snap-x snap-proximity gap-6 overflow-x-auto overscroll-x-contain pb-5 scroll-smooth outline-none [scrollbar-color:color-mix(in_srgb,var(--color-content)_22%,transparent)_transparent] [scrollbar-width:thin] focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-4 focus-visible:ring-offset-base md:mt-16 xl:gap-7"
+        >
           {items.map((testimonial, index) => (
-            <li key={testimonial.name} className="min-w-0">
+            <li
+              key={testimonial.name}
+              className="w-[88%] shrink-0 snap-start sm:w-[70%] md:w-[calc((100%-1.5rem)/2)] xl:w-[calc((100%-3.5rem)/3)]"
+            >
               <figure className="group relative flex h-full min-h-[390px] flex-col overflow-hidden rounded-[20px] bg-[#141e22] px-8 py-9 shadow-[0_14px_40px_-28px_rgba(0,0,0,0.8)] transition-[transform,box-shadow] duration-500 ease-brand hover:-translate-y-1 hover:shadow-[0_24px_54px_-28px_rgba(0,0,0,0.95)] motion-reduce:transform-none md:px-9 md:py-10">
                 <ParallaxWatermark index={index} />
 

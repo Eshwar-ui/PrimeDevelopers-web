@@ -324,6 +324,108 @@ export const SECTIONS = [
     ),
   },
   {
+    key: 'franchise_testimonials',
+    label: 'Franchise testimonials',
+    description: 'Franchisee quotes on the /enterprise/franchise page.',
+    Editor: ({ value, onChange }) => (
+      <>
+        <Section title="Copy">
+          <TextField label="Eyebrow" value={value.eyebrow} onChange={(eyebrow) => onChange({ eyebrow })} />
+          <TextField label="Heading" value={value.heading} onChange={(heading) => onChange({ heading })} />
+          <TextAreaField label="Paragraph" value={value.paragraph} onChange={(paragraph) => onChange({ paragraph })} />
+        </Section>
+        <Section title="Quotes">
+          <RepeatableList
+            items={value.items}
+            onChange={(items) => onChange({ items })}
+            makeItem={() => ({ quote: '', name: '', role: '', avatar: '', rating: 5 })}
+            addLabel="Add testimonial"
+            renderItem={(item, set) => (
+              <div className="flex flex-col gap-3">
+                <TextAreaField label="Quote" value={item.quote} onChange={(quote) => set({ ...item, quote })} />
+                <div className="grid grid-cols-2 gap-3">
+                  <TextField label="Name" value={item.name} onChange={(name) => set({ ...item, name })} />
+                  <TextField label="Role" value={item.role} onChange={(role) => set({ ...item, role })} />
+                </div>
+                <TextField label="Rating (0–5)" type="number" value={item.rating ?? 5} onChange={(rating) => set({ ...item, rating })} />
+                <ImageUploader label="Portrait" value={item.avatar} onChange={(avatar) => set({ ...item, avatar })} folder="site/testimonials" />
+                <p className="-mt-3 text-[11px] text-bone-3">Optional — initials are shown when no portrait is uploaded.</p>
+              </div>
+            )}
+          />
+        </Section>
+      </>
+    ),
+  },
+  {
+    key: 'collab_testimonials',
+    label: 'Collab testimonials',
+    description: 'Partner quotes on the /enterprise/collab page.',
+    Editor: ({ value, onChange }) => (
+      <>
+        <Section title="Copy">
+          <TextField label="Eyebrow" value={value.eyebrow} onChange={(eyebrow) => onChange({ eyebrow })} />
+          <TextField label="Heading" value={value.heading} onChange={(heading) => onChange({ heading })} />
+          <TextAreaField label="Paragraph" value={value.paragraph} onChange={(paragraph) => onChange({ paragraph })} />
+        </Section>
+        <Section title="Quotes">
+          <RepeatableList
+            items={value.items}
+            onChange={(items) => onChange({ items })}
+            makeItem={() => ({ quote: '', name: '', role: '', avatar: '', rating: 5 })}
+            addLabel="Add testimonial"
+            renderItem={(item, set) => (
+              <div className="flex flex-col gap-3">
+                <TextAreaField label="Quote" value={item.quote} onChange={(quote) => set({ ...item, quote })} />
+                <div className="grid grid-cols-2 gap-3">
+                  <TextField label="Name" value={item.name} onChange={(name) => set({ ...item, name })} />
+                  <TextField label="Role" value={item.role} onChange={(role) => set({ ...item, role })} />
+                </div>
+                <TextField label="Rating (0–5)" type="number" value={item.rating ?? 5} onChange={(rating) => set({ ...item, rating })} />
+                <ImageUploader label="Portrait" value={item.avatar} onChange={(avatar) => set({ ...item, avatar })} folder="site/testimonials" />
+                <p className="-mt-3 text-[11px] text-bone-3">Optional — initials are shown when no portrait is uploaded.</p>
+              </div>
+            )}
+          />
+        </Section>
+      </>
+    ),
+  },
+  {
+    key: 'invest_testimonials',
+    label: 'Invest testimonials',
+    description: 'Investor quotes on the /enterprise/invest page.',
+    Editor: ({ value, onChange }) => (
+      <>
+        <Section title="Copy">
+          <TextField label="Eyebrow" value={value.eyebrow} onChange={(eyebrow) => onChange({ eyebrow })} />
+          <TextField label="Heading" value={value.heading} onChange={(heading) => onChange({ heading })} />
+          <TextAreaField label="Paragraph" value={value.paragraph} onChange={(paragraph) => onChange({ paragraph })} />
+        </Section>
+        <Section title="Quotes">
+          <RepeatableList
+            items={value.items}
+            onChange={(items) => onChange({ items })}
+            makeItem={() => ({ quote: '', name: '', role: '', avatar: '', rating: 5 })}
+            addLabel="Add testimonial"
+            renderItem={(item, set) => (
+              <div className="flex flex-col gap-3">
+                <TextAreaField label="Quote" value={item.quote} onChange={(quote) => set({ ...item, quote })} />
+                <div className="grid grid-cols-2 gap-3">
+                  <TextField label="Name" value={item.name} onChange={(name) => set({ ...item, name })} />
+                  <TextField label="Role" value={item.role} onChange={(role) => set({ ...item, role })} />
+                </div>
+                <TextField label="Rating (0–5)" type="number" value={item.rating ?? 5} onChange={(rating) => set({ ...item, rating })} />
+                <ImageUploader label="Portrait" value={item.avatar} onChange={(avatar) => set({ ...item, avatar })} folder="site/testimonials" />
+                <p className="-mt-3 text-[11px] text-bone-3">Optional — initials are shown when no portrait is uploaded.</p>
+              </div>
+            )}
+          />
+        </Section>
+      </>
+    ),
+  },
+  {
     key: 'news_home',
     label: 'Latest updates (homepage)',
     description:
@@ -957,6 +1059,17 @@ export const SECTIONS = [
           <TextField label="Typical cap rate range" value={value.propertyCap?.capRateRange} onChange={(capRateRange) => onChange({ propertyCap: { ...value.propertyCap, capRateRange } })} />
           <TextField label="Lease structure" value={value.propertyCap?.leaseStructure} onChange={(leaseStructure) => onChange({ propertyCap: { ...value.propertyCap, leaseStructure } })} />
           <TextField label="Passive-income note" value={value.propertyCap?.passiveIncomeNote} onChange={(passiveIncomeNote) => onChange({ propertyCap: { ...value.propertyCap, passiveIncomeNote } })} />
+        </Section>
+        <Section title="CAP / NNN properties" description="Point this at properties already structured for stabilized-property investment, by slug. The page pulls each one's own name, photo, and stats — nothing is re-entered here.">
+          <RepeatableList
+            items={value.propertyCap?.properties ?? []}
+            onChange={(properties) => onChange({ propertyCap: { ...value.propertyCap, properties } })}
+            makeItem={() => ({ propertySlug: '' })}
+            addLabel="Add property"
+            renderItem={(item, set) => (
+              <TextField label="Property slug" value={item.propertySlug} onChange={(propertySlug) => set({ ...item, propertySlug })} />
+            )}
+          />
         </Section>
       </>
     ),

@@ -2,20 +2,22 @@ import { useMemo, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
-import { useSection } from '../context/ContentContext'
+import { useProperties, useSection } from '../context/ContentContext'
 import QuoteForm from '../components/QuoteForm'
+import Testimonials from '../components/Testimonials'
+import ArrowRight from '../components/ArrowRight'
 import { sized } from '../lib/images'
 
 gsap.registerPlugin(ScrollTrigger)
 
 const TRACKS = [
-  { id: 'planning-phase', number: '01', label: 'Track one', name: 'Planning-phase equity', tone: 'accent' },
-  { id: 'property-cap', number: '02', label: 'Track two', name: 'Property CAP / NNN', tone: 'ember' },
+  { id: 'planning-phase', label: 'Track one', name: 'Planning-phase equity', tone: 'accent' },
+  { id: 'property-cap', label: 'Track two', name: 'Property CAP / NNN', tone: 'ember' },
 ]
 
 const TONE = {
-  accent: { bar: 'bg-accent', chip: 'bg-accent/10 text-accent', number: 'text-accent/35', selected: 'border-accent bg-accent/10 text-accent' },
-  ember: { bar: 'bg-ember', chip: 'bg-ember/15 text-ember', number: 'text-ember/40', selected: 'border-ember bg-ember/15 text-ember' },
+  accent: { bar: 'bg-accent', text: 'text-accent', selected: 'border-accent bg-accent/10 text-accent' },
+  ember: { bar: 'bg-ember', text: 'text-ember', selected: 'border-ember bg-ember/15 text-ember' },
 }
 
 const INVESTOR_TYPE_OPTIONS = [
@@ -29,49 +31,77 @@ const ACCREDITATION_OPTIONS = [
   { value: 'unsure', label: 'Not sure' },
 ]
 
-function TrackCard({ track, data }) {
-  if (!data) return null
-  const tone = TONE[track.tone]
-  const rows = [
-    ['Entry cost', data.entryCost],
-    ['Timeline', data.timeline],
-    ['Risk profile', data.riskProfile],
-    ['Typical cap rate', data.capRateRange],
-    ['Lease structure', data.leaseStructure],
-    ['Passive income', data.passiveIncomeNote],
-  ].filter(([, value]) => value)
-
+/** The track's own facts, presented as a plain list rather than a bordered card. */
+function TrackFacts({ rows }) {
+  if (rows.length === 0) return null
   return (
-    <div data-reveal className="flex flex-col overflow-hidden rounded-panel border border-line bg-surface">
-      <span aria-hidden className={`block h-1.5 w-full ${tone.bar}`} />
-      <div className="flex flex-1 flex-col p-5 sm:p-8 md:p-9">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <span className={`inline-flex items-center rounded-full px-3 py-1 font-body text-[11px] font-bold uppercase tracking-[0.1em] ${tone.chip}`}>{track.label}</span>
-            <h2 className="mt-4 font-display text-xl font-bold leading-tight text-content sm:text-2xl">{track.name}</h2>
-          </div>
-          <span className={`font-display text-3xl font-bold tabular-nums sm:text-4xl ${tone.number}`}>{track.number}</span>
+    <dl className="grid gap-x-10 gap-y-6 border-t border-line pt-8 sm:grid-cols-2">
+      {rows.map(([label, value]) => (
+        <div key={label} className="flex flex-col gap-1.5">
+          <dt className="font-body text-[11px] font-bold uppercase tracking-[0.14em] text-content/50">{label}</dt>
+          <dd className="font-body text-[15px] leading-relaxed text-content">{value}</dd>
         </div>
-        {data.description && <p className="mt-5 font-body text-[15px] leading-relaxed text-content/70">{data.description}</p>}
-        {rows.length > 0 && (
-          <dl className="mt-7 flex flex-col gap-4 border-t border-line pt-6">
-            {rows.map(([label, value]) => (
-              <div key={label} className="flex flex-col gap-1">
-                <dt className="font-body text-[11px] font-bold uppercase tracking-[0.14em] text-content/50">{label}</dt>
-                <dd className="font-body text-[14px] leading-relaxed text-content">{value}</dd>
-              </div>
-            ))}
-          </dl>
+      ))}
+    </dl>
+  )
+}
+
+/** One CAP/NNN-structured property, resolved from the CMS's curated slug list. */
+function CapPropertyCard({ property }) {
+  const stat = (property.detail?.overview?.stats ?? [])[0]
+  return (
+    <a
+      href={`/properties/${property.slug}`}
+      className="group flex flex-col overflow-hidden rounded-panel border border-line bg-surface transition-[border-color,box-shadow] duration-500 ease-brand hover:border-ember/60 hover:shadow-[0_36px_80px_-52px_rgba(0,0,0,0.85)]"
+    >
+      <div className="relative aspect-[4/3] overflow-hidden bg-surface-alt">
+        {property.image && (
+          <img
+            src={sized(property.image, 'card')}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="absolute inset-0 size-full object-cover transition-transform duration-700 ease-brand group-hover:scale-[1.04]"
+          />
         )}
       </div>
-    </div>
+      <div className="flex flex-1 flex-col gap-1.5 p-6">
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="font-display text-lg font-bold leading-tight text-content">{property.name}</h3>
+          <ArrowRight className="mt-1 size-4 shrink-0 text-content/40 transition-[color,transform] duration-300 ease-brand group-hover:translate-x-1 group-hover:text-ember" />
+        </div>
+        {property.category && <p className="font-body text-[13px] font-semibold text-ember">{property.category}</p>}
+        {stat && (
+          <p className="mt-1 font-body text-[13px] text-content/60">
+            <span className="numeral font-bold text-content">{stat.value}</span> {stat.label}
+          </p>
+        )}
+      </div>
+    </a>
   )
 }
 
 export default function InvestPage() {
   const page = useSection('invest_page')
+  const properties = useProperties()
   const scope = useRef(null)
   const [track, setTrack] = useState('')
+
+  const planningRows = [
+    ['Entry cost', page.planningPhase?.entryCost],
+    ['Timeline', page.planningPhase?.timeline],
+    ['Risk profile', page.planningPhase?.riskProfile],
+  ].filter(([, value]) => value)
+
+  const capRows = [
+    ['Typical cap rate', page.propertyCap?.capRateRange],
+    ['Lease structure', page.propertyCap?.leaseStructure],
+    ['Passive income', page.propertyCap?.passiveIncomeNote],
+  ].filter(([, value]) => value)
+
+  const capProperties = (page.propertyCap?.properties ?? [])
+    .map((entry) => properties.find((p) => p.slug === entry.propertySlug))
+    .filter(Boolean)
 
   const extraFields = useMemo(
     () => [
@@ -89,7 +119,11 @@ export default function InvestPage() {
       gsap.from('[data-hero-copy] > *', { y: 28, opacity: 0, duration: 0.8, ease: 'power3.out', stagger: 0.1 })
       gsap.from('[data-hero-visual]', { scale: 1.1, opacity: 0, duration: 1.2, ease: 'power3.out' })
       gsap.utils.toArray('[data-reveal]').forEach((el) => {
-        gsap.from(el, { y: 32, opacity: 0, duration: 0.7, ease: 'power3.out', scrollTrigger: { trigger: el, start: 'top 84%' } })
+        gsap.fromTo(
+          el,
+          { y: 32, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.7, ease: 'power3.out', scrollTrigger: { trigger: el, start: 'top 84%' } }
+        )
       })
     },
     { scope }
@@ -116,14 +150,57 @@ export default function InvestPage() {
         </div>
       </section>
 
-      <section data-band="light" className="bg-surface-alt px-gutter py-16 md:px-gutter-lg md:py-24">
+      <section data-band="light" data-reveal className="bg-surface-alt px-gutter py-20 md:px-gutter-lg md:py-28">
         <div className="mx-auto max-w-[1360px]">
-          <div className="grid gap-6 md:grid-cols-2">
-            <TrackCard track={TRACKS[0]} data={page.planningPhase} />
-            <TrackCard track={TRACKS[1]} data={page.propertyCap} />
+          <span aria-hidden className={`block h-1 w-14 rounded-full ${TONE.accent.bar}`} />
+          <p className={`mt-6 font-body text-xs font-bold uppercase tracking-[0.14em] ${TONE.accent.text}`}>{TRACKS[0].label}</p>
+          <h2 className="mt-3 max-w-[24ch] text-balance font-display text-[clamp(1.9rem,3.5vw,3rem)] font-bold leading-[1.05] tracking-[-0.035em]">
+            {TRACKS[0].name}
+          </h2>
+          {page.planningPhase?.description && (
+            <p className="mt-5 max-w-[62ch] font-body text-[16px] leading-[1.75] text-content/70">{page.planningPhase.description}</p>
+          )}
+          <div className="mt-10">
+            <TrackFacts rows={planningRows} />
           </div>
         </div>
       </section>
+
+      <section data-band="light" data-reveal className="px-gutter py-20 md:px-gutter-lg md:py-28">
+        <div className="mx-auto max-w-[1360px]">
+          <span aria-hidden className={`block h-1 w-14 rounded-full ${TONE.ember.bar}`} />
+          <p className={`mt-6 font-body text-xs font-bold uppercase tracking-[0.14em] ${TONE.ember.text}`}>{TRACKS[1].label}</p>
+          <h2 className="mt-3 max-w-[24ch] text-balance font-display text-[clamp(1.9rem,3.5vw,3rem)] font-bold leading-[1.05] tracking-[-0.035em]">
+            {TRACKS[1].name}
+          </h2>
+          {page.propertyCap?.description && (
+            <p className="mt-5 max-w-[62ch] font-body text-[16px] leading-[1.75] text-content/70">{page.propertyCap.description}</p>
+          )}
+          <div className="mt-10">
+            <TrackFacts rows={capRows} />
+          </div>
+
+          <div className="mt-16">
+            <p className="font-body text-xs font-bold uppercase tracking-[0.14em] text-content/40">Structured for CAP / NNN investment</p>
+            {capProperties.length > 0 ? (
+              <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {capProperties.map((property) => (
+                  <CapPropertyCard key={property.slug} property={property} />
+                ))}
+              </div>
+            ) : (
+              <div className="mt-6 rounded-panel border border-dashed border-content/20 px-5 py-8 text-center sm:px-8 sm:py-10">
+                <p className="font-display text-lg font-bold text-content">CAP / NNN listings are still being structured</p>
+                <p className="mx-auto mt-2 max-w-md font-body text-[14px] leading-relaxed text-content/60">
+                  Stabilized properties will be shown here once they're set up for CAP / NNN investment.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <Testimonials sectionKey="invest_testimonials" id="invest-testimonials" />
 
       <section id="inquire" data-band="light" data-reveal className="px-gutter py-20 md:px-gutter-lg md:py-28">
         <div className="mx-auto max-w-[1360px]">

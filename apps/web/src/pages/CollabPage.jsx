@@ -5,6 +5,8 @@ import { useGSAP } from '@gsap/react'
 import { useProperties, useSection } from '../context/ContentContext'
 import PropertyPicker from '../components/PropertyPicker'
 import QuoteForm from '../components/QuoteForm'
+import Partners from '../components/Partners'
+import Testimonials from '../components/Testimonials'
 import { sized } from '../lib/images'
 
 gsap.registerPlugin(ScrollTrigger)
@@ -34,7 +36,11 @@ export default function CollabPage() {
       gsap.from('[data-hero-copy] > *', { y: 28, opacity: 0, duration: 0.8, ease: 'power3.out', stagger: 0.1 })
       gsap.from('[data-hero-visual]', { scale: 1.1, opacity: 0, duration: 1.2, ease: 'power3.out' })
       gsap.utils.toArray('[data-reveal]').forEach((el) => {
-        gsap.from(el, { y: 32, opacity: 0, duration: 0.7, ease: 'power3.out', scrollTrigger: { trigger: el, start: 'top 84%' } })
+        gsap.fromTo(
+          el,
+          { y: 32, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.7, ease: 'power3.out', scrollTrigger: { trigger: el, start: 'top 84%' } }
+        )
       })
     },
     { scope }
@@ -142,6 +148,10 @@ export default function CollabPage() {
           )}
         </div>
       </section>
+
+      <Partners />
+
+      <Testimonials sectionKey="collab_testimonials" id="collab-testimonials" />
 
       <section id="inquire" className="px-gutter pb-24 md:px-gutter-lg md:pb-32">
         <div className="mx-auto max-w-[1360px]">

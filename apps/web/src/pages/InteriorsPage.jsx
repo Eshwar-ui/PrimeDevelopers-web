@@ -5,6 +5,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import { useSection } from '../context/ContentContext'
 import ArrowRight from '../components/ArrowRight'
+import CustomSelect from '../components/CustomSelect'
 import { TIERS, tierMeta } from '../lib/interiors'
 import { sized } from '../lib/images'
 
@@ -98,27 +99,24 @@ export default function InteriorsPage() {
                 </button>
               ))}
             </div>
-            <div className="grid w-full gap-3 sm:grid-cols-2 lg:flex lg:w-auto lg:flex-wrap lg:items-center">
+            <div className="grid w-full gap-3 sm:grid-cols-2 lg:w-[25.75rem] lg:shrink-0 lg:grid-cols-[12rem_13rem] lg:items-center">
               {categories.length > 2 && (
-                <select
+                <CustomSelect
+                  label="Filter by category"
                   value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="h-11 min-w-0 w-full rounded-full border border-content/20 bg-transparent px-4 font-body text-[13px] font-semibold outline-none focus:border-accent lg:w-auto"
-                >
-                  {categories.map((c) => (
-                    <option key={c} value={c}>{c === 'All' ? 'All categories' : c}</option>
-                  ))}
-                </select>
+                  onChange={setCategory}
+                  options={categories.map((item) => ({
+                    value: item,
+                    label: item === 'All' ? 'All categories' : item,
+                  }))}
+                />
               )}
-              <select
+              <CustomSelect
+                label="Sort finish options"
                 value={sort}
-                onChange={(e) => setSort(e.target.value)}
-                className="h-11 min-w-0 w-full rounded-full border border-content/20 bg-transparent px-4 font-body text-[13px] font-semibold outline-none focus:border-accent lg:w-auto"
-              >
-                {SORTS.map((s) => (
-                  <option key={s.id} value={s.id}>{s.label}</option>
-                ))}
-              </select>
+                onChange={setSort}
+                options={SORTS.map((item) => ({ value: item.id, label: item.label }))}
+              />
             </div>
           </div>
 

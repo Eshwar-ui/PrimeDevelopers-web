@@ -4,6 +4,14 @@
    which a manual toggle has to be able to override, so the variant is rebound
    to a class we own on <html>. */
 @custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  color-scheme: light;
+}
+
+:root.dark {
+  color-scheme: dark;
+}
 /* Public-page section entrances. Sections begin readable in the DOM; the
    controller opts only below-the-fold sections into motion before paint. */
 [data-section-reveal="pending"] {

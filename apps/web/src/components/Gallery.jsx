@@ -63,7 +63,7 @@ export default function Gallery() {
     <section
       id="gallery"
       data-band="light"
-      className="bg-base px-gutter py-20 text-content md:px-gutter-lg md:py-28"
+      className="bg-base px-gutter py-section text-content md:px-gutter-lg md:py-section-lg"
     >
       {/* The height is the composition. 43vw is the comp's own proportion —
           590px of content across a 1360px window — clamped so it neither

@@ -13,8 +13,15 @@ const BASE_FIELDS = [
   { name: 'company', label: 'Company', type: 'text', placeholder: 'Enter your company name' },
 ]
 
+// 16px, not the 15px the rest of the form's type is set at, and it is a
+// functional floor rather than a style choice: iOS Safari zooms the whole
+// viewport in when a focused field's text measures under 16px, which leaves
+// the visitor mid-form on a page that is suddenly wider than the screen and
+// does not zoom back out. Every other control on the site already clears it
+// — the brochure modal, `CustomSelect`, the glossary search — so these three
+// were the only fields still doing it.
 const FIELD =
-  'contact-field h-12 rounded-xl border border-[var(--color-line)] bg-carbon px-4 font-body text-[15px] text-bone outline-none transition-[border-color,box-shadow] placeholder:text-bone-3 focus:border-accent/75 focus:ring-[3px] focus:ring-accent/10'
+  'contact-field h-12 rounded-xl border border-[var(--color-line)] bg-carbon px-4 font-body text-[16px] text-bone outline-none transition-[border-color,box-shadow] placeholder:text-bone-3 focus:border-accent/75 focus:ring-[3px] focus:ring-accent/10'
 const FIELD_LABEL = 'font-display text-[15px] font-semibold text-content'
 
 function ExtraField({ field }) {
@@ -45,7 +52,7 @@ function ExtraField({ field }) {
         rows={3}
         required={field.required}
         placeholder={field.placeholder}
-        className="contact-field min-h-24 resize-none rounded-xl border border-[var(--color-line)] bg-carbon px-4 py-3 font-body text-[15px] text-bone outline-none transition-[border-color,box-shadow] placeholder:text-bone-3 focus:border-accent/75 focus:ring-[3px] focus:ring-accent/10"
+        className="contact-field min-h-24 resize-none rounded-xl border border-[var(--color-line)] bg-carbon px-4 py-3 font-body text-[16px] text-bone outline-none transition-[border-color,box-shadow] placeholder:text-bone-3 focus:border-accent/75 focus:ring-[3px] focus:ring-accent/10"
       />
     )
   }
@@ -203,7 +210,7 @@ export default function QuoteForm({
                   required
                   defaultValue={prefillMessage}
                   placeholder={messagePlaceholder}
-                  className="contact-field min-h-28 resize-none rounded-xl border border-[var(--color-line)] bg-carbon px-4 py-3 font-body text-[15px] text-bone outline-none transition-[border-color,box-shadow] placeholder:text-bone-3 focus:border-accent/75 focus:ring-[3px] focus:ring-accent/10"
+                  className="contact-field min-h-28 resize-none rounded-xl border border-[var(--color-line)] bg-carbon px-4 py-3 font-body text-[16px] text-bone outline-none transition-[border-color,box-shadow] placeholder:text-bone-3 focus:border-accent/75 focus:ring-[3px] focus:ring-accent/10"
                 />
               </label>
             </div>

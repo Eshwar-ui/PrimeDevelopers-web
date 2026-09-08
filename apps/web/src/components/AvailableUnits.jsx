@@ -3,11 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
+import { Buildings, Camera, MapPin, Ruler, Stack, Tag } from '@phosphor-icons/react'
 import { useProperties } from '../context/ContentContext'
 import { getBuildings, getUnits, formatArea } from '../lib/units'
 import { unitStatusMeta } from '../lib/unitStatus'
+import { hasInfoSet } from '../lib/infoSets'
 import { sized } from '../lib/images'
 import ActionButton from './ActionButton'
+import ArrowRight from './ArrowRight'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -36,6 +39,35 @@ const parseSF = (size) => {
   return Number.isFinite(n) ? n : 0
 }
 
+/**
+ * The per-unit facts that fit under the description, at most two.
+ *
+ * These occupy the slot the comp draws as amenity chips ("Ample Parking",
+ * "High Visibility"). No amenity field exists on a unit or a property, and
+ * inventing one would put an unverified claim about real leasable space on
+ * every card — so the slot is filled with what the CMS actually holds per
+ * unit instead. That is also the better content: four cards at the same
+ * address, with the same photograph and the same fallback sentence, need the
+ * fields that *differ* between them, not two more that don't.
+ *
+ * Both fields are free text in the admin, so a bare value would read as a
+ * number with no noun. Numeric-looking input gets the noun; anything else is
+ * already prose and is left alone.
+ */
+const isNumeric = (value) => /^[\d.,\s]+$/.test(String(value ?? '').trim())
+
+function specChips(unit) {
+  const chips = []
+  const floor = String(unit.floor ?? '').trim()
+  const frontage = String(unit.frontage ?? '').trim()
+
+  if (floor) chips.push({ Icon: Stack, text: isNumeric(floor) ? `Floor ${floor}` : floor })
+  if (frontage) {
+    chips.push({ Icon: Ruler, text: isNumeric(frontage) ? `${frontage} ft frontage` : frontage })
+  }
+  return chips.slice(0, 2)
+}
+
 // Flattened once per render of the property list, not per filter click — the
 // tiers above filter this array, they don't rebuild it.
 //
@@ -60,6 +92,28 @@ function collectAvailableUnits(properties) {
   // own filter pills are ordered, rather than in whatever order the CMS
   // happens to store buildings and units.
   return rows.sort((a, b) => a.sf - b.sf)
+}
+
+/**
+ * The chip that rides on the photograph — the status badge and "View photos"
+ * are the same object in two places, so they are one component.
+ *
+ * A dark translucent lozenge rather than the solid status fill the leasing map
+ * uses: these sit on an uncontrolled photograph, and a saturated green block
+ * on a bright sky reads as a sticker rather than as part of the card. The
+ * status keeps its colour as a dot, which is all it needs to carry here.
+ */
+function PhotoChip({ children, className = '', ...props }) {
+  const Tag = props.onClick ? 'button' : 'span'
+  return (
+    <Tag
+      {...(Tag === 'button' ? { type: 'button' } : {})}
+      {...props}
+      className={`inline-flex items-center gap-2 rounded-full bg-void/75 px-3 py-1.5 font-body text-[11px] font-bold uppercase tracking-[0.08em] text-bone backdrop-blur-sm ${className}`}
+    >
+      {children}
+    </Tag>
+  )
 }
 
 export default function AvailableUnits() {
@@ -118,9 +172,9 @@ export default function AvailableUnits() {
             className="mt-4 text-balance font-display font-bold leading-[1.1] tracking-[-0.02em] text-content"
             style={{ fontSize: 'clamp(1.7rem, 3vw, 2.5rem)' }}
           >
-            Find your ideal space
+            Find your <span className="text-accent">ideal</span> space
           </h2>
-          <p className="mt-3 font-body text-[15px] leading-relaxed text-content/60">
+          <p className="mt-3 font-body text-[15px] leading-relaxed text-content/70">
             Filter by size and see what's ready for your business today.
           </p>
         </div>
@@ -151,7 +205,7 @@ export default function AvailableUnits() {
         </div>
 
         {shown.length === 0 ? (
-          <p className="mt-12 text-center font-body text-sm text-content/60">
+          <p className="mt-12 text-center font-body text-sm text-content/70">
             No units in this range right now — try another size or explore the full list below.
           </p>
         ) : (
@@ -164,6 +218,12 @@ export default function AvailableUnits() {
               }
               const area = formatArea(unit.size)
               const tierName = tierNameFor(sf)
+              const chips = specChips(unit)
+              // Only a property with a real media set gets the button. Every
+              // other slug redirects straight back to its own listing, so the
+              // control would promise photographs and deliver the page the
+              // visitor is already looking at.
+              const hasPhotos = hasInfoSet(property.slug)
 
               return (
                 <article
@@ -181,44 +241,118 @@ export default function AvailableUnits() {
                         className="absolute inset-0 size-full object-cover transition-transform duration-700 ease-brand group-hover:scale-[1.04]"
                       />
                     )}
+
+                    {/* Both chips sit on an uncontrolled photograph. This is
+                        the floor under them — without it a pale sky leaves
+                        two translucent lozenges with nothing behind them. */}
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute inset-0 bg-gradient-to-t from-void/45 via-transparent to-void/30"
+                    />
+
+                    <PhotoChip className="absolute left-3 top-3">
+                      <span
+                        aria-hidden
+                        className="size-2 shrink-0 rounded-full"
+                        style={{ backgroundColor: availableMeta.hex }}
+                      />
+                      {availableMeta.label} now
+                    </PhotoChip>
+
+                    {hasPhotos && (
+                      <PhotoChip
+                        onClick={(e) => {
+                          // Stops the card's own navigation: this goes to the
+                          // media set, not to the listing.
+                          e.stopPropagation()
+                          navigate(`${href}/info`)
+                        }}
+                        className="absolute bottom-3 right-3 outline-none transition-colors duration-200 ease-brand hover:bg-void focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                      >
+                        <Camera aria-hidden className="size-3.5 shrink-0" weight="fill" />
+                        View photos
+                        <span className="sr-only"> of {property.name}</span>
+                      </PhotoChip>
+                    )}
                   </div>
 
                   <div className="flex flex-1 flex-col gap-3 p-5">
-                    <div>
-                      {/* Every unit reaching this card has a parsed size —
-                          `collectAvailableUnits` drops the ones that don't —
-                          so `tierName` and `area` are both guaranteed here. */}
-                      <h3 className="font-display text-lg font-bold leading-tight text-content">{tierName}</h3>
-                      <p className="mt-0.5 font-body text-[12px] text-content/50">
-                        {[area, unit.label].filter(Boolean).join(' · ')}
-                      </p>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        {/* Every unit reaching this card has a parsed size —
+                            `collectAvailableUnits` drops the ones that don't —
+                            so `tierName` and `area` are both guaranteed here. */}
+                        <h3 className="font-display text-lg font-bold leading-tight text-content">
+                          {tierName}
+                        </h3>
+                        <p className="mt-0.5 font-body text-[13px] text-content/70">
+                          <span className="numeral">{area}</span>
+                          {unit.label && (
+                            <>
+                              <span aria-hidden className="px-1.5 text-content/40">
+                                ·
+                              </span>
+                              <span className="numeral">{unit.label}</span>
+                            </>
+                          )}
+                        </p>
+                      </div>
+
+                      {/* Property-level, so every card in a single-property
+                          portfolio carries the same one — which is what the
+                          comp draws. It earns its place the moment a second
+                          property with a different use enters the list. */}
+                      {property.category && (
+                        <p className="flex shrink-0 items-center gap-1.5 pt-1 font-body text-[12px] text-content/70">
+                          <Buildings aria-hidden className="size-4 shrink-0 text-content/50" />
+                          {property.category}
+                        </p>
+                      )}
                     </div>
 
                     {property.address && (
-                      <p className="font-body text-[13px] italic leading-relaxed text-content/60">
+                      <p className="flex items-start gap-1.5 font-body text-[13px] leading-relaxed text-content/70">
+                        <MapPin aria-hidden className="mt-0.5 size-4 shrink-0 text-content/50" />
                         {property.address}
                       </p>
                     )}
 
-                    <p className="line-clamp-3 font-body text-[13px] leading-relaxed text-content/65">
+                    <p className="line-clamp-2 font-body text-[13px] leading-relaxed text-content/65">
                       {unit.description || `Flexible space at ${property.name}, ready to move in.`}
                     </p>
 
+                    {chips.length > 0 && (
+                      <ul className="flex flex-wrap gap-2">
+                        {chips.map(({ Icon, text }) => (
+                          <li
+                            key={text}
+                            className="inline-flex items-center gap-1.5 rounded-full border border-content/20 px-3 py-1.5 font-body text-[12px] text-content/70"
+                          >
+                            <Icon aria-hidden className="size-3.5 shrink-0 text-content/50" />
+                            {text}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+
                     <div className="mt-auto flex flex-col gap-3 pt-2">
+                      {/* Kept above the action rather than dropped, as the comp
+                          has it: the rate is the one field on this card that
+                          reliably differs from the card beside it, and it is
+                          what a tenant is scanning for. Guarded, because it is
+                          optional in the admin and an empty "Base price" row
+                          reads as a price of nothing. */}
                       {unit.rate && (
-                        <p className="font-body text-[13px] text-content/70">
-                          Base price <span className="font-bold text-content">{unit.rate}</span>
+                        <p className="flex items-center gap-1.5 border-t border-content/10 pt-3 font-body text-[13px] text-content/70">
+                          <Tag aria-hidden className="size-4 shrink-0 text-content/50" />
+                          Base price
+                          <span className="numeral ml-auto font-bold text-content">{unit.rate}</span>
                         </p>
                       )}
 
-                      <span
-                        className={`inline-flex w-fit items-center rounded-full px-3 py-1 font-body text-[11px] font-bold uppercase tracking-[0.08em] ${availableMeta.chip}`}
-                      >
-                        {availableMeta.label} now
-                      </span>
-
                       <ActionButton href={href} onClick={open} className="w-full">
                         Explore unit
+                        <ArrowRight className="size-4 transition-transform duration-200 ease-brand group-hover:translate-x-0.5 motion-reduce:transform-none" />
                       </ActionButton>
                     </div>
                   </div>
@@ -232,6 +366,7 @@ export default function AvailableUnits() {
           <div className="mt-8 flex justify-center">
             <ActionButton tone="ghost" href="/properties">
               View all properties
+              <ArrowRight className="size-4 transition-transform duration-200 ease-brand group-hover:translate-x-0.5 motion-reduce:transform-none" />
             </ActionButton>
           </div>
         )}

@@ -79,7 +79,7 @@ export default function Testimonials({ sectionKey = 'testimonials', id = 'testim
   if (!items?.length) return null
 
   return (
-    <section id={id} className="bg-base px-gutter py-20 text-content md:px-gutter-lg md:py-24 lg:py-28">
+    <section id={id} className="bg-base px-gutter py-section text-content md:px-gutter-lg md:py-section-lg">
       <div className="mx-auto max-w-[1560px]">
         <header className="mx-auto flex max-w-[1040px] flex-col items-center text-center">
           {eyebrow && (

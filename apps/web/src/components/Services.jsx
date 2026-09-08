@@ -33,7 +33,7 @@ export default function Services() {
     <section
       id="services"
       data-band="light"
-      className="bg-base px-gutter py-20 text-content md:px-gutter-lg md:py-28"
+      className="bg-base px-gutter py-section text-content md:px-gutter-lg md:py-section-lg"
     >
       <div className="mx-auto max-w-[1560px]">
         <SectionIntro

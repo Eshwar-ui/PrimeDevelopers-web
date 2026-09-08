@@ -574,6 +574,29 @@ export const SECTIONS = [
           </div>
           <TextField label="Studio address" value={value.studio} onChange={(studio) => onChange({ studio })} />
         </Section>
+        <Section
+          title="Postal address"
+          description="Fill these in and the footer prints them instead of the studio line above. They are also what search engines read as the business address, so a partial address is worse than none — a blank field is left out of that markup rather than guessed at."
+        >
+          <TextField label="Street" value={value.addressStreet} onChange={(addressStreet) => onChange({ addressStreet })} />
+          <div className="grid grid-cols-3 gap-4">
+            <TextField label="City" value={value.addressLocality} onChange={(addressLocality) => onChange({ addressLocality })} />
+            <TextField label="State" value={value.addressRegion} onChange={(addressRegion) => onChange({ addressRegion })} />
+            <TextField label="ZIP" value={value.addressPostalCode} onChange={(addressPostalCode) => onChange({ addressPostalCode })} />
+          </div>
+          <TextField label="Country code" value={value.addressCountry} onChange={(addressCountry) => onChange({ addressCountry })} />
+        </Section>
+        <Section
+          title="Legal identity and licensing"
+          description="Printed at the foot of the plate and published as the business's structured data. The legal name is the registered entity, which is usually not the same string as the copyright line."
+        >
+          <TextField label="Registered entity name" value={value.legalName} onChange={(legalName) => onChange({ legalName })} />
+          <div className="grid grid-cols-2 gap-4">
+            <TextField label="Licence label" value={value.licenseLabel} onChange={(licenseLabel) => onChange({ licenseLabel })} />
+            <TextField label="Licence number" value={value.licenseNumber} onChange={(licenseNumber) => onChange({ licenseNumber })} />
+          </div>
+          <p className="-mt-3 text-[11px] text-bone-3">e.g. label &ldquo;TREC Broker Licence&rdquo;, number &ldquo;#123456&rdquo;. Leave both blank to hide the line.</p>
+        </Section>
         <Section title="Quick links">
           <TextField label="Column heading" value={value.quickLinksHeading} onChange={(quickLinksHeading) => onChange({ quickLinksHeading })} />
           <RepeatableList
@@ -594,7 +617,17 @@ export const SECTIONS = [
           <TextField label={'"All properties" link'} value={value.allPropertiesLabel} onChange={(allPropertiesLabel) => onChange({ allPropertiesLabel })} />
           <p className="-mt-3 text-[11px] text-bone-3">The properties listed here come from the Properties list, in sort order.</p>
         </Section>
-        <Section title="Social links">
+        <Section
+          title="Property strip"
+          description="The three property cards under the closing CTA. On a property page the strip heads itself “Similar properties” and picks the closest matches; everywhere else it uses the copy below and shows the first three properties in sort order."
+        >
+          <div className="grid grid-cols-2 gap-4">
+            <TextField label="Eyebrow" value={value.exploreEyebrow} onChange={(exploreEyebrow) => onChange({ exploreEyebrow })} />
+            <TextField label="Heading" value={value.exploreHeading} onChange={(exploreHeading) => onChange({ exploreHeading })} />
+          </div>
+          <TextField label="Link label" value={value.viewAllLabel} onChange={(viewAllLabel) => onChange({ viewAllLabel })} />
+        </Section>
+        <Section title="Social links" description="Every row here is rendered. A row still on the placeholder “#” shows as a link that goes nowhere, so put the real profile URLs in — they are also what search engines read as this business's verified profiles.">
           <TextField label="Column heading" value={value.socialHeading} onChange={(socialHeading) => onChange({ socialHeading })} />
           <RepeatableList
             items={value.socials}
@@ -614,6 +647,20 @@ export const SECTIONS = [
             <TextField label="Left text" value={value.copyrightLeft} onChange={(copyrightLeft) => onChange({ copyrightLeft })} />
             <TextField label="Right text" value={value.copyrightRight} onChange={(copyrightRight) => onChange({ copyrightRight })} />
           </div>
+          <TextField label="“Back to top” label" value={value.backToTopLabel} onChange={(backToTopLabel) => onChange({ backToTopLabel })} />
+          <RepeatableList
+            items={value.legalLinks}
+            onChange={(legalLinks) => onChange({ legalLinks })}
+            makeItem={() => ({ label: '', href: '/' })}
+            addLabel="Add legal link"
+            renderItem={(item, set) => (
+              <div className="grid grid-cols-2 gap-3">
+                <TextField label="Label" value={item.label} onChange={(label) => set({ ...item, label })} />
+                <TextField label="Link" value={item.href} onChange={(href) => set({ ...item, href })} />
+              </div>
+            )}
+          />
+          <p className="-mt-3 text-[11px] text-bone-3">Privacy Policy and Terms of Use ship with the site at /privacy and /terms. Point a row anywhere else and check the page exists first — a footer link that 404s is worse than one link fewer.</p>
         </Section>
       </>
     ),
@@ -1060,16 +1107,23 @@ export const SECTIONS = [
           <TextField label="Lease structure" value={value.propertyCap?.leaseStructure} onChange={(leaseStructure) => onChange({ propertyCap: { ...value.propertyCap, leaseStructure } })} />
           <TextField label="Passive-income note" value={value.propertyCap?.passiveIncomeNote} onChange={(passiveIncomeNote) => onChange({ propertyCap: { ...value.propertyCap, passiveIncomeNote } })} />
         </Section>
-        <Section title="CAP / NNN properties" description="Point this at properties already structured for stabilized-property investment, by slug. The page pulls each one's own name, photo, and stats — nothing is re-entered here.">
+        <Section title="CAP / NNN properties" description="Point this at properties already structured for stabilized-property investment, by slug. Each one's name, photo and category come from the property record — only the cap rate and tenancy note are entered here. These same listings appear as “Top CAP properties” under the grid on /properties, three at a time.">
           <RepeatableList
             items={value.propertyCap?.properties ?? []}
             onChange={(properties) => onChange({ propertyCap: { ...value.propertyCap, properties } })}
-            makeItem={() => ({ propertySlug: '' })}
+            makeItem={() => ({ propertySlug: '', capRate: '', tenancy: '' })}
             addLabel="Add property"
             renderItem={(item, set) => (
-              <TextField label="Property slug" value={item.propertySlug} onChange={(propertySlug) => set({ ...item, propertySlug })} />
+              <div className="flex flex-col gap-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <TextField label="Property slug" value={item.propertySlug} onChange={(propertySlug) => set({ ...item, propertySlug })} />
+                  <TextField label="Cap rate" value={item.capRate} onChange={(capRate) => set({ ...item, capRate })} />
+                </div>
+                <TextField label="Tenancy note" value={item.tenancy} onChange={(tenancy) => set({ ...item, tenancy })} />
+              </div>
             )}
           />
+          <p className="-mt-3 text-[11px] text-bone-3">Cap rate is printed on the card as e.g. &ldquo;6.5% cap&rdquo; — enter it as &ldquo;6.5%&rdquo;. Leave it blank and the card reads &ldquo;Cap rate on request&rdquo;, matching the range note above.</p>
         </Section>
       </>
     ),

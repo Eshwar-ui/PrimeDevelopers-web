@@ -36,9 +36,16 @@ export default function SectionIntro({
 
       {heading && (
         <h2
-          className={`mt-5 font-display font-bold leading-[1.1] tracking-[-0.02em] text-content ${
-            centred ? 'max-w-[22ch]' : 'max-w-[18ch]'
-          } ${headingClass}`}
+          // The top margin spaces the heading off the eyebrow, so it is only
+          // owed when there is an eyebrow to space it off. Unconditional, it
+          // became 20px of orphaned margin at the very top of every section
+          // that ships without one — the academy teaser and the updates rail
+          // both do — stacked directly onto the section's own padding, where it
+          // read as the gap above the heading being wrong rather than as a
+          // margin belonging to anything.
+          className={`font-display font-bold leading-[1.1] tracking-[-0.02em] text-content ${
+            eyebrow ? 'mt-5' : ''
+          } ${centred ? 'max-w-[22ch]' : 'max-w-[18ch]'} ${headingClass}`}
           style={{ fontSize: 'clamp(1.75rem, 3.1vw, 2.85rem)' }}
         >
           {/* Emphasis is saffron here rather than the accent blue the rest of

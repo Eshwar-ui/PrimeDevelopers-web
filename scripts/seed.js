@@ -264,17 +264,42 @@ async function main() {
       email: 'hello@primedevelopers.com',
       phone: '+1 (512) 419-2837',
       studio: 'East 6th Street, Austin, TX',
+      // Deliberately partial. A street number and ZIP we do not have is worse
+      // than none: Footer.jsx omits blank parts from the PostalAddress rather
+      // than publishing a half-address that geocodes to the wrong block.
+      addressStreet: '',
+      addressLocality: 'Austin',
+      addressRegion: 'TX',
+      addressPostalCode: '',
+      addressCountry: 'US',
+      legalName: '',
+      licenseLabel: '',
+      licenseNumber: '',
+      // Every public route the site actually serves. Footer.jsx unions this
+      // with a canonical list, so an older database row missing an entry still
+      // renders the link — but a fresh seed should not need that safety net.
       quickLinks: [
         { label: 'Home', href: '/' },
         { label: 'About', href: '/about' },
         { label: 'Properties', href: '/properties' },
+        { label: 'Expertise', href: '/enterprise' },
+        { label: 'News', href: '/news' },
+        { label: 'Learn', href: '/learn' },
         { label: 'Contact', href: '/contact' },
       ],
+      // Placeholders, and visibly so — replace each '#' with the real profile
+      // URL in the CMS. They are rendered as-is: dropping them would make the
+      // Social column vanish, which reads as a missing section rather than as
+      // four links waiting to be filled in.
       socials: [
         { label: 'Instagram', href: '#' },
         { label: 'LinkedIn', href: '#' },
         { label: 'X', href: '#' },
         { label: 'Facebook', href: '#' },
+      ],
+      legalLinks: [
+        { label: 'Privacy Policy', href: '/privacy' },
+        { label: 'Terms of Use', href: '/terms' },
       ],
       copyrightLeft: '© 2026 Prime Developers',
       copyrightRight: 'Austin · Texas',

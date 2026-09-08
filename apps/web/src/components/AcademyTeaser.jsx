@@ -20,7 +20,7 @@ export default function AcademyTeaser() {
   return (
     <section
       data-band="light"
-      className="bg-base px-gutter py-20 text-content md:px-gutter-lg md:py-28"
+      className="bg-base px-gutter py-section text-content md:px-gutter-lg md:py-section-lg"
     >
       <div className="mx-auto max-w-[1560px]">
         <div className="flex flex-col gap-8 md:flex-row md:items-end md:justify-between md:gap-16">

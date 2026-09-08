@@ -1445,6 +1445,17 @@ export default function ModelViewer({
     return () => document.removeEventListener('fullscreenchange', onChange)
   }, [])
 
+  // iPhone Safari implements the Fullscreen API on <video> only — an arbitrary
+  // element has no `requestFullscreen` at all, so the optional call below is a
+  // silent no-op there. That left the control drawn on the one platform where
+  // the panel is most cramped, and pressing it did nothing; it now asks before
+  // drawing itself rather than offering an action the browser cannot perform.
+  const canFullscreen =
+    typeof document !== 'undefined' &&
+    Boolean(document.fullscreenEnabled) &&
+    typeof Element !== 'undefined' &&
+    typeof Element.prototype.requestFullscreen === 'function'
+
   const toggleFullscreen = () => {
     if (document.fullscreenElement) document.exitFullscreen?.()
     else containerRef.current?.requestFullscreen?.()
@@ -1636,7 +1647,7 @@ export default function ModelViewer({
       )}
 
       <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-1.5">
-        <ViewerButton label="Toggle fullscreen" onClick={toggleFullscreen}>
+        <ViewerButton hidden={!canFullscreen} label="Toggle fullscreen" onClick={toggleFullscreen}>
           {isFullscreen ? '⤡' : '⤢'}
         </ViewerButton>
         <ViewerButton label="Recenter view" onClick={() => setResetSignal((n) => n + 1)}>

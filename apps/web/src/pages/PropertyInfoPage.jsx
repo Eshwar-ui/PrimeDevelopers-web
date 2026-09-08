@@ -149,7 +149,10 @@ function Lightbox({ images, index, onClose, onStep }) {
         tabIndex={-1}
         className="flex min-h-0 flex-1 flex-col outline-none"
       >
-        <div className="flex shrink-0 items-center justify-between gap-4 px-4 py-4 sm:px-6">
+        {/* The close button is the only way out of the lightbox, so the top
+            row insets for the notch the way the controls below already inset
+            for the home indicator. */}
+        <div className="flex shrink-0 items-center justify-between gap-4 px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6">
           <p className="min-w-0 font-body text-[13px] uppercase tracking-[0.18em] text-white/70">
             <span className="block truncate">{image.caption}</span>
           </p>

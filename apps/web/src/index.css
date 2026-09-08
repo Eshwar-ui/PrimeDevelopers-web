@@ -318,6 +318,24 @@
      with the page. */
   --spacing-gutter: 1.5rem;
   --spacing-gutter-lg: 6.25rem;
+
+  /* Vertical rhythm, on the same two-value discipline as the gutter above:
+     one narrow step and one wide one, used as `py-section md:py-section-lg`.
+
+     Two values, not a scale, for exactly the reason the gutter gives — a
+     section that picks a number in between is a section disagreeing with the
+     page. Five of them had: `py-20 md:py-28`, `md:py-24 lg:py-28`, `py-6`,
+     `pt-14 md:pb-0`.
+
+     The wide step is 4.5rem rather than the 7rem it replaces because a
+     section's padding is only half of any gap it makes. Two sections at 7rem
+     put 224px between their contents, which on the landing page read as the
+     page having run out rather than as one chapter ending — most visibly
+     between Services and the academy teaser, where 224px of padding met 20px
+     of orphaned heading margin. At 4.5rem a boundary is 144px, which still
+     separates two chapters without stranding them. */
+  --spacing-section: 3.5rem;
+  --spacing-section-lg: 4.5rem;
 }
 
 /* Dark theme. Written against :root.dark rather than .dark so it outweighs the

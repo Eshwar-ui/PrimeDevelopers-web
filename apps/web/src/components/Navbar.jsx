@@ -562,7 +562,22 @@ export default function Navbar() {
         </div>
       </motion.header>
 
-      {/* Full-screen mobile overlay */}
+      {/* Full-screen mobile overlay.
+
+          A scroll container wrapping a `min-h-full` column, rather than the
+          centred flex box this used to be. `justify-center` on the fixed box
+          itself centres the links only while they fit: once they do not — a
+          short phone, a landscape window, or one more entry added to the rail
+          in the CMS — the column overflows equally off the top and bottom of a
+          box that cannot scroll, and the first and last links become
+          unreachable. A column that already fills its parent has no free space
+          left for `justify-center` to distribute, so this centres exactly as
+          before when there is room and scrolls when there is not.
+
+          The top padding is the header's clearance. The header is 64px tall
+          while the menu is open — `surfaced` is false for exactly that reason
+          — and centring without it put the first link under the lockup and the
+          burger. */}
       <AnimatePresence>
         {menuOpen && (
           <motion.nav
@@ -570,83 +585,85 @@ export default function Navbar() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-40 flex flex-col justify-center gap-3 bg-void px-6 sm:px-8 lg:hidden"
+            className="fixed inset-0 z-40 overflow-y-auto overscroll-contain bg-void lg:hidden"
           >
-            {navLinks.map((link, i) => (
-              <div key={link.label}>
-                <motion.a
-                  href={link.to ?? `/#${link.section}`}
-                  onClick={(e) => handleNav(e, link)}
-                  initial={{ opacity: 0, y: 24 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 + i * 0.08, ease: 'easeOut' }}
-                  className="flex min-h-11 items-center font-display text-[clamp(2.25rem,10vw,3rem)] font-light tracking-[-0.02em] text-bone"
-                >
-                  <span className="numeral mr-4 align-middle text-base text-accent-soft">
-                    0{i + 1}
-                  </span>
-                  {link.label}
-                </motion.a>
-                {link.to === EXPERTISE_LINK_TO && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 16 }}
+            <div className="flex min-h-full flex-col justify-center gap-3 px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-24 sm:px-8">
+              {navLinks.map((link, i) => (
+                <div key={link.label}>
+                  <motion.a
+                    href={link.to ?? `/#${link.section}`}
+                    onClick={(e) => handleNav(e, link)}
+                    initial={{ opacity: 0, y: 24 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 + i * 0.08 + 0.06, ease: 'easeOut' }}
-                    className="ml-11 mt-1 flex flex-wrap gap-x-5 gap-y-1"
+                    transition={{ delay: 0.1 + i * 0.08, ease: 'easeOut' }}
+                    className="flex min-h-11 items-center font-display text-[clamp(2.25rem,10vw,3rem)] font-light tracking-[-0.02em] text-bone"
                   >
-                    {EXPERTISE_SECTIONS.map((section) => (
-                      <a
-                        key={section.to}
-                        href={section.to}
-                        onClick={(e) => handleNav(e, section)}
-                        className="min-h-11 py-1 font-body text-lg text-bone/55 transition-colors hover:text-bone"
-                      >
-                        {section.label}
-                      </a>
-                    ))}
-                  </motion.div>
-                )}
-              </div>
-            ))}
-            {(phoneHref || whatsappChatHref) && (
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 + navLinks.length * 0.08 }}
-                className="mt-7 flex flex-wrap gap-3"
-              >
-                {phoneHref && (
-                  <a href={phoneHref} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-bone/20 px-5 font-body text-sm text-bone">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden className="size-4">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 4.5 9.6 8l-1.7 1.7a15.7 15.7 0 0 0 6.4 6.4l1.7-1.7 3.5 2.1v2.2a1.8 1.8 0 0 1-1.8 1.8A14.2 14.2 0 0 1 3.5 6.3a1.8 1.8 0 0 1 1.8-1.8h2.2Z" />
-                    </svg>
-                    {contact.phone}
-                  </a>
-                )}
-                {whatsappChatHref && (
-                  <button type="button" onClick={() => setWhatsappOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#25D366] px-5 font-body text-sm font-medium text-white">
-                    <WhatsappLogo weight="fill" className="size-5" />
-                    WhatsApp
-                  </button>
-                )}
-              </motion.div>
-            )}
+                    <span className="numeral mr-4 align-middle text-base text-accent-soft">
+                      0{i + 1}
+                    </span>
+                    {link.label}
+                  </motion.a>
+                  {link.to === EXPERTISE_LINK_TO && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 + i * 0.08 + 0.06, ease: 'easeOut' }}
+                      className="ml-11 mt-1 flex flex-wrap gap-x-5 gap-y-1"
+                    >
+                      {EXPERTISE_SECTIONS.map((section) => (
+                        <a
+                          key={section.to}
+                          href={section.to}
+                          onClick={(e) => handleNav(e, section)}
+                          className="min-h-11 py-1 font-body text-lg text-bone/55 transition-colors hover:text-bone"
+                        >
+                          {section.label}
+                        </a>
+                      ))}
+                    </motion.div>
+                  )}
+                </div>
+              ))}
+              {(phoneHref || whatsappChatHref) && (
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 + navLinks.length * 0.08 }}
+                  className="mt-7 flex flex-wrap gap-3"
+                >
+                  {phoneHref && (
+                    <a href={phoneHref} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-bone/20 px-5 font-body text-sm text-bone">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden className="size-4">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 4.5 9.6 8l-1.7 1.7a15.7 15.7 0 0 0 6.4 6.4l1.7-1.7 3.5 2.1v2.2a1.8 1.8 0 0 1-1.8 1.8A14.2 14.2 0 0 1 3.5 6.3a1.8 1.8 0 0 1 1.8-1.8h2.2Z" />
+                      </svg>
+                      {contact.phone}
+                    </a>
+                  )}
+                  {whatsappChatHref && (
+                    <button type="button" onClick={() => setWhatsappOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#25D366] px-5 font-body text-sm font-medium text-white">
+                      <WhatsappLogo weight="fill" className="size-5" />
+                      WhatsApp
+                    </button>
+                  )}
+                </motion.div>
+              )}
 
-            <motion.a
-              href="/contact"
-              onClick={goContact}
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 + navLinks.length * 0.08, ease: 'easeOut' }}
-              className="group relative isolate mt-8 inline-flex min-h-12 w-fit items-center gap-5 overflow-hidden rounded-full border border-white/60 bg-white px-6 font-body text-[15px] font-semibold tracking-[-0.01em] text-charcoal shadow-[0_10px_28px_-16px_rgba(0,0,0,0.6)] transition-[color,transform,box-shadow] duration-300 ease-brand hover:-translate-y-px hover:text-white hover:shadow-[0_15px_32px_-15px_rgba(0,0,0,0.5)] focus-visible:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent active:translate-y-px active:scale-[0.985] motion-reduce:transform-none"
-            >
-              <span aria-hidden className="absolute inset-0 z-0 origin-right scale-x-0 rounded-full bg-charcoal transition-transform duration-300 ease-brand group-hover:scale-x-100 group-focus-visible:scale-x-100 motion-reduce:transition-none" />
-              <span className="relative z-10 transition-transform duration-300 ease-brand group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5 motion-reduce:transform-none">{nav.enquireLabel}</span>
-              <span className="relative z-10 size-5 overflow-hidden" aria-hidden>
-                <ArrowRight className="absolute inset-0 size-5 transition-transform duration-300 ease-brand group-hover:translate-x-6 group-focus-visible:translate-x-6 motion-reduce:transform-none" />
-                <ArrowRight className="absolute inset-0 size-5 -translate-x-6 transition-transform duration-300 ease-brand group-hover:translate-x-0 group-focus-visible:translate-x-0 motion-reduce:hidden" />
-              </span>
-            </motion.a>
+              <motion.a
+                href="/contact"
+                onClick={goContact}
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 + navLinks.length * 0.08, ease: 'easeOut' }}
+                className="group relative isolate mt-8 inline-flex min-h-12 w-fit items-center gap-5 overflow-hidden rounded-full border border-white/60 bg-white px-6 font-body text-[15px] font-semibold tracking-[-0.01em] text-charcoal shadow-[0_10px_28px_-16px_rgba(0,0,0,0.6)] transition-[color,transform,box-shadow] duration-300 ease-brand hover:-translate-y-px hover:text-white hover:shadow-[0_15px_32px_-15px_rgba(0,0,0,0.5)] focus-visible:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent active:translate-y-px active:scale-[0.985] motion-reduce:transform-none"
+              >
+                <span aria-hidden className="absolute inset-0 z-0 origin-right scale-x-0 rounded-full bg-charcoal transition-transform duration-300 ease-brand group-hover:scale-x-100 group-focus-visible:scale-x-100 motion-reduce:transition-none" />
+                <span className="relative z-10 transition-transform duration-300 ease-brand group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5 motion-reduce:transform-none">{nav.enquireLabel}</span>
+                <span className="relative z-10 size-5 overflow-hidden" aria-hidden>
+                  <ArrowRight className="absolute inset-0 size-5 transition-transform duration-300 ease-brand group-hover:translate-x-6 group-focus-visible:translate-x-6 motion-reduce:transform-none" />
+                  <ArrowRight className="absolute inset-0 size-5 -translate-x-6 transition-transform duration-300 ease-brand group-hover:translate-x-0 group-focus-visible:translate-x-0 motion-reduce:hidden" />
+                </span>
+              </motion.a>
+            </div>
           </motion.nav>
         )}
       </AnimatePresence>

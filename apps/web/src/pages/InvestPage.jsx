@@ -8,6 +8,7 @@ import QuoteForm from '../components/QuoteForm'
 import Testimonials from '../components/Testimonials'
 import { useCapProperties, CapPropertyGrid } from '../components/CapProperties'
 import { lenis } from '../hooks/useSmoothScroll'
+import { sized } from '../lib/images'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -116,7 +117,7 @@ export default function InvestPage() {
 
   return (
     <div ref={scope} className="overflow-x-hidden bg-base text-content">
-      <section className="relative min-h-[34rem] overflow-hidden bg-void text-white md:min-h-[36rem]">
+      <section className="relative min-h-[34rem] overflow-hidden bg-void px-gutter text-white md:min-h-[36rem]">
         {page.heroImage && (
           <div data-hero-visual className="absolute inset-0">
             <img src={sized(page.heroImage, 'full')} alt="" className="h-full w-full object-cover" />
@@ -124,7 +125,7 @@ export default function InvestPage() {
             <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(12,21,27,.6)_0%,transparent_55%)]" />
           </div>
         )}
-        <div className="relative mx-auto flex min-h-[34rem] max-w-[1360px] flex-col justify-end px-gutter pb-12 pt-32 sm:pb-14 md:min-h-[36rem] md:pb-20 md:pt-40">
+        <div className="relative mx-auto flex min-h-[34rem] w-full max-w-[1360px] flex-col justify-end pb-12 pt-32 sm:pb-14 md:min-h-[36rem] md:pb-20 md:pt-40">
           <div data-hero-copy className="max-w-[42rem]">
             <p className="font-body text-[12px] font-bold uppercase tracking-[0.22em] text-accent-soft">{page.heroEyebrow}</p>
             <h1 className="mt-5 max-w-[16ch] text-balance font-display font-bold uppercase leading-[0.98] tracking-[-0.04em] [font-size:clamp(2.1rem,5.5vw,4.6rem)]">

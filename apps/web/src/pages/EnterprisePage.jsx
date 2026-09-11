@@ -3,180 +3,122 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import ArrowRight from '../components/ArrowRight'
-import PrimePill from '../components/PrimePill'
+import ActionButton from '../components/ActionButton'
 import { useProperties, useSection } from '../context/ContentContext'
 import { renderEmphasis } from '../lib/emphasis'
 import { sized } from '../lib/images'
-// The service photographs and the slug they are keyed on both moved to
-// `lib/expertise`: the homepage's services band draws the same four and was
-// falling back to a placeholder because it had no way to reach them.
 import { serviceImage, slugify } from '../lib/expertise'
 
 gsap.registerPlugin(ScrollTrigger)
 
-const serviceNumber = (index) => String(index + 1).padStart(2, '0')
-
 export default function EnterprisePage() {
+  const scope = useRef(null)
   const page = useSection('enterprise_page')
   const properties = useProperties()
-  const scope = useRef(null)
   const services = (page.capabilities ?? []).slice(0, 4)
   const propertyImages = properties.flatMap((property) => [property.image, ...(property.gallery ?? [])]).filter(Boolean)
-  // The shared resolution first — a CMS upload, then the shipped photograph —
-  // and this page's own last resorts after it, which the homepage does not
-  // share: filling an empty service card with a property photograph makes sense
-  // in a full expertise index and would be misleading in a four-up teaser.
   const imageFor = (service, index) =>
     serviceImage(service) || propertyImages[index] || page.heroImage || propertyImages[0]
   const heroImage = page.heroImage || imageFor(services[0] ?? {}, 0)
 
   useGSAP(() => {
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (reduced) return
+    const media = gsap.matchMedia()
+    media.add('(prefers-reduced-motion: no-preference)', () => {
+      const root = scope.current
+      const reveal = (targets, options = {}) => gsap.from(targets, {
+        opacity: 0,
+        y: 24,
+        duration: 0.75,
+        stagger: 0.1,
+        ease: 'power3.out',
+        clearProps: 'opacity,transform',
+        ...options,
+      })
 
-    const intro = gsap.timeline({ defaults: { ease: 'power3.out' } })
-    intro
-      .from('[data-expertise-kicker]', { y: 18, opacity: 0, duration: 0.6 })
-      .from('[data-expertise-title] > span', { yPercent: 115, duration: 0.95, stagger: 0.07 }, '-=0.32')
-      .from('[data-expertise-copy]', { y: 24, opacity: 0, duration: 0.7 }, '-=0.48')
-      .from('[data-expertise-visual]', { clipPath: 'inset(14% 0 14% 0)', scale: 1.08, duration: 1.15 }, '-=0.9')
+      reveal(root.querySelector('[data-expertise-intro]').children, { delay: 0.12 })
+      const heroImage = root.querySelector('[data-expertise-image]')
+      if (heroImage) reveal(heroImage, { delay: 0.3, duration: 1, y: 16 })
 
-    gsap.utils.toArray('[data-service-media]').forEach((media) => {
-      gsap.fromTo(media, { scale: 0.88, opacity: 0.52 }, {
-        scale: 1,
-        opacity: 1,
-        ease: 'none',
-        scrollTrigger: { trigger: media, start: 'top 92%', end: 'center 48%', scrub: 0.8 },
+      root.querySelectorAll('[data-expertise-reveal]').forEach((group) => {
+        reveal(group.children, {
+          scrollTrigger: { trigger: group, start: 'top 88%', once: true },
+        })
       })
     })
-
-    const match = gsap.matchMedia()
-    match.add('(min-width: 1024px)', () => {
-      ScrollTrigger.create({
-        trigger: '[data-service-stories]',
-        start: 'top 112px',
-        end: 'bottom bottom-=80',
-        pin: '[data-service-index]',
-        pinSpacing: false,
-      })
-    })
-    return () => match.revert()
-  }, { scope })
-
+    return () => media.revert()
+  }, { scope, dependencies: [page, heroImage], revertOnUpdate: true })
   return (
-    <main ref={scope} className="w-full max-w-full overflow-x-hidden bg-base text-content">
-      <section className="relative min-h-[100dvh] overflow-hidden bg-void text-white">
-        {heroImage && (
-          <div data-expertise-visual className="absolute inset-y-0 right-0 w-full lg:w-[58%]">
-            <img src={sized(heroImage, 'full')} alt="Prime development expertise" className="h-full w-full object-cover" />
-            <div className="absolute inset-0 bg-[linear-gradient(90deg,#0c151b_0%,rgba(12,21,27,.88)_20%,rgba(12,21,27,.2)_70%)]" />
-            <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(12,21,27,.72)_0%,transparent_52%)]" />
-          </div>
-        )}
-
-        <div className="relative mx-auto flex min-h-[100dvh] max-w-[1560px] flex-col justify-end px-6 pb-16 pt-32 md:px-12 md:pb-20 lg:justify-center">
-          <div className="max-w-[52rem]">
-            <p data-expertise-kicker className="font-body text-[12px] font-bold uppercase tracking-[0.22em] text-accent-soft">{page.heroEyebrow || 'Expertise'}</p>
-            <h1 data-expertise-title className="mt-6 max-w-[15ch] text-balance font-display font-bold uppercase leading-[0.91] tracking-[-0.055em] [font-size:clamp(2.35rem,10vw,7.5rem)]">
-              {(page.heroHeading || 'Four ways to build with Prime').split(' ').map((word, index) => (
-                <span key={`${word}-${index}`} className="inline-block overflow-hidden align-top"><span className="inline-block">{word}</span>{index < (page.heroHeading || 'Four ways to build with Prime').split(' ').length - 1 ? '\u00a0' : ''}</span>
-              ))}
+    <div ref={scope} className="bg-base text-content">
+      <section data-section-reveal="off" data-band="light" className="px-gutter pb-12 pt-32 md:pb-20 md:pt-44">
+        <div className="mx-auto grid max-w-[1320px] items-center gap-10 lg:grid-cols-2 lg:gap-16">
+          <div data-expertise-intro>
+            <p className="font-body text-xs font-bold uppercase tracking-[0.18em] text-accent">{page.heroEyebrow || 'Expertise'}</p>
+            <h1 className="mt-5 max-w-[16ch] text-balance font-display text-[clamp(2.4rem,5vw,4.5rem)] font-bold leading-[1.06] tracking-[-0.035em]">
+              {renderEmphasis(page.heroHeading || 'Four ways to build with Prime', 'text-accent')}
             </h1>
-            <div data-expertise-copy className="mt-8 grid max-w-[46rem] gap-8 md:grid-cols-[1fr_auto] md:items-end">
-              <p className="max-w-[58ch] font-body text-[16px] leading-[1.75] text-white/70">{page.heroParagraph}</p>
-              {page.ctaLabel && <PrimePill href={page.ctaHref || '/contact'}>{page.ctaLabel}</PrimePill>}
-            </div>
+            {page.heroParagraph && <p className="mt-6 max-w-[52ch] font-body text-base leading-relaxed text-content/70">{page.heroParagraph}</p>}
+            {page.ctaLabel && (
+              <ActionButton href={page.ctaHref || '/contact'} className="mt-8 max-md:w-full">
+                {page.ctaLabel}<ArrowRight className="size-4" />
+              </ActionButton>
+            )}
           </div>
+          {heroImage && <img data-expertise-image src={sized(heroImage, 'card')} alt="Prime Developers property" fetchPriority="high" className="aspect-[4/3] w-full rounded-panel object-cover" />}
         </div>
       </section>
 
       {services.length > 0 && (
-        <section data-band="light" className="bg-base px-6 py-24 md:px-12 md:py-36">
-          <div className="mx-auto max-w-[1560px]">
-            <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-              <h2 className="max-w-[15ch] text-balance font-display text-[clamp(2.3rem,5vw,5rem)] font-bold leading-[0.96] tracking-[-0.045em]">{renderEmphasis(page.capabilitiesHeading || 'Choose your way in', '')}</h2>
-              <p className="max-w-[42ch] font-body text-[15px] leading-[1.7] text-content/65">{page.capabilitiesSubheading}</p>
+        <section data-section-reveal="off" data-band="light" aria-labelledby="expertise-services-heading" className="px-gutter pb-16 md:pb-24">
+          <div className="mx-auto max-w-[1320px]">
+            <div data-expertise-reveal className="border-t border-content/15 pb-8 pt-10 md:flex md:items-end md:justify-between md:gap-12 md:pt-14">
+              <h2 id="expertise-services-heading" className="font-display text-[clamp(1.8rem,3vw,2.5rem)] font-bold tracking-[-0.025em]">
+                {renderEmphasis(page.capabilitiesHeading || 'What we do', 'text-accent')}
+              </h2>
+              {page.capabilitiesSubheading && <p className="mt-4 max-w-[52ch] font-body text-[15px] leading-relaxed text-content/65 md:mt-0">{page.capabilitiesSubheading}</p>}
             </div>
-
-            <div className="mt-14 grid grid-flow-dense grid-cols-1 gap-4 lg:grid-cols-12 lg:grid-rows-2">
-              {services.map((service, index) => {
-                const id = `service-${slugify(service.title)}`
-                const span = index === 0 || index === 3 ? 'lg:col-span-7' : 'lg:col-span-5'
-                return (
-                  <a key={service.title} href={`#${id}`} className={`group relative min-h-[22rem] overflow-hidden rounded-[1.75rem] bg-void text-white ${span}`}>
-                    {imageFor(service, index) && <img src={sized(imageFor(service, index), 'card')} alt="" className="absolute inset-0 h-full w-full object-cover opacity-70 transition duration-700 ease-out group-hover:scale-105 group-hover:opacity-85" />}
-                    <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(8,15,20,.94)_0%,rgba(8,15,20,.1)_76%)]" />
-                    <div className="relative flex h-full min-h-[22rem] flex-col justify-between p-7 md:p-9">
-                      <span className="font-body text-[12px] font-bold tabular-nums tracking-[0.16em] text-white/55">{serviceNumber(index)}</span>
-                      <div className="flex items-end justify-between gap-6">
-                        <h3 className="max-w-[12ch] font-display text-[clamp(2rem,3.5vw,4rem)] font-bold leading-[0.95] tracking-[-0.04em]">{service.title}</h3>
-                        <span className="grid size-12 shrink-0 place-items-center rounded-full border border-white/30 bg-white/10 backdrop-blur-md transition-transform duration-300 group-hover:-translate-y-1 group-hover:translate-x-1"><ArrowRight className="size-4 -rotate-45" /></span>
-                      </div>
-                    </div>
-                  </a>
-                )
-              })}
-            </div>
-          </div>
-        </section>
-      )}
-
-      <div aria-hidden className="overflow-hidden border-y border-white/10 bg-void py-5 text-white">
-        <div className="flex w-max animate-marquee gap-12 whitespace-nowrap pr-12 font-display text-[clamp(1.3rem,2.2vw,2rem)] font-bold uppercase tracking-[-0.02em] text-white/42">
-          {[...services, ...services].map((service, index) => <span key={`${service.title}-${index}`}>{service.title} <span className="ml-12 text-accent">/</span></span>)}
-        </div>
-      </div>
-
-      {services.length > 0 && (
-        <section data-service-stories data-band="light" className="bg-base px-6 py-24 md:px-12 md:py-36">
-          <div className="mx-auto grid max-w-[1560px] gap-16 lg:grid-cols-[17rem_minmax(0,1fr)] lg:gap-20">
-            <aside data-service-index className="h-fit">
-              <p className="font-body text-[12px] font-bold uppercase tracking-[0.2em] text-accent">{page.practiceLabel}</p>
-              <nav className="mt-8 border-t border-line">
-                {services.map((service, index) => <a key={service.title} href={`#service-${slugify(service.title)}`} className="group flex items-center justify-between border-b border-line py-4 font-body text-[14px] text-content/60 transition-colors hover:text-content"><span>{service.title}</span><span className="text-[11px] tabular-nums text-accent">{serviceNumber(index)}</span></a>)}
-              </nav>
-            </aside>
-
-            <div className="space-y-28 md:space-y-40">
-              {services.map((service, index) => {
-                const id = `service-${slugify(service.title)}`
-                const href = service.href || `/contact?service=${encodeURIComponent(service.title)}`
-                return (
-                  <article id={id} key={service.title} className="scroll-mt-28">
-                    <div data-service-media className="relative aspect-[16/10] overflow-hidden rounded-[1.75rem] bg-surface-alt will-change-transform">
-                      {imageFor(service, index) && <img src={sized(imageFor(service, index), 'full')} alt={`${service.title} by Prime Developers`} className="h-full w-full object-cover" />}
-                      <span className="absolute left-6 top-6 font-body text-[12px] font-bold tabular-nums tracking-[0.16em] text-white/70 drop-shadow md:left-8 md:top-8">{serviceNumber(index)}</span>
-                    </div>
-                    <div className="mt-9 grid gap-7 md:grid-cols-[minmax(0,1fr)_minmax(18rem,0.8fr)] md:items-start">
-                      <h2 className="font-display text-[clamp(2.5rem,5vw,5.5rem)] font-bold leading-[0.92] tracking-[-0.05em]">{service.title}</h2>
-                      <div>
-                        <p className="max-w-[60ch] font-body text-[16px] leading-[1.8] text-content/68">{service.body}</p>
-                        <a href={href} className="group mt-7 inline-flex items-center gap-3 font-body text-[13px] font-bold uppercase tracking-[0.12em] text-accent transition-colors hover:text-content">Explore {service.title}<ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-1" /></a>
-                      </div>
-                    </div>
-                  </article>
-                )
-              })}
-            </div>
+            {services.map((service, index) => {
+              const image = imageFor(service, index)
+              return (
+                <article data-expertise-reveal id={'service-' + slugify(service.title)} key={service.title} className="grid scroll-mt-28 gap-6 border-b border-content/15 py-8 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] md:items-center md:gap-12 md:py-10 lg:gap-20">
+                  {image && <img src={sized(image, 'card')} alt={service.title + ' by Prime Developers'} loading="lazy" decoding="async" className="aspect-[3/2] w-full rounded-panel object-cover" />}
+                  <div className={image ? '' : 'md:col-span-2'}>
+                    <p className="font-body text-xs font-medium tabular-nums tracking-[0.12em] text-accent">{String(index + 1).padStart(2, '0')}</p>
+                    <h3 className="mt-3 font-display text-[clamp(1.75rem,3vw,2.75rem)] font-bold leading-tight tracking-[-0.025em]">{service.title}</h3>
+                    <p className="mt-4 max-w-[58ch] font-body text-base leading-[1.75] text-content/70">{service.body}</p>
+                    <ActionButton href={service.href || '/contact?service=' + encodeURIComponent(service.title)} className="mt-6 max-md:w-full">
+                      Explore {service.title}<ArrowRight className="size-4" />
+                    </ActionButton>
+                  </div>
+                </article>
+              )
+            })}
           </div>
         </section>
       )}
 
       {page.stats?.length > 0 && (
-        <section className="bg-void px-6 py-20 text-white md:px-12 md:py-28">
-          <div className="mx-auto grid max-w-[1560px] grid-cols-2 gap-px overflow-hidden rounded-[1.75rem] bg-white/15 md:grid-cols-4">
-            {page.stats.map((stat) => <div key={stat.label} className="bg-void p-7 md:p-10"><strong className="block font-display text-4xl tabular-nums md:text-5xl">{stat.value}</strong><span className="mt-3 block font-body text-[12px] uppercase tracking-[0.14em] text-white/55">{stat.label}</span></div>)}
-          </div>
+        <section data-section-reveal="off" data-band="light" aria-label="Prime Developers in numbers" className="bg-surface px-gutter py-10 md:py-14">
+          <dl data-expertise-reveal className="mx-auto grid max-w-[1320px] grid-cols-2 gap-x-8 gap-y-10 md:grid-cols-4">
+            {page.stats.map((stat) => (
+              <div key={stat.label} className="flex flex-col gap-3">
+                <dt className="font-body text-sm text-content/65">{stat.label}</dt>
+                <dd className="-order-1 font-display text-3xl font-bold tabular-nums tracking-tight md:text-4xl">{stat.value}</dd>
+              </div>
+            ))}
+          </dl>
         </section>
       )}
 
-      <section className="relative overflow-hidden bg-accent px-6 py-24 text-white dark:text-void md:px-12 md:py-36">
-        <div className="absolute -right-32 -top-40 size-[32rem] rounded-full bg-white/12 blur-3xl" />
-        <div className="relative mx-auto flex max-w-[1560px] flex-col gap-12 md:flex-row md:items-end md:justify-between">
-          <h2 className="max-w-[15ch] text-balance font-display text-[clamp(2.5rem,5.5vw,5.8rem)] font-bold uppercase leading-[0.94] tracking-[-0.05em]">{renderEmphasis(page.closingHeading || 'Tell us which door you want to come through', '')}</h2>
-          <a href={page.closingHref || '/contact'} className="group inline-flex shrink-0 items-center gap-4 self-start rounded-full bg-white py-1.5 pl-7 pr-1.5 text-charcoal md:self-auto"><span className="font-body text-[14px] font-bold uppercase tracking-[0.05em]">{page.closingLabel || 'Start a conversation'}</span><span className="grid size-11 place-items-center rounded-full bg-void text-white"><ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-1" /></span></a>
+      <section data-section-reveal="off" data-band="light" className="px-gutter py-16 md:py-24">
+        <div data-expertise-reveal className="mx-auto flex max-w-[1320px] flex-col gap-8 md:flex-row md:items-center md:justify-between md:gap-16">
+          <h2 className="max-w-[24ch] text-balance font-display text-[clamp(1.9rem,3.5vw,3rem)] font-bold leading-tight tracking-[-0.025em]">
+            {renderEmphasis(page.closingHeading || 'Tell us about your next project', 'text-accent')}
+          </h2>
+          <ActionButton href={page.closingHref || '/contact'} className="max-md:w-full">
+            {page.closingLabel || 'Start a conversation'}<ArrowRight className="size-4" />
+          </ActionButton>
         </div>
       </section>
-    </main>
+    </div>
   )
 }

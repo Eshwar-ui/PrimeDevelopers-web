@@ -351,9 +351,9 @@ const DEFAULTS = {
   // for the template to render correctly, with the rest added by the admin
   // once real photography and pricing exist.
   interiors_page: {
-    heading: 'Finish your space, your way',
+    heading: 'Interior finishes',
     paragraph:
-      'Three tiers of interior finish-outs, priced per square foot and ready to compare. Browse by tier, see real examples, and fold a finish package into your unit enquiry.',
+      'Compare interior finishes and prices. Choose a style that works for your space.',
     options: [
       {
         slug: 'polished-concrete-warm-gray',

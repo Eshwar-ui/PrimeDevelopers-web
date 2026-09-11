@@ -23,7 +23,11 @@ const parsePrice = (value) => {
 }
 
 export default function InteriorsPage() {
-  const { heading, paragraph, options = [] } = useSection('interiors_page')
+  const { heading, paragraph, heroImage, options = [] } = useSection('interiors_page')
+  const title = !heading || /^finish your space/i.test(heading) ? 'Interior finishes' : heading
+  const description = !paragraph || paragraph.startsWith('Three tiers of interior finish-outs')
+    ? 'Compare interior finishes and prices. Choose a style that works for your space.'
+    : paragraph
   const [tier, setTier] = useState('All')
   const [category, setCategory] = useState('All')
   const [sort, setSort] = useState('default')
@@ -67,18 +71,31 @@ export default function InteriorsPage() {
 
   return (
     <div ref={scope} className="overflow-x-hidden bg-base text-content">
-      <section data-band="light" className="px-gutter pb-10 pt-36 md:pb-14 md:pt-44">
-        <div className="mx-auto grid max-w-[1360px] gap-8 lg:grid-cols-[1.25fr_0.75fr] lg:items-end">
-          <h1 className="max-w-[20ch] text-balance font-display font-bold uppercase leading-[1.03] tracking-tight [font-size:clamp(1.85rem,min(4.2vw,8dvh),3.4rem)]">{heading}</h1>
-          <p className="max-w-[48ch] font-body text-[16px] leading-[1.7] text-content/65 sm:text-[17px]">{paragraph}</p>
+      <section className="relative min-h-[34rem] overflow-hidden bg-void px-gutter text-white md:min-h-[36rem]">
+        <div aria-hidden="true" className="absolute inset-0">
+          <img
+            src={sized(heroImage || '/images/expertise/interiors.webp', 'full')}
+            alt=""
+            fetchPriority="high"
+            className="h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-[linear-gradient(100deg,#0c151b_0%,rgba(12,21,27,.88)_32%,rgba(12,21,27,.35)_68%,rgba(12,21,27,.2)_100%)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(12,21,27,.6)_0%,transparent_55%)]" />
         </div>
-        <Link
-          to="/enterprise/interiors/gallery"
-          className="mt-8 inline-flex min-h-11 items-center gap-2 rounded-full border border-content/20 px-5 font-body text-[13px] font-bold uppercase tracking-[0.08em] transition-colors hover:border-accent hover:text-accent"
-        >
-          View finished gallery
-          <ArrowRight className="size-4" />
-        </Link>
+        <div className="relative mx-auto flex min-h-[34rem] w-full max-w-[1360px] flex-col justify-end pb-12 pt-32 sm:pb-14 md:min-h-[36rem] md:pb-20 md:pt-40">
+          <div className="min-w-0 max-w-[42rem]">
+            <p className="font-body text-[12px] font-bold uppercase tracking-[0.22em] text-accent-soft">Interiors</p>
+            <h1 className="mt-5 max-w-[16ch] break-words text-balance font-display font-bold uppercase leading-[0.98] tracking-[-0.04em] text-[clamp(2.1rem,5.5vw,4.6rem)]">{title}</h1>
+            <p className="mt-6 max-w-[56ch] font-body text-base leading-[1.75] text-white/70">{description}</p>
+            <Link
+              to="/enterprise/interiors/gallery"
+              className="mt-8 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-white/30 px-5 font-body text-[13px] font-bold transition-colors hover:border-white hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white md:w-auto"
+            >
+              View gallery
+              <ArrowRight className="size-4 shrink-0" />
+            </Link>
+          </div>
+        </div>
       </section>
 
       <section data-band="light" className="bg-surface-alt px-gutter py-10 md:py-14">

@@ -226,7 +226,12 @@ export default function Footer() {
         {/* The panel. Held above the footer in the stacking order and inset from
             it on both sides, so the black reads as a plate the panel is resting
             on rather than as a box that has clipped it. */}
-        <div data-panel className="relative z-10 px-2 sm:px-8 md:px-14">
+        {/* Same gutter arithmetic as the plate below, so the panel's edge and
+            the directory's first column stay on one line instead of crossing
+            each other somewhere in the tablet band. The card's own `max-w-6xl`
+            still holds it well inside the measure on desktop — it is an object
+            resting on the plate, not a section spanning it. */}
+        <div data-panel className="relative z-10 px-2 sm:px-8 md:px-[calc(var(--spacing-gutter)_-_1.5rem)]">
           {/* Carbon, not ink. The plate underneath is `void`, and against it an
               ink panel sat within a few points of its own ground — the overlap
               that carries this whole composition was only legible by its corner
@@ -290,7 +295,16 @@ export default function Footer() {
 
         {/* The footer plate, pulled up under the panel. The top padding has to
             clear the overlap, which is why it is so much larger than the bottom. */}
-        <div className="relative -mt-28 overflow-hidden rounded-[26px] bg-void px-6 pb-9 pt-44 text-bone sm:-mt-32 sm:pt-48 md:px-14 md:pb-10 md:pt-56">
+        {/* Horizontal padding is the page gutter minus the inset the `footer`
+            above already spends holding this card off the viewport edge, so the
+            two together come to exactly one gutter and the content inside lands
+            on the same left edge as the nav lockup and every section on the
+            site. A flat `px-6 md:px-14` could not: it is a stepped value being
+            asked to track a fluid one, and the gap between them grew with the
+            viewport — at 1920 the directory started 80px in against the nav's
+            100px, and the whole plate was reading as a narrower column than the
+            page it closes. */}
+        <div className="relative -mt-28 overflow-hidden rounded-[26px] bg-void px-[calc(var(--spacing-gutter)_-_1rem)] pb-9 pt-44 text-bone sm:-mt-32 sm:pt-48 md:px-[calc(var(--spacing-gutter)_-_1.5rem)] md:pb-10 md:pt-56">
           {/* Brand watermark — the same `watermark-p` mark and the same 4–5%
               register the about page already uses, rather than a second copy of
               the lockup that is sitting legibly at the top of this very block.
@@ -323,7 +337,10 @@ export default function Footer() {
             className="pointer-events-none absolute bottom-6 right-6 z-0 w-[62%] max-w-[20rem] select-none opacity-[0.055] brightness-0 invert sm:max-w-[26rem] md:bottom-10 md:right-10 md:max-w-[34rem]"
           />
 
-          <div className="relative z-10 mx-auto max-w-6xl">
+          {/* The site measure, not `max-w-6xl`. 1152 was 408px short of what
+              every other section caps at, which is why the footer read as
+              indented under a full-width nav. */}
+          <div className="relative z-10 mx-auto max-w-[1560px]">
             {/* Sits between the CTA panel above and the directory below, and
                 now renders on every route rather than only on a property page
                 — see the component for what it shows when there is no current

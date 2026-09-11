@@ -52,6 +52,24 @@ export default function SiteModelSection({ property }) {
   // A deep link should bring the plan to the visitor; a click inside it
   // should not move the page under their hands. Only the first sync scrolls.
   const hasScrolled = useRef(false)
+  const cancelScroll = useRef(null)
+
+  // Unmount-only, so an in-flight arrival scroll cannot outlive this section.
+  // Without it the correction loop kept running for up to five seconds against
+  // a detached node and dragged the *next* route's scroll position around.
+  //
+  // Resetting the guard here rather than leaving it set is what keeps this
+  // correct under StrictMode, which mounts, tears down and remounts: with the
+  // flag left true the remount would skip the scroll and a deep link would
+  // silently stop working in development.
+  useEffect(
+    () => () => {
+      cancelScroll.current?.()
+      cancelScroll.current = null
+      hasScrolled.current = false
+    },
+    [],
+  )
 
   const buildings = useMemo(() => getBuildings(property), [property])
   const siteModel = getSiteModel(property)
@@ -205,7 +223,7 @@ export default function SiteModelSection({ property }) {
 
     if (!hasScrolled.current) {
       hasScrolled.current = true
-      scrollToElement(rootRef.current)
+      cancelScroll.current = scrollToElement(rootRef.current)
     }
   }, [searchParams, buildings])
 

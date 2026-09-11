@@ -18,6 +18,31 @@ const STATUS_COPY = {
 // about the place a prospect is deciding to join.
 const TENANTED = new Set(['leased', 'sold'])
 
+/**
+ * A tenant's website as a safe absolute URL, or null.
+ *
+ * `tenantUrl` is free text an admin types, and two things go wrong if it
+ * reaches `href` untouched. A bare "example.com" has no scheme, so the browser
+ * resolves it against the current page and opens /properties/example.com — the
+ * site's own 404 dressed up as the tenant's website. And a value beginning
+ * `javascript:` would execute on click, which turns one CMS field into stored
+ * XSS on every property page; only http and https are let through, so a
+ * mistyped or hostile value renders as plain text instead of a link.
+ */
+function externalHref(value) {
+  const raw = String(value ?? '').trim()
+  if (!raw) return null
+  // No scheme at all is the common admin typo, and it is unambiguous: these
+  // are always external sites, never paths on this one.
+  const candidate = /^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : `https://${raw}`
+  try {
+    const url = new URL(candidate)
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : null
+  } catch {
+    return null
+  }
+}
+
 // Every tier — 3D viewer, 2D pin plan, DOM unit list — converges on this one
 // card, so a copy change or a new field lands everywhere at once and the
 // tiers cannot drift into describing the same unit differently.
@@ -121,7 +146,16 @@ function UnitGallery({ images, label }) {
   // Selecting a different unit reuses this component rather than remounting
   // it, so without this the new unit opens on photograph 3 of the old one —
   // or on an index it does not have.
-  useEffect(() => setIndex(0), [images])
+  //
+  // Keyed on the contents, not on the array. `images` is built by
+  // getUnitImages() during the parent's render, so it is a fresh array every
+  // time UnitDetailCard re-renders for any reason at all — and on identity
+  // this reset fired on each of them, snapping a visitor on photograph 3 back
+  // to the first one whenever anything else on the page updated (toggling
+  // "Hide other buildings" was enough). A join is exact here: these lists are
+  // a handful of URLs, and two different sets cannot share one signature.
+  const signature = images.join('\u0000')
+  useEffect(() => setIndex(0), [signature])
 
   const count = images.length
   const step = (delta) => setIndex((i) => (i + delta + count) % count)
@@ -190,14 +224,15 @@ function GalleryArrow({ side, onClick }) {
  * metadata about a vacancy.
  */
 function TenantBlock({ name, logo, url, category, status }) {
-  const Wrapper = url ? 'a' : 'div'
-  const linkProps = url ? { href: url, target: '_blank', rel: 'noopener noreferrer' } : {}
+  const href = externalHref(url)
+  const Wrapper = href ? 'a' : 'div'
+  const linkProps = href ? { href, target: '_blank', rel: 'noopener noreferrer' } : {}
 
   return (
     <Wrapper
       {...linkProps}
       className={`mt-5 flex items-center gap-4 rounded-xl border border-[var(--color-line)] bg-surface-alt px-4 py-4 ${
-        url ? 'transition-colors duration-200 hover:border-accent/60' : ''
+        href ? 'transition-colors duration-200 hover:border-accent/60' : ''
       }`}
     >
       {logo && (
@@ -215,7 +250,7 @@ function TenantBlock({ name, logo, url, category, status }) {
         <span className="mt-1 block truncate font-display text-lg font-bold tracking-[-0.02em] text-content">{name}</span>
         {category && <span className="mt-0.5 block truncate font-body text-[13px] text-content/60">{category}</span>}
       </div>
-      {url && <ArrowSquareOut aria-hidden className="size-4 shrink-0 text-content/45" />}
+      {href && <ArrowSquareOut aria-hidden className="size-4 shrink-0 text-content/45" />}
     </Wrapper>
   )
 }

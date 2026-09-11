@@ -55,6 +55,7 @@ export function scrollToElement(target, { offset = -96 } = {}) {
   // fixed navbar — so the viewport position we are aiming for is its negation.
   const wantViewportTop = -offset
 
+  let begin = null
   let interval = null
   let attempts = 0
   let lastScrollY = null
@@ -79,7 +80,14 @@ export function scrollToElement(target, { offset = -96 } = {}) {
     else target.scrollIntoView({ block: 'start' })
   }
 
+  // Clears the pending first scroll as well as the correction loop. Clearing
+  // `begin` is what makes "the visitor taking over always wins" true during
+  // the START_MS wait: the first scroll is unconditional, so a stop that left
+  // the timeout pending would still yank the page out from under someone who
+  // had already started scrolling.
   const stop = () => {
+    clearTimeout(begin)
+    begin = null
     if (interval) clearInterval(interval)
     interval = null
     window.removeEventListener('wheel', stop)
@@ -87,7 +95,14 @@ export function scrollToElement(target, { offset = -96 } = {}) {
     window.removeEventListener('keydown', stop)
   }
 
-  const begin = setTimeout(() => {
+  // Registered now rather than inside the timeout below, so input during the
+  // START_MS wait is heard. Lenis drives scrolling from the GSAP ticker and
+  // never synthesises these, so nothing here fires on our own scrolling.
+  window.addEventListener('wheel', stop, { passive: true })
+  window.addEventListener('touchstart', stop, { passive: true })
+  window.addEventListener('keydown', stop)
+
+  begin = setTimeout(() => {
     // First pass unconditionally: `atRest` cannot be true yet, there being no
     // previous reading to compare against.
     attempts += 1
@@ -99,15 +114,9 @@ export function scrollToElement(target, { offset = -96 } = {}) {
       aim()
       if (Date.now() - startedAt > SETTLE_MS) stop()
     }, CHECK_MS)
-
-    // The visitor taking over always wins.
-    window.addEventListener('wheel', stop, { passive: true })
-    window.addEventListener('touchstart', stop, { passive: true })
-    window.addEventListener('keydown', stop)
   }, START_MS)
 
-  return () => {
-    clearTimeout(begin)
-    stop()
-  }
+  // The canceller *is* `stop`, so a caller that forgets nothing still tears
+  // down the timeout, the interval and all three listeners.
+  return stop
 }

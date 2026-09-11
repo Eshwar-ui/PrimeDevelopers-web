@@ -155,13 +155,28 @@ export default function PropertyDetailPage() {
   // click, and re-running would drag the page back up under the visitor.
   const linkedUnit = searchParams.get('unit')
   const hasScrolled = useRef(false)
+  const cancelScroll = useRef(null)
+
+  // Unmount-only teardown, and it resets the guard — see the matching note in
+  // SiteModelSection. Returning the canceller from the effect below instead
+  // would cancel the scroll on the visitor's first unit click, and would stop
+  // it running at all under StrictMode.
+  useEffect(
+    () => () => {
+      cancelScroll.current?.()
+      cancelScroll.current = null
+      hasScrolled.current = false
+    },
+    [],
+  )
+
   useEffect(() => {
     if (hasScrolled.current) return
     if ((!linkedUnit && !linkedBuilding) || !property || hasSiteModel(property)) return
     const section = document.getElementById('floor-plans')
     if (!section) return
     hasScrolled.current = true
-    return scrollToElement(section)
+    cancelScroll.current = scrollToElement(section)
   }, [property, linkedBuilding, linkedUnit])
 
   if (!property) {

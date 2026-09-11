@@ -1,21 +1,25 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import { useSection } from '../context/ContentContext'
 import QuoteForm from '../components/QuoteForm'
+import Testimonials from '../components/Testimonials'
+import { useCapProperties, CapPropertyGrid } from '../components/CapProperties'
+import { lenis } from '../hooks/useSmoothScroll'
 import { sized } from '../lib/images'
 
 gsap.registerPlugin(ScrollTrigger)
 
 const TRACKS = [
-  { id: 'planning-phase', number: '01', label: 'Track one', name: 'Planning-phase equity', tone: 'accent' },
-  { id: 'property-cap', number: '02', label: 'Track two', name: 'Property CAP / NNN', tone: 'ember' },
+  { id: 'planning-phase', label: 'Track one', name: 'Planning-phase equity', tone: 'accent' },
+  { id: 'property-cap', label: 'Track two', name: 'Property CAP / NNN', tone: 'ember' },
 ]
 
 const TONE = {
-  accent: { bar: 'bg-accent', chip: 'bg-accent/10 text-accent', number: 'text-accent/35', selected: 'border-accent bg-accent/10 text-accent' },
-  ember: { bar: 'bg-ember', chip: 'bg-ember/15 text-ember', number: 'text-ember/40', selected: 'border-ember bg-ember/15 text-ember' },
+  accent: { bar: 'bg-accent', text: 'text-accent', selected: 'border-accent bg-accent/10 text-accent' },
+  ember: { bar: 'bg-ember', text: 'text-ember', selected: 'border-ember bg-ember/15 text-ember' },
 }
 
 const INVESTOR_TYPE_OPTIONS = [
@@ -29,42 +33,18 @@ const ACCREDITATION_OPTIONS = [
   { value: 'unsure', label: 'Not sure' },
 ]
 
-function TrackCard({ track, data }) {
-  if (!data) return null
-  const tone = TONE[track.tone]
-  const rows = [
-    ['Entry cost', data.entryCost],
-    ['Timeline', data.timeline],
-    ['Risk profile', data.riskProfile],
-    ['Typical cap rate', data.capRateRange],
-    ['Lease structure', data.leaseStructure],
-    ['Passive income', data.passiveIncomeNote],
-  ].filter(([, value]) => value)
-
+/** The track's own facts, presented as a plain list rather than a bordered card. */
+function TrackFacts({ rows }) {
+  if (rows.length === 0) return null
   return (
-    <div data-reveal className="flex flex-col overflow-hidden rounded-panel border border-line bg-surface">
-      <span aria-hidden className={`block h-1.5 w-full ${tone.bar}`} />
-      <div className="flex flex-1 flex-col p-5 sm:p-8 md:p-9">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <span className={`inline-flex items-center rounded-full px-3 py-1 font-body text-[11px] font-bold uppercase tracking-[0.1em] ${tone.chip}`}>{track.label}</span>
-            <h2 className="mt-4 font-display text-xl font-bold leading-tight text-content sm:text-2xl">{track.name}</h2>
-          </div>
-          <span className={`font-display text-3xl font-bold tabular-nums sm:text-4xl ${tone.number}`}>{track.number}</span>
+    <dl className="grid gap-x-10 gap-y-6 border-t border-line pt-8 sm:grid-cols-2">
+      {rows.map(([label, value]) => (
+        <div key={label} className="flex flex-col gap-1.5">
+          <dt className="font-body text-[11px] font-bold uppercase tracking-[0.14em] text-content/50">{label}</dt>
+          <dd className="font-body text-[15px] leading-relaxed text-content">{value}</dd>
         </div>
-        {data.description && <p className="mt-5 font-body text-[15px] leading-relaxed text-content/70">{data.description}</p>}
-        {rows.length > 0 && (
-          <dl className="mt-7 flex flex-col gap-4 border-t border-line pt-6">
-            {rows.map(([label, value]) => (
-              <div key={label} className="flex flex-col gap-1">
-                <dt className="font-body text-[11px] font-bold uppercase tracking-[0.14em] text-content/50">{label}</dt>
-                <dd className="font-body text-[14px] leading-relaxed text-content">{value}</dd>
-              </div>
-            ))}
-          </dl>
-        )}
-      </div>
-    </div>
+      ))}
+    </dl>
   )
 }
 
@@ -72,6 +52,42 @@ export default function InvestPage() {
   const page = useSection('invest_page')
   const scope = useRef(null)
   const [track, setTrack] = useState('')
+  const { hash } = useLocation()
+
+  // A cross-route hash does not scroll on its own: the browser resolves the
+  // fragment while React Router is still mounting this page, so by the time the
+  // target element exists nobody is looking for it any more. `#property-cap`
+  // is what the properties page's "Show more" points at, and `#inquire` has
+  // been reachable-but-inert the same way.
+  //
+  // rAF rather than an effect body alone — the section has to be laid out
+  // before its offset means anything. Lenis owns the scroll position when it
+  // has mounted; `scrollIntoView` covers the routes where it has not.
+  useEffect(() => {
+    if (!hash) return
+    const id = hash.slice(1)
+    const frame = requestAnimationFrame(() => {
+      const target = document.getElementById(id)
+      if (!target) return
+      if (lenis.current) lenis.current.scrollTo(target, { offset: -90 })
+      else target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [hash])
+
+  const planningRows = [
+    ['Entry cost', page.planningPhase?.entryCost],
+    ['Timeline', page.planningPhase?.timeline],
+    ['Risk profile', page.planningPhase?.riskProfile],
+  ].filter(([, value]) => value)
+
+  const capRows = [
+    ['Typical cap rate', page.propertyCap?.capRateRange],
+    ['Lease structure', page.propertyCap?.leaseStructure],
+    ['Passive income', page.propertyCap?.passiveIncomeNote],
+  ].filter(([, value]) => value)
+
+  const capProperties = useCapProperties()
 
   const extraFields = useMemo(
     () => [
@@ -89,7 +105,11 @@ export default function InvestPage() {
       gsap.from('[data-hero-copy] > *', { y: 28, opacity: 0, duration: 0.8, ease: 'power3.out', stagger: 0.1 })
       gsap.from('[data-hero-visual]', { scale: 1.1, opacity: 0, duration: 1.2, ease: 'power3.out' })
       gsap.utils.toArray('[data-reveal]').forEach((el) => {
-        gsap.from(el, { y: 32, opacity: 0, duration: 0.7, ease: 'power3.out', scrollTrigger: { trigger: el, start: 'top 84%' } })
+        gsap.fromTo(
+          el,
+          { y: 32, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.7, ease: 'power3.out', scrollTrigger: { trigger: el, start: 'top 84%' } }
+        )
       })
     },
     { scope }
@@ -97,7 +117,7 @@ export default function InvestPage() {
 
   return (
     <div ref={scope} className="overflow-x-hidden bg-base text-content">
-      <section className="relative min-h-[34rem] overflow-hidden bg-void text-white md:min-h-[36rem]">
+      <section className="relative min-h-[34rem] overflow-hidden bg-void px-gutter text-white md:min-h-[36rem]">
         {page.heroImage && (
           <div data-hero-visual className="absolute inset-0">
             <img src={sized(page.heroImage, 'full')} alt="" className="h-full w-full object-cover" />
@@ -105,7 +125,7 @@ export default function InvestPage() {
             <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(12,21,27,.6)_0%,transparent_55%)]" />
           </div>
         )}
-        <div className="relative mx-auto flex min-h-[34rem] max-w-[1360px] flex-col justify-end px-gutter pb-12 pt-32 sm:pb-14 md:min-h-[36rem] md:px-gutter-lg md:pb-20 md:pt-40">
+        <div className="relative mx-auto flex min-h-[34rem] w-full max-w-[1360px] flex-col justify-end pb-12 pt-32 sm:pb-14 md:min-h-[36rem] md:pb-20 md:pt-40">
           <div data-hero-copy className="max-w-[42rem]">
             <p className="font-body text-[12px] font-bold uppercase tracking-[0.22em] text-accent-soft">{page.heroEyebrow}</p>
             <h1 className="mt-5 max-w-[16ch] text-balance font-display font-bold uppercase leading-[0.98] tracking-[-0.04em] [font-size:clamp(2.1rem,5.5vw,4.6rem)]">
@@ -116,16 +136,60 @@ export default function InvestPage() {
         </div>
       </section>
 
-      <section data-band="light" className="bg-surface-alt px-gutter py-16 md:px-gutter-lg md:py-24">
+      <section id={TRACKS[0].id} data-band="light" data-reveal className="scroll-mt-24 bg-surface-alt px-gutter py-20 md:py-28">
         <div className="mx-auto max-w-[1360px]">
-          <div className="grid gap-6 md:grid-cols-2">
-            <TrackCard track={TRACKS[0]} data={page.planningPhase} />
-            <TrackCard track={TRACKS[1]} data={page.propertyCap} />
+          <span aria-hidden className={`block h-1 w-14 rounded-full ${TONE.accent.bar}`} />
+          <p className={`mt-6 font-body text-xs font-bold uppercase tracking-[0.14em] ${TONE.accent.text}`}>{TRACKS[0].label}</p>
+          <h2 className="mt-3 max-w-[24ch] text-balance font-display text-[clamp(1.9rem,3.5vw,3rem)] font-bold leading-[1.05] tracking-[-0.035em]">
+            {TRACKS[0].name}
+          </h2>
+          {page.planningPhase?.description && (
+            <p className="mt-5 max-w-[62ch] font-body text-[16px] leading-[1.75] text-content/70">{page.planningPhase.description}</p>
+          )}
+          <div className="mt-10">
+            <TrackFacts rows={planningRows} />
           </div>
         </div>
       </section>
 
-      <section id="inquire" data-band="light" data-reveal className="px-gutter py-20 md:px-gutter-lg md:py-28">
+      {/* `id` matches TRACKS[1].id, which is also what the track selector in
+          the enquiry form writes — so one name identifies this track whether it
+          is being linked to or submitted. */}
+      <section id={TRACKS[1].id} data-band="light" data-reveal className="scroll-mt-24 px-gutter py-20 md:py-28">
+        <div className="mx-auto max-w-[1360px]">
+          <span aria-hidden className={`block h-1 w-14 rounded-full ${TONE.ember.bar}`} />
+          <p className={`mt-6 font-body text-xs font-bold uppercase tracking-[0.14em] ${TONE.ember.text}`}>{TRACKS[1].label}</p>
+          <h2 className="mt-3 max-w-[24ch] text-balance font-display text-[clamp(1.9rem,3.5vw,3rem)] font-bold leading-[1.05] tracking-[-0.035em]">
+            {TRACKS[1].name}
+          </h2>
+          {page.propertyCap?.description && (
+            <p className="mt-5 max-w-[62ch] font-body text-[16px] leading-[1.75] text-content/70">{page.propertyCap.description}</p>
+          )}
+          <div className="mt-10">
+            <TrackFacts rows={capRows} />
+          </div>
+
+          <div className="mt-16">
+            <p className="font-body text-xs font-bold uppercase tracking-[0.14em] text-content/40">Structured for CAP / NNN investment</p>
+            <CapPropertyGrid
+              items={capProperties}
+              className="mt-6"
+              emptyState={
+                <div className="mt-6 rounded-panel border border-dashed border-content/20 px-5 py-8 text-center sm:px-8 sm:py-10">
+                  <p className="font-display text-lg font-bold text-content">CAP / NNN listings are still being structured</p>
+                  <p className="mx-auto mt-2 max-w-md font-body text-[14px] leading-relaxed text-content/60">
+                    Stabilized properties will be shown here once they're set up for CAP / NNN investment.
+                  </p>
+                </div>
+              }
+            />
+          </div>
+        </div>
+      </section>
+
+      <Testimonials sectionKey="invest_testimonials" id="invest-testimonials" />
+
+      <section id="inquire" data-band="light" data-reveal className="px-gutter py-20 md:py-28">
         <div className="mx-auto max-w-[1360px]">
           <div className="mb-8 rounded-panel border border-line bg-surface-alt p-5 sm:p-7 md:p-9">
             <p className="font-body text-[11px] font-bold uppercase tracking-[0.15em] text-content/50">Which track interests you?</p>

@@ -17,7 +17,7 @@ export default function LearnTermPage() {
 
   return (
     <div className="bg-base text-content">
-      <header data-band="light" className="px-gutter pb-14 pt-32 md:px-gutter-lg md:pb-20 md:pt-40">
+      <header data-band="light" className="px-gutter pb-14 pt-32 md:pb-20 md:pt-40">
         <div className="mx-auto max-w-[1200px]">
           <Link to="/learn" className="group inline-flex min-h-11 items-center gap-2 font-body text-sm font-semibold text-content/55 transition-colors hover:text-accent">
             <ArrowRight className="size-4 rotate-180 transition-transform duration-300 group-hover:-translate-x-1" />
@@ -29,7 +29,7 @@ export default function LearnTermPage() {
         </div>
       </header>
 
-      <section data-band="dark" className="bg-void px-gutter py-10 text-bone md:px-gutter-lg md:py-16">
+      <section data-band="dark" className="bg-void px-gutter py-10 text-bone md:py-16">
         <div className="mx-auto max-w-[1200px]">
           <div className="aspect-video overflow-hidden rounded-[22px] border border-white/10 bg-carbon shadow-[0_35px_90px_-50px_rgba(0,0,0,0.9)]">
             {embedUrl ? (
@@ -47,7 +47,7 @@ export default function LearnTermPage() {
         </div>
       </section>
 
-      <section data-band="light" className="px-gutter py-20 md:px-gutter-lg md:py-28">
+      <section data-band="light" className="px-gutter py-20 md:py-28">
         <div className="mx-auto grid max-w-[1200px] gap-14 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-24">
           <article className="space-y-14">
             <div>

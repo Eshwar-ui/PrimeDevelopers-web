@@ -4,8 +4,10 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import { useSectionNav } from '../hooks/useSectionNav'
+import { lenis } from '../hooks/useSmoothScroll'
 import { useSection, useProperties } from '../context/ContentContext'
 import { renderEmphasis } from '../lib/emphasis'
+import { organizationSchema } from '../lib/structuredData'
 import SocialIcon from './SocialIcon'
 import TexasMap from './TexasMap'
 import FooterSimilarProperties from './FooterSimilarProperties'
@@ -36,6 +38,36 @@ gsap.registerPlugin(ScrollTrigger)
 // in the move.
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Every public route the site serves, in the order a footer should list them.
+//
+// This file used to carry a one-line special case appending `/learn` when the
+// authored list did not have it. The cause was never Learn specifically: the
+// seeded quick links predate half the site, and a database seeded before News
+// and Expertise existed is never going to grow those entries by itself. Union
+// against the canonical list and every such gap closes, not just the one that
+// happened to get noticed. Authored links keep their order and their labels —
+// this only adds what is missing.
+const ESSENTIAL_LINKS = [
+  { label: 'Home', href: '/' },
+  { label: 'About', href: '/about' },
+  { label: 'Properties', href: '/properties' },
+  { label: 'Expertise', href: '/enterprise' },
+  { label: 'News', href: '/news' },
+  { label: 'Learn', href: '/learn' },
+  { label: 'Contact', href: '/contact' },
+]
+
+// '/news/' and '/news' are the same destination and must not both be listed.
+const normalise = (href) => {
+  const value = href ?? ''
+  return value.length > 1 && value.endsWith('/') ? value.slice(0, -1) : value
+}
+
+function withEssentialLinks(authored = []) {
+  const seen = new Set(authored.map((l) => normalise(l.href)))
+  return [...authored, ...ESSENTIAL_LINKS.filter((l) => !seen.has(normalise(l.href)))]
+}
+
 function ArrowIcon({ className = '' }) {
   return (
     <svg
@@ -54,11 +86,16 @@ function ArrowIcon({ className = '' }) {
   )
 }
 
+// Every '<' escaped to its JSON unicode form. The values here are CMS strings,
+// and one containing "</script>" would otherwise close this tag and hand the
+// rest of it to the parser as markup. `<` parses back to the same string.
+const serialise = (data) => JSON.stringify(data).replaceAll('<', String.fromCharCode(92) + 'u003c')
+
 function ColumnTitle({ children }) {
   return <h3 className="font-body text-[13px] font-medium text-bone-3">{children}</h3>
 }
 
-function FooterLink({ href, label, onNavigate, external }) {
+function FooterLink({ href, label, onNavigate, external, size = 'text-[15px]' }) {
   const props = external
     ? { target: '_blank', rel: 'noreferrer' }
     : { onClick: (e) => onNavigate(e, href) }
@@ -67,7 +104,7 @@ function FooterLink({ href, label, onNavigate, external }) {
     <a
       href={href}
       {...props}
-      className="inline-flex min-h-9 items-center gap-2.5 font-body text-[15px] text-bone/75 transition-colors duration-300 hover:text-bone focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+      className={`inline-flex min-h-9 items-center gap-2.5 font-body ${size} text-bone/75 transition-colors duration-300 hover:text-bone focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent`}
     >
       {label}
     </a>
@@ -75,10 +112,14 @@ function FooterLink({ href, label, onNavigate, external }) {
 }
 
 export default function Footer() {
+  const footer = useSection('footer')
   const {
-    email, phone, studio, quickLinks, socials, copyrightLeft,
+    email, phone, studio, quickLinks, socials, copyrightLeft, copyrightRight,
     quickLinksHeading, portfolioHeading, socialHeading, allPropertiesLabel,
-  } = useSection('footer')
+    exploreEyebrow, exploreHeading, viewAllLabel,
+    addressStreet, addressLocality, addressRegion, addressPostalCode,
+    legalLinks, licenseLabel, licenseNumber, backToTopLabel,
+  } = footer
   const cta = useSection('cta_home')
   const { cities } = useSection('texas_map')
   const properties = useProperties()
@@ -93,9 +134,42 @@ export default function Footer() {
 
   const isExternal = (href) => /^(https?:)?\/\//i.test(href ?? '')
   const portfolio = properties.slice(0, 5)
-  const directoryLinks = quickLinks.some((link) => link.href === '/learn')
-    ? quickLinks
-    : [...quickLinks, { label: 'Learn', href: '/learn' }]
+  const directoryLinks = withEssentialLinks(quickLinks)
+
+  // The address as postal lines when the structured parts are filled in, and
+  // the single authored `studio` line when they are not.
+  const localityLine = [
+    [addressLocality, addressRegion].filter(Boolean).join(', '),
+    addressPostalCode,
+  ]
+    .filter(Boolean)
+    .join(' ')
+  // Gated on the street, not on the parts being non-empty. A city and a state
+  // with no street is *less* specific than the authored line, so swapping
+  // "East 6th Street, Austin, TX" for "Austin, TX" would be a downgrade. The
+  // structured data reads whichever parts exist either way.
+  const postalLines = [addressStreet, localityLine].filter(Boolean)
+  const addressLines = addressStreet
+    ? postalLines
+    : [studio || localityLine].filter(Boolean)
+
+  const licenseLine = [licenseLabel, licenseNumber].filter(Boolean).join(' ')
+
+  // Client-rendered, so `origin` is always there by the time this runs —
+  // guarded regardless, since a bundler-evaluated module scope is not.
+  const origin = typeof window === 'undefined' ? '' : window.location.origin
+  const schema = organizationSchema({
+    footer,
+    properties,
+    cities,
+    origin,
+    logoUrl: origin && logo.startsWith('/') ? origin + logo : logo,
+  })
+
+  const toTop = () => {
+    if (lenis.current) lenis.current.scrollTo(0)
+    else window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   useGSAP(
     () => {
@@ -152,7 +226,12 @@ export default function Footer() {
         {/* The panel. Held above the footer in the stacking order and inset from
             it on both sides, so the black reads as a plate the panel is resting
             on rather than as a box that has clipped it. */}
-        <div data-panel className="relative z-10 px-2 sm:px-8 md:px-14">
+        {/* Same gutter arithmetic as the plate below, so the panel's edge and
+            the directory's first column stay on one line instead of crossing
+            each other somewhere in the tablet band. The card's own `max-w-6xl`
+            still holds it well inside the measure on desktop — it is an object
+            resting on the plate, not a section spanning it. */}
+        <div data-panel className="relative z-10 px-2 sm:px-8 md:px-[calc(var(--spacing-gutter)_-_1.5rem)]">
           {/* Carbon, not ink. The plate underneath is `void`, and against it an
               ink panel sat within a few points of its own ground — the overlap
               that carries this whole composition was only legible by its corner
@@ -182,7 +261,7 @@ export default function Footer() {
                 {cta.ctaLabel && (
                   <Link
                     to={cta.ctaHref || '/contact'}
-                    className="group mt-8 inline-flex h-13 items-center gap-2.5 rounded-xl bg-bone px-7 font-body text-[15px] font-medium text-charcoal transition-opacity duration-300 hover:opacity-88 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-accent"
+                    className="group mt-8 inline-flex h-13 w-full items-center justify-center gap-2.5 md:w-auto rounded-xl bg-bone px-7 font-body text-[15px] font-medium text-charcoal transition-opacity duration-300 hover:opacity-88 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-accent"
                   >
                     {cta.ctaLabel}
                     <ArrowIcon className="size-4 transition-transform duration-300 ease-brand group-hover:translate-x-1" />
@@ -216,15 +295,37 @@ export default function Footer() {
 
         {/* The footer plate, pulled up under the panel. The top padding has to
             clear the overlap, which is why it is so much larger than the bottom. */}
-        <div className="relative -mt-28 overflow-hidden rounded-[26px] bg-void px-6 pb-9 pt-44 text-bone sm:-mt-32 sm:pt-48 md:px-14 md:pb-10 md:pt-56">
+        {/* Horizontal padding is the page gutter minus the inset the `footer`
+            above already spends holding this card off the viewport edge, so the
+            two together come to exactly one gutter and the content inside lands
+            on the same left edge as the nav lockup and every section on the
+            site. A flat `px-6 md:px-14` could not: it is a stepped value being
+            asked to track a fluid one, and the gap between them grew with the
+            viewport — at 1920 the directory started 80px in against the nav's
+            100px, and the whole plate was reading as a narrower column than the
+            page it closes. */}
+        <div className="relative -mt-28 overflow-hidden rounded-[26px] bg-void px-[calc(var(--spacing-gutter)_-_1rem)] pb-9 pt-44 text-bone sm:-mt-32 sm:pt-48 md:px-[calc(var(--spacing-gutter)_-_1.5rem)] md:pb-10 md:pt-56">
           {/* Brand watermark — the same `watermark-p` mark and the same 4–5%
               register the about page already uses, rather than a second copy of
               the lockup that is sitting legibly at the top of this very block.
 
-              It is anchored into the foot's bottom-left because that is where
+              It is anchored into the foot's bottom-right because that is where
               the plate was emptiest: the directory column runs far longer than
               the identity column beside it, leaving a quarter of the card as
               dead ground. The mark grounds that corner instead of a gap.
+
+              Held fully inside the plate. It used to hang off the corner on
+              negative insets, and the plate is `overflow-hidden` — it has to
+              be, to clip its own 26px radius — so the bleed cost 14% of the
+              mark's width and 18% of its height. At 5.5% opacity a clipped
+              edge has no contrast to read as a deliberate crop; it just looks
+              like the logo ran out. A bleed is a real device, but it needs to
+              be obviously past the edge or not there at all.
+
+              Width is a share of the plate rather than a fixed rem, with a
+              ceiling. The mark is 849×910, so a fixed 24rem was 384px wide
+              inside a ~343px plate on a small phone — overflowing the far side
+              and getting clipped there instead. A percentage cannot.
 
               `brightness-0 invert` because the source is charcoal #2F2F2F —
               black first, then lifted to white. The about page swaps treatments
@@ -233,11 +334,23 @@ export default function Footer() {
             src={watermark}
             alt=""
             aria-hidden
-            className="pointer-events-none absolute -bottom-24 -right-20 z-0 w-[24rem] max-w-none select-none opacity-[0.055] brightness-0 invert sm:-bottom-28 sm:-right-16 sm:w-[30rem] md:-right-20 md:w-[36rem]"
+            className="pointer-events-none absolute bottom-6 right-6 z-0 w-[62%] max-w-[20rem] select-none opacity-[0.055] brightness-0 invert sm:max-w-[26rem] md:bottom-10 md:right-10 md:max-w-[34rem]"
           />
 
-          <div className="relative z-10 mx-auto max-w-6xl">
-            <FooterSimilarProperties properties={properties} />
+          {/* The site measure, not `max-w-6xl`. 1152 was 408px short of what
+              every other section caps at, which is why the footer read as
+              indented under a full-width nav. */}
+          <div className="relative z-10 mx-auto max-w-[1560px]">
+            {/* Sits between the CTA panel above and the directory below, and
+                now renders on every route rather than only on a property page
+                — see the component for what it shows when there is no current
+                listing to be similar to. */}
+            <FooterSimilarProperties
+              properties={properties}
+              exploreEyebrow={exploreEyebrow}
+              exploreHeading={exploreHeading}
+              viewAllLabel={viewAllLabel}
+            />
 
             <div className="grid gap-12 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1.6fr)] lg:gap-16">
               {/* ── Identity ─────────────────────────────────────────────── */}
@@ -253,9 +366,13 @@ export default function Footer() {
                   className="h-9 w-auto select-none sm:h-10"
                 />
 
-                {studio && (
+                {addressLines.length > 0 && (
                   <address className="mt-6 max-w-[24ch] font-body text-[15px] not-italic leading-[1.7] text-bone/60">
-                    {studio}
+                    {addressLines.map((line, i) => (
+                      <span key={line} className={i ? 'block' : undefined}>
+                        {line}
+                      </span>
+                    ))}
                   </address>
                 )}
 
@@ -287,14 +404,27 @@ export default function Footer() {
                     </div>
                   )}
                 </dl>
+
+                {/* Blank unless a licence is entered in the CMS, which is the
+                    only reason this rule exists — an empty divider under the
+                    contact details would just be a stray line. */}
+                {licenseLine && (
+                  <div className="mt-9 border-t border-[var(--color-line-subtle)] pt-6">
+                    <span className="font-body text-[12px] leading-tight text-bone-3">
+                      {licenseLine}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* ── Directory ────────────────────────────────────────────── */}
               {/* Three columns, and the third is Portfolio rather than the
-                  reference's Legal. Terms, privacy and cookie pages do not exist
-                  on this site, and a footer column of links to routes that 404
-                  is worse than one column fewer — where the properties are real,
-                  editable, and the thing a visitor here is shopping for. */}
+                  reference's Legal. Privacy and Terms exist now and are linked,
+                  but from the copyright bar: they are footnotes a visitor goes
+                  looking for deliberately, and giving them equal weight to the
+                  portfolio would spend the width on the one column nobody came
+                  here to read. The properties are real, editable, and the thing
+                  a visitor here is shopping for. */}
               <div className="grid grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-3">
                 {directoryLinks.length > 0 && (
                   <nav data-col aria-label="Quick links" className="flex flex-col gap-5">
@@ -342,7 +472,13 @@ export default function Footer() {
                     <ul className="flex flex-col gap-1">
                       {/* Keyed on href *and* label because neither alone is
                           unique: two entries may share a name, and the seeded
-                          placeholders all share `#`. */}
+                          placeholders all share `#`.
+
+                          Placeholders are rendered rather than filtered out.
+                          Hiding them makes the column silently disappear, which
+                          looks like the footer lost a section rather than like
+                          four URLs are missing — `handleNav` already swallows
+                          the click, and the CMS is where this gets fixed. */}
                       {socials.map((l) => (
                         <li key={`${l.href}|${l.label}`}>
                           <a
@@ -366,11 +502,67 @@ export default function Footer() {
               </div>
             </div>
 
-            {copyrightLeft && (
-              <div className="mt-12 border-t border-[var(--color-line-inv)] pt-7 text-center">
-                <p className="font-body text-[14px] text-bone-3">{copyrightLeft}</p>
+            {/* The bar the whole page ends on.
+                `copyrightRight` was seeded, editable in the CMS, and rendered
+                nowhere — an editor could type into that field forever and watch
+                nothing happen. It has the right half of the bar, which is what
+                the field's own name has always promised. */}
+            {/* `flex-col-reverse` below md: stacked, the locale and the way back
+                up are what a visitor still has a use for, so they sit above the
+                copyright and the legal footnotes rather than under them. The
+                DOM order is left-group-then-right-group because that is the
+                reading order the row restores at md. */}
+            <div className="mt-12 flex flex-col-reverse gap-5 border-t border-[var(--color-line-inv)] pt-7 text-center md:flex-row md:items-center md:justify-between md:gap-8 md:text-left">
+              <div className="flex flex-col items-center gap-x-6 gap-y-2 md:flex-row">
+                {copyrightLeft && (
+                  <p className="font-body text-[14px] text-bone-3">{copyrightLeft}</p>
+                )}
+                {legalLinks?.length > 0 && (
+                  <nav aria-label="Legal">
+                    <ul className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1">
+                      {legalLinks.map((l) => (
+                        <li key={`${l.href}|${l.label}`}>
+                          <FooterLink
+                            href={l.href}
+                            label={l.label}
+                            onNavigate={handleNav}
+                            external={isExternal(l.href)}
+                            size="text-[14px]"
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                  </nav>
+                )}
               </div>
-            )}
+
+              <div className="flex flex-col items-center gap-x-6 gap-y-2 md:flex-row">
+                {copyrightRight && (
+                  <p className="font-body text-[14px] text-bone-3">{copyrightRight}</p>
+                )}
+                {/* A button, not an anchor to '#top': there is no such element,
+                    and Lenis owns the scroll position — `window.scrollTo` alone
+                    fights it. Falls back to the native smooth scroll on the
+                    routes where Lenis has not mounted. */}
+                <button
+                  type="button"
+                  onClick={toTop}
+                  className="group inline-flex min-h-9 items-center gap-2 font-body text-[14px] text-bone-3 transition-colors duration-300 hover:text-bone focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+                >
+                  {backToTopLabel}
+                  <ArrowIcon className="size-3.5 -rotate-90 transition-transform duration-300 ease-brand group-hover:-translate-y-0.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Organization markup, built from this section's own fields — see
+                lib/structuredData.js for why it is assembled here rather than
+                hand-written into index.html. */}
+            <script
+              type="application/ld+json"
+              // eslint-disable-next-line react/no-danger -- serialised JSON with '<' escaped below
+              dangerouslySetInnerHTML={{ __html: serialise(schema) }}
+            />
           </div>
         </div>
       </div>

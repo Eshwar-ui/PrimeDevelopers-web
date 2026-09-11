@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { flushSync } from 'react-dom'
 import { motion, AnimatePresence, useReducedMotion, useInView } from 'motion/react'
 import { useSection, useProperties, useCategories } from '../context/ContentContext'
@@ -9,7 +9,9 @@ import { lenis } from '../hooks/useSmoothScroll'
 import MaskedHeading from '../components/MaskedHeading'
 import { rise, stagger, inViewOnce } from '../lib/motion'
 import PrimePill from '../components/PrimePill'
-import PropertiesMapHero from '../components/PropertiesMapHero'
+import PropertiesHero from '../components/PropertiesHero'
+import ArrowRight from '../components/ArrowRight'
+import { useCapProperties, CapPropertyGrid } from '../components/CapProperties'
 // import Marquee from '../components/Marquee'
 import Services from '../components/Services'
 
@@ -145,6 +147,8 @@ export default function PropertiesPage() {
   const p = useSection('properties_page')
   const properties = useProperties()
   const categories = useCategories()
+  // Curated on the invest page, shown here as a teaser — see CapProperties.jsx.
+  const capProperties = useCapProperties()
   const navigate = useNavigate()
 
   const [filter, setFilter] = useState('All')
@@ -213,21 +217,35 @@ export default function PropertiesPage() {
   return (
     <div>
       {/* ── Hero ─────────────────────────────────────────────── */}
-      {/* Copy and map share one screen rather than dividing it. The map is the
-          ground, arriving under the copy toward the bottom of the fold, so
-          there is no band here to give the leftover height to — the section
-          sets its own and centres the copy in the paper above the pins. */}
-      <PropertiesMapHero properties={properties} onOpen={openProperty}>
+      {/* Centred copy over the portfolio's own figures. The map that used to
+          carry this fold is gone — see PropertiesHero for why — and with it the
+          viewport-height floor it needed, so the collection below now starts
+          within reach of the first scroll. */}
+      <PropertiesHero properties={properties}>
         {/* Same treatment as the homepage hero — display face, bold, uppercase,
-            the same tight leading and tracking — at a smaller size. Governed by
-            whichever runs out first, width or height, for the same reason the
-            home headline is: a short wide window has to shrink the type rather
-            than push the buttons down onto the pins. */}
+            the same tight leading and tracking — at a smaller size. */}
         <motion.div variants={stagger} initial="hidden" animate="show" className="text-center">
+          {p.heroEyebrow && (
+            <motion.p
+              variants={rise}
+              className="flex items-center justify-center gap-3 font-body text-[11px] font-bold uppercase tracking-[0.28em] text-accent"
+            >
+              <span aria-hidden className="h-px w-8 bg-accent/45" />
+              {p.heroEyebrow}
+              <span aria-hidden className="h-px w-8 bg-accent/45" />
+            </motion.p>
+          )}
+
           {/* Plain, not a motion child: its words carry their own masked rise,
               and a block-level lift on top would move each mask along with the
-              word inside it — leaving nothing for the word to rise out of. */}
-          <h2 className="mx-auto max-w-[18ch] font-display font-bold uppercase leading-[1.03] tracking-tight text-content [font-size:clamp(1.85rem,min(4.2vw,8dvh),3.4rem)]">
+              word inside it — leaving nothing for the word to rise out of.
+
+              The `dvh` term this clamp used to carry is gone with the fold that
+              justified it. It existed so a short window would shrink the type
+              rather than push the buttons down onto the map pins; with no pins
+              to protect it would only shrink the headline to make room for
+              nothing (DESIGN.md §2). */}
+          <h2 className="mx-auto mt-5 max-w-[18ch] font-display font-bold uppercase leading-[1.03] tracking-tight text-content [font-size:clamp(1.85rem,4.2vw,3.4rem)]">
             <MaskedHeading text={p.heroHeading} accentClass="italic text-accent" />
           </h2>
 
@@ -259,20 +277,21 @@ export default function PropertiesPage() {
             </PrimePill>
           </motion.div>
         </motion.div>
-      </PropertiesMapHero>
+      </PropertiesHero>
 
       {/* ── The curated collection ───────────────────────────── */}
       {/* Ground, gutter, rhythm and measure are the homepage's — `bg-base
-          px-gutter py-20 text-content md:px-gutter-lg md:py-28` is what every
+          px-gutter py-20 text-content md:py-28` is what every
           section on the landing page sets, and this band was running its own
           `bg-surface px-6` with no measure at all. The gutter is the visible
-          half: `px-gutter-lg` is 6.25rem against the 3rem this had, so the grid
-          now starts on the same vertical as the homepage's cards instead of
-          sitting 2rem wider than everything else on the site. */}
+          half: `px-gutter` reaches 6.25rem on a wide display against the fixed
+          3rem this had, so the grid now starts on the same vertical as the
+          homepage's cards instead of sitting 2rem wider than everything else on
+          the site. */}
       <section
         id="collection"
         data-band="light"
-        className="bg-base px-gutter py-20 text-content md:px-gutter-lg md:py-28"
+        className="bg-base px-gutter py-20 text-content md:py-28"
       >
         {/* The 1560px measure every homepage section sets. Without it this grid
             was the one band on the site with no ceiling, so on a wide display it
@@ -357,6 +376,64 @@ export default function PropertiesPage() {
               ))}
             </AnimatePresence>
           </motion.div>
+
+          {/* ── Top CAP properties ──────────────────────────────────────────
+              A teaser of the invest page's curated CAP / NNN list, not a second
+              list of its own — same hook, same card, same CMS entries, so a
+              listing curated there appears here the moment it is added.
+
+              It sits under the grid rather than beside it because it answers a
+              different question: the grid is "what is for sale", this is "what
+              is already producing income". Three cards and a way through, on
+              the reasoning that anyone who reads past three is better served by
+              the invest page, where the lease structure and the rest of the
+              track are explained rather than implied.
+
+              Renders nothing at all when the curated list is empty. The invest
+              page has an empty state because that section is the whole point of
+              the page it is on; here it would be a heading over a hole. */}
+          {capProperties.length > 0 && (
+            <div className="mt-20 border-t border-line pt-16 md:mt-24 md:pt-20">
+              <RevealGroup className="grid gap-8 md:grid-cols-[1.1fr_1fr] md:items-end">
+                <div>
+                  <motion.span
+                    variants={rise}
+                    className="inline-block font-body text-[14px] uppercase tracking-[0.14em] text-ember"
+                  >
+                    Top CAP properties
+                  </motion.span>
+                  <motion.h2
+                    variants={rise}
+                    className="mt-4 font-display text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] text-content md:text-[2.5rem]"
+                  >
+                    Already stabilized, already earning
+                  </motion.h2>
+                </div>
+                <motion.p
+                  variants={rise}
+                  className="font-body text-[16px] leading-[1.7] text-content/70"
+                >
+                  Income-producing properties structured for CAP / NNN investment — tenants cover
+                  taxes, insurance and maintenance.
+                </motion.p>
+              </RevealGroup>
+
+              <CapPropertyGrid items={capProperties} limit={3} className="mt-12" />
+
+              <div className="mt-10 flex justify-center">
+                {/* A real route, not a scroll: the rest of this list only makes
+                    sense next to the track that explains it. `#property-cap`
+                    lands on that section rather than at the top of the page. */}
+                <Link
+                  to="/enterprise/invest#property-cap"
+                  className="group inline-flex min-h-12 items-center gap-2.5 rounded-full border border-[var(--color-line)] px-7 font-body text-[14px] font-semibold uppercase tracking-[0.1em] text-content/75 transition-colors duration-300 hover:border-ember/60 hover:text-ember focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-accent"
+                >
+                  Show more
+                  <ArrowRight className="size-4 transition-transform duration-300 ease-brand group-hover:translate-x-1" />
+                </Link>
+              </div>
+            </div>
+          )}
         </div>
       </section>
 

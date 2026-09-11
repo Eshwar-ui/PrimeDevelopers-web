@@ -45,6 +45,52 @@ const HIGHLIGHT_ICONS = [
 ]
 const HIGHLIGHT_FALLBACK = 'M12 4l8 8-8 8-8-8 8-8Z'
 
+// Glyphs for the overview figures. Chosen by what the label says, the same way
+// HIGHLIGHT_ICONS reads a title, because these labels are free text an admin
+// typed — "SFT Property Size", "Total Units", "Available Units" — and a fixed
+// icon per position would mislabel the moment someone reorders them.
+//
+// Order is load-bearing rather than incidental: "Available Units" satisfies the
+// units test as well as the availability one, so the narrower reading has to be
+// offered first or two of the three figures draw the same mark.
+//
+// Each entry is a list of paths — the two-figure mark can't be drawn in one.
+const STAT_ICONS = [
+  [
+    /\b(available|vacant|remaining|unleased)\b/i,
+    ['M21 8.2 12 3 3 8.2v7.6L12 21l9-5.2V8.2Z', 'M3 8.2l9 5.2 9-5.2', 'M12 13.4V21'],
+  ],
+  [
+    /\b(total|units?|tenants?|occupancy|leased|sold)\b/i,
+    ['M16 21v-1.8a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4V21', 'M9 11.2a4.1 4.1 0 1 0 0-8.2 4.1 4.1 0 0 0 0 8.2', 'M22 21v-1.8a4 4 0 0 0-3-3.87', 'M16 3.13a4.1 4.1 0 0 1 0 7.94'],
+  ],
+  [
+    /\b(sft|sq|square|size|acres?|area|project|feet)\b/i,
+    ['M4 21V6a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v15', 'M12 21V11a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v10', 'M3 21h18', 'M7 9h2M7 13h2M7 17h2', 'M15 14h2M15 18h2'],
+  ],
+]
+
+function StatIcon({ label }) {
+  const match = STAT_ICONS.find(([test]) => test.test(label ?? ''))
+  const paths = match ? match[1] : [HIGHLIGHT_FALLBACK]
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-5 text-content/40"
+    >
+      {paths.map((d) => (
+        <path key={d} d={d} />
+      ))}
+    </svg>
+  )
+}
+
 const TILE_TONES = [
   'bg-content/6 text-content/70',
   'bg-[color-mix(in_srgb,var(--color-status-available)_14%,transparent)] text-[var(--color-status-available)]',
@@ -99,6 +145,11 @@ export default function PropertyDetailPage() {
 
   const d = property.detail
   const gallery = property.gallery ?? []
+  // The overview shows two frames, not a collage. The hero photograph is
+  // usually also the first gallery entry, so it is dropped here — showing the
+  // reader the image they just scrolled past reads as a duplicate rather than
+  // as a second view of the site.
+  const overviewImages = gallery.filter((src) => src && src !== property.image).slice(0, 2)
   // Guarded: a property with no buildings yet would divide 0 by 0 and render
   // "(NaN% currently reserved.)" in the enquiry copy.
   const soldPct = property.buildings > 0 ? Math.round((property.sold / property.buildings) * 100) : 0
@@ -113,35 +164,74 @@ export default function PropertyDetailPage() {
       />
 
       {/* ── Overview ─────────────────────────────────────────── */}
-      {d?.overview?.heading && (
-        <section id="overview" data-band="light" className="bg-base px-6 py-24 md:px-gutter-lg md:py-36">
-          <div className="grid grid-flow-dense gap-6 lg:grid-cols-12 lg:grid-rows-2">
-            {/* Image collage */}
-            {gallery.length >= 3 && (
-              <div className="grid grid-cols-2 gap-3 lg:col-span-7 lg:row-span-2">
-                <img src={gallery[0]} alt="" className="col-span-2 h-64 w-full rounded-2xl object-cover md:h-80" />
-                <img src={gallery[1]} alt="" className="h-40 w-full rounded-2xl object-cover md:h-48" />
-                <img src={gallery[2]} alt="" className="h-40 w-full rounded-2xl object-cover md:h-48" />
-              </div>
-            )}
+      {/* The argument on the left, the photography beside it as evidence, and
+          the project's figures on a full-width band that closes the section.
+          Three groups, and which one owns the figures is the whole design:
+          they describe the development, not the two frontages above them, so
+          they sit outside the columns rather than under one of them.
 
-            <div className="flex flex-col justify-center lg:col-span-5 lg:row-span-2 lg:pl-12">
-              {d.overview.eyebrow && (
-                <div className="flex items-center gap-4">
-                  <span aria-hidden className="h-px w-10 shrink-0 bg-accent" />
-                  <span className="font-body text-[13px] font-bold uppercase tracking-[0.22em] text-content/70">
-                    {d.overview.eyebrow}
-                  </span>
-                </div>
-              )}
-              <h2 className="mt-6 font-display font-bold leading-[1.08] tracking-[-0.02em] text-content [font-size:clamp(1.9rem,3.4vw,3rem)]">
-                {d.overview.heading}
-              </h2>
-              <p className="mt-6 max-w-[52ch] font-body text-[16px] leading-[1.7] text-content/70">
-                {d.overview.body}
-              </p>
-              {d.overview.flyer && (
-                <div className="mt-8 w-fit">
+          That is also the only place they fit. Inside the right column the row
+          had ~390px at 1024px to seat three unwrappable numerals, their icons
+          and their rules — it overflowed its own panel at every desktop width
+          and only got worse with a longer figure or a fourth stat. Full width
+          it has 270px per cell at the narrowest supported layout. */}
+      {d?.overview?.heading && (
+        <section id="overview" data-band="light" className="bg-base px-gutter py-20 md:py-28">
+          <div className="mx-auto max-w-[1560px]">
+            {/* `lg:items-center` rather than `items-start`: the copy column runs
+                taller than a pair of 4:3 frames at most widths, and pinning
+                both to the top left the slack as a hard stub under the
+                photographs. Centred, it reads as air around them.
+
+                The columns collapse to one when the listing has no gallery — a
+                two-column grid with an empty half is worse than a single
+                column, and the copy gets the full measure instead. */}
+            <div
+              className={`grid gap-12 lg:gap-16 ${
+                overviewImages.length > 0 ? 'lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-center' : ''
+              }`}
+            >
+              <motion.div variants={stagger} initial="hidden" whileInView="show" viewport={inViewOnce}>
+                {d.overview.eyebrow && (
+                  <motion.div variants={rise}>
+                    <SectionTag>{d.overview.eyebrow}</SectionTag>
+                  </motion.div>
+                )}
+                {/* The documented section-heading clamp (DESIGN.md §2), which
+                    the highlights section below already uses. The 3.9vw/3.5rem
+                    this carried made it the largest heading on the page at the
+                    top end and — because a vw clamp climbs later than a `md:`
+                    step — *smaller* than every heading beneath it from 768px to
+                    about 1230px. The lead section cannot be the one that
+                    undersells itself.
+
+                    `text-balance` rather than a `ch` cap: the heading is CMS
+                    copy of unknown length, and a hard measure that lands two
+                    tidy lines on the seeded string turns a longer one into a
+                    stub. */}
+                <motion.h2
+                  variants={rise}
+                  className="mt-4 max-w-[22ch] text-balance font-display font-bold leading-[1.08] tracking-[-0.02em] text-content [font-size:clamp(1.9rem,3.4vw,3rem)]"
+                >
+                  {d.overview.heading}
+                </motion.h2>
+                {/* 34rem is ~66 characters of Arimo at this size — a real
+                    reading measure. The 52ch it replaces was set for the old
+                    narrow five-column gutter and left the paragraph visibly
+                    short of its own column. */}
+                <motion.p
+                  variants={rise}
+                  className="mt-6 max-w-[34rem] font-body text-[16px] leading-[1.75] text-content/70"
+                >
+                  {d.overview.body}
+                </motion.p>
+                {/* Unconditional. This was gated on `d.overview.flyer`, an
+                    unrelated CMS field for a downloadable sheet, so a property
+                    whose row simply had no flyer URL lost the section's only
+                    call to action — invisible today because the seed sets it to
+                    '#', and one blank field away from a persuade section with
+                    nothing to click. */}
+                <motion.div variants={rise} className="mt-10 w-fit">
                   <PrimePill
                     href="/contact"
                     onClick={(event) => {
@@ -151,43 +241,108 @@ export default function PropertyDetailPage() {
                   >
                     {t.overviewEnquireLabel}
                   </PrimePill>
-                </div>
-              )}
+                </motion.div>
+              </motion.div>
 
-              {/* One bordered strip rather than three cards: these are three
-                  readings of a single project, and separating them into boxes
-                  invites them to be read as unrelated. The hairlines between
-                  come from the container's own background showing through a
-                  1px grid gap. */}
-              {d.overview.stats?.length > 0 && (
-                <div
-                  className="mt-10 grid gap-px overflow-hidden rounded-2xl border border-[var(--color-line)] bg-[var(--color-line)]"
-                  style={{ gridTemplateColumns: `repeat(${d.overview.stats.length}, minmax(0,1fr))` }}
+              {/* Evidence. `gap-4` between the two frames against `gap-12` to
+                  the copy column and a ruled band below: the pair is one idea
+                  and reads as one, which the uniform `gap-5` on both axes had
+                  flattened into three equal tiles.
+
+                  Side by side while the column is the full page width, stacked
+                  once it is a half of it. Two landscape frames inside a half
+                  column are ~270px wide — thumbnails floating against a copy
+                  column twice their height, which is what the first pass got
+                  wrong. The reference sets them side by side because its right
+                  column also carried the figures; those now close the section
+                  full-width, so the pair has to hold that height on its own.
+
+                  An aspect ratio, not a fixed height — with `h-56 md:h-64` the
+                  same frontage was cropped ~1.5:1 as a pair and ~3:1 alone, so
+                  the photograph changed shape with the size of the gallery. The
+                  ratio turns with the arrangement: 4:3 while the frames are a
+                  pair (at 768 that is 274px wide, and a letterbox crop of a
+                  shopfront at that size shows nothing), 16:9 once they are
+                  stacked, where a squarer frame would run the pair 290px past
+                  the bottom of the copy beside it. */}
+              {overviewImages.length > 0 && (
+                <motion.div
+                  variants={stagger}
+                  initial="hidden"
+                  whileInView="show"
+                  viewport={inViewOnce}
+                  className={`grid gap-4 ${overviewImages.length > 1 ? 'sm:grid-cols-2 lg:grid-cols-1' : ''}`}
                 >
-                  {d.overview.stats.map((s, i) => (
-                    <div
-                      key={`${s.label ?? ''}-${i}`}
-                      className="flex flex-col gap-1.5 bg-surface px-3 py-6 text-center"
+                  {overviewImages.map((image, i) => (
+                    <motion.div
+                      key={`${image}-${i}`}
+                      variants={rise}
+                      className="overflow-hidden rounded-panel border border-line bg-surface-alt"
                     >
-                      {/* Ink numeral, accent label — the treatment the homepage
-                          stats band uses. Saffron measures about 1.9:1 on this
-                          ground and has been dropped from the light system. */}
-                      <span className="numeral text-[1.35rem] text-content">{s.value}</span>
-                      <span className="font-body text-[11px] font-bold uppercase tracking-[0.16em] text-accent">
-                        {s.label}
-                      </span>
-                    </div>
+                      <img
+                        src={sized(image, 'card')}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        className="aspect-[4/3] w-full object-cover transition-transform duration-700 ease-brand hover:scale-[1.04] lg:aspect-[16/9]"
+                      />
+                    </motion.div>
                   ))}
-                </div>
+                </motion.div>
               )}
             </div>
+
+            {/* The figures. A hairline and generous air rather than a bordered
+                panel: `bg-surface` and `bg-base` are both #ffffff in the light
+                theme, so the panel this replaces had no fill at all there and
+                existed only as an outline, while in dark it read as a raised
+                card — one idiom that only existed in one theme, which is the
+                exact failure DESIGN.md §1 warns about.
+
+                Ink numerals with accent labels, matching the highlights band
+                below and the homepage stats. Blue is this system's interaction
+                colour; the previous pass had twelve accent-carrying elements
+                here and exactly one of them clickable, so the Enquire pill had
+                no colour advantage over a decorative hairline. It now has five,
+                and it is the only saturated mass among them. */}
+            {d.overview.stats?.length > 0 && (
+              <motion.div
+                variants={stagger}
+                initial="hidden"
+                whileInView="show"
+                viewport={inViewOnce}
+                className="mt-16 grid gap-y-8 border-t border-line pt-12 sm:grid-cols-3 sm:gap-y-0 sm:divide-x sm:divide-line md:mt-20 md:pt-14"
+              >
+                {d.overview.stats.map((s, i) => (
+                  <motion.div
+                    key={`${s.label ?? ''}-${i}`}
+                    variants={rise}
+                    className="min-w-0 sm:px-7 sm:first:pl-0 sm:last:pr-0"
+                  >
+                    {/* Above the numeral, not beside it. Beside it, each icon
+                        took 42px off the one dimension the row was short of,
+                        and five stats would have spent 140px of a 190px cell on
+                        decoration before the first digit rendered. Stacked, a
+                        cell is only ever as wide as its widest line. */}
+                    <StatIcon label={s.label} />
+                    <CountUp
+                      value={s.value}
+                      className="numeral mt-4 block text-content [font-size:clamp(2.4rem,2.9vw,3rem)]"
+                    />
+                    <span className="mt-2.5 block font-body text-[11px] font-bold uppercase tracking-[0.16em] text-accent">
+                      {s.label}
+                    </span>
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
           </div>
         </section>
       )}
 
       {/* ── Tenants ──────────────────────────────────────────── */}
       {d?.tenants?.length > 0 && (
-        <section data-band="light" className="border-y border-[var(--color-line)] bg-base px-6 py-16 md:px-gutter-lg">
+        <section data-band="light" className="border-y border-[var(--color-line)] bg-base px-gutter py-16">
           <div className="flex flex-wrap items-center justify-center gap-x-16 gap-y-8">
             {d.tenants.map((logo, i) => (
               <img
@@ -203,7 +358,7 @@ export default function PropertyDetailPage() {
 
       {/* Property highlights */}
       {d?.highlights?.heading && (
-        <section data-band="light" className="bg-surface-alt px-6 pb-8 pt-16 md:px-gutter-lg md:pb-10 md:pt-20">
+        <section data-band="light" className="bg-surface-alt px-gutter pb-8 pt-16 md:pb-10 md:pt-20">
           <div className="grid gap-12 lg:grid-cols-[1fr_1.1fr] lg:gap-16">
             <motion.div
               variants={stagger}
@@ -294,7 +449,7 @@ export default function PropertyDetailPage() {
         <section
           data-band="light"
           id="floor-plans"
-          className="bg-surface-alt px-gutter pb-16 pt-8 md:px-gutter-lg md:pb-20 md:pt-10"
+          className="bg-surface-alt px-gutter pb-16 pt-8 md:pb-20 md:pt-10"
         >
           <SiteModelSection property={property} />
         </section>
@@ -302,7 +457,7 @@ export default function PropertyDetailPage() {
         <section
           data-band="light"
           id="floor-plans"
-          className="bg-surface-alt px-gutter pb-16 pt-8 md:px-gutter-lg md:pb-20 md:pt-10"
+          className="bg-surface-alt px-gutter pb-16 pt-8 md:pb-20 md:pt-10"
         >
           {/* `floorPlans.heading` and `.body` are deliberately not rendered.
               The design opens this section on the figures, and the stat cards
@@ -378,7 +533,7 @@ export default function PropertyDetailPage() {
           pure white with dark type in *both* themes — a blinding slab midway
           down an otherwise dark page. */}
       {d?.location?.heading && (
-        <section data-band="light" className="bg-base px-6 py-20 md:px-gutter-lg md:py-28">
+        <section data-band="light" className="bg-base px-gutter py-20 md:py-28">
           <div className="grid gap-12 lg:grid-cols-[1.1fr_1fr] lg:gap-20">
             {/* Image + thumbnails */}
             {gallery.length > 0 && (
@@ -423,7 +578,7 @@ export default function PropertyDetailPage() {
       {/* No top padding: this continues the section above on the same ground
           rather than starting a new one. */}
       {d?.establishedSites?.heading && gallery.length > 0 && (
-        <section data-band="light" className="bg-base px-6 pb-20 md:px-gutter-lg md:pb-28">
+        <section data-band="light" className="bg-base px-gutter pb-20 md:pb-28">
           <SectionTag>{t.establishedSitesLabel}</SectionTag>
           <h2 className="mt-6 max-w-[24ch] font-display text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] text-content md:text-[3rem]">
             {d.establishedSites.heading}
@@ -477,7 +632,7 @@ export default function PropertyDetailPage() {
           same reason a gallery paints its walls dark behind bright work.
           Deliberately carries no data-band, so the navbar goes light over it. */}
       {d?.extFacade?.length > 0 && (
-        <section className="bg-void px-6 py-20 text-bone md:px-gutter-lg md:py-28">
+        <section className="bg-void px-gutter py-20 text-bone md:py-28">
           <SectionTag tone="inv">{t.extFacadeLabel}</SectionTag>
           <div className="mt-10 grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-5">
             {d.extFacade.map(
@@ -500,7 +655,7 @@ export default function PropertyDetailPage() {
 
       {/* ── Neighborhoods + map ──────────────────────────────── */}
       {d?.neighborhoods?.items?.length > 0 && (
-        <section data-band="light" className="bg-surface-alt px-6 py-20 md:px-gutter-lg md:py-28">
+        <section data-band="light" className="bg-surface-alt px-gutter py-20 md:py-28">
           <SectionTag>{t.neighborhoodsLabel}</SectionTag>
           <h2 className="mt-6 font-display text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] text-content md:text-[3rem]">
             {t.neighborhoodsHeading}
@@ -564,7 +719,7 @@ export default function PropertyDetailPage() {
 
       {/* ── Videos ───────────────────────────────────────────── */}
       {d?.videos?.length > 0 && (
-        <section data-band="light" className="bg-base px-6 py-20 md:px-gutter-lg md:py-28">
+        <section data-band="light" className="bg-base px-gutter py-20 md:py-28">
           <SectionTag>{t.videosLabel}</SectionTag>
           <h2 className="mt-6 font-display text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] text-content md:text-[3rem]">
             {t.videosHeading}
@@ -599,7 +754,7 @@ export default function PropertyDetailPage() {
           the page has made its case. Opening the page on them sent a
           visitor off-site before they had seen the property. */}
       {d?.resourceLinks?.length > 0 && (
-        <section data-band="light" className="bg-surface-alt px-6 py-16 md:px-gutter-lg md:py-24">
+        <section data-band="light" className="bg-surface-alt px-gutter py-16 md:py-24">
           <SectionTag>{t.resourcesLabel}</SectionTag>
           <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {d.resourceLinks.map(
@@ -645,7 +800,7 @@ export default function PropertyDetailPage() {
           does, and it is the second and last of the two dark anchors.
 
           No data-band, so the navbar keeps its light chrome over it. */}
-      <section className="relative overflow-hidden bg-void px-6 py-24 text-bone md:px-gutter-lg md:py-32">
+      <section className="relative overflow-hidden bg-void px-gutter py-24 text-bone md:py-32">
         {/* A single low breath of CG Blue behind the corner the eye leaves
             from. Atmosphere rather than decoration: on a flat near-black this
             wide it is the difference between a closing statement and a slab. */}

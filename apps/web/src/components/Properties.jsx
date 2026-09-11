@@ -116,17 +116,14 @@ export default function Properties() {
       data-band="light"
       ref={scope}
       aria-labelledby="properties-heading"
-      className="bg-base px-gutter py-6 text-content md:px-gutter-lg"
+      className="bg-base px-gutter py-6 text-content"
     >
-      {/* The design draws no heading here — the cards arrive straight out of
-          the featured panel above, and they are legible without one. A landmark
-          still has to be named for anyone navigating by region, though, so the
-          CMS heading becomes the accessible name rather than being dropped. */}
-      <h2 id="properties-heading" className="sr-only">
-        {heading || 'Properties'}
-      </h2>
-
-      <div className="mx-auto flex max-w-[1560px] flex-col gap-6">
+      <div className="mx-auto mb-8 max-w-[1560px] pt-6 text-center md:mb-12 md:pt-10">
+        <h2 id="properties-heading" className="text-balance font-display text-[clamp(1.75rem,3.1vw,2.85rem)] font-bold leading-[1.1] tracking-[-0.02em] text-content">
+          {heading || 'Our properties'}
+        </h2>
+      </div>
+      <div className="-mx-gutter flex max-w-[1560px] snap-x snap-mandatory gap-6 overflow-x-auto overscroll-x-contain px-gutter py-3 scroll-px-gutter md:mx-auto md:flex-col md:overflow-visible md:px-0 md:py-0">
         {properties.map((p, i) => {
           // Alternating sides. Set on the *image* rather than by reversing the
           // row, so the DOM order stays photo-then-detail on every card — which
@@ -148,7 +145,7 @@ export default function Properties() {
               // are the page's primary content and the border is what separates
               // a card from the page ground behind it, which is nearly the same
               // colour.
-              className="group relative overflow-hidden rounded-panel border border-accent/45 bg-surface transition-[border-color,box-shadow] duration-500 ease-brand hover:border-accent/75 hover:shadow-[0_36px_80px_-52px_rgba(0,0,0,0.85)] focus-within:border-accent/75"
+              className="group relative flex min-w-0 flex-col basis-[85%] shrink-0 snap-start overflow-hidden rounded-panel md:basis-auto border border-accent/45 bg-surface transition-[border-color,box-shadow] duration-500 ease-brand hover:border-accent/75 hover:shadow-[0_36px_80px_-52px_rgba(0,0,0,0.85)] focus-within:border-accent/75"
             >
               {p.image && (
                 // A block in the flow on a phone, lifted out of it from `md` up.
@@ -166,7 +163,7 @@ export default function Properties() {
                   // the screen gets *more* room for it. From `lg` the frame is
                   // bled in behind the copy and takes its height from the card,
                   // so the ratio steps aside there.
-                  className={`relative aspect-[4/3] overflow-hidden bg-surface-alt sm:aspect-[16/9] lg:absolute lg:inset-y-0 lg:aspect-auto lg:h-full lg:w-[62%] ${
+                  className={`relative aspect-[4/3] shrink-0 overflow-hidden bg-surface-alt sm:aspect-[16/9] lg:absolute lg:inset-y-0 lg:aspect-auto lg:h-full lg:w-[62%] ${
                     flip ? 'lg:right-0 card-photo-fade-flip' : 'lg:left-0 card-photo-fade'
                   }`}
                 >
@@ -207,7 +204,7 @@ export default function Properties() {
                   not a card. 23rem puts a 1240px card at ~368 tall — the comp
                   measures 354 on a 1196 card, so the same 0.30 ratio. */}
               <div
-                className={`relative flex min-w-0 flex-col justify-center gap-4 p-5 sm:gap-5 sm:p-8 lg:min-h-[23rem] lg:w-[38%] lg:p-10 ${
+                className={`relative flex min-w-0 flex-1 flex-col justify-end gap-4 md:justify-center p-5 sm:gap-5 sm:p-8 lg:min-h-[23rem] lg:w-[38%] lg:p-10 ${
                   flip ? 'lg:mr-auto' : 'lg:ml-auto'
                 }`}
               >

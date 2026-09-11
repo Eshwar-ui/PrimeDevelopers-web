@@ -77,13 +77,17 @@ export default function AboutPage() {
       })
 
       gsap.utils.toArray('[data-reveal]').forEach((el) => {
-        gsap.from(el, {
-          y: 40,
-          opacity: 0,
-          duration: 0.9,
-          ease: 'power3.out',
-          scrollTrigger: { trigger: el, start: 'top 82%' },
-        })
+        gsap.fromTo(
+          el,
+          { y: 40, opacity: 0 },
+          {
+            y: 0,
+            opacity: 1,
+            duration: 0.9,
+            ease: 'power3.out',
+            scrollTrigger: { trigger: el, start: 'top 82%' },
+          }
+        )
       })
 
       gsap.utils.toArray('[data-count]').forEach((el, i) => {
@@ -125,14 +129,15 @@ export default function AboutPage() {
   return (
     <div ref={scope}>
       {/* ── Hero ─────────────────────────────────────────────── */}
-      {/* Gutters are the page tokens now, not `md:px-12`. The scale is two
-          values by design — a thumb margin and the width the designs draw — and
-          the comment on --spacing-gutter-lg calls anything between them "a
-          section disagreeing with the page". This page was disagreeing. */}
+      {/* Gutters are the page token now, not `md:px-12`. There is one value by
+          design — it carries a phone's thumb margin into the width the designs
+          draw — and the comment on --spacing-gutter calls a section reaching
+          for its own "a section disagreeing with the page". This page was
+          disagreeing. */}
       <section
         id="about-hero"
         data-band="light"
-        className="bg-base px-gutter pb-20 pt-32 text-content [--edge-shade:rgba(18,30,38,0.26)] md:px-gutter-lg md:pb-28 md:pt-40"
+        className="bg-base px-gutter pb-20 pt-32 text-content [--edge-shade:rgba(18,30,38,0.26)] md:pb-28 md:pt-40"
       >
         <div className="mx-auto grid max-w-[1560px] items-end gap-12 lg:grid-cols-[1.05fr_1fr] lg:gap-16">
           <div data-hero>
@@ -229,7 +234,7 @@ export default function AboutPage() {
       {/* ── The Firm — narrative + stats ─────────────────────── */}
       <section
         data-band="light"
-        className="relative overflow-hidden bg-base px-gutter py-24 md:px-gutter-lg md:py-32"
+        className="relative overflow-hidden bg-base px-gutter py-24 md:py-32"
       >
         {/* Flipped per theme rather than fixed. brightness-0 forces the mark to
             black whatever the source SVG's own fill is — right on white, and
@@ -296,7 +301,7 @@ export default function AboutPage() {
           really doing. */}
       <section
         data-band="light"
-        className="bg-surface-alt px-gutter py-24 md:px-gutter-lg md:py-32"
+        className="bg-surface-alt px-gutter py-24 md:py-32"
       >
         <div className="mx-auto max-w-[1560px]">
           <SectionHeader index="02" title="Principles" tone="ink" className="mb-16" />
@@ -324,7 +329,7 @@ export default function AboutPage() {
       </section>
 
       {/* ── Founders ─────────────────────────────────────────── */}
-      <section data-band="light" className="bg-base px-gutter py-24 md:px-gutter-lg md:py-32">
+      <section data-band="light" className="bg-base px-gutter py-24 md:py-32">
         <div className="mx-auto max-w-[1560px]">
           <SectionHeader index="03" title="Founders" tone="ink" className="mb-16" />
 
@@ -403,7 +408,7 @@ export default function AboutPage() {
           className="absolute inset-0"
           style={{ background: 'linear-gradient(180deg, rgba(26,26,26,0.5), rgba(26,26,26,0.85))' }}
         />
-        <div className="relative mx-auto flex h-full max-w-[1560px] items-center px-gutter md:px-gutter-lg">
+        <div className="relative mx-auto flex h-full max-w-[1560px] items-center px-gutter">
           <h2 className="max-w-[20ch] font-display text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] text-white md:text-[3rem]">
             {renderEmphasis(p.closingHeading)}
           </h2>

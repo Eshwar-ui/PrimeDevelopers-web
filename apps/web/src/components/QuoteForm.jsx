@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ArrowRight from './ArrowRight'
+import CustomSelect from './CustomSelect'
 import { api } from '../lib/api'
 
 // The base four fields every source shares. `company` is folded into the
@@ -12,38 +13,52 @@ const BASE_FIELDS = [
   { name: 'company', label: 'Company', type: 'text', placeholder: 'Enter your company name' },
 ]
 
+// 16px, not the 15px the rest of the form's type is set at, and it is a
+// functional floor rather than a style choice: iOS Safari zooms the whole
+// viewport in when a focused field's text measures under 16px, which leaves
+// the visitor mid-form on a page that is suddenly wider than the screen and
+// does not zoom back out. Every other control on the site already clears it
+// — the brochure modal, `CustomSelect`, the glossary search — so these three
+// were the only fields still doing it.
 const FIELD =
-  'contact-field h-12 rounded-xl border border-[var(--color-line)] bg-carbon px-4 font-body text-[15px] text-bone outline-none transition-[border-color,box-shadow] placeholder:text-bone-3 focus:border-accent/75 focus:ring-[3px] focus:ring-accent/10'
+  'contact-field h-12 rounded-xl border border-[var(--color-line)] bg-carbon px-4 font-body text-[16px] text-bone outline-none transition-[border-color,box-shadow] placeholder:text-bone-3 focus:border-accent/75 focus:ring-[3px] focus:ring-accent/10'
 const FIELD_LABEL = 'font-display text-[15px] font-semibold text-content'
 
 function ExtraField({ field }) {
   if (field.type === 'select') {
+    const options = field.options.map((option) => ({
+      value: option.value ?? option,
+      label: option.label ?? option,
+    }))
+
     return (
-      <select name={field.name} required={field.required} defaultValue="" className={FIELD}>
-        <option value="" disabled>
-          {field.placeholder || 'Select one'}
-        </option>
-        {field.options.map((option) => (
-          <option key={option.value ?? option} value={option.value ?? option}>
-            {option.label ?? option}
-          </option>
-        ))}
-      </select>
+      <CustomSelect
+        id={field.name}
+        label={field.label}
+        name={field.name}
+        required={field.required}
+        defaultValue=""
+        placeholder={field.placeholder || 'Select one'}
+        options={options}
+        variant="form"
+      />
     )
   }
   if (field.type === 'textarea') {
     return (
       <textarea
+        id={field.name}
         name={field.name}
         rows={3}
         required={field.required}
         placeholder={field.placeholder}
-        className="contact-field min-h-24 resize-none rounded-xl border border-[var(--color-line)] bg-carbon px-4 py-3 font-body text-[15px] text-bone outline-none transition-[border-color,box-shadow] placeholder:text-bone-3 focus:border-accent/75 focus:ring-[3px] focus:ring-accent/10"
+        className="contact-field min-h-24 resize-none rounded-xl border border-[var(--color-line)] bg-carbon px-4 py-3 font-body text-[16px] text-bone outline-none transition-[border-color,box-shadow] placeholder:text-bone-3 focus:border-accent/75 focus:ring-[3px] focus:ring-accent/10"
       />
     )
   }
   return (
     <input
+      id={field.name}
       name={field.name}
       type={field.type || 'text'}
       required={field.required}
@@ -178,10 +193,13 @@ export default function QuoteForm({
               ))}
 
               {extraFields.map((field) => (
-                <label key={field.name} className={`flex flex-col gap-2 ${field.fullWidth ? 'sm:col-span-2' : ''}`}>
-                  <span className={FIELD_LABEL}>{field.label}</span>
+                <div
+                  key={field.name}
+                  className={'flex flex-col gap-2 ' + (field.fullWidth ? 'sm:col-span-2' : '')}
+                >
+                  <label htmlFor={field.name} className={FIELD_LABEL}>{field.label}</label>
                   <ExtraField field={field} />
-                </label>
+                </div>
               ))}
 
               <label className="flex flex-col gap-2 sm:col-span-2">
@@ -192,7 +210,7 @@ export default function QuoteForm({
                   required
                   defaultValue={prefillMessage}
                   placeholder={messagePlaceholder}
-                  className="contact-field min-h-28 resize-none rounded-xl border border-[var(--color-line)] bg-carbon px-4 py-3 font-body text-[15px] text-bone outline-none transition-[border-color,box-shadow] placeholder:text-bone-3 focus:border-accent/75 focus:ring-[3px] focus:ring-accent/10"
+                  className="contact-field min-h-28 resize-none rounded-xl border border-[var(--color-line)] bg-carbon px-4 py-3 font-body text-[16px] text-bone outline-none transition-[border-color,box-shadow] placeholder:text-bone-3 focus:border-accent/75 focus:ring-[3px] focus:ring-accent/10"
                 />
               </label>
             </div>

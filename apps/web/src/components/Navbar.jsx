@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { motion, AnimatePresence, useReducedMotion } from 'motion/react'
-import gsap from 'gsap'
+import { motion, AnimatePresence } from 'motion/react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { lenis } from '../hooks/useSmoothScroll'
 import { useSection } from '../context/ContentContext'
@@ -27,6 +26,19 @@ const EXPERTISE_SECTIONS = [
   { label: 'Invest', to: '/enterprise/invest' },
 ]
 
+function RollingNavLabel({ children }) {
+  const layerClass =
+    'block whitespace-nowrap transition-transform duration-400 ease-brand group-hover:-translate-y-full group-focus-visible:-translate-y-full motion-reduce:transform-none motion-reduce:transition-none'
+
+  return (
+    <span className="relative block overflow-hidden">
+      <span className={layerClass}>{children}</span>
+      <span aria-hidden className={'absolute left-0 top-full ' + layerClass + ' motion-reduce:hidden'}>
+        {children}
+      </span>
+    </span>
+  )
+}
 // The rail used to sit short on the homepage and widen as you scrolled, so it
 // fitted inside the bay the old hero cut out of its photograph for it. That
 // hero is gone — the new one is a full-bleed frame with nothing cut out of it —
@@ -44,10 +56,18 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [whatsappOpen, setWhatsappOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
+  const [expertiseOpen, setExpertiseOpen] = useState(false)
   const inBand = useRef(new Set())
+  const expertiseRef = useRef(null)
   const navigate = useNavigate()
   const { pathname } = useLocation()
-  const prefersReducedMotion = useReducedMotion()
+  // Touch has no real :hover-leave, so the CSS-only submenu below has nothing
+  // to tell it to close once a tap has triggered :hover. Devices without a
+  // fine, always-on pointer get a JS-driven toggle instead; genuine mouse
+  // users keep the zero-JS hover behaviour untouched.
+  const [supportsHover] = useState(
+    () => typeof window !== 'undefined' && (window.matchMedia?.('(hover: hover) and (pointer: fine)').matches ?? true)
+  )
 
   useEffect(() => {
     if (!menuOpen) return undefined
@@ -67,6 +87,22 @@ export default function Navbar() {
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [whatsappOpen])
+
+  useEffect(() => {
+    if (!expertiseOpen) return undefined
+    const onPointerDown = (event) => {
+      if (expertiseRef.current && !expertiseRef.current.contains(event.target)) setExpertiseOpen(false)
+    }
+    const onKeyDown = (event) => event.key === 'Escape' && setExpertiseOpen(false)
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [expertiseOpen])
+
+  useEffect(() => setExpertiseOpen(false), [pathname])
 
   // The lockup doubles as the Home link, so the rail only needs an explicit
   // Home entry when the admin-managed list doesn't already carry one.
@@ -116,24 +152,6 @@ export default function Navbar() {
       ? pathname === link.to || (link.to === EXPERTISE_LINK_TO && pathname.startsWith(`${EXPERTISE_LINK_TO}/`))
       : pathname === '/' && active === link.section
 
-  const animateNavLabel = (event, entering) => {
-    const label = event.currentTarget.querySelector('[data-nav-label]')
-    if (!label) return
-
-    gsap.killTweensOf(label)
-    if (prefersReducedMotion) {
-      gsap.set(label, { clearProps: 'transform' })
-      return
-    }
-
-    gsap.to(label, {
-      y: entering ? -2 : 0,
-      duration: entering ? 0.32 : 0.5,
-      ease: 'power4.out',
-      overwrite: true,
-      onComplete: entering ? undefined : () => gsap.set(label, { clearProps: 'transform' }),
-    })
-  }
   // Active home-section highlight.
   useEffect(() => {
     inBand.current.clear()
@@ -357,11 +375,21 @@ export default function Navbar() {
           surfaced ? 'py-3 md:py-3.5' : 'py-4 md:py-5'
         }`}
       >
-        {/* Padding inside the measure, matching the hero's container exactly —
-            with it outside, the lockup and the headline drift apart by the
-            padding once the viewport passes 1560. */}
-        <div className="mx-auto max-w-[1560px] px-6 md:px-12">
-          <div className="relative flex items-center justify-between gap-6">
+        {/* Gutter outside the measure, max-width inside — the same two-element
+            shape every section on the site uses, and the reason the lockup now
+            lands on the section content edge instead of near it.
+
+            This was `mx-auto max-w-[1560px] px-6 md:px-12`: one element
+            carrying both, so the 1560 cap included the padding. A section caps
+            1560 *inside* its gutter, so the two measures could never coincide —
+            at 1920 the section content edge fell at 180px and the logo at
+            228px, at 1280 it was 100 against 48. The old note here defended the
+            padding-inside form as matching the hero's container, but the hero
+            is `items-center` / `text-center` and has no left-aligned element to
+            match; the sections are what the logo actually reads against. */}
+        <div className="px-gutter">
+          <div className="mx-auto max-w-[1560px]">
+            <div className="relative flex items-center justify-between gap-6">
           <a href="/" onClick={goHome} className="shrink-0" aria-label="Prime Developer — home">
             <img
               src={logo}
@@ -376,24 +404,49 @@ export default function Navbar() {
               {navLinks.map((link) => {
                 const hasSubmenu = link.to === EXPERTISE_LINK_TO
                 return (
-                  <li key={link.label} className={hasSubmenu ? 'group/sub relative' : undefined}>
+                  <li
+                    key={link.label}
+                    ref={hasSubmenu ? expertiseRef : undefined}
+                    className={hasSubmenu ? 'group/sub relative' : undefined}
+                    // Visibility is driven entirely by `expertiseOpen`, not CSS
+                    // :hover — a client-side route change doesn't move the
+                    // pointer, so a still-hovered panel would otherwise have
+                    // nothing telling it the selection was already made.
+                    onMouseEnter={hasSubmenu && supportsHover ? () => setExpertiseOpen(true) : undefined}
+                    onMouseLeave={hasSubmenu && supportsHover ? () => setExpertiseOpen(false) : undefined}
+                    onFocus={hasSubmenu ? () => setExpertiseOpen(true) : undefined}
+                    onBlur={
+                      hasSubmenu
+                        ? (e) => {
+                            if (!e.currentTarget.contains(e.relatedTarget)) setExpertiseOpen(false)
+                          }
+                        : undefined
+                    }
+                  >
                     <a
                       href={link.to ?? `/#${link.section}`}
-                      onClick={(e) => handleNav(e, link)}
+                      onClick={(e) => {
+                        // A touch tap can't hover, so the first tap only opens
+                        // the panel; a second tap (or a mouse click, which
+                        // never sets this — the hover handler above already
+                        // opened it) falls through to the normal navigate.
+                        if (hasSubmenu && !supportsHover && !expertiseOpen) {
+                          e.preventDefault()
+                          setExpertiseOpen(true)
+                          return
+                        }
+                        setExpertiseOpen(false)
+                        handleNav(e, link)
+                      }}
                       aria-current={isActive(link) ? 'page' : undefined}
                       aria-haspopup={hasSubmenu ? 'true' : undefined}
-                      onMouseEnter={(event) => animateNavLabel(event, true)}
-                      onMouseLeave={(event) => animateNavLabel(event, false)}
-                      onFocus={(event) => animateNavLabel(event, true)}
-                      onBlur={(event) => animateNavLabel(event, false)}
+                      aria-expanded={hasSubmenu ? expertiseOpen : undefined}
                       className={`group relative flex items-center gap-1.5 rounded-sm py-2 font-body text-[15px] font-medium transition-colors duration-200 ease-brand focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent ${
                         isActive(link) ? current : idle
                       }`}
                     >
                       <span aria-hidden className="pointer-events-none absolute inset-x-1 top-1/2 h-5 -translate-y-1/2 scale-x-75 rounded-full bg-accent/15 opacity-0 blur-md transition-[opacity,transform] duration-500 ease-brand group-hover:scale-x-110 group-hover:opacity-100 group-focus-visible:scale-x-110 group-focus-visible:opacity-100 motion-reduce:transition-opacity" />
-                      <span data-nav-label className="relative block">
-                        {link.label}
-                      </span>
+                      <RollingNavLabel>{link.label}</RollingNavLabel>
                       {hasSubmenu && (
                         <svg
                           viewBox="0 0 24 24"
@@ -401,7 +454,9 @@ export default function Navbar() {
                           stroke="currentColor"
                           strokeWidth="2.2"
                           aria-hidden
-                          className="relative size-3 shrink-0 transition-transform duration-300 ease-brand group-hover/sub:rotate-180"
+                          className={`relative size-3 shrink-0 transition-transform duration-300 ease-brand ${
+                            expertiseOpen ? 'rotate-180' : ''
+                          }`}
                         >
                           <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
                         </svg>
@@ -421,13 +476,20 @@ export default function Navbar() {
                       // below the link, and without padding standing in for
                       // that gap the pointer leaving the link's box on its way
                       // down closes the menu before it ever reaches it.
-                      <div className="absolute left-1/2 top-full w-56 -translate-x-1/2 pt-3 opacity-0 invisible translate-y-1 transition-[opacity,transform] duration-200 ease-brand group-hover/sub:visible group-hover/sub:translate-y-0 group-hover/sub:opacity-100 group-focus-within/sub:visible group-focus-within/sub:translate-y-0 group-focus-within/sub:opacity-100">
+                      <div
+                        className={`absolute left-1/2 top-full w-56 -translate-x-1/2 pt-3 transition-[opacity,transform] duration-200 ease-brand ${
+                          expertiseOpen ? 'visible translate-y-0 opacity-100' : 'invisible translate-y-1 opacity-0'
+                        }`}
+                      >
                         <ul className="overflow-hidden rounded-2xl border border-line bg-surface p-1.5 shadow-[0_30px_70px_-30px_rgba(0,0,0,0.45)]">
                           {EXPERTISE_SECTIONS.map((section) => (
                             <li key={section.to}>
                               <a
                                 href={section.to}
-                                onClick={(e) => handleNav(e, section)}
+                                onClick={(e) => {
+                                  setExpertiseOpen(false)
+                                  handleNav(e, section)
+                                }}
                                 className="block rounded-xl px-4 py-2.5 font-body text-[14px] font-semibold text-content/70 transition-colors duration-150 hover:bg-accent/10 hover:text-accent"
                               >
                                 {section.label}
@@ -506,11 +568,27 @@ export default function Navbar() {
               />
             </span>
             </button>
+            </div>
           </div>
         </div>
       </motion.header>
 
-      {/* Full-screen mobile overlay */}
+      {/* Full-screen mobile overlay.
+
+          A scroll container wrapping a `min-h-full` column, rather than the
+          centred flex box this used to be. `justify-center` on the fixed box
+          itself centres the links only while they fit: once they do not — a
+          short phone, a landscape window, or one more entry added to the rail
+          in the CMS — the column overflows equally off the top and bottom of a
+          box that cannot scroll, and the first and last links become
+          unreachable. A column that already fills its parent has no free space
+          left for `justify-center` to distribute, so this centres exactly as
+          before when there is room and scrolls when there is not.
+
+          The top padding is the header's clearance. The header is 64px tall
+          while the menu is open — `surfaced` is false for exactly that reason
+          — and centring without it put the first link under the lockup and the
+          burger. */}
       <AnimatePresence>
         {menuOpen && (
           <motion.nav
@@ -518,83 +596,89 @@ export default function Navbar() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-40 flex flex-col justify-center gap-3 bg-void px-6 sm:px-8 lg:hidden"
+            className="fixed inset-0 z-40 overflow-y-auto overscroll-contain bg-void lg:hidden"
           >
-            {navLinks.map((link, i) => (
-              <div key={link.label}>
-                <motion.a
-                  href={link.to ?? `/#${link.section}`}
-                  onClick={(e) => handleNav(e, link)}
-                  initial={{ opacity: 0, y: 24 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 + i * 0.08, ease: 'easeOut' }}
-                  className="flex min-h-11 items-center font-display text-[clamp(2.25rem,10vw,3rem)] font-light tracking-[-0.02em] text-bone"
-                >
-                  <span className="numeral mr-4 align-middle text-base text-accent-soft">
-                    0{i + 1}
-                  </span>
-                  {link.label}
-                </motion.a>
-                {link.to === EXPERTISE_LINK_TO && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 16 }}
+            {/* The page gutter, like the rail above it. The header sits over
+                this overlay rather than under it, so the lockup stays visible
+                while the menu is open and any other value here reads as the
+                links failing to line up with it. */}
+            <div className="flex min-h-full flex-col justify-center gap-3 px-gutter pb-[max(2rem,env(safe-area-inset-bottom))] pt-24">
+              {navLinks.map((link, i) => (
+                <div key={link.label}>
+                  <motion.a
+                    href={link.to ?? `/#${link.section}`}
+                    onClick={(e) => handleNav(e, link)}
+                    initial={{ opacity: 0, y: 24 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 + i * 0.08 + 0.06, ease: 'easeOut' }}
-                    className="ml-11 mt-1 flex flex-wrap gap-x-5 gap-y-1"
+                    transition={{ delay: 0.1 + i * 0.08, ease: 'easeOut' }}
+                    className="flex min-h-11 items-center font-display text-[clamp(2.25rem,10vw,3rem)] font-light tracking-[-0.02em] text-bone"
                   >
-                    {EXPERTISE_SECTIONS.map((section) => (
-                      <a
-                        key={section.to}
-                        href={section.to}
-                        onClick={(e) => handleNav(e, section)}
-                        className="min-h-11 py-1 font-body text-lg text-bone/55 transition-colors hover:text-bone"
-                      >
-                        {section.label}
-                      </a>
-                    ))}
-                  </motion.div>
-                )}
-              </div>
-            ))}
-            {(phoneHref || whatsappChatHref) && (
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 + navLinks.length * 0.08 }}
-                className="mt-7 flex flex-wrap gap-3"
-              >
-                {phoneHref && (
-                  <a href={phoneHref} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-bone/20 px-5 font-body text-sm text-bone">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden className="size-4">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 4.5 9.6 8l-1.7 1.7a15.7 15.7 0 0 0 6.4 6.4l1.7-1.7 3.5 2.1v2.2a1.8 1.8 0 0 1-1.8 1.8A14.2 14.2 0 0 1 3.5 6.3a1.8 1.8 0 0 1 1.8-1.8h2.2Z" />
-                    </svg>
-                    {contact.phone}
-                  </a>
-                )}
-                {whatsappChatHref && (
-                  <button type="button" onClick={() => setWhatsappOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#25D366] px-5 font-body text-sm font-medium text-white">
-                    <WhatsappLogo weight="fill" className="size-5" />
-                    WhatsApp
-                  </button>
-                )}
-              </motion.div>
-            )}
+                    <span className="numeral mr-4 align-middle text-base text-accent-soft">
+                      0{i + 1}
+                    </span>
+                    {link.label}
+                  </motion.a>
+                  {link.to === EXPERTISE_LINK_TO && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 + i * 0.08 + 0.06, ease: 'easeOut' }}
+                      className="ml-11 mt-1 flex flex-wrap gap-x-5 gap-y-1"
+                    >
+                      {EXPERTISE_SECTIONS.map((section) => (
+                        <a
+                          key={section.to}
+                          href={section.to}
+                          onClick={(e) => handleNav(e, section)}
+                          className="min-h-11 py-1 font-body text-lg text-bone/55 transition-colors hover:text-bone"
+                        >
+                          {section.label}
+                        </a>
+                      ))}
+                    </motion.div>
+                  )}
+                </div>
+              ))}
+              {(phoneHref || whatsappChatHref) && (
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 + navLinks.length * 0.08 }}
+                  className="mt-7 flex flex-wrap gap-3"
+                >
+                  {phoneHref && (
+                    <a href={phoneHref} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-bone/20 px-5 font-body text-sm text-bone">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden className="size-4">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 4.5 9.6 8l-1.7 1.7a15.7 15.7 0 0 0 6.4 6.4l1.7-1.7 3.5 2.1v2.2a1.8 1.8 0 0 1-1.8 1.8A14.2 14.2 0 0 1 3.5 6.3a1.8 1.8 0 0 1 1.8-1.8h2.2Z" />
+                      </svg>
+                      {contact.phone}
+                    </a>
+                  )}
+                  {whatsappChatHref && (
+                    <button type="button" onClick={() => setWhatsappOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#25D366] px-5 font-body text-sm font-medium text-white">
+                      <WhatsappLogo weight="fill" className="size-5" />
+                      WhatsApp
+                    </button>
+                  )}
+                </motion.div>
+              )}
 
-            <motion.a
-              href="/contact"
-              onClick={goContact}
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 + navLinks.length * 0.08, ease: 'easeOut' }}
-              className="group relative isolate mt-8 inline-flex min-h-12 w-fit items-center gap-5 overflow-hidden rounded-full border border-white/60 bg-white px-6 font-body text-[15px] font-semibold tracking-[-0.01em] text-charcoal shadow-[0_10px_28px_-16px_rgba(0,0,0,0.6)] transition-[color,transform,box-shadow] duration-300 ease-brand hover:-translate-y-px hover:text-white hover:shadow-[0_15px_32px_-15px_rgba(0,0,0,0.5)] focus-visible:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent active:translate-y-px active:scale-[0.985] motion-reduce:transform-none"
-            >
-              <span aria-hidden className="absolute inset-0 z-0 origin-right scale-x-0 rounded-full bg-charcoal transition-transform duration-300 ease-brand group-hover:scale-x-100 group-focus-visible:scale-x-100 motion-reduce:transition-none" />
-              <span className="relative z-10 transition-transform duration-300 ease-brand group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5 motion-reduce:transform-none">{nav.enquireLabel}</span>
-              <span className="relative z-10 size-5 overflow-hidden" aria-hidden>
-                <ArrowRight className="absolute inset-0 size-5 transition-transform duration-300 ease-brand group-hover:translate-x-6 group-focus-visible:translate-x-6 motion-reduce:transform-none" />
-                <ArrowRight className="absolute inset-0 size-5 -translate-x-6 transition-transform duration-300 ease-brand group-hover:translate-x-0 group-focus-visible:translate-x-0 motion-reduce:hidden" />
-              </span>
-            </motion.a>
+              <motion.a
+                href="/contact"
+                onClick={goContact}
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 + navLinks.length * 0.08, ease: 'easeOut' }}
+                className="group relative isolate mt-8 inline-flex min-h-12 w-fit items-center gap-5 overflow-hidden rounded-full border border-white/60 bg-white px-6 font-body text-[15px] font-semibold tracking-[-0.01em] text-charcoal shadow-[0_10px_28px_-16px_rgba(0,0,0,0.6)] transition-[color,transform,box-shadow] duration-300 ease-brand hover:-translate-y-px hover:text-white hover:shadow-[0_15px_32px_-15px_rgba(0,0,0,0.5)] focus-visible:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent active:translate-y-px active:scale-[0.985] motion-reduce:transform-none"
+              >
+                <span aria-hidden className="absolute inset-0 z-0 origin-right scale-x-0 rounded-full bg-charcoal transition-transform duration-300 ease-brand group-hover:scale-x-100 group-focus-visible:scale-x-100 motion-reduce:transition-none" />
+                <span className="relative z-10 transition-transform duration-300 ease-brand group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5 motion-reduce:transform-none">{nav.enquireLabel}</span>
+                <span className="relative z-10 size-5 overflow-hidden" aria-hidden>
+                  <ArrowRight className="absolute inset-0 size-5 transition-transform duration-300 ease-brand group-hover:translate-x-6 group-focus-visible:translate-x-6 motion-reduce:transform-none" />
+                  <ArrowRight className="absolute inset-0 size-5 -translate-x-6 transition-transform duration-300 ease-brand group-hover:translate-x-0 group-focus-visible:translate-x-0 motion-reduce:hidden" />
+                </span>
+              </motion.a>
+            </div>
           </motion.nav>
         )}
       </AnimatePresence>

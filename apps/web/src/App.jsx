@@ -47,6 +47,11 @@ const NewsPage = lazy(() => import('./pages/NewsPage'))
 const NewsPostPage = lazy(() => import('./pages/NewsPostPage'))
 const LearnPage = lazy(() => import('./pages/LearnPage'))
 const LearnTermPage = lazy(() => import('./pages/LearnTermPage'))
+// Linked from the footer's copyright bar, which renders on every route — so
+// these two are reachable from everywhere and visited from almost nowhere.
+// Exactly the shape a lazy chunk is for.
+const PrivacyPage = lazy(() => import('./pages/PrivacyPage'))
+const TermsPage = lazy(() => import('./pages/TermsPage'))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 
 const LoginPage = lazy(() => import('./admin/LoginPage'))
@@ -93,10 +98,10 @@ function Home() {
       <LandingParallaxChapter depth={22}>
         <FeaturedProperty />
       </LandingParallaxChapter>
-      <LandingParallaxChapter depth={24}>
+      <LandingParallaxChapter depth={24} overflowVisible>
         <AvailableUnits />
       </LandingParallaxChapter>
-      <LandingParallaxChapter depth={26}>
+      <LandingParallaxChapter depth={26} overflowVisible>
         <Properties />
       </LandingParallaxChapter>
       <LandingParallaxChapter depth={42}>
@@ -287,6 +292,8 @@ function PublicSite() {
                 <Route path="/learn" element={<LearnPage />} />
                 <Route path="/learn/:slug" element={<LearnTermPage />} />
                 <Route path="/contact" element={<ContactPage />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="/terms" element={<TermsPage />} />
 
                 {/* Legacy routes — pre-rename links keep working */}
                 <Route path="/projects" element={<Navigate to="/properties" replace />} />

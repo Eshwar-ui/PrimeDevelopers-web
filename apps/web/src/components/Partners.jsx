@@ -315,7 +315,7 @@ export default function Partners() {
 
   return (
     <section id="partners" className="relative isolate overflow-hidden bg-void">
-      <div className="relative mx-auto max-w-[1600px] px-gutter pb-14 pt-14 md:px-gutter-lg md:pb-0 md:pt-18 xl:pt-20">
+      <div className="relative mx-auto max-w-[1600px] px-gutter pb-14 pt-14 md:pb-0 md:pt-18 xl:pt-20">
         {/* The kicker is all the copy this section carries — the heading,
             paragraph and stat row that used to sit under it are `about_home`'s,
             and the About section renders them itself. */}

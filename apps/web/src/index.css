@@ -4,6 +4,14 @@
    which a manual toggle has to be able to override, so the variant is rebound
    to a class we own on <html>. */
 @custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  color-scheme: light;
+}
+
+:root.dark {
+  color-scheme: dark;
+}
 /* Public-page section entrances. Sections begin readable in the DOM; the
    controller opts only below-the-fold sections into motion before paint. */
 [data-section-reveal="pending"] {
@@ -304,12 +312,47 @@
   --radius-notch: 44px;
 
   /* ── Page gutter ──────────────────────────────────────────────────
-     The distance from the viewport edge to the measure. Two values, not
-     a scale: the narrow one is a phone's thumb margin, the wide one is
-     what the designs draw. Anything between is a section disagreeing
+     The distance from the viewport edge to the measure. One fluid value
+     between the same two endpoints the designs draw: a phone's 24px
+     thumb margin, and the 100px the wide comps are set to.
+
+     This was two fixed values spent as `px-gutter md:px-gutter-lg`, and
+     the step between them was the single worst layout bug on the site.
+     A stepped gutter cannot be smooth — any increase at a breakpoint
+     takes width away *at* that pixel, by definition — and this one
+     jumped 4.2x at `md`, exactly where most grids also add a column. At
+     767px a section had 719px of measure; at 768px it had 568px, and it
+     did not get back to 719 until 919px. Every tablet in common use sat
+     inside that dead band, rendering the page in a narrower column than
+     a phone held sideways, and the Services grid went to four columns
+     inside the narrower box on the same pixel — 349px cards to 124px.
+
+     6.5vw is what carries 1.5rem into 6.25rem across the range: the
+     floor releases around 369px and the cap lands at 1538px, so the
+     desktop compositions are unchanged from ~1440 up and the whole
+     correction falls in the tablet band that was broken. There is no
+     `-lg` counterpart on purpose — a second value is what created the
+     step, and any section reaching for one is a section disagreeing
      with the page. */
-  --spacing-gutter: 1.5rem;
-  --spacing-gutter-lg: 6.25rem;
+  --spacing-gutter: clamp(1.5rem, 6.5vw, 6.25rem);
+
+  /* Vertical rhythm, on the same two-value discipline as the gutter above:
+     one narrow step and one wide one, used as `py-section md:py-section-lg`.
+
+     Two values, not a scale, for exactly the reason the gutter gives — a
+     section that picks a number in between is a section disagreeing with the
+     page. Five of them had: `py-20 md:py-28`, `md:py-24 lg:py-28`, `py-6`,
+     `pt-14 md:pb-0`.
+
+     The wide step is 4.5rem rather than the 7rem it replaces because a
+     section's padding is only half of any gap it makes. Two sections at 7rem
+     put 224px between their contents, which on the landing page read as the
+     page having run out rather than as one chapter ending — most visibly
+     between Services and the academy teaser, where 224px of padding met 20px
+     of orphaned heading margin. At 4.5rem a boundary is 144px, which still
+     separates two chapters without stranding them. */
+  --spacing-section: 3.5rem;
+  --spacing-section-lg: 4.5rem;
 }
 
 /* Dark theme. Written against :root.dark rather than .dark so it outweighs the

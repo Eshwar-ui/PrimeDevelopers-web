@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'motion/react'
 
-export default function LandingParallaxChapter({ children, depth = 32, className = 'bg-base' }) {
+export default function LandingParallaxChapter({ children, depth = 32, className = 'bg-base', overflowVisible = false }) {
   const chapterRef = useRef(null)
   const reducedMotion = useReducedMotion()
   const { scrollYProgress } = useScroll({
@@ -18,7 +18,7 @@ export default function LandingParallaxChapter({ children, depth = 32, className
   })
 
   return (
-    <div ref={chapterRef} className={'relative overflow-clip ' + className}>
+    <div ref={chapterRef} className={'relative ' + (overflowVisible ? 'overflow-visible md:overflow-clip ' : 'overflow-clip ') + className}>
       <motion.div style={reducedMotion ? undefined : { y }} className="will-change-transform">
         {children}
       </motion.div>

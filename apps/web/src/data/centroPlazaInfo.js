@@ -23,6 +23,8 @@
 const BUCKET = 'https://storage.googleapis.com/bitly-image-upload/'
 
 /** Groups render in this order, each as its own band. */
+import { INFO_SLUGS } from '../lib/infoSets'
+
 export const CENTRO_PLAZA_INFO = {
   slug: 'centro-plaza',
   name: 'Centro Plaza',
@@ -134,6 +136,23 @@ export const CENTRO_PLAZA_INFO = {
 /** Keyed by slug so the route can serve more properties as sets are added. */
 export const PROPERTY_INFO = {
   [CENTRO_PLAZA_INFO.slug]: CENTRO_PLAZA_INFO,
+}
+
+// `lib/infoSets.js` carries the same slugs without the payload, so a card can
+// gate a "View photos" button without dragging this module into the main
+// bundle. Two lists is one more than ideal; this is what keeps them in step —
+// adding a set here and forgetting it there fails on the next dev load rather
+// than silently hiding the button.
+if (import.meta.env.DEV) {
+  const declared = [...INFO_SLUGS].sort().join(',')
+  const actual = Object.keys(PROPERTY_INFO).sort().join(',')
+  if (declared !== actual) {
+    console.error(
+      `[infoSets] INFO_SLUGS is out of step with PROPERTY_INFO.\n` +
+        `  lib/infoSets.js: ${declared || '(empty)'}\n` +
+        `  PROPERTY_INFO:   ${actual || '(empty)'}`
+    )
+  }
 }
 
 /**

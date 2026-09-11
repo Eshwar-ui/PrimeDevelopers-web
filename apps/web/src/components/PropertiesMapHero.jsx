@@ -292,7 +292,7 @@ export default function PropertiesMapHero({ properties, onOpen, children }) {
       // the difference only showed in dark — where `surface` is a raised panel
       // colour and the rest of the site's document ground is two steps below it,
       // making this page read as a card floating on top of the site.
-      className="relative isolate flex min-h-[38rem] flex-col overflow-hidden bg-base px-gutter pb-16 pt-32 text-content md:px-gutter-lg md:pt-36 lg:min-h-[max(58rem,min(100dvh,64rem))]"
+      className="relative isolate flex min-h-[38rem] flex-col overflow-hidden bg-base px-gutter pb-16 pt-32 text-content md:pt-36 lg:min-h-[max(58rem,min(100dvh,64rem))]"
       onMouseEnter={() => setHeld(true)}
       onMouseLeave={() => setHeld(false)}
     >

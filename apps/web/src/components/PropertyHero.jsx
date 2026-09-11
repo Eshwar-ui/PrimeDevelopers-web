@@ -59,7 +59,7 @@ const isSharedTransition = document.documentElement.classList.contains('property
         </div>
       )}
 
-      <div className="relative mx-auto flex min-h-[100dvh] max-w-[1560px] flex-col px-6 pb-8 pt-28 md:px-gutter-lg md:pb-10 md:pt-36">
+      <div className="relative mx-auto flex min-h-[100dvh] max-w-[1560px] flex-col px-gutter pb-8 pt-28 md:pb-10 md:pt-36">
         <Link to="/properties" className="group inline-flex min-h-11 w-fit items-center gap-3 font-body text-[12px] font-bold uppercase tracking-[0.16em] text-white/70 transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
           <span className="transition-transform duration-300 group-hover:-translate-x-1">←</span>
           All properties

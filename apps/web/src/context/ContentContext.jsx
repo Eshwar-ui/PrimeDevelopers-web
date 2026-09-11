@@ -172,14 +172,47 @@ const DEFAULTS = {
     email: '',
     phone: '',
     studio: '',
+    // Structured postal parts, alongside `studio` rather than instead of it.
+    // `studio` is the display line and an editor may reasonably want it short
+    // ("East 6th Street, Austin"); schema.org wants the fields separately, and
+    // a one-line string cannot be split back into them reliably. Any part left
+    // blank is omitted from the emitted PostalAddress.
+    addressStreet: '',
+    addressLocality: '',
+    addressRegion: '',
+    addressPostalCode: '',
+    addressCountry: 'US',
+    // The registered entity. `copyrightLeft` is the display string and is
+    // usually the trading name; this is the name a contract would carry, and
+    // it is what the JSON-LD publishes as `legalName`.
+    legalName: '',
+    // Broker or agency licence, printed beside the Equal Housing mark. Blank
+    // hides the whole line rather than printing an empty label.
+    licenseLabel: '',
+    licenseNumber: '',
     quickLinks: [],
     socials: [],
+    // Rendered in the copyright bar, not as a fourth directory column: three
+    // link columns beside the identity block is already the width budget, and
+    // legal links are footnotes rather than navigation.
+    legalLinks: [
+      { label: 'Privacy Policy', href: '/privacy' },
+      { label: 'Terms of Use', href: '/terms' },
+    ],
     copyrightLeft: '',
     copyrightRight: '',
     quickLinksHeading: 'Quick links',
     portfolioHeading: 'Portfolio',
     socialHeading: 'Social',
     allPropertiesLabel: 'All properties',
+    // The property strip below the CTA panel. On a property page it heads
+    // itself "Similar properties" — it has a listing to be similar to. These
+    // two are what it says everywhere else, where it shows the head of the
+    // portfolio instead.
+    exploreEyebrow: 'The portfolio',
+    exploreHeading: 'Properties worth a look',
+    viewAllLabel: 'View all properties',
+    backToTopLabel: 'Back to top',
   },
   navbar: {
     links: [],
@@ -318,9 +351,9 @@ const DEFAULTS = {
   // for the template to render correctly, with the rest added by the admin
   // once real photography and pricing exist.
   interiors_page: {
-    heading: 'Finish your space, your way',
+    heading: 'Interior finishes',
     paragraph:
-      'Three tiers of interior finish-outs, priced per square foot and ready to compare. Browse by tier, see real examples, and fold a finish package into your unit enquiry.',
+      'Compare interior finishes and prices. Choose a style that works for your space.',
     options: [
       {
         slug: 'polished-concrete-warm-gray',
@@ -464,6 +497,57 @@ const DEFAULTS = {
       ],
     },
   },
+  // Placeholder quotes so the section has something to show before an admin
+  // seeds real ones — replace or clear from Content → Franchise testimonials.
+  franchise_testimonials: {
+    eyebrow: 'Franchisee Testimonials',
+    heading: 'Hear from our franchise partners',
+    paragraph:
+      'What it actually feels like to open and run a brand inside a Prime Developer property.',
+    items: [
+      {
+        quote:
+          'Prime handled the buildout timeline and coordination end to end, so we could focus entirely on hiring and training before opening day.',
+        name: 'Sample Testimonial 1',
+        role: 'Franchise Owner · Placeholder Brand',
+        rating: 5,
+        avatar: '',
+      },
+      {
+        quote:
+          'The foot traffic and tenant mix they built around us made this our strongest-performing location within the first year.',
+        name: 'Sample Testimonial 2',
+        role: 'Regional Operator · Placeholder Brand',
+        rating: 5,
+        avatar: '',
+      },
+    ],
+  },
+  // Same placeholder pattern as above — replace from Content → Collab testimonials.
+  collab_testimonials: {
+    eyebrow: 'Partner Testimonials',
+    heading: 'Hear from our operating partners',
+    paragraph:
+      'What it actually feels like to build and run a business alongside Prime Developer.',
+    items: [
+      {
+        quote:
+          'This never felt like a landlord relationship. Prime was at the table for every major decision, sharing the risk right alongside us.',
+        name: 'Sample Testimonial 1',
+        role: 'Managing Partner · Placeholder Ventures',
+        rating: 5,
+        avatar: '',
+      },
+      {
+        quote:
+          'They brought the site, the capital, and the construction expertise — we brought the concept. The split made sense from day one.',
+        name: 'Sample Testimonial 2',
+        role: 'Co-Founder · Placeholder Concept',
+        rating: 5,
+        avatar: '',
+      },
+    ],
+  },
   collab_page: {
     heroEyebrow: 'Collab',
     heading: 'Build it together, own it together',
@@ -499,7 +583,71 @@ const DEFAULTS = {
       capRateRange: 'Typical cap rates vary by asset and market; current ranges are shared directly with qualified investors.',
       leaseStructure: 'Triple-net (NNN) — tenants pay their share of property taxes, insurance, and common-area maintenance.',
       passiveIncomeNote: 'Largely passive: the lease structure keeps day-to-day operating involvement to a minimum.',
+      // `[{ propertySlug, capRate, tenancy }]`. The slug is the link to the
+      // real property record, which supplies the name, photo and category —
+      // only the two figures a property record cannot know are entered here.
+      //
+      // Rendered by components/CapProperties.jsx on this page and, as a
+      // three-card teaser, under the grid on /properties.
+      //
+      // Seeded with the portfolio's stabilized, income-producing assets so the
+      // section has something real in it — a slug that does not resolve is
+      // dropped rather than rendered, so curating this list in the CMS can only
+      // change what shows, never break the page.
+      //
+      // `capRate` is deliberately blank on every one. A cap rate is a specific
+      // financial claim about a specific property and only the business can
+      // make it; until one is entered, the card reads "Cap rate on request",
+      // which is exactly what `capRateRange` above already promises. Fill them
+      // in from Content -> Invest page -> CAP / NNN properties.
+      properties: [
+        {
+          propertySlug: 'pow-lewisville-phase-ii',
+          capRate: '',
+          tenancy: 'Fully leased flex space on a triple-net structure.',
+        },
+        {
+          propertySlug: 'centro-plaza',
+          capRate: '',
+          tenancy: 'Stabilized retail centre with established anchor tenancy.',
+        },
+        {
+          propertySlug: 'reagan-crossing-phase-ii',
+          capRate: '',
+          tenancy: 'Retail frontage on Ronald Reagan Blvd, NNN leases in place.',
+        },
+        {
+          propertySlug: 'cap-rate-projects',
+          capRate: '',
+          tenancy: 'Office assets structured specifically for CAP-rate entry.',
+        },
+      ],
     },
+  },
+  // Same placeholder pattern as the other testimonial sections — replace from
+  // Content → Invest testimonials.
+  invest_testimonials: {
+    eyebrow: 'Investor Testimonials',
+    heading: 'Hear from our investors',
+    paragraph: 'What it actually feels like to put capital to work alongside Prime Developer.',
+    items: [
+      {
+        quote:
+          'Reporting was clear from the start and every milestone update matched what we were told to expect going in.',
+        name: 'Sample Testimonial 1',
+        role: 'Individual Investor · Planning-Phase Equity',
+        rating: 5,
+        avatar: '',
+      },
+      {
+        quote:
+          'The NNN structure has been exactly as advertised — consistent, largely passive returns with none of the operating overhead.',
+        name: 'Sample Testimonial 2',
+        role: 'Entity Investor · Property CAP / NNN',
+        rating: 5,
+        avatar: '',
+      },
+    ],
   },
   // The live row predates every key below `heroParagraph`, so these ship as
   // defaults rather than waiting on a seed — same reason about_home's film and

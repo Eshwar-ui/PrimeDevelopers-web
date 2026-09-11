@@ -149,7 +149,10 @@ function Lightbox({ images, index, onClose, onStep }) {
         tabIndex={-1}
         className="flex min-h-0 flex-1 flex-col outline-none"
       >
-        <div className="flex shrink-0 items-center justify-between gap-4 px-4 py-4 sm:px-6">
+        {/* The close button is the only way out of the lightbox, so the top
+            row insets for the notch the way the controls below already inset
+            for the home indicator. */}
+        <div className="flex shrink-0 items-center justify-between gap-4 px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6">
           <p className="min-w-0 font-body text-[13px] uppercase tracking-[0.18em] text-white/70">
             <span className="block truncate">{image.caption}</span>
           </p>
@@ -278,7 +281,7 @@ export default function PropertyInfoPage() {
 
   return (
     <>
-      <section className="relative isolate overflow-hidden bg-void px-gutter pb-20 pt-32 text-bone md:px-gutter-lg md:pb-24 md:pt-40">
+      <section className="relative isolate overflow-hidden bg-void px-gutter pb-20 pt-32 text-bone md:pb-24 md:pt-40">
         {/* The photograph carries the hero. Not lazy and not low priority: it
             is the largest paint on the page and it is above the fold, so
             deferring it would leave the section on bare `void` for the whole
@@ -352,7 +355,7 @@ export default function PropertyInfoPage() {
             key={group.id}
             id={group.id}
             data-band={dark ? undefined : 'light'}
-            className={`px-gutter py-20 md:px-gutter-lg md:py-28 ${dark ? 'bg-void text-bone' : 'bg-base text-content'}`}
+            className={`px-gutter py-20 md:py-28 ${dark ? 'bg-void text-bone' : 'bg-base text-content'}`}
           >
             <div className="mx-auto max-w-[1600px]">
               <SectionTag tone={dark ? 'inv' : 'light'}>{group.tag}</SectionTag>
@@ -393,7 +396,7 @@ export default function PropertyInfoPage() {
         )
       })}
 
-      <section data-band="light" className="bg-surface-alt px-gutter py-20 text-content md:px-gutter-lg md:py-24">
+      <section data-band="light" className="bg-surface-alt px-gutter py-20 text-content md:py-24">
         <div className="mx-auto grid max-w-[1600px] gap-14 lg:grid-cols-2">
           <div>
             <SectionTag>{t.listingsLabel}</SectionTag>

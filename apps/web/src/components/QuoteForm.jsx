@@ -24,7 +24,7 @@ const FIELD =
   'contact-field h-12 rounded-xl border border-[var(--color-line)] bg-carbon px-4 font-body text-[16px] text-bone outline-none transition-[border-color,box-shadow] placeholder:text-bone-3 focus:border-accent/75 focus:ring-[3px] focus:ring-accent/10'
 const FIELD_LABEL = 'font-display text-[15px] font-semibold text-content'
 
-function ExtraField({ field }) {
+function ExtraField({ field, invalid, onFilled }) {
   if (field.type === 'select') {
     const options = field.options.map((option) => ({
       value: option.value ?? option,
@@ -37,6 +37,9 @@ function ExtraField({ field }) {
         label={field.label}
         name={field.name}
         required={field.required}
+        invalid={invalid}
+        errorId={`${field.name}-error`}
+        onChange={onFilled}
         defaultValue=""
         placeholder={field.placeholder || 'Select one'}
         options={options}
@@ -93,12 +96,31 @@ export default function QuoteForm({
   messagePlaceholder = 'Type your message',
 }) {
   const [status, setStatus] = useState('idle')
+  // Required *selects* only. Every other control is a real input and the
+  // browser blocks submission on its own; `CustomSelect` keeps its value in a
+  // hidden input, which is never validated, so this form is the only thing that
+  // can enforce it. See the note in CustomSelect.jsx.
+  const [missing, setMissing] = useState([])
 
   const onSubmit = async (event) => {
     event.preventDefault()
-    setStatus('sending')
     const form = event.currentTarget
     const data = new FormData(form)
+
+    const unfilled = extraFields
+      .filter((field) => field.type === 'select' && field.required)
+      .filter((field) => !data.get(field.name)?.toString().trim())
+      .map((field) => field.name)
+
+    setMissing(unfilled)
+    if (unfilled.length > 0) {
+      // Focus the first one, the way the browser would have. Without this the
+      // form simply refuses to send and the reason is somewhere off screen.
+      document.getElementById(unfilled[0])?.focus()
+      return
+    }
+
+    setStatus('sending')
 
     const company = data.get('company')?.trim()
     const extraContext = Object.fromEntries(
@@ -198,7 +220,16 @@ export default function QuoteForm({
                   className={'flex flex-col gap-2 ' + (field.fullWidth ? 'sm:col-span-2' : '')}
                 >
                   <label htmlFor={field.name} className={FIELD_LABEL}>{field.label}</label>
-                  <ExtraField field={field} />
+                  <ExtraField
+                    field={field}
+                    invalid={missing.includes(field.name)}
+                    onFilled={() => setMissing((m) => m.filter((n) => n !== field.name))}
+                  />
+                  {missing.includes(field.name) && (
+                    <p id={`${field.name}-error`} className="font-body text-[13px] text-red-400">
+                      Choose an option to continue.
+                    </p>
+                  )}
                 </div>
               ))}
 

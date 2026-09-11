@@ -49,14 +49,24 @@ export function organizationSchema({ footer, properties = [], cities = [], origi
     licenseLabel, licenseNumber,
   } = footer
 
-  const address = prune({
-    '@type': 'PostalAddress',
-    streetAddress: addressStreet,
-    addressLocality: addressLocality,
-    addressRegion: addressRegion,
-    postalCode: addressPostalCode,
-    addressCountry: addressCountry,
-  })
+  // Gated on the locality rather than on `prune` returning nothing, because
+  // `prune` never can here: `addressCountry` defaults to 'US', so the object
+  // always survives with a country in it. That published a PostalAddress whose
+  // only claim was "somewhere in the United States", and — worse — made the
+  // `description` fallback below think a real address existed, so the one
+  // human-readable line we did have was dropped too. A locality is the least
+  // that makes an address an address, and it is the same test `@type` uses to
+  // decide whether this is a local business at all.
+  const address = addressLocality
+    ? prune({
+        '@type': 'PostalAddress',
+        streetAddress: addressStreet,
+        addressLocality: addressLocality,
+        addressRegion: addressRegion,
+        postalCode: addressPostalCode,
+        addressCountry: addressCountry,
+      })
+    : undefined
 
   // Only `#` placeholders and relative hrefs are dropped; a real profile URL
   // is what `sameAs` exists for and is the strongest entity signal here.

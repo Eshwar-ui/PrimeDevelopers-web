@@ -786,6 +786,12 @@ function useContentContext() {
   return ctx
 }
 
+// The unmerged defaults for one section, so the admin editor can tell an
+// authored value from one that only ever came from this file. Without it the
+// CMS persists whatever it was handed — defaults included — and the row then
+// shadows this file forever. See ContentSectionPage's `save`.
+export const sectionDefaults = (section) => DEFAULTS[section] ?? {}
+
 export const useSection = (section) => useContentContext().getSection(section)
 export const useProperties = () => useContentContext().properties
 export const useCategories = () => useContentContext().categories

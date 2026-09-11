@@ -23,11 +23,14 @@ const parsePrice = (value) => {
 }
 
 export default function InteriorsPage() {
-  const { heading, paragraph, heroImage, options = [] } = useSection('interiors_page')
-  const title = !heading || /^finish your space/i.test(heading) ? 'Interior finishes' : heading
-  const description = !paragraph || paragraph.startsWith('Three tiers of interior finish-outs')
-    ? 'Compare interior finishes and prices. Choose a style that works for your space.'
-    : paragraph
+  // Rendered as stored. This used to sniff the saved strings — replacing the
+  // heading when it matched /^finish your space/i and the paragraph when it
+  // started with "Three tiers of interior finish-outs" — which made the CMS
+  // quietly untrustworthy: an editor typing either of those watched their copy
+  // be discarded with nothing to explain it, and the two tests disagreeing is
+  // exactly why this page could show a replaced heading above an unreplaced
+  // paragraph. Copy belongs in the CMS and in DEFAULTS, not in a regex here.
+  const { heading: title, paragraph: description, heroImage, options = [] } = useSection('interiors_page')
   const [tier, setTier] = useState('All')
   const [category, setCategory] = useState('All')
   const [sort, setSort] = useState('default')

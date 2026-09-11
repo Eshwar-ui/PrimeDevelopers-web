@@ -31,6 +31,8 @@ export default function CustomSelect({
   options,
   onChange,
   required = false,
+  invalid = false,
+  errorId,
   variant = 'pill',
 }) {
   const controlled = value !== undefined
@@ -121,6 +123,11 @@ export default function CustomSelect({
 
   return (
     <div ref={rootRef} className={'relative min-w-0 ' + (open ? 'z-40' : '')}>
+      {/* Carries the value into FormData. It cannot carry `required` with it —
+          browsers skip validation on hidden inputs entirely, and a `required`
+          control the browser refuses to focus fails the submit with nothing
+          shown. Required selects are checked by the form on submit instead;
+          `aria-required` below is what announces the obligation. */}
       {name && <input type="hidden" name={name} value={currentValue} readOnly />}
       <button
         id={id}
@@ -131,11 +138,14 @@ export default function CustomSelect({
         aria-expanded={open}
         aria-controls={listboxId}
         aria-required={required || undefined}
+        aria-invalid={invalid || undefined}
+        aria-describedby={invalid && errorId ? errorId : undefined}
         data-open={open}
+        data-invalid={invalid || undefined}
         onClick={() => (open ? setOpen(false) : openMenu())}
         onKeyDown={handleTriggerKeyDown}
         className={
-          'flex w-full items-center justify-between gap-4 border text-left font-body text-[16px] font-semibold outline-none transition-[border-color,box-shadow] focus-visible:border-accent/75 focus-visible:ring-[3px] focus-visible:ring-accent/15 data-[open=true]:border-accent/75 data-[open=true]:ring-[3px] data-[open=true]:ring-accent/15 ' +
+          'flex w-full items-center justify-between gap-4 border text-left font-body text-[16px] font-semibold outline-none transition-[border-color,box-shadow] focus-visible:border-accent/75 focus-visible:ring-[3px] focus-visible:ring-accent/15 data-[open=true]:border-accent/75 data-[open=true]:ring-[3px] data-[open=true]:ring-accent/15 data-[invalid=true]:border-red-500/80 data-[invalid=true]:ring-[3px] data-[invalid=true]:ring-red-500/15 ' +
           styles.trigger
         }
       >

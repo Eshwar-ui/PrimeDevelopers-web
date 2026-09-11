@@ -69,3 +69,11 @@ test-model.glb
 *.env.*.bak
 
 .impeccable
+
+# Firebase CLI deploy cache — a per-machine record of which files were last
+# uploaded, rewritten on every `firebase deploy`. Tracking it meant each deploy
+# produced a diff, and because the filename encodes the public directory path,
+# macOS and Windows wrote *different* files (apps/web/dist vs apps\web\dist) —
+# so this was three artifacts churning independently. Deleting it only costs a
+# full re-upload on the next deploy.
+.firebase/

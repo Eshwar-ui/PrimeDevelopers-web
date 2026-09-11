@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { ArrowSquareOut, CaretLeft, CaretRight } from '@phosphor-icons/react'
 import { unitStatusMeta } from '../lib/unitStatus'
-import { formatArea, getUnitImages } from '../lib/units'
+import { formatArea, formatUnitLabel, getUnitImages, unitLabelParts } from '../lib/units'
 import { sized } from '../lib/images'
 
 const STATUS_COPY = {
@@ -89,7 +89,7 @@ export default function UnitDetailCard({ unit, units = [], aspect = null, onEnqu
   return (
     <div className={`flex flex-col overflow-hidden rounded-2xl border border-[var(--color-line)] bg-surface shadow-[0_20px_55px_-40px_rgba(20,28,33,.5)] ${maxHeight}`}>
       <div className="flex items-start justify-between gap-4 px-7 pb-5 pt-8 lg:px-8 lg:pt-9">
-        <span className="font-display text-[clamp(3rem,4vw,4.25rem)] font-bold leading-none tracking-[-0.055em] break-words text-content">{unit.label || 'Unit'}</span>
+        <UnitLabel label={unit.label} />
         <span className={`mt-1 shrink-0 rounded-full px-4 py-2 font-body text-[12px] font-bold ${meta.chip}`}>{meta.label}</span>
       </div>
 
@@ -124,11 +124,60 @@ export default function UnitDetailCard({ unit, units = [], aspect = null, onEnqu
       {canEnquire && (
         <div className="mt-auto px-7 pb-7 lg:px-8 lg:pb-8">
           <button type="button" onClick={() => onEnquire(unit)} className="primary-button-flood min-h-14 w-full rounded-full bg-accent px-5 py-3 font-body text-[12px] font-bold uppercase tracking-[0.1em] text-white transition-colors duration-300 hover:bg-prime-deep dark:text-void">
-            Enquire about {unit.label || 'this unit'}
+            Enquire about {formatUnitLabel(unit.label) || 'this unit'}
           </button>
         </div>
       )}
     </div>
+  )
+}
+
+/**
+ * The unit number, at a size that fits it.
+ *
+ * Two things were wrong with rendering the raw label at a fixed
+ * clamp(3rem,4vw,4.25rem). A combined suite — "101+102+103+106" — is one
+ * unbreakable word, since `+` is not a break opportunity in CSS, so
+ * `break-words` had nothing to act on; and as a flex child with no `min-w-0`
+ * it could not shrink below that width either. The result ran straight out of
+ * the card and was clipped mid-number.
+ *
+ * So: an explicit `<wbr/>` before each joiner gives the line somewhere to
+ * break, `min-w-0` lets the column shrink, and the type steps down as the
+ * label grows. A plain "605" keeps the display size it always had — the step
+ * only bites on the long combined labels that actually need it.
+ */
+function UnitLabel({ label }) {
+  const parts = unitLabelParts(label)
+  const text = parts.join('+')
+  if (!text) return <span className="font-display text-[clamp(3rem,4vw,4.25rem)] font-bold leading-none tracking-[-0.055em] text-content">Unit</span>
+
+  const size =
+    text.length <= 5
+      ? 'text-[clamp(3rem,4vw,4.25rem)]'
+      : text.length <= 9
+        ? 'text-[clamp(2.1rem,2.9vw,2.9rem)]'
+        : 'text-[clamp(1.5rem,2.1vw,2.1rem)]'
+
+  return (
+    <span
+      className={`min-w-0 font-display font-bold leading-[1.04] tracking-[-0.04em] text-content [overflow-wrap:anywhere] ${size}`}
+    >
+      {parts.map((part, i) => (
+        <Fragment key={`${part}-${i}`}>
+          {part}
+          {/* The joiner stays with the number before it and the break comes
+              after, so a wrapped label reads "101+102+ / 103+106" rather than
+              starting a line on a stray plus sign. */}
+          {i < parts.length - 1 && (
+            <>
+              <span className="px-[0.06em] text-content/35">+</span>
+              <wbr />
+            </>
+          )}
+        </Fragment>
+      ))}
+    </span>
   )
 }
 

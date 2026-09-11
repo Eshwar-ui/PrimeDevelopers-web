@@ -1,5 +1,5 @@
 import { unitStatusMeta } from '../lib/unitStatus'
-import { formatArea } from '../lib/units'
+import { formatArea, formatUnitLabel } from '../lib/units'
 
 // The specs a visitor actually chooses between. Description is deliberately
 // absent: it is a paragraph, and a paragraph in a table cell wrecks the row
@@ -86,7 +86,7 @@ export default function UnitComparePanel({ units, aspectOf, onRemove, onClear, o
                     <span className="flex flex-col items-start gap-2">
                       <span className="flex w-full items-start justify-between gap-2">
                         <span className="font-display text-lg font-medium break-words text-content">
-                          {unit.label || 'Unit'}
+                          {formatUnitLabel(unit.label) || 'Unit'}
                         </span>
                         <button
                           type="button"

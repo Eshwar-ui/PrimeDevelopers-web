@@ -253,6 +253,28 @@ export const bearingLabel = (bearing) =>
   Number.isFinite(bearing) ? COMPASS_POINTS[Math.round((((bearing % 360) + 360) % 360) / 45) % 8] : null
 
 /**
+ * The individual unit numbers inside a label.
+ *
+ * The client writes a suite that has been combined as one unit whose label
+ * joins its parts — "101+102+103+106". Rendered as that raw string it is a
+ * single unbreakable word: it cannot wrap, so it overflows the detail card's
+ * heading and gets clipped. Splitting it lets every surface put break
+ * opportunities between the parts and space them out to read as a set of
+ * numbers rather than as one long number.
+ *
+ * A plain label simply comes back as a single-element array, so callers need
+ * no special case.
+ */
+export const unitLabelParts = (label) =>
+  String(label ?? '')
+    .split('+')
+    .map((part) => part.trim())
+    .filter(Boolean)
+
+/** The same, spaced for a single line of text — chips, lists, option labels. */
+export const formatUnitLabel = (label) => unitLabelParts(label).join(' + ') || String(label ?? '')
+
+/**
  * A unit's photographs, always an array.
  *
  * Every unit written before `images` existed simply has no key, and a unit

@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import FloorPlanInteractive from './FloorPlanInteractive'
 import UnitDetailCard from './UnitDetailCard'
 import UnitList from './UnitList'
-import { getBuildings, getUnits } from '../lib/units'
+import { formatUnitLabel, getBuildings, getUnits } from '../lib/units'
 import { unitStatusMeta } from '../lib/unitStatus'
 import { getSiteModel, hasSiteModel, reconcileSite, toViewerEntries } from '../lib/siteModel'
 import { hasWebGL } from '../lib/webgl'
@@ -323,10 +323,35 @@ export default function SiteModelSection({ property }) {
         {taggedBuildings.map((b) => {
           const units = getUnits(b.building)
           const free = units.filter((u) => u.status === 'available').length
+          const isActive = focusedBuilding?.label === b.label
           return (
-            <Chip key={b.label} active={focusedBuilding?.label === b.label} onClick={() => openBuilding(b.label)}>
-              {b.label}
-              {units.length > 0 && <span className="ml-1.5 font-normal opacity-55">{free}/{units.length}</span>}
+            <Chip key={b.label} active={isActive} onClick={() => openBuilding(b.label)}>
+              <span className="inline-flex items-center gap-2">
+                {b.label}
+                {/* A separate pill, not a dimmed suffix. Run together with the
+                    name — "Building 1" followed by "0/1" — the eye reads
+                    "Building 10/1", and the rail became a column of building
+                    numbers nobody could trust. Its own ground breaks the
+                    number away from the name for good. */}
+                {units.length > 0 && (
+                  <span
+                    className={`rounded-full px-1.5 py-px font-body text-[10px] font-bold tabular-nums ${
+                      isActive ? 'bg-void/20 text-void' : 'bg-content/10 text-content/60'
+                    }`}
+                  >
+                    {/* The slash form is for the eye only. Read aloud it is
+                        "Building 1, 0 slash 1" — or worse, run together with
+                        the name as "Building 10 slash 1" — so the spoken
+                        version is spelled out instead. */}
+                    <span aria-hidden>
+                      {free}/{units.length}
+                    </span>
+                    <span className="sr-only">
+                      , {free} of {units.length} units available
+                    </span>
+                  </span>
+                )}
+              </span>
             </Chip>
           )
         })}
@@ -357,7 +382,7 @@ export default function SiteModelSection({ property }) {
               >
                 <span className="inline-flex items-center gap-1.5">
                   <span aria-hidden className={`size-1.5 rounded-full ${meta.swatch}`} />
-                  {u.label || '—'}
+                  {formatUnitLabel(u.label) || '—'}
                 </span>
               </Chip>
             )

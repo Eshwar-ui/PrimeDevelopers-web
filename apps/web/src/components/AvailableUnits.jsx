@@ -5,7 +5,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import { Buildings, Camera, MapPin, Ruler, Stack, Tag } from '@phosphor-icons/react'
 import { useProperties } from '../context/ContentContext'
-import { getBuildings, getUnits, formatArea, getUnitImages } from '../lib/units'
+import { getBuildings, getUnits, formatArea, formatUnitLabel, getUnitImages } from '../lib/units'
 import { UNIT_STATUSES, unitStatusMeta } from '../lib/unitStatus'
 import { hasInfoSet } from '../lib/infoSets'
 import { sized } from '../lib/images'
@@ -444,7 +444,7 @@ export default function AvailableUnits() {
                             below drops the label rather than printing it
                             twice. */}
                         <h3 className="font-display text-lg font-bold leading-tight text-content">
-                          {tierName ?? (unit.label ? `Unit ${unit.label}` : 'Unit')}
+                          {tierName ?? (unit.label ? `Unit ${formatUnitLabel(unit.label)}` : 'Unit')}
                         </h3>
                         {(area || (tierName && unit.label)) && (
                           <p className="mt-0.5 font-body text-[13px] text-content/70">
@@ -454,7 +454,7 @@ export default function AvailableUnits() {
                                 ·
                               </span>
                             )}
-                            {tierName && unit.label && <span className="numeral">{unit.label}</span>}
+                            {tierName && unit.label && <span className="numeral">{formatUnitLabel(unit.label)}</span>}
                           </p>
                         )}
                       </div>

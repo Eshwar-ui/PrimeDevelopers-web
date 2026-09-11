@@ -1102,8 +1102,21 @@ function CameraRig({ bounds, focus, mode, navMode, resetSignal, onDragStart, onD
     const isPlan = mode === '2d'
     const planFit = planFitZoomRef.current
     const canvas = sizeRef.current
+    // Was 1.15, which cropped. `focus.radius` is a bounding *sphere*, and for
+    // a long shallow terrace that radius is already about its half-length — so
+    // scaling the site fit by siteRadius/focusRadius already lands near "this
+    // building fills the frame", and zooming a further 15% in on top pushed
+    // both ends of it off screen. A building cropped at both ends is the one
+    // thing this view exists to avoid.
+    //
+    // Empirical, like the sibling constants below, and checked against the two
+    // shapes Centro has: Building 1, a tall narrow stack, and Building 6, a
+    // wide twenty-unit terrace. Both sit fully in frame at this value with a
+    // little of their surroundings for context; much above ~0.7 and the tall
+    // one starts losing its ends again.
+    const PLAN_FILL = 0.62
     const zoom = isPlan
-      ? Math.min(planFit * (siteRadius / Math.max(focus.radius, 1e-6)) * 1.15, planFit * 24)
+      ? Math.min(planFit * (siteRadius / Math.max(focus.radius, 1e-6)) * PLAN_FILL, planFit * 24)
       : null
     // Overhead in plan, so the only thing that changes is which part of
     // the site is under the camera.

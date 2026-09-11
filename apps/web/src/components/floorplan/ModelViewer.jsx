@@ -957,6 +957,25 @@ function SiteGround({ bounds, dark = true }) {
 
 /* ── camera ────────────────────────────────────────────────────────────── */
 
+/**
+ * How far a perspective camera must sit to fit a sphere of `radius` on screen.
+ *
+ * Fits whichever axis is tighter rather than always the vertical one. This
+ * viewer is taller than it is wide on a desktop, so the horizontal field of
+ * view is the narrower of the two, and a wide terrace fitted to the vertical
+ * FOV runs off both sides — which is the "the units don't fit" case.
+ *
+ * Shared by the focus framing and the zoom floor below, which have to agree:
+ * a floor computed independently of the framing is how the camera ends up
+ * clamped further out than the distance it was just asked to fly to.
+ */
+function fitDistance(radius, camera, size) {
+  const aspect = size.height > 0 ? size.width / size.height : 1
+  const vFov = THREE.MathUtils.degToRad(camera.fov ?? 42)
+  const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect)
+  return radius / Math.sin(Math.min(vFov, hFov) / 2)
+}
+
 function CameraRig({ bounds, focus, mode, navMode, resetSignal, onDragStart, onDragEnd }) {
   const controls = useRef(null)
   const camera = useThree((state) => state.camera)
@@ -1069,16 +1088,7 @@ function CameraRig({ bounds, focus, mode, navMode, resetSignal, onDragStart, onD
       : null
     // Overhead in plan, so the only thing that changes is which part of
     // the site is under the camera.
-    // A fixed multiple of the radius fits vertically and quietly crops
-    // horizontally: this viewer is taller than it is wide on a desktop,
-    // and a perspective camera's horizontal field of view is the
-    // narrower of the two there. A wide terrace framed to the vertical
-    // FOV therefore runs off both sides — which is exactly the "units
-    // don't fit" case. Solved by fitting whichever axis is tighter.
-    const aspect = size.height > 0 ? size.width / size.height : 1
-    const vFov = THREE.MathUtils.degToRad(camera.fov ?? 42)
-    const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect)
-    const fit = focus.radius / Math.sin(Math.min(vFov, hFov) / 2)
+    const fit = fitDistance(focus.radius, camera, size)
     // Well under 1. `focus.radius` is a bounding *sphere*, and these
     // buildings are long, shallow terraces seen from an isometric angle:
     // the sphere is sized by the length, while what the camera actually
@@ -1088,7 +1098,21 @@ function CameraRig({ bounds, focus, mode, navMode, resetSignal, onDragStart, onD
     // tuned against Centro Plaza's terraces — which is why it is a named
     // constant rather than buried in the expression.
     const TERRACE_FIT = 0.5
-    const distance = isPlan ? siteRadius * 4 : Math.max(fit * TERRACE_FIT, siteRadius * 0.05)
+    // A floor on how tight the frame may close, and the reason it exists is
+    // the opposite of the factor above. Cropping is right for a terrace, which
+    // fills the frame with context of its own; it is wrong for one small unit.
+    // Fitted that tightly a shop is an anonymous coloured plane — no
+    // neighbours, no end of the building, no road — so the visitor cannot tell
+    // which unit they picked or where in the site it sits. The floor is a
+    // share of the site rather than an absolute, so it scales with exports
+    // measured in metres or in millimetres, and it only bites when the site is
+    // far larger than the thing being framed: a whole-site model focusing one
+    // unit. Per-building models, where a unit is already a sizeable fraction
+    // of the model, keep the framing they had.
+    const CONTEXT_RADIUS = siteRadius * 0.075
+    const distance = isPlan
+      ? siteRadius * 4
+      : Math.max(fit, fitDistance(CONTEXT_RADIUS, camera, size)) * TERRACE_FIT
 
     if (prefersReducedMotion()) {
       const direction = isPlan
@@ -1226,6 +1250,30 @@ function CameraRig({ bounds, focus, mode, navMode, resetSignal, onDragStart, onD
 
   const radius = bounds?.radius ?? 10
 
+  // How close the camera may come. It has to clear the *tightest* thing the
+  // viewer can be asked to frame, which on a whole-site model is nothing like
+  // a fraction of the site.
+  //
+  // This was `radius * 0.4`, tuned when every model here was a single
+  // building — where the site radius and the thing being looked at are the
+  // same order of magnitude, so 0.4 is genuinely close. A whole-site export
+  // broke that assumption: Centro Plaza measures 1678 x 120 x 2100, so the
+  // floor landed at ~538 while focusing one terrace asked for ~140. The
+  // camera stopped roughly four times further out than the frame it had just
+  // been given, and no amount of scrolling closed the gap — which is what
+  // "I need to zoom more to see the units" was.
+  //
+  // So the floor follows the focus when there is one, at a quarter of the
+  // framed distance, leaving real travel to push past the automatic frame and
+  // read a unit up close. With nothing focused it falls back to a small
+  // fraction of the site. Both stay well clear of the near plane, which
+  // `frameDefault` puts at `radius / 400`.
+  const minDistance = useMemo(() => {
+    const siteFloor = radius * 0.02
+    if (!focus) return siteFloor
+    return Math.min(siteFloor, fitDistance(focus.radius, camera, size) * 0.25)
+  }, [radius, focus, camera, size])
+
   // Which gesture the primary drag performs. Plan view is forced to pan
   // whatever the toggle says: rotation is disabled there, so leaving the
   // primary drag bound to it makes the one obvious gesture do nothing at all.
@@ -1277,7 +1325,7 @@ function CameraRig({ bounds, focus, mode, navMode, resetSignal, onDragStart, onD
       // room to pull back.
       minZoom={mode === '2d' ? planFitZoom : 0}
       maxZoom={mode === '2d' ? planFitZoom * 6 : Infinity}
-      minDistance={radius * 0.4}
+      minDistance={minDistance}
       maxDistance={radius * 6}
     />
   )

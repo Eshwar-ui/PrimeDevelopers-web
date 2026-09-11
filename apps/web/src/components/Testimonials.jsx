@@ -79,7 +79,7 @@ export default function Testimonials({ sectionKey = 'testimonials', id = 'testim
   if (!items?.length) return null
 
   return (
-    <section id={id} className="bg-base px-gutter py-section text-content md:px-gutter-lg md:py-section-lg">
+    <section id={id} className="bg-base px-gutter py-section text-content md:py-section-lg">
       <div className="mx-auto max-w-[1560px]">
         <header className="mx-auto flex max-w-[1040px] flex-col items-center text-center">
           {eyebrow && (
@@ -91,7 +91,18 @@ export default function Testimonials({ sectionKey = 'testimonials', id = 'testim
           )}
 
           {heading && (
-            <h2 className="mt-5 font-display text-[clamp(2rem,3.15vw,3rem)] font-bold leading-[1.08] tracking-[-0.025em] text-content md:whitespace-nowrap">
+            /* No `md:whitespace-nowrap`. It forbade wrapping from 768px up,
+               which was precisely where the measure was narrowest under the
+               old stepped gutter, and the clamp sits on its 32px floor
+               everywhere below 1016px so the type could not shrink to help
+               either. The shipped heading measured within a few percent of the
+               column — fits or overflows depending on the face — and it is CMS
+               copy, so one longer word would have pushed it into the page
+               gutters permanently with no wrap to catch it. `text-balance`
+               gives the even two-line break the no-wrap was reaching for,
+               without betting the layout on the length of a string an editor
+               controls. */
+            <h2 className="mt-5 text-balance font-display text-[clamp(2rem,3.15vw,3rem)] font-bold leading-[1.08] tracking-[-0.025em] text-content">
               {heading}
             </h2>
           )}

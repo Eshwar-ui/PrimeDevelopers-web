@@ -30,7 +30,7 @@ export default function FeaturedProperty() {
   }
 
   return (
-    <section data-band="light" className="bg-base px-gutter pb-6 pt-6 text-content md:px-gutter-lg">
+    <section data-band="light" className="bg-base px-gutter pb-6 pt-6 text-content">
       <div className="mx-auto max-w-[1560px]">
         {/* Two columns only when there is a photograph to put in the second
             one. Without that guard an unset image leaves the copy in a half-

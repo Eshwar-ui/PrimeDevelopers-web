@@ -158,7 +158,7 @@ export default function AvailableUnits() {
       data-band="light"
       ref={scope}
       aria-labelledby="available-units-heading"
-      className="bg-base px-gutter py-6 text-content md:px-gutter-lg"
+      className="bg-base px-gutter py-6 text-content"
     >
       <div className="mx-auto max-w-[1560px]">
         <div className="mx-auto max-w-2xl text-center">
@@ -180,7 +180,7 @@ export default function AvailableUnits() {
         </div>
 
         <div
-          className="-mx-gutter mt-8 flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-gutter pb-2 sm:mx-0 sm:flex-wrap sm:justify-center sm:overflow-visible sm:px-0 sm:pb-0"
+          className="-mx-gutter mt-8 flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-gutter pb-2 scroll-px-gutter sm:mx-0 sm:flex-wrap sm:justify-center sm:overflow-visible sm:px-0 sm:pb-0"
           role="group"
           aria-label="Filter units by size"
         >
@@ -209,7 +209,14 @@ export default function AvailableUnits() {
             No units in this range right now — try another size or explore the full list below.
           </p>
         ) : (
-          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          /* Was `sm:grid-cols-2 lg:grid-cols-4`, which skipped the three-up
+             rung and put the whole jump on one pixel: 400px cards at 1023px
+             became 188px at 1024px — a photograph, a name, a size and a price
+             at 188px, on exactly the laptop width where the site starts
+             reading as a desktop. `auto-fit` spaces the change out instead,
+             holding a card at 15rem or better, which is where the name and
+             price still sit comfortably on two lines. */
+          <div className="-mx-gutter mt-10 grid auto-cols-[85%] grid-flow-col snap-x snap-mandatory gap-6 overflow-x-auto overscroll-x-contain px-gutter py-3 scroll-px-gutter md:mx-0 md:auto-cols-auto md:grid-flow-row md:grid-cols-[repeat(auto-fit,minmax(15rem,1fr))] md:overflow-visible md:px-0 md:py-0">
             {shown.map(({ property, unit, sf }) => {
               const href = `/properties/${property.slug}`
               const open = (e) => {
@@ -229,7 +236,7 @@ export default function AvailableUnits() {
                 <article
                   key={`${property.slug}-${unit.index}`}
                   data-unit-card
-                  className="group flex flex-col overflow-hidden rounded-panel border border-accent/45 bg-surface transition-[border-color,box-shadow] duration-500 ease-brand hover:border-accent/75 hover:shadow-[0_36px_80px_-52px_rgba(0,0,0,0.85)]"
+                  className="group flex min-w-0 snap-start flex-col overflow-hidden rounded-panel border border-accent/45 bg-surface transition-[border-color,box-shadow] duration-500 ease-brand hover:border-accent/75 hover:shadow-[0_36px_80px_-52px_rgba(0,0,0,0.85)]"
                 >
                   <div className="relative aspect-[4/3] overflow-hidden bg-surface-alt">
                     {property.image && (

@@ -176,7 +176,7 @@ export default function PropertyDetailPage() {
           and only got worse with a longer figure or a fourth stat. Full width
           it has 270px per cell at the narrowest supported layout. */}
       {d?.overview?.heading && (
-        <section id="overview" data-band="light" className="bg-base px-6 py-20 md:px-gutter-lg md:py-28">
+        <section id="overview" data-band="light" className="bg-base px-gutter py-20 md:py-28">
           <div className="mx-auto max-w-[1560px]">
             {/* `lg:items-center` rather than `items-start`: the copy column runs
                 taller than a pair of 4:3 frames at most widths, and pinning
@@ -342,7 +342,7 @@ export default function PropertyDetailPage() {
 
       {/* ── Tenants ──────────────────────────────────────────── */}
       {d?.tenants?.length > 0 && (
-        <section data-band="light" className="border-y border-[var(--color-line)] bg-base px-6 py-16 md:px-gutter-lg">
+        <section data-band="light" className="border-y border-[var(--color-line)] bg-base px-gutter py-16">
           <div className="flex flex-wrap items-center justify-center gap-x-16 gap-y-8">
             {d.tenants.map((logo, i) => (
               <img
@@ -358,7 +358,7 @@ export default function PropertyDetailPage() {
 
       {/* Property highlights */}
       {d?.highlights?.heading && (
-        <section data-band="light" className="bg-surface-alt px-6 pb-8 pt-16 md:px-gutter-lg md:pb-10 md:pt-20">
+        <section data-band="light" className="bg-surface-alt px-gutter pb-8 pt-16 md:pb-10 md:pt-20">
           <div className="grid gap-12 lg:grid-cols-[1fr_1.1fr] lg:gap-16">
             <motion.div
               variants={stagger}
@@ -449,7 +449,7 @@ export default function PropertyDetailPage() {
         <section
           data-band="light"
           id="floor-plans"
-          className="bg-surface-alt px-gutter pb-16 pt-8 md:px-gutter-lg md:pb-20 md:pt-10"
+          className="bg-surface-alt px-gutter pb-16 pt-8 md:pb-20 md:pt-10"
         >
           <SiteModelSection property={property} />
         </section>
@@ -457,7 +457,7 @@ export default function PropertyDetailPage() {
         <section
           data-band="light"
           id="floor-plans"
-          className="bg-surface-alt px-gutter pb-16 pt-8 md:px-gutter-lg md:pb-20 md:pt-10"
+          className="bg-surface-alt px-gutter pb-16 pt-8 md:pb-20 md:pt-10"
         >
           {/* `floorPlans.heading` and `.body` are deliberately not rendered.
               The design opens this section on the figures, and the stat cards
@@ -533,7 +533,7 @@ export default function PropertyDetailPage() {
           pure white with dark type in *both* themes — a blinding slab midway
           down an otherwise dark page. */}
       {d?.location?.heading && (
-        <section data-band="light" className="bg-base px-6 py-20 md:px-gutter-lg md:py-28">
+        <section data-band="light" className="bg-base px-gutter py-20 md:py-28">
           <div className="grid gap-12 lg:grid-cols-[1.1fr_1fr] lg:gap-20">
             {/* Image + thumbnails */}
             {gallery.length > 0 && (
@@ -578,7 +578,7 @@ export default function PropertyDetailPage() {
       {/* No top padding: this continues the section above on the same ground
           rather than starting a new one. */}
       {d?.establishedSites?.heading && gallery.length > 0 && (
-        <section data-band="light" className="bg-base px-6 pb-20 md:px-gutter-lg md:pb-28">
+        <section data-band="light" className="bg-base px-gutter pb-20 md:pb-28">
           <SectionTag>{t.establishedSitesLabel}</SectionTag>
           <h2 className="mt-6 max-w-[24ch] font-display text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] text-content md:text-[3rem]">
             {d.establishedSites.heading}
@@ -632,7 +632,7 @@ export default function PropertyDetailPage() {
           same reason a gallery paints its walls dark behind bright work.
           Deliberately carries no data-band, so the navbar goes light over it. */}
       {d?.extFacade?.length > 0 && (
-        <section className="bg-void px-6 py-20 text-bone md:px-gutter-lg md:py-28">
+        <section className="bg-void px-gutter py-20 text-bone md:py-28">
           <SectionTag tone="inv">{t.extFacadeLabel}</SectionTag>
           <div className="mt-10 grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-5">
             {d.extFacade.map(
@@ -655,7 +655,7 @@ export default function PropertyDetailPage() {
 
       {/* ── Neighborhoods + map ──────────────────────────────── */}
       {d?.neighborhoods?.items?.length > 0 && (
-        <section data-band="light" className="bg-surface-alt px-6 py-20 md:px-gutter-lg md:py-28">
+        <section data-band="light" className="bg-surface-alt px-gutter py-20 md:py-28">
           <SectionTag>{t.neighborhoodsLabel}</SectionTag>
           <h2 className="mt-6 font-display text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] text-content md:text-[3rem]">
             {t.neighborhoodsHeading}
@@ -719,7 +719,7 @@ export default function PropertyDetailPage() {
 
       {/* ── Videos ───────────────────────────────────────────── */}
       {d?.videos?.length > 0 && (
-        <section data-band="light" className="bg-base px-6 py-20 md:px-gutter-lg md:py-28">
+        <section data-band="light" className="bg-base px-gutter py-20 md:py-28">
           <SectionTag>{t.videosLabel}</SectionTag>
           <h2 className="mt-6 font-display text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] text-content md:text-[3rem]">
             {t.videosHeading}
@@ -754,7 +754,7 @@ export default function PropertyDetailPage() {
           the page has made its case. Opening the page on them sent a
           visitor off-site before they had seen the property. */}
       {d?.resourceLinks?.length > 0 && (
-        <section data-band="light" className="bg-surface-alt px-6 py-16 md:px-gutter-lg md:py-24">
+        <section data-band="light" className="bg-surface-alt px-gutter py-16 md:py-24">
           <SectionTag>{t.resourcesLabel}</SectionTag>
           <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {d.resourceLinks.map(
@@ -800,7 +800,7 @@ export default function PropertyDetailPage() {
           does, and it is the second and last of the two dark anchors.
 
           No data-band, so the navbar keeps its light chrome over it. */}
-      <section className="relative overflow-hidden bg-void px-6 py-24 text-bone md:px-gutter-lg md:py-32">
+      <section className="relative overflow-hidden bg-void px-gutter py-24 text-bone md:py-32">
         {/* A single low breath of CG Blue behind the corner the eye leaves
             from. Atmosphere rather than decoration: on a flat near-black this
             wide it is the difference between a closing statement and a slab. */}

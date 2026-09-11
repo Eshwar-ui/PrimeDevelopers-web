@@ -281,16 +281,17 @@ export default function PropertiesPage() {
 
       {/* ── The curated collection ───────────────────────────── */}
       {/* Ground, gutter, rhythm and measure are the homepage's — `bg-base
-          px-gutter py-20 text-content md:px-gutter-lg md:py-28` is what every
+          px-gutter py-20 text-content md:py-28` is what every
           section on the landing page sets, and this band was running its own
           `bg-surface px-6` with no measure at all. The gutter is the visible
-          half: `px-gutter-lg` is 6.25rem against the 3rem this had, so the grid
-          now starts on the same vertical as the homepage's cards instead of
-          sitting 2rem wider than everything else on the site. */}
+          half: `px-gutter` reaches 6.25rem on a wide display against the fixed
+          3rem this had, so the grid now starts on the same vertical as the
+          homepage's cards instead of sitting 2rem wider than everything else on
+          the site. */}
       <section
         id="collection"
         data-band="light"
-        className="bg-base px-gutter py-20 text-content md:px-gutter-lg md:py-28"
+        className="bg-base px-gutter py-20 text-content md:py-28"
       >
         {/* The 1560px measure every homepage section sets. Without it this grid
             was the one band on the site with no ceiling, so on a wide display it

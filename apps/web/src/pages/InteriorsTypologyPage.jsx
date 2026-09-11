@@ -33,7 +33,7 @@ export default function InteriorsTypologyPage() {
 
   return (
     <div className="overflow-x-hidden bg-base text-content">
-      <header data-band="light" className="px-gutter pb-10 pt-32 md:px-gutter-lg md:pb-14 md:pt-40">
+      <header data-band="light" className="px-gutter pb-10 pt-32 md:pb-14 md:pt-40">
         <div className="mx-auto max-w-[1200px]">
           <Link to="/enterprise/interiors" className="group inline-flex min-h-11 items-center gap-2 font-body text-sm font-semibold text-content/55 transition-colors hover:text-accent">
             <ArrowRight className="size-4 rotate-180 transition-transform duration-300 group-hover:-translate-x-1" />
@@ -55,7 +55,7 @@ export default function InteriorsTypologyPage() {
       </header>
 
       {images.length > 0 && (
-        <section className="px-gutter pb-10 md:px-gutter-lg md:pb-14">
+        <section className="px-gutter pb-10 md:pb-14">
           <div className="mx-auto max-w-[1200px]">
             {option.beforeImage && option.heroImage && activeImage === 0 ? (
               <BeforeAfterSlider
@@ -90,7 +90,7 @@ export default function InteriorsTypologyPage() {
         </section>
       )}
 
-      <section data-band="dark" className="bg-void px-gutter py-10 text-bone md:px-gutter-lg md:py-16">
+      <section data-band="dark" className="bg-void px-gutter py-10 text-bone md:py-16">
         <div className="mx-auto max-w-[1200px]">
           <div className="aspect-[4/3] overflow-hidden rounded-[18px] border border-white/10 bg-carbon shadow-[0_35px_90px_-50px_rgba(0,0,0,0.9)] sm:aspect-video sm:rounded-[22px]">
             {embedUrl ? (
@@ -108,7 +108,7 @@ export default function InteriorsTypologyPage() {
         </div>
       </section>
 
-      <section data-band="light" className="px-gutter py-14 sm:py-20 md:px-gutter-lg md:py-28">
+      <section data-band="light" className="px-gutter py-14 sm:py-20 md:py-28">
         <div className="mx-auto grid max-w-[1200px] gap-10 sm:gap-14 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-24">
           <article className="space-y-14">
             <div>

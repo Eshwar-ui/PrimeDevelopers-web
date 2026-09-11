@@ -124,7 +124,7 @@ export default function InvestPage() {
             <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(12,21,27,.6)_0%,transparent_55%)]" />
           </div>
         )}
-        <div className="relative mx-auto flex min-h-[34rem] max-w-[1360px] flex-col justify-end px-gutter pb-12 pt-32 sm:pb-14 md:min-h-[36rem] md:px-gutter-lg md:pb-20 md:pt-40">
+        <div className="relative mx-auto flex min-h-[34rem] max-w-[1360px] flex-col justify-end px-gutter pb-12 pt-32 sm:pb-14 md:min-h-[36rem] md:pb-20 md:pt-40">
           <div data-hero-copy className="max-w-[42rem]">
             <p className="font-body text-[12px] font-bold uppercase tracking-[0.22em] text-accent-soft">{page.heroEyebrow}</p>
             <h1 className="mt-5 max-w-[16ch] text-balance font-display font-bold uppercase leading-[0.98] tracking-[-0.04em] [font-size:clamp(2.1rem,5.5vw,4.6rem)]">
@@ -135,7 +135,7 @@ export default function InvestPage() {
         </div>
       </section>
 
-      <section id={TRACKS[0].id} data-band="light" data-reveal className="scroll-mt-24 bg-surface-alt px-gutter py-20 md:px-gutter-lg md:py-28">
+      <section id={TRACKS[0].id} data-band="light" data-reveal className="scroll-mt-24 bg-surface-alt px-gutter py-20 md:py-28">
         <div className="mx-auto max-w-[1360px]">
           <span aria-hidden className={`block h-1 w-14 rounded-full ${TONE.accent.bar}`} />
           <p className={`mt-6 font-body text-xs font-bold uppercase tracking-[0.14em] ${TONE.accent.text}`}>{TRACKS[0].label}</p>
@@ -154,7 +154,7 @@ export default function InvestPage() {
       {/* `id` matches TRACKS[1].id, which is also what the track selector in
           the enquiry form writes — so one name identifies this track whether it
           is being linked to or submitted. */}
-      <section id={TRACKS[1].id} data-band="light" data-reveal className="scroll-mt-24 px-gutter py-20 md:px-gutter-lg md:py-28">
+      <section id={TRACKS[1].id} data-band="light" data-reveal className="scroll-mt-24 px-gutter py-20 md:py-28">
         <div className="mx-auto max-w-[1360px]">
           <span aria-hidden className={`block h-1 w-14 rounded-full ${TONE.ember.bar}`} />
           <p className={`mt-6 font-body text-xs font-bold uppercase tracking-[0.14em] ${TONE.ember.text}`}>{TRACKS[1].label}</p>
@@ -188,7 +188,7 @@ export default function InvestPage() {
 
       <Testimonials sectionKey="invest_testimonials" id="invest-testimonials" />
 
-      <section id="inquire" data-band="light" data-reveal className="px-gutter py-20 md:px-gutter-lg md:py-28">
+      <section id="inquire" data-band="light" data-reveal className="px-gutter py-20 md:py-28">
         <div className="mx-auto max-w-[1360px]">
           <div className="mb-8 rounded-panel border border-line bg-surface-alt p-5 sm:p-7 md:p-9">
             <p className="font-body text-[11px] font-bold uppercase tracking-[0.15em] text-content/50">Which track interests you?</p>

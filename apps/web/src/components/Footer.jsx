@@ -256,7 +256,7 @@ export default function Footer() {
                 {cta.ctaLabel && (
                   <Link
                     to={cta.ctaHref || '/contact'}
-                    className="group mt-8 inline-flex h-13 items-center gap-2.5 rounded-xl bg-bone px-7 font-body text-[15px] font-medium text-charcoal transition-opacity duration-300 hover:opacity-88 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-accent"
+                    className="group mt-8 inline-flex h-13 w-full items-center justify-center gap-2.5 md:w-auto rounded-xl bg-bone px-7 font-body text-[15px] font-medium text-charcoal transition-opacity duration-300 hover:opacity-88 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-accent"
                   >
                     {cta.ctaLabel}
                     <ArrowIcon className="size-4 transition-transform duration-300 ease-brand group-hover:translate-x-1" />
@@ -490,7 +490,12 @@ export default function Footer() {
                 nowhere — an editor could type into that field forever and watch
                 nothing happen. It has the right half of the bar, which is what
                 the field's own name has always promised. */}
-            <div className="mt-12 flex flex-col gap-5 border-t border-[var(--color-line-inv)] pt-7 text-center md:flex-row md:items-center md:justify-between md:gap-8 md:text-left">
+            {/* `flex-col-reverse` below md: stacked, the locale and the way back
+                up are what a visitor still has a use for, so they sit above the
+                copyright and the legal footnotes rather than under them. The
+                DOM order is left-group-then-right-group because that is the
+                reading order the row restores at md. */}
+            <div className="mt-12 flex flex-col-reverse gap-5 border-t border-[var(--color-line-inv)] pt-7 text-center md:flex-row md:items-center md:justify-between md:gap-8 md:text-left">
               <div className="flex flex-col items-center gap-x-6 gap-y-2 md:flex-row">
                 {copyrightLeft && (
                   <p className="font-body text-[14px] text-bone-3">{copyrightLeft}</p>

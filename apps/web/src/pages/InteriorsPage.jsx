@@ -56,7 +56,7 @@ export default function InteriorsPage() {
   if (options.length === 0) {
     return (
       <div className="bg-base text-content">
-        <section data-band="light" className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-gutter text-center md:px-gutter-lg">
+        <section data-band="light" className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-gutter text-center">
           <h1 className="font-display text-3xl font-bold text-content">The catalog is being put together</h1>
           <p className="max-w-md font-body text-content/60">Check back soon, or talk to us directly about interior finishes.</p>
           <Link to="/contact?source=interiors" className="font-body text-sm font-semibold text-accent underline underline-offset-4">Talk to us</Link>
@@ -67,7 +67,7 @@ export default function InteriorsPage() {
 
   return (
     <div ref={scope} className="overflow-x-hidden bg-base text-content">
-      <section data-band="light" className="px-gutter pb-10 pt-36 md:px-gutter-lg md:pb-14 md:pt-44">
+      <section data-band="light" className="px-gutter pb-10 pt-36 md:pb-14 md:pt-44">
         <div className="mx-auto grid max-w-[1360px] gap-8 lg:grid-cols-[1.25fr_0.75fr] lg:items-end">
           <h1 className="max-w-[20ch] text-balance font-display font-bold uppercase leading-[1.03] tracking-tight [font-size:clamp(1.85rem,min(4.2vw,8dvh),3.4rem)]">{heading}</h1>
           <p className="max-w-[48ch] font-body text-[16px] leading-[1.7] text-content/65 sm:text-[17px]">{paragraph}</p>
@@ -81,7 +81,7 @@ export default function InteriorsPage() {
         </Link>
       </section>
 
-      <section data-band="light" className="bg-surface-alt px-gutter py-10 md:px-gutter-lg md:py-14">
+      <section data-band="light" className="bg-surface-alt px-gutter py-10 md:py-14">
         <div className="mx-auto max-w-[1360px]">
           <div className="flex flex-col gap-4 border-b border-line pb-7 sm:pb-8 lg:flex-row lg:items-center lg:justify-between">
             <div className="-mx-gutter flex snap-x gap-2 overflow-x-auto px-gutter pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0" role="group" aria-label="Filter by tier">

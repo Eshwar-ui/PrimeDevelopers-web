@@ -45,14 +45,14 @@ export default function LearnPage() {
 
   return (
     <div className="bg-base text-content">
-      <section data-band="light" className="px-gutter pb-16 pt-36 md:px-gutter-lg md:pb-24 md:pt-44">
+      <section data-band="light" className="px-gutter pb-16 pt-36 md:pb-24 md:pt-44">
         <div className="mx-auto grid max-w-[1360px] gap-12 lg:grid-cols-[1.25fr_0.75fr] lg:items-end">
           <h1 className="max-w-[18ch] text-balance font-display font-bold uppercase leading-[1.03] tracking-tight [font-size:clamp(1.85rem,min(4.2vw,8dvh),3.4rem)]">{heading}</h1>
           <p className="max-w-[48ch] font-body text-[17px] leading-[1.7] text-content/65">{paragraph}</p>
         </div>
       </section>
 
-      <section data-band="light" className="bg-surface-alt px-gutter py-16 md:px-gutter-lg md:py-20">
+      <section data-band="light" className="bg-surface-alt px-gutter py-16 md:py-20">
         <div className="mx-auto max-w-[1360px]">
           <div className="grid gap-5 border-b border-line pb-8 lg:grid-cols-[1fr_auto] lg:items-end">
             <label className="block">

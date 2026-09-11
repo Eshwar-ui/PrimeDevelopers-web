@@ -237,7 +237,7 @@ export default function Hero() {
         variants={stagger}
         initial="hidden"
         animate="show"
-        className="relative flex h-full flex-col items-center px-gutter pt-[8rem] text-center md:px-gutter-lg lg:pt-[112px]"
+        className="relative flex h-full flex-col items-center px-gutter pt-[8rem] text-center lg:pt-[112px]"
       >
         {/* Not a motion child. A block-level lift here would carry each word's
             mask up with the word inside it, leaving nothing for the word to

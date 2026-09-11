@@ -375,11 +375,21 @@ export default function Navbar() {
           surfaced ? 'py-3 md:py-3.5' : 'py-4 md:py-5'
         }`}
       >
-        {/* Padding inside the measure, matching the hero's container exactly —
-            with it outside, the lockup and the headline drift apart by the
-            padding once the viewport passes 1560. */}
-        <div className="mx-auto max-w-[1560px] px-6 md:px-12">
-          <div className="relative flex items-center justify-between gap-6">
+        {/* Gutter outside the measure, max-width inside — the same two-element
+            shape every section on the site uses, and the reason the lockup now
+            lands on the section content edge instead of near it.
+
+            This was `mx-auto max-w-[1560px] px-6 md:px-12`: one element
+            carrying both, so the 1560 cap included the padding. A section caps
+            1560 *inside* its gutter, so the two measures could never coincide —
+            at 1920 the section content edge fell at 180px and the logo at
+            228px, at 1280 it was 100 against 48. The old note here defended the
+            padding-inside form as matching the hero's container, but the hero
+            is `items-center` / `text-center` and has no left-aligned element to
+            match; the sections are what the logo actually reads against. */}
+        <div className="px-gutter">
+          <div className="mx-auto max-w-[1560px]">
+            <div className="relative flex items-center justify-between gap-6">
           <a href="/" onClick={goHome} className="shrink-0" aria-label="Prime Developer — home">
             <img
               src={logo}
@@ -558,6 +568,7 @@ export default function Navbar() {
               />
             </span>
             </button>
+            </div>
           </div>
         </div>
       </motion.header>
@@ -587,7 +598,11 @@ export default function Navbar() {
             transition={{ duration: 0.3 }}
             className="fixed inset-0 z-40 overflow-y-auto overscroll-contain bg-void lg:hidden"
           >
-            <div className="flex min-h-full flex-col justify-center gap-3 px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-24 sm:px-8">
+            {/* The page gutter, like the rail above it. The header sits over
+                this overlay rather than under it, so the lockup stays visible
+                while the menu is open and any other value here reads as the
+                links failing to line up with it. */}
+            <div className="flex min-h-full flex-col justify-center gap-3 px-gutter pb-[max(2rem,env(safe-area-inset-bottom))] pt-24">
               {navLinks.map((link, i) => (
                 <div key={link.label}>
                   <motion.a

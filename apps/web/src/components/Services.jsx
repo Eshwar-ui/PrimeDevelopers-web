@@ -33,7 +33,7 @@ export default function Services() {
     <section
       id="services"
       data-band="light"
-      className="bg-base px-gutter py-section text-content md:px-gutter-lg md:py-section-lg"
+      className="bg-base px-gutter py-section text-content md:py-section-lg"
     >
       <div className="mx-auto max-w-[1560px]">
         <SectionIntro
@@ -44,7 +44,20 @@ export default function Services() {
           className="mx-auto"
         />
 
-        <ul className="mt-14 grid grid-cols-2 gap-5 md:mt-16 md:grid-cols-4 md:gap-6">
+        {/* The grid counts its own columns. It was `grid-cols-2 md:grid-cols-4`
+            inside the old stepped gutter, and the two steps landed on the same
+            pixel: at 767px a card was 349px wide, at 768px it was 124px — the
+            viewport grew by one pixel and every card lost 64% of its width,
+            with the title already pinned to its clamp floor so the whole loss
+            fell on the photograph. It did not recover 349px until 1668px.
+
+            `auto-fit` takes a column only when one fits and collapses the empty
+            tracks, so with four items it never exceeds four columns and never
+            drops a card below 11rem — roughly where these photographs stop
+            carrying anything. It also removes the need for a single-column
+            base: under ~11rem it stacks on its own, which is what the narrowest
+            phones wanted anyway. */}
+        <ul className="mt-14 grid grid-cols-[repeat(auto-fit,minmax(11rem,1fr))] gap-5 md:mt-16 md:gap-6">
           {items.map((item) => {
             // A card with nowhere to go is still worth showing — the four
             // together are the message. It just must not be a link, or the

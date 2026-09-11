@@ -98,10 +98,10 @@ function Home() {
       <LandingParallaxChapter depth={22}>
         <FeaturedProperty />
       </LandingParallaxChapter>
-      <LandingParallaxChapter depth={24}>
+      <LandingParallaxChapter depth={24} overflowVisible>
         <AvailableUnits />
       </LandingParallaxChapter>
-      <LandingParallaxChapter depth={26}>
+      <LandingParallaxChapter depth={26} overflowVisible>
         <Properties />
       </LandingParallaxChapter>
       <LandingParallaxChapter depth={42}>

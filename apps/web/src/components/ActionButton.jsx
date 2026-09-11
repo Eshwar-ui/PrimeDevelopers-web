@@ -13,7 +13,7 @@
 // `group` so a caller can hang a hover on an icon it passes as a child — the
 // arrow on the featured panel's primary action is the reason.
 const BASE =
-  'group inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full px-5 font-body text-[13px] font-bold outline-none transition-[background-color,border-color,color,transform,box-shadow] duration-200 ease-brand active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transform-none'
+  'group inline-flex w-full sm:w-auto min-h-11 shrink-0 items-center justify-center gap-2 rounded-full px-5 font-body text-[13px] font-bold outline-none transition-[background-color,border-color,color,transform,box-shadow] duration-200 ease-brand active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transform-none'
 
 const TONES = {
   // `text-white` rather than `text-invert-fg`: the accent fill is CG Blue in

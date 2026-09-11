@@ -22,7 +22,7 @@ export default function InteriorsGalleryPage() {
 
   return (
     <div className="overflow-x-hidden bg-base text-content">
-      <header data-band="light" className="px-gutter pb-10 pt-32 md:px-gutter-lg md:pb-14 md:pt-40">
+      <header data-band="light" className="px-gutter pb-10 pt-32 md:pb-14 md:pt-40">
         <div className="mx-auto max-w-[1360px]">
           <Link to="/enterprise/interiors" className="font-body text-sm font-semibold text-content/55 transition-colors hover:text-accent">
             ← Back to finishes
@@ -34,12 +34,12 @@ export default function InteriorsGalleryPage() {
       </header>
 
       {entries.length === 0 ? (
-        <section data-band="light" className="flex min-h-[40vh] flex-col items-center justify-center gap-3 px-gutter text-center md:px-gutter-lg">
+        <section data-band="light" className="flex min-h-[40vh] flex-col items-center justify-center gap-3 px-gutter text-center">
           <p className="font-display text-xl font-semibold">No finished spaces published yet.</p>
           <p className="max-w-md font-body text-content/60">Check back soon to see real units finished with these options.</p>
         </section>
       ) : (
-        <section data-band="light" className="bg-surface-alt px-gutter py-10 md:px-gutter-lg md:py-14">
+        <section data-band="light" className="bg-surface-alt px-gutter py-10 md:py-14">
           <div className="mx-auto max-w-[1360px]">
             <div className="flex flex-col gap-4 border-b border-line pb-7 sm:gap-6 sm:pb-8">
               <div className="-mx-gutter flex snap-x gap-2 overflow-x-auto px-gutter pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0" role="group" aria-label="Filter by property">

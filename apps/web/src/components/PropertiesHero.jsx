@@ -88,7 +88,7 @@ export default function PropertiesHero({ properties = [], children }) {
       // somewhere to live; this section is as tall as its copy and its figures,
       // which on a laptop puts the collection grid within reach of the first
       // scroll instead of a screen and a half below it.
-      className="bg-base px-gutter pb-20 pt-32 text-content md:px-gutter-lg md:pb-24 md:pt-36"
+      className="bg-base px-gutter pb-20 pt-32 text-content md:pb-24 md:pt-36"
     >
       <div className="mx-auto max-w-[1560px]">
         {children}

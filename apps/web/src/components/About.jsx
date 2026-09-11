@@ -63,7 +63,7 @@ export default function About() {
   if (!videoUrl) return null
 
   return (
-    <section id="film" data-band="light" className="bg-base px-gutter pb-6 text-content md:px-gutter-lg">
+    <section id="film" data-band="light" className="bg-base px-gutter pb-6 text-content">
       <div className="mx-auto max-w-[1560px]">
         <div
           ref={frameRef}

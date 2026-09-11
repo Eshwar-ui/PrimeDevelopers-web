@@ -56,7 +56,7 @@ export default function CollabPage() {
             <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(12,21,27,.6)_0%,transparent_55%)]" />
           </div>
         )}
-        <div className="relative mx-auto flex min-h-[34rem] max-w-[1360px] flex-col justify-end px-gutter pb-12 pt-32 sm:pb-14 md:min-h-[36rem] md:px-gutter-lg md:pb-20 md:pt-40">
+        <div className="relative mx-auto flex min-h-[34rem] max-w-[1360px] flex-col justify-end px-gutter pb-12 pt-32 sm:pb-14 md:min-h-[36rem] md:pb-20 md:pt-40">
           <div data-hero-copy className="max-w-[42rem]">
             <p className="font-body text-[12px] font-bold uppercase tracking-[0.22em] text-accent-soft">{page.heroEyebrow}</p>
             <h1 className="mt-5 max-w-[16ch] text-balance font-display font-bold uppercase leading-[0.98] tracking-[-0.04em] [font-size:clamp(2.1rem,5.5vw,4.6rem)]">
@@ -68,7 +68,7 @@ export default function CollabPage() {
       </section>
 
       {partnerships.length > 0 ? (
-        <section data-band="light" data-reveal className="bg-surface-alt px-gutter py-16 md:px-gutter-lg md:py-24">
+        <section data-band="light" data-reveal className="bg-surface-alt px-gutter py-16 md:py-24">
           <div className="mx-auto max-w-[1360px]">
             <p className="font-body text-xs font-bold uppercase tracking-[0.14em] text-content/40">Current partnerships</p>
             <h2 className="mt-3 max-w-[24ch] text-balance font-display text-[clamp(1.7rem,3vw,2.6rem)] font-bold leading-[1.08] tracking-[-0.03em]">
@@ -92,7 +92,7 @@ export default function CollabPage() {
           </div>
         </section>
       ) : (
-        <section data-band="light" data-reveal className="bg-surface-alt px-gutter py-14 md:px-gutter-lg md:py-16">
+        <section data-band="light" data-reveal className="bg-surface-alt px-gutter py-14 md:py-16">
           <div className="mx-auto max-w-[1360px] rounded-panel border border-dashed border-content/20 px-5 py-8 text-center sm:px-8 sm:py-10">
             <p className="font-display text-lg font-bold text-content">The first joint ventures are still ahead</p>
             <p className="mx-auto mt-2 max-w-md font-body text-[14px] leading-relaxed text-content/60">
@@ -102,7 +102,7 @@ export default function CollabPage() {
         </section>
       )}
 
-      <section data-band="light" data-reveal className="px-gutter py-20 md:px-gutter-lg md:py-28">
+      <section data-band="light" data-reveal className="px-gutter py-20 md:py-28">
         <div className="mx-auto max-w-[1360px]">
           <p className="font-body text-xs font-bold uppercase tracking-[0.14em] text-accent">How the partnership model works</p>
           <h2 className="mt-4 max-w-[26ch] text-balance font-display text-[clamp(1.9rem,3.5vw,3rem)] font-bold leading-[1.05] tracking-[-0.035em]">
@@ -153,7 +153,7 @@ export default function CollabPage() {
 
       <Testimonials sectionKey="collab_testimonials" id="collab-testimonials" />
 
-      <section id="inquire" className="px-gutter pb-24 md:px-gutter-lg md:pb-32">
+      <section id="inquire" className="px-gutter pb-24 md:pb-32">
         <div className="mx-auto max-w-[1360px]">
           {properties.length > 0 && (
             <div className="mb-8 rounded-panel border border-line bg-surface-alt p-5 sm:p-7 md:p-9">

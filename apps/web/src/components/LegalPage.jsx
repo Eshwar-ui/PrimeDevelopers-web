@@ -72,7 +72,7 @@ export default function LegalPage({ title, summary, updated, headings = [], chil
 
   return (
     <div className="bg-base text-content">
-      <header data-band="light" className="px-gutter pb-12 pt-32 md:px-gutter-lg md:pb-16 md:pt-40">
+      <header data-band="light" className="px-gutter pb-12 pt-32 md:pb-16 md:pt-40">
         <div className="mx-auto max-w-[1200px]">
           <Link
             to="/"
@@ -97,7 +97,7 @@ export default function LegalPage({ title, summary, updated, headings = [], chil
         </div>
       </header>
 
-      <section data-band="light" className="px-gutter pb-24 md:px-gutter-lg md:pb-32">
+      <section data-band="light" className="px-gutter pb-24 md:pb-32">
         <div className="mx-auto grid max-w-[1200px] gap-14 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-20">
           {/* Contents first in the source order, so a screen reader and a
               keyboard both meet the map before the territory. `order` moves it

@@ -281,7 +281,7 @@ export default function PropertyInfoPage() {
 
   return (
     <>
-      <section className="relative isolate overflow-hidden bg-void px-gutter pb-20 pt-32 text-bone md:px-gutter-lg md:pb-24 md:pt-40">
+      <section className="relative isolate overflow-hidden bg-void px-gutter pb-20 pt-32 text-bone md:pb-24 md:pt-40">
         {/* The photograph carries the hero. Not lazy and not low priority: it
             is the largest paint on the page and it is above the fold, so
             deferring it would leave the section on bare `void` for the whole
@@ -355,7 +355,7 @@ export default function PropertyInfoPage() {
             key={group.id}
             id={group.id}
             data-band={dark ? undefined : 'light'}
-            className={`px-gutter py-20 md:px-gutter-lg md:py-28 ${dark ? 'bg-void text-bone' : 'bg-base text-content'}`}
+            className={`px-gutter py-20 md:py-28 ${dark ? 'bg-void text-bone' : 'bg-base text-content'}`}
           >
             <div className="mx-auto max-w-[1600px]">
               <SectionTag tone={dark ? 'inv' : 'light'}>{group.tag}</SectionTag>
@@ -396,7 +396,7 @@ export default function PropertyInfoPage() {
         )
       })}
 
-      <section data-band="light" className="bg-surface-alt px-gutter py-20 text-content md:px-gutter-lg md:py-24">
+      <section data-band="light" className="bg-surface-alt px-gutter py-20 text-content md:py-24">
         <div className="mx-auto grid max-w-[1600px] gap-14 lg:grid-cols-2">
           <div>
             <SectionTag>{t.listingsLabel}</SectionTag>

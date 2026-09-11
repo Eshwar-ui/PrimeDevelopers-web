@@ -312,12 +312,29 @@
   --radius-notch: 44px;
 
   /* ── Page gutter ──────────────────────────────────────────────────
-     The distance from the viewport edge to the measure. Two values, not
-     a scale: the narrow one is a phone's thumb margin, the wide one is
-     what the designs draw. Anything between is a section disagreeing
+     The distance from the viewport edge to the measure. One fluid value
+     between the same two endpoints the designs draw: a phone's 24px
+     thumb margin, and the 100px the wide comps are set to.
+
+     This was two fixed values spent as `px-gutter md:px-gutter-lg`, and
+     the step between them was the single worst layout bug on the site.
+     A stepped gutter cannot be smooth — any increase at a breakpoint
+     takes width away *at* that pixel, by definition — and this one
+     jumped 4.2x at `md`, exactly where most grids also add a column. At
+     767px a section had 719px of measure; at 768px it had 568px, and it
+     did not get back to 719 until 919px. Every tablet in common use sat
+     inside that dead band, rendering the page in a narrower column than
+     a phone held sideways, and the Services grid went to four columns
+     inside the narrower box on the same pixel — 349px cards to 124px.
+
+     6.5vw is what carries 1.5rem into 6.25rem across the range: the
+     floor releases around 369px and the cap lands at 1538px, so the
+     desktop compositions are unchanged from ~1440 up and the whole
+     correction falls in the tablet band that was broken. There is no
+     `-lg` counterpart on purpose — a second value is what created the
+     step, and any section reaching for one is a section disagreeing
      with the page. */
-  --spacing-gutter: 1.5rem;
-  --spacing-gutter-lg: 6.25rem;
+  --spacing-gutter: clamp(1.5rem, 6.5vw, 6.25rem);
 
   /* Vertical rhythm, on the same two-value discipline as the gutter above:
      one narrow step and one wide one, used as `py-section md:py-section-lg`.

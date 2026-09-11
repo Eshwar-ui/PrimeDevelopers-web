@@ -497,56 +497,27 @@ const DEFAULTS = {
       ],
     },
   },
-  // Placeholder quotes so the section has something to show before an admin
-  // seeds real ones — replace or clear from Content → Franchise testimonials.
+  // Ships empty, and the section hides itself when `items` is empty (see
+  // components/Testimonials.jsx). Deliberately not seeded with sample quotes:
+  // an unseeded default renders on the live site exactly as though it were
+  // real content, and invented endorsements on a property firm's own pages are
+  // a compliance problem, not a placeholder. Add real ones from
+  // Content → Franchise testimonials.
   franchise_testimonials: {
     eyebrow: 'Franchisee Testimonials',
     heading: 'Hear from our franchise partners',
     paragraph:
       'What it actually feels like to open and run a brand inside a Prime Developer property.',
-    items: [
-      {
-        quote:
-          'Prime handled the buildout timeline and coordination end to end, so we could focus entirely on hiring and training before opening day.',
-        name: 'Sample Testimonial 1',
-        role: 'Franchise Owner · Placeholder Brand',
-        rating: 5,
-        avatar: '',
-      },
-      {
-        quote:
-          'The foot traffic and tenant mix they built around us made this our strongest-performing location within the first year.',
-        name: 'Sample Testimonial 2',
-        role: 'Regional Operator · Placeholder Brand',
-        rating: 5,
-        avatar: '',
-      },
-    ],
+    items: [],
   },
-  // Same placeholder pattern as above — replace from Content → Collab testimonials.
+  // Empty for the same reason as above — add real quotes from
+  // Content → Collab testimonials.
   collab_testimonials: {
     eyebrow: 'Partner Testimonials',
     heading: 'Hear from our operating partners',
     paragraph:
       'What it actually feels like to build and run a business alongside Prime Developer.',
-    items: [
-      {
-        quote:
-          'This never felt like a landlord relationship. Prime was at the table for every major decision, sharing the risk right alongside us.',
-        name: 'Sample Testimonial 1',
-        role: 'Managing Partner · Placeholder Ventures',
-        rating: 5,
-        avatar: '',
-      },
-      {
-        quote:
-          'They brought the site, the capital, and the construction expertise — we brought the concept. The split made sense from day one.',
-        name: 'Sample Testimonial 2',
-        role: 'Co-Founder · Placeholder Concept',
-        rating: 5,
-        avatar: '',
-      },
-    ],
+    items: [],
   },
   collab_page: {
     heroEyebrow: 'Collab',
@@ -624,30 +595,13 @@ const DEFAULTS = {
       ],
     },
   },
-  // Same placeholder pattern as the other testimonial sections — replace from
+  // Empty for the same reason as the other two — add real quotes from
   // Content → Invest testimonials.
   invest_testimonials: {
     eyebrow: 'Investor Testimonials',
     heading: 'Hear from our investors',
     paragraph: 'What it actually feels like to put capital to work alongside Prime Developer.',
-    items: [
-      {
-        quote:
-          'Reporting was clear from the start and every milestone update matched what we were told to expect going in.',
-        name: 'Sample Testimonial 1',
-        role: 'Individual Investor · Planning-Phase Equity',
-        rating: 5,
-        avatar: '',
-      },
-      {
-        quote:
-          'The NNN structure has been exactly as advertised — consistent, largely passive returns with none of the operating overhead.',
-        name: 'Sample Testimonial 2',
-        role: 'Entity Investor · Property CAP / NNN',
-        rating: 5,
-        avatar: '',
-      },
-    ],
+    items: [],
   },
   // The live row predates every key below `heroParagraph`, so these ship as
   // defaults rather than waiting on a seed — same reason about_home's film and

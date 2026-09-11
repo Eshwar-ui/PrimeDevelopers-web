@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, useSearchParams, Link } from 'react-router-dom'
 import CountUp from '../components/CountUp'
 import { rise, stagger, inViewOnce } from '../lib/motion'
 import { useProperty, useSection } from '../context/ContentContext'
@@ -10,6 +10,7 @@ import FloorPlanSection from '../components/FloorPlanSection'
 import SiteModelSection from '../components/SiteModelSection'
 import { hasSiteModel } from '../lib/siteModel'
 import { sized } from '../lib/images'
+import { scrollToElement } from '../lib/scrollToElement'
 import PropertyHero from '../components/PropertyHero'
 import { youtubeEmbedUrl } from '../lib/video'
 
@@ -120,9 +121,48 @@ export default function PropertyDetailPage() {
   const property = useProperty(slug)
   const t = useSection('property_detail_page')
   const go = useSectionNav()
+  const [searchParams] = useSearchParams()
   const [tab, setTab] = useState(0)
   const [galleryMain, setGalleryMain] = useState(0)
   const [openArea, setOpenArea] = useState(0)
+
+  // A unit link from the homepage arrives as `?building=…&unit=…`. On the
+  // per-building path the building is a tab, so it has to be opened here
+  // before FloorPlanSection — which reads `?unit=` for itself — can find the
+  // unit in it. The site-model path handles both parameters internally and is
+  // deliberately left alone.
+  //
+  // Named rather than indexed on purpose: a tab index would break the moment
+  // the client reorders buildings in the admin, and these links are shared.
+  const linkedBuilding = searchParams.get('building')
+  useEffect(() => {
+    if (!linkedBuilding || hasSiteModel(property)) return
+    const buildings = property?.detail?.floorPlans?.buildings ?? []
+    const index = buildings.findIndex(
+      (b) => String(b.building ?? '').trim().toLowerCase() === linkedBuilding.trim().toLowerCase(),
+    )
+    // An unknown building is not an error — the page opens on its first tab,
+    // which is what a stale shared link should do.
+    if (index >= 0) setTab(index)
+  }, [linkedBuilding, property])
+
+  // Bring the plan to the visitor, once, on arrival.
+  //
+  // Guarded by a ref rather than by empty deps: `property` arrives from the
+  // content fetch, so on a cold load the section does not exist yet on the
+  // first pass and an arrival-only effect would scroll to nothing. The ref is
+  // what keeps it to once — FloorPlanSection rewrites `?unit=` on every
+  // click, and re-running would drag the page back up under the visitor.
+  const linkedUnit = searchParams.get('unit')
+  const hasScrolled = useRef(false)
+  useEffect(() => {
+    if (hasScrolled.current) return
+    if ((!linkedUnit && !linkedBuilding) || !property || hasSiteModel(property)) return
+    const section = document.getElementById('floor-plans')
+    if (!section) return
+    hasScrolled.current = true
+    return scrollToElement(section)
+  }, [property, linkedBuilding, linkedUnit])
 
   if (!property) {
     return (
@@ -449,7 +489,7 @@ export default function PropertyDetailPage() {
         <section
           data-band="light"
           id="floor-plans"
-          className="bg-surface-alt px-gutter pb-16 pt-8 md:pb-20 md:pt-10"
+          className="scroll-mt-24 bg-surface-alt px-gutter pb-16 pt-8 md:pb-20 md:pt-10"
         >
           <SiteModelSection property={property} />
         </section>
@@ -457,7 +497,7 @@ export default function PropertyDetailPage() {
         <section
           data-band="light"
           id="floor-plans"
-          className="bg-surface-alt px-gutter pb-16 pt-8 md:pb-20 md:pt-10"
+          className="scroll-mt-24 bg-surface-alt px-gutter pb-16 pt-8 md:pb-20 md:pt-10"
         >
           {/* `floorPlans.heading` and `.body` are deliberately not rendered.
               The design opens this section on the figures, and the stat cards

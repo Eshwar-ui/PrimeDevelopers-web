@@ -5,8 +5,8 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import { Buildings, Camera, MapPin, Ruler, Stack, Tag } from '@phosphor-icons/react'
 import { useProperties } from '../context/ContentContext'
-import { getBuildings, getUnits, formatArea } from '../lib/units'
-import { unitStatusMeta } from '../lib/unitStatus'
+import { getBuildings, getUnits, formatArea, getUnitImages } from '../lib/units'
+import { UNIT_STATUSES, unitStatusMeta } from '../lib/unitStatus'
 import { hasInfoSet } from '../lib/infoSets'
 import { sized } from '../lib/images'
 import ActionButton from './ActionButton'
@@ -69,29 +69,44 @@ function specChips(unit) {
 }
 
 // Flattened once per render of the property list, not per filter click — the
-// tiers above filter this array, they don't rebuild it.
+// filters above filter this array, they don't rebuild it.
 //
-// A unit with no size on file is skipped outright. The whole point of this
-// section is browsing by square footage, and a card with no square footage
-// has nothing to browse by — it would fall back to a bare unit code ("102"),
-// which reads as a broken tier rather than as a unit that simply hasn't had
-// its size entered in the admin yet.
-function collectAvailableUnits(properties) {
+// Every unit, every status. The section used to carry availability alone,
+// which meant a plaza that had let well showed four cards out of forty and
+// read as an empty portfolio — the opposite of what a full plaza is evidence
+// of. A let unit also has the thing an empty one doesn't: a tenant, a trade
+// and photographs of the space in use, which is what a prospect weighing the
+// unit next door is actually looking for.
+//
+// A unit with no size on file is still kept, but only ever appears under
+// "Overview": the size tiers are a question it cannot answer, and dropping it
+// outright hid real inventory over a blank admin field.
+//
+// `building` rides along because the unit link needs it — unit labels are
+// unique only within a building, so a deep link naming "101" alone is
+// ambiguous the moment a property has two.
+function collectUnits(properties) {
   const rows = []
   for (const property of properties) {
     for (const building of getBuildings(property)) {
       for (const unit of getUnits(building)) {
-        if (unit.status !== 'available') continue
-        const sf = parseSF(unit.size)
-        if (sf <= 0) continue
-        rows.push({ property, unit, sf })
+        rows.push({ property, building, unit, sf: parseSF(unit.size) })
       }
     }
   }
-  // Smallest first, so the teaser reads Small → X-Large the way the section's
-  // own filter pills are ordered, rather than in whatever order the CMS
-  // happens to store buildings and units.
-  return rows.sort((a, b) => a.sf - b.sf)
+  // Available first, then by size smallest-first within each status. Mixing
+  // statuses into one size-ordered list would bury what is actually bookable
+  // among what isn't; ordering by status keeps the section selling while the
+  // rest stays browsable behind it.
+  // Not UNIT_STATUSES' own order, which is the legend's (available, leased,
+  // coming-soon, sold). Here the axis is how close a unit is to being
+  // takeable, so "coming soon" belongs directly behind "available".
+  const ORDER = ['available', 'coming-soon', 'leased', 'sold']
+  const rank = (status) => {
+    const i = ORDER.indexOf(status)
+    return i === -1 ? ORDER.length : i
+  }
+  return rows.sort((a, b) => rank(a.unit.status) - rank(b.unit.status) || a.sf - b.sf)
 }
 
 /**
@@ -121,15 +136,67 @@ export default function AvailableUnits() {
   const navigate = useNavigate()
   const scope = useRef(null)
   const [tier, setTier] = useState('all')
+  // null means every status. A filter rather than a set of tabs: the default
+  // view is the whole inventory, and a visitor narrows it only if they came
+  // with a question about one status in particular.
+  const [status, setStatus] = useState(null)
 
-  const allUnits = useMemo(() => collectAvailableUnits(properties), [properties])
+  const allUnits = useMemo(() => collectUnits(properties), [properties])
 
-  const filtered = useMemo(() => {
+  // Counted against the size filter but not against itself, so a status pill
+  // always shows how many units it would reveal rather than dropping to zero
+  // the moment a different status is picked.
+  const sizeFiltered = useMemo(() => {
     const test = SIZE_TIERS.find((t) => t.id === tier)?.test ?? (() => true)
     return allUnits.filter((row) => test(row.sf))
   }, [allUnits, tier])
 
-  const shown = filtered.slice(0, TEASER_COUNT)
+  const statusCounts = useMemo(() => {
+    const counts = {}
+    for (const row of sizeFiltered) counts[row.unit.status] = (counts[row.unit.status] ?? 0) + 1
+    return counts
+  }, [sizeFiltered])
+
+  const filtered = useMemo(
+    () => (status ? sizeFiltered.filter((row) => row.unit.status === status) : sizeFiltered),
+    [sizeFiltered, status],
+  )
+
+  /**
+   * The four cards actually rendered.
+   *
+   * With a status picked, the first four of it — the visitor has said what
+   * they want to see. With no status picked, a round-robin across the
+   * statuses present instead of the plain top four.
+   *
+   * Straight slicing looked right and wasn't: Centro has 20 available units
+   * and 47 sold ones, available sorts first, so "All statuses" rendered four
+   * available units and no evidence that the other 47 existed. A visitor who
+   * never touches the pills would see the same section as before. The
+   * round-robin leads on availability — it takes the first bucket first — and
+   * still puts a let unit on screen, which is what makes the rest of the
+   * inventory discoverable at all.
+   */
+  const shown = useMemo(() => {
+    if (status) return filtered.slice(0, TEASER_COUNT)
+
+    const buckets = new Map()
+    for (const row of filtered) {
+      if (!buckets.has(row.unit.status)) buckets.set(row.unit.status, [])
+      buckets.get(row.unit.status).push(row)
+    }
+
+    const queues = [...buckets.values()]
+    const picked = []
+    for (let round = 0; picked.length < TEASER_COUNT; round += 1) {
+      // Every queue exhausted — fewer units than the cap, which is fine.
+      if (queues.every((q) => round >= q.length)) break
+      for (const queue of queues) {
+        if (round < queue.length && picked.length < TEASER_COUNT) picked.push(queue[round])
+      }
+    }
+    return picked
+  }, [filtered, status])
 
   useGSAP(
     () => {
@@ -144,14 +211,23 @@ export default function AvailableUnits() {
         scrollTrigger: { trigger: scope.current, start: 'top 78%' },
       })
     },
-    { scope, dependencies: [shown.map((s) => s.unit.index).join(','), tier], revertOnUpdate: true }
+    {
+      scope,
+      // Keyed on the property/unit pair, not the unit index alone: with every
+      // status in the list, index 0 of two different buildings now collides
+      // and the stagger would skip re-running on a filter change.
+      dependencies: [
+        shown.map((s) => `${s.property.slug}:${s.building?.building}:${s.unit.index}`).join(','),
+        tier,
+        status,
+      ],
+      revertOnUpdate: true,
+    }
   )
 
-  // No available unit anywhere in the portfolio — the same call the other
-  // homepage panels make: an empty shell is worse than no section at all.
+  // No unit anywhere in the portfolio — the same call the other homepage
+  // panels make: an empty shell is worse than no section at all.
   if (allUnits.length === 0) return null
-
-  const availableMeta = unitStatusMeta('available')
 
   return (
     <section
@@ -164,7 +240,7 @@ export default function AvailableUnits() {
         <div className="mx-auto max-w-2xl text-center">
           <p className="flex items-center justify-center gap-3 font-body text-[11px] font-bold uppercase tracking-[0.28em] text-accent">
             <span aria-hidden className="h-px w-8 bg-accent/45" />
-            Available Units
+            Our Units
             <span aria-hidden className="h-px w-8 bg-accent/45" />
           </p>
           <h2
@@ -175,7 +251,8 @@ export default function AvailableUnits() {
             Find your <span className="text-accent">ideal</span> space
           </h2>
           <p className="mt-3 font-body text-[15px] leading-relaxed text-content/70">
-            Filter by size and see what's ready for your business today.
+            Filter by size and availability — every unit across the portfolio, including the ones
+            already let.
           </p>
         </div>
 
@@ -204,9 +281,59 @@ export default function AvailableUnits() {
           })}
         </div>
 
+        {/* A second, quieter rail. Size is the question most visitors arrive
+            with, so it keeps the solid pills; status is the one they narrow
+            by afterwards, and it carries its own colour rather than the
+            accent so the two rows cannot be mistaken for one control. A
+            status with nothing under the current size filter is disabled
+            rather than hidden — a pill that appears and vanishes as you
+            change size reads as a glitch. */}
+        <div
+          className="-mx-gutter mt-3 flex snap-x snap-mandatory items-center gap-2.5 overflow-x-auto px-gutter pb-2 scroll-px-gutter sm:mx-0 sm:flex-wrap sm:justify-center sm:overflow-visible sm:px-0 sm:pb-0"
+          role="group"
+          aria-label="Filter units by availability"
+        >
+          <button
+            type="button"
+            aria-pressed={status === null}
+            onClick={() => setStatus(null)}
+            className={`min-h-10 shrink-0 snap-start rounded-full border px-4 font-body text-[12px] font-bold transition-colors duration-200 ease-brand ${
+              status === null
+                ? 'border-content/45 bg-content/10 text-content'
+                : 'border-content/20 text-content/60 hover:border-content/45 hover:text-content'
+            }`}
+          >
+            All statuses
+            <span className="ml-1.5 font-normal opacity-55">{sizeFiltered.length}</span>
+          </button>
+          {UNIT_STATUSES.map((s) => {
+            const count = statusCounts[s.value] ?? 0
+            const isActive = status === s.value
+            return (
+              <button
+                key={s.value}
+                type="button"
+                disabled={!count}
+                aria-pressed={isActive}
+                onClick={() => setStatus(isActive ? null : s.value)}
+                className={`flex min-h-10 shrink-0 snap-start items-center gap-2 rounded-full border px-4 font-body text-[12px] font-bold transition-colors duration-200 ease-brand disabled:cursor-default disabled:opacity-35 ${
+                  isActive
+                    ? 'border-content/45 bg-content/10 text-content'
+                    : 'border-content/20 text-content/60 enabled:hover:border-content/45 enabled:hover:text-content'
+                }`}
+              >
+                <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ backgroundColor: s.hex }} />
+                {s.label}
+                <span className="font-normal opacity-55">{count}</span>
+              </button>
+            )
+          })}
+        </div>
+
         {shown.length === 0 ? (
           <p className="mt-12 text-center font-body text-sm text-content/70">
-            No units in this range right now — try another size or explore the full list below.
+            No units match those filters right now — try another size or status, or explore the full
+            list below.
           </p>
         ) : (
           /* Was `sm:grid-cols-2 lg:grid-cols-4`, which skipped the three-up
@@ -217,8 +344,18 @@ export default function AvailableUnits() {
              holding a card at 15rem or better, which is where the name and
              price still sit comfortably on two lines. */
           <div className="-mx-gutter mt-10 grid auto-cols-[85%] grid-flow-col snap-x snap-mandatory gap-6 overflow-x-auto overscroll-x-contain px-gutter py-3 scroll-px-gutter md:mx-0 md:auto-cols-auto md:grid-flow-row md:grid-cols-[repeat(auto-fit,minmax(15rem,1fr))] md:overflow-visible md:px-0 md:py-0">
-            {shown.map(({ property, unit, sf }) => {
-              const href = `/properties/${property.slug}`
+            {shown.map(({ property, building, unit, sf }) => {
+              // The card's whole job is to hand the visitor *this* unit, not
+              // the property it happens to sit in. The plan section reads
+              // both parameters, focuses the building, selects the unit and
+              // scrolls itself into view — and falls back to the 2D plan, or
+              // to the unit's details alone, for a property with no model.
+              const href = `/properties/${property.slug}?${new URLSearchParams({
+                building: building?.building ?? '',
+                unit: unit.label ?? '',
+              })}`
+              // The media set still hangs off the bare slug.
+              const propertyHref = `/properties/${property.slug}`
               const open = (e) => {
                 e.preventDefault()
                 navigate(href)
@@ -226,6 +363,12 @@ export default function AvailableUnits() {
               const area = formatArea(unit.size)
               const tierName = tierNameFor(sf)
               const chips = specChips(unit)
+              const meta = unitStatusMeta(unit.status)
+              // The unit's own photograph wins over the property's. A card
+              // for unit 605 showing the plaza from the road is the same
+              // picture as the three cards beside it; the storefront is what
+              // tells them apart.
+              const photo = getUnitImages(unit)[0] ?? property.image
               // Only a property with a real media set gets the button. Every
               // other slug redirects straight back to its own listing, so the
               // control would promise photographs and deliver the page the
@@ -233,16 +376,20 @@ export default function AvailableUnits() {
               const hasPhotos = hasInfoSet(property.slug)
 
               return (
+                // The building has to be in the key. `unit.index` is the
+                // unit's position within *its own* building, so with every
+                // building in the list now, unit 6 of B-06 and unit 6 of B-07
+                // would collide on one key.
                 <article
-                  key={`${property.slug}-${unit.index}`}
+                  key={`${property.slug}-${building?.building}-${unit.index}`}
                   data-unit-card
                   className="group flex min-w-0 snap-start flex-col overflow-hidden rounded-panel border border-accent/45 bg-surface transition-[border-color,box-shadow] duration-500 ease-brand hover:border-accent/75 hover:shadow-[0_36px_80px_-52px_rgba(0,0,0,0.85)]"
                 >
                   <div className="relative aspect-[4/3] overflow-hidden bg-surface-alt">
-                    {property.image && (
+                    {photo && (
                       <img
-                        src={sized(property.image, 'card')}
-                        alt={property.name}
+                        src={sized(photo, 'card')}
+                        alt={photo === property.image ? property.name : `Unit ${unit.label || ''} at ${property.name}`.trim()}
                         loading="lazy"
                         decoding="async"
                         className="absolute inset-0 size-full object-cover transition-transform duration-700 ease-brand group-hover:scale-[1.04]"
@@ -261,9 +408,13 @@ export default function AvailableUnits() {
                       <span
                         aria-hidden
                         className="size-2 shrink-0 rounded-full"
-                        style={{ backgroundColor: availableMeta.hex }}
+                        style={{ backgroundColor: meta.hex }}
                       />
-                      {availableMeta.label} now
+                      {/* "Available now" was the only wording this chip ever
+                          had, because it was the only status that reached it.
+                          With every status here the chip says the status and
+                          nothing more — "Leased now" would be nonsense. */}
+                      {unit.status === 'available' ? `${meta.label} now` : meta.label}
                     </PhotoChip>
 
                     {hasPhotos && (
@@ -272,7 +423,7 @@ export default function AvailableUnits() {
                           // Stops the card's own navigation: this goes to the
                           // media set, not to the listing.
                           e.stopPropagation()
-                          navigate(`${href}/info`)
+                          navigate(`${propertyHref}/info`)
                         }}
                         className="absolute bottom-3 right-3 outline-none transition-colors duration-200 ease-brand hover:bg-void focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                       >
@@ -286,23 +437,26 @@ export default function AvailableUnits() {
                   <div className="flex flex-1 flex-col gap-3 p-5">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        {/* Every unit reaching this card has a parsed size —
-                            `collectAvailableUnits` drops the ones that don't —
-                            so `tierName` and `area` are both guaranteed here. */}
+                        {/* A unit with no size on file now reaches this card
+                            rather than being dropped, so neither the tier nor
+                            the area is guaranteed. The heading falls back to
+                            the unit's own label — and when it does, the line
+                            below drops the label rather than printing it
+                            twice. */}
                         <h3 className="font-display text-lg font-bold leading-tight text-content">
-                          {tierName}
+                          {tierName ?? (unit.label ? `Unit ${unit.label}` : 'Unit')}
                         </h3>
-                        <p className="mt-0.5 font-body text-[13px] text-content/70">
-                          <span className="numeral">{area}</span>
-                          {unit.label && (
-                            <>
+                        {(area || (tierName && unit.label)) && (
+                          <p className="mt-0.5 font-body text-[13px] text-content/70">
+                            {area && <span className="numeral">{area}</span>}
+                            {area && tierName && unit.label && (
                               <span aria-hidden className="px-1.5 text-content/40">
                                 ·
                               </span>
-                              <span className="numeral">{unit.label}</span>
-                            </>
-                          )}
-                        </p>
+                            )}
+                            {tierName && unit.label && <span className="numeral">{unit.label}</span>}
+                          </p>
+                        )}
                       </div>
 
                       {/* Property-level, so every card in a single-property
@@ -325,7 +479,12 @@ export default function AvailableUnits() {
                     )}
 
                     <p className="line-clamp-2 font-body text-[13px] leading-relaxed text-content/65">
-                      {unit.description || `Flexible space at ${property.name}, ready to move in.`}
+                      {unit.description ||
+                        (unit.status === 'available' || unit.status === 'coming-soon'
+                          ? `Flexible space at ${property.name}, ready to move in.`
+                          : unit.tenant
+                            ? `${unit.tenant} at ${property.name}.`
+                            : `Part of ${property.name}.`)}
                     </p>
 
                     {chips.length > 0 && (
@@ -349,7 +508,10 @@ export default function AvailableUnits() {
                           what a tenant is scanning for. Guarded, because it is
                           optional in the admin and an empty "Base price" row
                           reads as a price of nothing. */}
-                      {unit.rate && (
+                      {/* Only while it is still an offer — see the same
+                          rule on the detail card. What a let space went for
+                          is not a price anyone can act on. */}
+                      {unit.rate && (unit.status === 'available' || unit.status === 'coming-soon') && (
                         <p className="flex items-center gap-1.5 border-t border-content/10 pt-3 font-body text-[13px] text-content/70">
                           <Tag aria-hidden className="size-4 shrink-0 text-content/50" />
                           Base price

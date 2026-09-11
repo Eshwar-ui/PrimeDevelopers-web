@@ -154,6 +154,27 @@ export default function BuildingBlock({ building, onChange, folder }) {
                   {/* Everything below is what a prospect actually reads when
                       they tap the unit — each field is optional and simply
                       omitted from the card when left blank. */}
+
+                  {/* Only asked for once there is a tenant to describe. On an
+                      empty unit these two would be two more blank boxes in an
+                      already long form, and neither has anywhere to appear. */}
+                  {String(unit.tenant ?? '').trim() && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <TextField
+                        label="Tenant website"
+                        placeholder="https://…"
+                        value={unit.tenantUrl}
+                        onChange={(tenantUrl) => set({ ...unit, tenantUrl })}
+                      />
+                      <TextField
+                        label="Tenant category"
+                        placeholder="Coffee · Dental · Fitness"
+                        value={unit.tenantCategory}
+                        onChange={(tenantCategory) => set({ ...unit, tenantCategory })}
+                      />
+                    </div>
+                  )}
+
                   <ImageUploader
                     label="Tenant logo"
                     value={unit.logo}
@@ -164,6 +185,30 @@ export default function BuildingBlock({ building, onChange, folder }) {
                     Shown on this unit in the 3D model instead of its number — for a unit that is
                     leased or sold and you want the tenant's mark on the plan.
                   </p>
+
+                  {/* Its own repeater rather than a multi-file uploader: the
+                      order is what picks the thumbnail, and a list the admin
+                      can remove a row from is the only way to control it. */}
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-wide text-bone-3">
+                      Unit photographs
+                    </span>
+                    <p className="mb-3 mt-1 text-[11px] leading-relaxed text-bone-3">
+                      Photographs of this space specifically, not of the property. The first one is
+                      used as the unit's card image on the homepage; the rest appear on the detail
+                      card when a visitor taps the unit. Worth filling in for leased and sold units
+                      too — that is what makes them worth showing.
+                    </p>
+                    <RepeatableList
+                      items={unit.images ?? []}
+                      onChange={(images) => set({ ...unit, images })}
+                      makeItem={() => ''}
+                      addLabel="Add photograph"
+                      renderItem={(url, setUrl) => (
+                        <ImageUploader value={url} onChange={setUrl} folder={`${folder}/unit-photos`} />
+                      )}
+                    />
+                  </div>
                   <TextAreaField
                     label="Unit description"
                     rows={3}

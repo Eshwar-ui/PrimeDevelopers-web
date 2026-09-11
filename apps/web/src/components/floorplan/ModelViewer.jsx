@@ -1066,6 +1066,23 @@ function CameraRig({ bounds, focus, mode, navMode, resetSignal, onDragStart, onD
   }, [bounds, mode, camera, resetSignal])
 
 
+  // Read through refs so the effect below can *use* the canvas size without
+  // *re-running* on it. This is the same trap the default-framing effect above
+  // documents: `size` and `planFitZoom` change on every resize, and a resize
+  // is not a request to re-frame anything.
+  //
+  // The consequence of depending on them was worse here than there, because
+  // this effect assigns `camera.zoom` outright in plan view. Anything that
+  // resizes the canvas — a scrollbar appearing, entering fullscreen, a phone
+  // rotating, or just the mobile URL bar hiding on scroll and changing what
+  // `100dvh` means — therefore recomputed the fitted zoom and threw away
+  // whatever zoom the visitor had set, which reads as the plan zooming itself
+  // back in while they are trying to look at something.
+  const planFitZoomRef = useRef(planFitZoom)
+  planFitZoomRef.current = planFitZoom
+  const sizeRef = useRef(size)
+  sizeRef.current = size
+
   // Framing a unit deliberately keeps the viewer's current orbit angle and
   // only moves the target and distance. Snapping to a canonical angle throws
   // away the orientation they just chose, which reads as the app fighting them.
@@ -1083,12 +1100,27 @@ function CameraRig({ bounds, focus, mode, navMode, resetSignal, onDragStart, onD
     // means zoom: scaled off the fit that frames the whole site, so a
     // building a tenth of the plot ends up filling roughly the frame.
     const isPlan = mode === '2d'
+    const planFit = planFitZoomRef.current
+    const canvas = sizeRef.current
+    // Was 1.15, which cropped. `focus.radius` is a bounding *sphere*, and for
+    // a long shallow terrace that radius is already about its half-length — so
+    // scaling the site fit by siteRadius/focusRadius already lands near "this
+    // building fills the frame", and zooming a further 15% in on top pushed
+    // both ends of it off screen. A building cropped at both ends is the one
+    // thing this view exists to avoid.
+    //
+    // Empirical, like the sibling constants below, and checked against the two
+    // shapes Centro has: Building 1, a tall narrow stack, and Building 6, a
+    // wide twenty-unit terrace. Both sit fully in frame at this value with a
+    // little of their surroundings for context; much above ~0.7 and the tall
+    // one starts losing its ends again.
+    const PLAN_FILL = 0.62
     const zoom = isPlan
-      ? Math.min(planFitZoom * (siteRadius / Math.max(focus.radius, 1e-6)) * 1.15, planFitZoom * 24)
+      ? Math.min(planFit * (siteRadius / Math.max(focus.radius, 1e-6)) * PLAN_FILL, planFit * 24)
       : null
     // Overhead in plan, so the only thing that changes is which part of
     // the site is under the camera.
-    const fit = fitDistance(focus.radius, camera, size)
+    const fit = fitDistance(focus.radius, camera, canvas)
     // Well under 1. `focus.radius` is a bounding *sphere*, and these
     // buildings are long, shallow terraces seen from an isometric angle:
     // the sphere is sized by the length, while what the camera actually
@@ -1112,7 +1144,7 @@ function CameraRig({ bounds, focus, mode, navMode, resetSignal, onDragStart, onD
     const CONTEXT_RADIUS = siteRadius * 0.075
     const distance = isPlan
       ? siteRadius * 4
-      : Math.max(fit, fitDistance(CONTEXT_RADIUS, camera, size)) * TERRACE_FIT
+      : Math.max(fit, fitDistance(CONTEXT_RADIUS, camera, canvas)) * TERRACE_FIT
 
     if (prefersReducedMotion()) {
       const direction = isPlan
@@ -1129,7 +1161,9 @@ function CameraRig({ bounds, focus, mode, navMode, resetSignal, onDragStart, onD
       goal.current = { target, distance, zoom, active: true }
     }
     invalidate()
-  }, [focus, bounds, camera, mode, planFitZoom, size, invalidate])
+    // `planFitZoom` and `size` are deliberately absent — see the refs above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus, bounds, camera, mode, invalidate])
 
   // Damping needs a *continuous* stream of frames to decay smoothly, but
   // frameloop="demand" only draws when something asks it to. Without this,

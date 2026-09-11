@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { unitStatusMeta } from '../lib/unitStatus'
-import { formatArea } from '../lib/units'
+import { formatArea, formatUnitLabel } from '../lib/units'
 
 // The DOM unit list does four jobs at once, which is why it is a visible part
 // of the interface rather than a hidden accessibility shim:
@@ -116,7 +116,7 @@ export default function UnitList({ units, selection = [], onSelect, statusFilter
                       </span>
                     )}
                     <span className="truncate font-display text-base font-medium text-content">
-                      {unit.label || `Unit ${position + 1}`}
+                      {formatUnitLabel(unit.label) || `Unit ${position + 1}`}
                     </span>
                   </span>
                   {area && <span className="font-body text-xs text-content/70">{area}</span>}

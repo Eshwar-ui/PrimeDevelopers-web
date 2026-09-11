@@ -1,11 +1,46 @@
+import { Fragment, useEffect, useState } from 'react'
+import { ArrowSquareOut, CaretLeft, CaretRight } from '@phosphor-icons/react'
 import { unitStatusMeta } from '../lib/unitStatus'
-import { formatArea } from '../lib/units'
+import { formatArea, formatUnitLabel, getUnitImages, unitLabelParts } from '../lib/units'
+import { sized } from '../lib/images'
 
 const STATUS_COPY = {
   available: 'Available for lease. Contact our team for pricing and tour availability.',
   leased: 'Currently leased.',
   'coming-soon': 'Coming soon — leasing details available shortly.',
   sold: 'This unit has been sold.',
+}
+
+// A unit nobody can lease today still has to be worth reading. These two
+// statuses put the tenant at the top of the card rather than treating them as
+// a footnote to an availability that no longer exists — for a retail plaza the
+// tenant mix *is* the pitch, and a wall of "Currently leased." says nothing
+// about the place a prospect is deciding to join.
+const TENANTED = new Set(['leased', 'sold'])
+
+/**
+ * A tenant's website as a safe absolute URL, or null.
+ *
+ * `tenantUrl` is free text an admin types, and two things go wrong if it
+ * reaches `href` untouched. A bare "example.com" has no scheme, so the browser
+ * resolves it against the current page and opens /properties/example.com — the
+ * site's own 404 dressed up as the tenant's website. And a value beginning
+ * `javascript:` would execute on click, which turns one CMS field into stored
+ * XSS on every property page; only http and https are let through, so a
+ * mistyped or hostile value renders as plain text instead of a link.
+ */
+function externalHref(value) {
+  const raw = String(value ?? '').trim()
+  if (!raw) return null
+  // No scheme at all is the common admin typo, and it is unambiguous: these
+  // are always external sites, never paths on this one.
+  const candidate = /^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : `https://${raw}`
+  try {
+    const url = new URL(candidate)
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : null
+  } catch {
+    return null
+  }
 }
 
 // Every tier — 3D viewer, 2D pin plan, DOM unit list — converges on this one
@@ -18,40 +53,63 @@ const STATUS_COPY = {
 // long description from pushing the enquiry button past the bottom of the
 // plan beside it. Unset — stacked under the plan on narrow screens — the card
 // simply grows to its content like any other.
-export default function UnitDetailCard({ unit, units = [], aspect = null, onEnquire, maxHeight = '' }) {
-  if (!unit) return <EmptyPanel units={units} maxHeight={maxHeight} />
+export default function UnitDetailCard({ unit, units = [], aspect = null, onEnquire, maxHeight = '', emptyHint = '' }) {
+  if (!unit) return <EmptyPanel units={units} maxHeight={maxHeight} hint={emptyHint} />
 
   const meta = unitStatusMeta(unit.status)
   const area = formatArea(unit.size)
+  const images = getUnitImages(unit)
+  const tenant = String(unit.tenant ?? '').trim()
+  const isTenanted = TENANTED.has(unit.status)
 
   // Every row is admin-editable and every row is optional — a blank field is
   // omitted rather than rendered as an empty label, so a sparsely filled unit
   // still reads as finished.
+  //
+  // The specs are identical across statuses now. A sold unit's size, floor and
+  // frontage are the same facts they were the day before it sold, and hiding
+  // them made half the inventory look like an error rather than like a let
+  // space. Rate is the one exception and is handled below.
   const specs = [
     ['Size', area],
     ['Floor', unit.floor],
-    ['Rate', unit.rate],
+    // What the space went for is commercially sensitive once it is gone, and
+    // it is also no longer an offer — so it is published only while it is
+    // still something a visitor could actually take.
+    isTenanted ? null : ['Rate', unit.rate],
     ['Frontage', unit.frontage],
     // Measured off the model rather than typed in, so it appears only once a
     // model is loaded and an orientation is set. Sits with the typed specs
     // because to a tenant it reads as one — which way the shop looks out.
     ['Aspect', aspect],
-    unit.status === 'leased' && unit.tenant ? ['Tenant', unit.tenant] : null,
   ].filter((row) => row && row[1])
 
-  const canEnquire = onEnquire && unit.status !== 'leased' && unit.status !== 'sold'
+  const canEnquire = onEnquire && !isTenanted
 
   return (
     <div className={`flex flex-col overflow-hidden rounded-2xl border border-[var(--color-line)] bg-surface shadow-[0_20px_55px_-40px_rgba(20,28,33,.5)] ${maxHeight}`}>
       <div className="flex items-start justify-between gap-4 px-7 pb-5 pt-8 lg:px-8 lg:pt-9">
-        <span className="font-display text-[clamp(3rem,4vw,4.25rem)] font-bold leading-none tracking-[-0.055em] break-words text-content">{unit.label || 'Unit'}</span>
+        <UnitLabel label={unit.label} />
         <span className={`mt-1 shrink-0 rounded-full px-4 py-2 font-body text-[12px] font-bold ${meta.chip}`}>{meta.label}</span>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-7 pb-7 lg:px-8">
-        <p className="font-body text-[15px] font-semibold leading-relaxed text-content/60">
-          {unit.description || (unit.tenant ? (unit.status === 'leased' ? `Leased to ${unit.tenant}.` : unit.tenant) : STATUS_COPY[unit.status] ?? STATUS_COPY.available)}
+        {images.length > 0 && <UnitGallery images={images} label={unit.label} />}
+
+        {isTenanted && tenant && (
+          <TenantBlock
+            name={tenant}
+            logo={unit.logo}
+            url={unit.tenantUrl}
+            category={unit.tenantCategory}
+            status={unit.status}
+          />
+        )}
+
+        <p className={`font-body text-[15px] font-semibold leading-relaxed text-content/60 ${images.length > 0 || (isTenanted && tenant) ? 'mt-6' : ''}`}>
+          {unit.description || (tenant && !isTenanted ? tenant : STATUS_COPY[unit.status] ?? STATUS_COPY.available)}
         </p>
+
         {specs.length > 0 && (
           <dl className="mt-7 grid grid-cols-2 gap-x-6 gap-y-6 border-t border-[var(--color-line)] pt-7 lg:grid-cols-1">
             {specs.map(([term, value]) => (
@@ -66,7 +124,7 @@ export default function UnitDetailCard({ unit, units = [], aspect = null, onEnqu
       {canEnquire && (
         <div className="mt-auto px-7 pb-7 lg:px-8 lg:pb-8">
           <button type="button" onClick={() => onEnquire(unit)} className="primary-button-flood min-h-14 w-full rounded-full bg-accent px-5 py-3 font-body text-[12px] font-bold uppercase tracking-[0.1em] text-white transition-colors duration-300 hover:bg-prime-deep dark:text-void">
-            Enquire about {unit.label || 'this unit'}
+            Enquire about {formatUnitLabel(unit.label) || 'this unit'}
           </button>
         </div>
       )}
@@ -74,10 +132,182 @@ export default function UnitDetailCard({ unit, units = [], aspect = null, onEnqu
   )
 }
 
+/**
+ * The unit number, at a size that fits it.
+ *
+ * Two things were wrong with rendering the raw label at a fixed
+ * clamp(3rem,4vw,4.25rem). A combined suite — "101+102+103+106" — is one
+ * unbreakable word, since `+` is not a break opportunity in CSS, so
+ * `break-words` had nothing to act on; and as a flex child with no `min-w-0`
+ * it could not shrink below that width either. The result ran straight out of
+ * the card and was clipped mid-number.
+ *
+ * So: an explicit `<wbr/>` before each joiner gives the line somewhere to
+ * break, `min-w-0` lets the column shrink, and the type steps down as the
+ * label grows. A plain "605" keeps the display size it always had — the step
+ * only bites on the long combined labels that actually need it.
+ */
+function UnitLabel({ label }) {
+  const parts = unitLabelParts(label)
+  const text = parts.join('+')
+  if (!text) return <span className="font-display text-[clamp(3rem,4vw,4.25rem)] font-bold leading-none tracking-[-0.055em] text-content">Unit</span>
+
+  const size =
+    text.length <= 5
+      ? 'text-[clamp(3rem,4vw,4.25rem)]'
+      : text.length <= 9
+        ? 'text-[clamp(2.1rem,2.9vw,2.9rem)]'
+        : 'text-[clamp(1.5rem,2.1vw,2.1rem)]'
+
+  return (
+    <span
+      className={`min-w-0 font-display font-bold leading-[1.04] tracking-[-0.04em] text-content [overflow-wrap:anywhere] ${size}`}
+    >
+      {parts.map((part, i) => (
+        <Fragment key={`${part}-${i}`}>
+          {part}
+          {/* The joiner stays with the number before it and the break comes
+              after, so a wrapped label reads "101+102+ / 103+106" rather than
+              starting a line on a stray plus sign. */}
+          {i < parts.length - 1 && (
+            <>
+              <span className="px-[0.06em] text-content/35">+</span>
+              <wbr />
+            </>
+          )}
+        </Fragment>
+      ))}
+    </span>
+  )
+}
+
+/**
+ * The unit's own photographs.
+ *
+ * One frame at a time rather than a grid: the card is as narrow as 18rem in
+ * the column beside the plan, and three thumbnails at that width are three
+ * illegible smudges. The dots carry the count, which is the only thing a
+ * second photograph needs to announce before someone asks for it.
+ */
+function UnitGallery({ images, label }) {
+  const [index, setIndex] = useState(0)
+
+  // Selecting a different unit reuses this component rather than remounting
+  // it, so without this the new unit opens on photograph 3 of the old one —
+  // or on an index it does not have.
+  //
+  // Keyed on the contents, not on the array. `images` is built by
+  // getUnitImages() during the parent's render, so it is a fresh array every
+  // time UnitDetailCard re-renders for any reason at all — and on identity
+  // this reset fired on each of them, snapping a visitor on photograph 3 back
+  // to the first one whenever anything else on the page updated (toggling
+  // "Hide other buildings" was enough). A join is exact here: these lists are
+  // a handful of URLs, and two different sets cannot share one signature.
+  const signature = images.join('\u0000')
+  useEffect(() => setIndex(0), [signature])
+
+  const count = images.length
+  const step = (delta) => setIndex((i) => (i + delta + count) % count)
+  const current = images[Math.min(index, count - 1)]
+
+  return (
+    <div className="mb-2">
+      <div className="group relative overflow-hidden rounded-xl border border-[var(--color-line)] bg-surface-alt">
+        <img
+          src={sized(current, 'card')}
+          alt={`Unit ${label || ''}`.trim()}
+          loading="lazy"
+          className="aspect-[4/3] w-full object-cover"
+        />
+
+        {count > 1 && (
+          <>
+            <GalleryArrow side="left" onClick={() => step(-1)} />
+            <GalleryArrow side="right" onClick={() => step(1)} />
+          </>
+        )}
+      </div>
+
+      {count > 1 && (
+        <div className="mt-3 flex items-center justify-center gap-2">
+          {images.map((src, i) => (
+            <button
+              key={`${src}-${i}`}
+              type="button"
+              onClick={() => setIndex(i)}
+              aria-label={`Photograph ${i + 1} of ${count}`}
+              aria-current={i === index}
+              className={`h-1.5 rounded-full transition-all duration-300 ${
+                i === index ? 'w-6 bg-accent' : 'w-1.5 bg-content/25 hover:bg-content/45'
+              }`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function GalleryArrow({ side, onClick }) {
+  const Icon = side === 'left' ? CaretLeft : CaretRight
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={side === 'left' ? 'Previous photograph' : 'Next photograph'}
+      className={`absolute top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-full bg-void/55 text-bone opacity-0 backdrop-blur-sm transition-opacity duration-200 hover:bg-void/75 focus-visible:opacity-100 group-hover:opacity-100 ${
+        side === 'left' ? 'left-2' : 'right-2'
+      }`}
+    >
+      <Icon aria-hidden className="size-4" weight="bold" />
+    </button>
+  )
+}
+
+/**
+ * Who is in the space, for a unit that is no longer on offer.
+ *
+ * Sits above the description rather than in the specs list: on a let unit
+ * this is the answer to the question the visitor actually clicked with, and
+ * a tenant name buried as the sixth row of a definition list reads as
+ * metadata about a vacancy.
+ */
+function TenantBlock({ name, logo, url, category, status }) {
+  const href = externalHref(url)
+  const Wrapper = href ? 'a' : 'div'
+  const linkProps = href ? { href, target: '_blank', rel: 'noopener noreferrer' } : {}
+
+  return (
+    <Wrapper
+      {...linkProps}
+      className={`mt-5 flex items-center gap-4 rounded-xl border border-[var(--color-line)] bg-surface-alt px-4 py-4 ${
+        href ? 'transition-colors duration-200 hover:border-accent/60' : ''
+      }`}
+    >
+      {logo && (
+        <img
+          src={sized(logo, 'thumb')}
+          alt=""
+          loading="lazy"
+          className="size-12 shrink-0 rounded-lg bg-white object-contain p-1.5"
+        />
+      )}
+      <div className="min-w-0 flex-1">
+        <span className="block font-body text-[10px] font-bold uppercase tracking-[0.16em] text-content/45">
+          {status === 'sold' ? 'Owner' : 'Tenant'}
+        </span>
+        <span className="mt-1 block truncate font-display text-lg font-bold tracking-[-0.02em] text-content">{name}</span>
+        {category && <span className="mt-0.5 block truncate font-body text-[13px] text-content/60">{category}</span>}
+      </div>
+      {href && <ArrowSquareOut aria-hidden className="size-4 shrink-0 text-content/45" />}
+    </Wrapper>
+  )
+}
+
 // Beside the plan this space exists whether or not anything is selected, so it
 // earns its keep by answering the question a visitor arrives with — how much
 // is actually free here — rather than sitting empty until they click.
-function EmptyPanel({ units, maxHeight = '' }) {
+function EmptyPanel({ units, maxHeight = '', hint = '' }) {
   const total = units.length
   const available = units.filter((unit) => unit.status === 'available').length
 
@@ -100,7 +330,15 @@ function EmptyPanel({ units, maxHeight = '' }) {
       )}
 
       <p className="font-body text-sm leading-relaxed text-content/70">
-        Select a unit on the plan — or from the list below — to see its size, floor and availability.
+        {/* Every unit is selectable now, not just the free ones — so the
+            instruction says "a unit", and a visitor who taps a let one gets
+            its tenant and photographs rather than a dead end.
+
+            `hint` exists because the same panel now sits beside a whole-site
+            plan, where there are no units to select yet and the default
+            sentence would point at a list that isn't there. */}
+        {hint ||
+          'Select any unit on the plan — or from the list below — to see its size, floor, availability and who is in it.'}
       </p>
     </div>
   )

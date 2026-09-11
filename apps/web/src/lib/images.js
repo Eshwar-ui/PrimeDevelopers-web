@@ -20,6 +20,18 @@ const RENDER_PATH = '/storage/v1/render/image/public/'
 const DEFAULT_WIDTH = 1920
 const DEFAULT_QUALITY = 75
 
+// Load-bearing, and not obvious: the render endpoint does NOT preserve aspect
+// ratio when handed a width alone. Its default mode is `cover`, and with no
+// height to go with it the height simply passes through unscaled — so a
+// 2700x1800 hero asked for at width=1200 came back 1200x1800, squeezed to 44%
+// of its proper width. Every photograph on the site was served this way, with
+// `object-cover` disguising it as an aggressive crop.
+//
+// `contain` scales proportionally to fit the width instead. It never upscales,
+// so the 180x100 partner logos — which ask for 600 and are already smaller
+// than every width in the table below — keep passing through untouched.
+const RESIZE = 'contain'
+
 /**
  * Named widths, so call sites state what the image *is* rather than guessing a
  * number. Each is roughly 2x the largest CSS size that slot ever renders at,
@@ -71,7 +83,7 @@ export function imageUrl(src, { width = DEFAULT_WIDTH, quality = DEFAULT_QUALITY
   if (/\.glb(\?|$)/i.test(src)) return src
 
   const [base] = src.split('?')
-  return `${base.replace(OBJECT_PATH, RENDER_PATH)}?width=${width}&quality=${quality}`
+  return `${base.replace(OBJECT_PATH, RENDER_PATH)}?width=${width}&quality=${quality}&resize=${RESIZE}`
 }
 
 /** `imageUrl` at a named width — the form nearly every call site wants. */

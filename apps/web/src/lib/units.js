@@ -52,6 +52,21 @@ export const makeUnit = (label = '') => ({
   // Tenant mark, shown on the unit in the 3D view once it is leased or
   // sold. Empty means the unit shows its number instead.
   logo: '',
+  // Photographs of this specific unit — the storefront, the interior, the
+  // dock. First one doubles as the unit's card thumbnail on the homepage,
+  // which is why this is an array of plain URLs rather than objects: the
+  // order is the only thing that carries meaning.
+  //
+  // Distinct from the property gallery. A property photograph shows the
+  // plaza; these show the space being let, and a leased unit's photographs
+  // are the whole reason its card is worth showing at all.
+  images: [],
+  // Both only ever surface on a leased or sold unit, where the tenant is the
+  // subject of the card rather than an aside. `tenantCategory` is the trade
+  // ("Coffee", "Dental"), which is what makes a tenant list read as a mix
+  // rather than as a column of names.
+  tenantUrl: '',
+  tenantCategory: '',
   // Which named road this unit fronts, or '' for none set. Unset means
   // "inherit the building's own facingRoad" — see resolveFacingRoad() in
   // siteModel.js, which is what every caller should read instead of this
@@ -236,6 +251,39 @@ const COMPASS_POINTS = [
 /** A compass bearing in degrees as one of eight points, or null if unknown. */
 export const bearingLabel = (bearing) =>
   Number.isFinite(bearing) ? COMPASS_POINTS[Math.round((((bearing % 360) + 360) % 360) / 45) % 8] : null
+
+/**
+ * The individual unit numbers inside a label.
+ *
+ * The client writes a suite that has been combined as one unit whose label
+ * joins its parts — "101+102+103+106". Rendered as that raw string it is a
+ * single unbreakable word: it cannot wrap, so it overflows the detail card's
+ * heading and gets clipped. Splitting it lets every surface put break
+ * opportunities between the parts and space them out to read as a set of
+ * numbers rather than as one long number.
+ *
+ * A plain label simply comes back as a single-element array, so callers need
+ * no special case.
+ */
+export const unitLabelParts = (label) =>
+  String(label ?? '')
+    .split('+')
+    .map((part) => part.trim())
+    .filter(Boolean)
+
+/** The same, spaced for a single line of text — chips, lists, option labels. */
+export const formatUnitLabel = (label) => unitLabelParts(label).join(' + ') || String(label ?? '')
+
+/**
+ * A unit's photographs, always an array.
+ *
+ * Every unit written before `images` existed simply has no key, and a unit
+ * whose last photograph was removed in the admin can hold an array of empty
+ * strings — both have to read as "no photographs" rather than as one broken
+ * `<img>`. Callers get to treat the result as a list and nothing else.
+ */
+export const getUnitImages = (unit) =>
+  (Array.isArray(unit?.images) ? unit.images : []).filter((url) => String(url ?? '').trim())
 
 export const formatArea = (size) => {
   const n = Number(String(size ?? '').replace(/[^\d.]/g, ''))

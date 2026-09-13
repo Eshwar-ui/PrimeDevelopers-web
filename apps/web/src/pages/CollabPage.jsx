@@ -5,7 +5,7 @@ import { useGSAP } from '@gsap/react'
 import { useProperties, useSection } from '../context/ContentContext'
 import PropertyPicker from '../components/PropertyPicker'
 import QuoteForm from '../components/QuoteForm'
-import Partners from '../components/Partners'
+import PartnerWall from '../components/PartnerWall'
 import Testimonials from '../components/Testimonials'
 import { sized } from '../lib/images'
 
@@ -149,7 +149,7 @@ export default function CollabPage() {
         </div>
       </section>
 
-      <Partners />
+      <PartnerWall />
 
       <Testimonials sectionKey="collab_testimonials" id="collab-testimonials" />
 

@@ -49,7 +49,7 @@ export const SECTIONS = [
     key: 'marquee',
     label: 'Partner logos',
     description:
-      'Every partner mark, shown as one wall on the homepage. The grid sizes itself to how many there are, up to about twenty.',
+      'Every partner mark, shown as one wall on the homepage and the collaborate page. The grid sizes itself to how many there are — add or remove freely, the rows re-cut to suit.',
     Editor: ({ value, onChange }) => (
       <Section
         title="Logos"

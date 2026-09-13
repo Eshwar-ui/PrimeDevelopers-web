@@ -6,7 +6,7 @@ import { autoplayEmbedUrl, isEmbedUrl, isInstagramUrl } from '../lib/video'
  * The company film, full measure, on the page's own dark ground.
  *
  * What used to sit around it — the blue statement heading, the lede, the four
- * statistics — now opens [`Partners`](./Partners.jsx), where the new design
+ * statistics — now opens [`PartnerWall`](./PartnerWall.jsx), where the new design
  * puts them. This component kept the one thing that had nowhere else to go.
  *
  * The film is not in the approved comp at all. It is here because it is real

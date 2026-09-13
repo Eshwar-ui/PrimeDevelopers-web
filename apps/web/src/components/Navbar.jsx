@@ -157,10 +157,17 @@ export default function Navbar() {
     navigate('/contact')
   }
 
-  const isActive = (link) =>
-    link.to
-      ? pathname === link.to || (link.to === EXPERTISE_LINK_TO && pathname.startsWith(`${EXPERTISE_LINK_TO}/`))
-      : pathname === '/' && active === link.section
+  const isActive = (link) => {
+    // Home and the homepage's own section links are both true at the top of
+    // `/`, so scrolling into About used to mark two entries current at once.
+    // The section is the more specific answer whenever the scroll-spy has one;
+    // Home holds the mark only until then.
+    if (link.to === '/') return pathname === '/' && !active
+    if (link.to) {
+      return pathname === link.to || (link.to === EXPERTISE_LINK_TO && pathname.startsWith(`${EXPERTISE_LINK_TO}/`))
+    }
+    return pathname === '/' && active === link.section
+  }
 
   // Active home-section highlight.
   useEffect(() => {
@@ -630,6 +637,14 @@ export default function Navbar() {
             <div className="flex min-h-full flex-col justify-center gap-3 px-gutter pb-[max(2rem,env(safe-area-inset-bottom))] pt-24">
               {navLinks.map((link, i) => {
                 const hasSubmenu = link.to === EXPERTISE_LINK_TO
+                // Same `isActive` the desktop rail reads, so the two agree on
+                // what "here" means — including a sub-page of /enterprise
+                // lighting its Expertise parent. The mobile rail had no active
+                // state at all: every row was bone with an accent numeral,
+                // which spent the accent on all five and so marked none. The
+                // numerals drop to a quiet index and the accent now does one
+                // job, the way `current` does on the desktop links above.
+                const current = isActive(link)
                 return (
                   <motion.div
                     key={link.label}
@@ -645,9 +660,16 @@ export default function Navbar() {
                       <a
                         href={link.to ?? `/#${link.section}`}
                         onClick={(e) => handleNav(e, link)}
-                        className="flex min-h-11 flex-1 items-center font-display text-[clamp(2.25rem,10vw,3rem)] font-light tracking-[-0.02em] text-bone"
+                        aria-current={current ? 'page' : undefined}
+                        className={`flex min-h-11 flex-1 items-center font-display text-[clamp(2.25rem,10vw,3rem)] font-light tracking-[-0.02em] transition-colors duration-300 ease-brand ${
+                          current ? 'text-accent-soft' : 'text-bone'
+                        }`}
                       >
-                        <span className="numeral mr-4 align-middle text-base text-accent-soft">
+                        <span
+                          className={`numeral mr-4 align-middle text-base transition-colors duration-300 ease-brand ${
+                            current ? 'text-accent-soft' : 'text-bone/35'
+                          }`}
+                        >
                           0{i + 1}
                         </span>
                         {link.label}
@@ -695,7 +717,7 @@ export default function Navbar() {
                                     onClick={(e) => handleNav(e, section)}
                                     aria-current={pathname === section.to ? 'page' : undefined}
                                     className={`flex min-h-11 items-center font-body text-lg transition-colors duration-200 hover:text-bone ${
-                                      pathname === section.to ? 'text-bone' : 'text-bone/55'
+                                      pathname === section.to ? 'font-medium text-accent-soft' : 'text-bone/55'
                                     }`}
                                   >
                                     {section.label}
@@ -710,45 +732,54 @@ export default function Navbar() {
                   </motion.div>
                 )
               })}
-              {(phoneHref || whatsappChatHref) && (
-                <motion.div
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 + navLinks.length * 0.08 }}
-                  className="mt-7 flex flex-wrap gap-3"
-                >
-                  {phoneHref && (
-                    <a href={phoneHref} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-bone/20 px-5 font-body text-sm text-bone">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden className="size-4">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 4.5 9.6 8l-1.7 1.7a15.7 15.7 0 0 0 6.4 6.4l1.7-1.7 3.5 2.1v2.2a1.8 1.8 0 0 1-1.8 1.8A14.2 14.2 0 0 1 3.5 6.3a1.8 1.8 0 0 1 1.8-1.8h2.2Z" />
-                      </svg>
-                      {contact.phone}
-                    </a>
-                  )}
-                  {whatsappChatHref && (
-                    <button type="button" onClick={() => setWhatsappOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#25D366] px-5 font-body text-sm font-medium text-white">
-                      <WhatsappLogo weight="fill" className="size-5" />
-                      WhatsApp
-                    </button>
-                  )}
-                </motion.div>
-              )}
-
-              <motion.a
-                href="/contact"
-                onClick={goContact}
-                initial={{ opacity: 0, y: 24 }}
+              {/* The three actions used to be two shrink-to-fit pills on a
+                  wrapping row with the enquiry CTA orphaned below them, which
+                  left a ragged right edge and made the phone number's outline
+                  read as the weaker of two adjacent styles. One stack of
+                  full-measure filled buttons instead: same width, same height,
+                  the hierarchy carried by fill alone — white for the enquiry,
+                  WhatsApp's own green, and a raised neutral for the call. */}
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 + navLinks.length * 0.08, ease: 'easeOut' }}
-                className="group relative isolate mt-8 inline-flex min-h-12 w-fit items-center gap-5 overflow-hidden rounded-full border border-white/60 bg-white px-6 font-body text-[15px] font-semibold tracking-[-0.01em] text-charcoal shadow-[0_10px_28px_-16px_rgba(0,0,0,0.6)] transition-[color,transform,box-shadow] duration-300 ease-brand hover:-translate-y-px hover:text-white hover:shadow-[0_15px_32px_-15px_rgba(0,0,0,0.5)] focus-visible:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent active:translate-y-px active:scale-[0.985] motion-reduce:transform-none"
+                className="mt-8 flex flex-col gap-3"
               >
-                <span aria-hidden className="absolute inset-0 z-0 origin-right scale-x-0 rounded-full bg-charcoal transition-transform duration-300 ease-brand group-hover:scale-x-100 group-focus-visible:scale-x-100 motion-reduce:transition-none" />
-                <span className="relative z-10 transition-transform duration-300 ease-brand group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5 motion-reduce:transform-none">{nav.enquireLabel}</span>
-                <span className="relative z-10 size-5 overflow-hidden" aria-hidden>
-                  <ArrowRight className="absolute inset-0 size-5 transition-transform duration-300 ease-brand group-hover:translate-x-6 group-focus-visible:translate-x-6 motion-reduce:transform-none" />
-                  <ArrowRight className="absolute inset-0 size-5 -translate-x-6 transition-transform duration-300 ease-brand group-hover:translate-x-0 group-focus-visible:translate-x-0 motion-reduce:hidden" />
-                </span>
-              </motion.a>
+                {phoneHref && (
+                  <a
+                    href={phoneHref}
+                    className="flex min-h-12 w-full items-center justify-center gap-2.5 rounded-full bg-white/9 px-6 font-body text-[15px] font-medium text-bone transition-colors duration-300 ease-brand hover:bg-white/16 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.985] motion-reduce:transform-none"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden className="size-4.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 4.5 9.6 8l-1.7 1.7a15.7 15.7 0 0 0 6.4 6.4l1.7-1.7 3.5 2.1v2.2a1.8 1.8 0 0 1-1.8 1.8A14.2 14.2 0 0 1 3.5 6.3a1.8 1.8 0 0 1 1.8-1.8h2.2Z" />
+                    </svg>
+                    {contact.phone}
+                  </a>
+                )}
+                {whatsappChatHref && (
+                  <button
+                    type="button"
+                    onClick={() => setWhatsappOpen(true)}
+                    className="flex min-h-12 w-full items-center justify-center gap-2.5 rounded-full bg-[#25D366] px-6 font-body text-[15px] font-semibold text-white transition-colors duration-300 ease-brand hover:bg-[#1FBE59] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.985] motion-reduce:transform-none"
+                  >
+                    <WhatsappLogo weight="fill" className="size-5" />
+                    WhatsApp
+                  </button>
+                )}
+
+                <a
+                  href="/contact"
+                  onClick={goContact}
+                  className="group relative isolate flex min-h-12 w-full items-center justify-center gap-3 overflow-hidden rounded-full bg-white px-6 font-body text-[15px] font-semibold tracking-[-0.01em] text-charcoal shadow-[0_10px_28px_-16px_rgba(0,0,0,0.6)] transition-[color,box-shadow] duration-300 ease-brand hover:text-white hover:shadow-[0_15px_32px_-15px_rgba(0,0,0,0.5)] focus-visible:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-[0.985] motion-reduce:transform-none"
+                >
+                  <span aria-hidden className="absolute inset-0 z-0 origin-right scale-x-0 rounded-full bg-charcoal transition-transform duration-300 ease-brand group-hover:scale-x-100 group-focus-visible:scale-x-100 motion-reduce:transition-none" />
+                  <span className="relative z-10">{nav.enquireLabel}</span>
+                  <span className="relative z-10 size-5 overflow-hidden" aria-hidden>
+                    <ArrowRight className="absolute inset-0 size-5 transition-transform duration-300 ease-brand group-hover:translate-x-6 group-focus-visible:translate-x-6 motion-reduce:transform-none" />
+                    <ArrowRight className="absolute inset-0 size-5 -translate-x-6 transition-transform duration-300 ease-brand group-hover:translate-x-0 group-focus-visible:translate-x-0 motion-reduce:hidden" />
+                  </span>
+                </a>
+              </motion.div>
             </div>
           </motion.nav>
         )}

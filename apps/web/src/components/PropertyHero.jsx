@@ -138,7 +138,20 @@ const isSharedTransition = document.documentElement.classList.contains('property
               letters are instead of dimming the whole photograph to protect
               them — and it holds up over a bright sky, which is the worst case
               this panel ever lands on. */}
-          <aside className="grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-white/25 bg-white/20 shadow-[0_24px_80px_-38px_rgba(0,0,0,0.9)] backdrop-blur-[3px] sm:grid-cols-3 lg:grid-cols-1">
+          {/* Three across on a phone, a column only once it has a column to
+              live in.
+
+              This was `grid-cols-1` up to `sm`, which put the *tallest*
+              arrangement on the *narrowest* screen: three stacked rows came to
+              277px, 29% of the hero, and pushed the section past `100dvh` so
+              the social row fell below the fold on a 390x844 phone. The three
+              values are short — a count, a percentage, a number — so they sit
+              side by side at 390px comfortably, and the card drops to ~70px.
+
+              The single column returns at `lg`, where the parent hands it a
+              21rem sidebar beside the headline and a tall card is the right
+              shape for the space rather than an accident of the breakpoint. */}
+          <aside className="grid grid-cols-3 gap-px overflow-hidden rounded-2xl border border-white/25 bg-white/20 shadow-[0_24px_80px_-38px_rgba(0,0,0,0.9)] backdrop-blur-[3px] lg:grid-cols-1">
             {[
               ['Availability', availability],
               ['Reserved', `${soldPct}%`],
@@ -146,12 +159,16 @@ const isSharedTransition = document.documentElement.classList.contains('property
             ].map(([label, value]) => (
               <div
                 key={label}
-                className="bg-charcoal/26 px-4 py-5 md:px-6 [text-shadow:0_1px_3px_rgba(12,21,27,0.95),0_2px_16px_rgba(12,21,27,0.75)]"
+                className="bg-charcoal/26 px-3 py-3.5 md:px-6 md:py-5 [text-shadow:0_1px_3px_rgba(12,21,27,0.95),0_2px_16px_rgba(12,21,27,0.75)]"
               >
                 {/* Raised from white/48: the ground under it is a photograph
                     now, not a near-solid panel, and 48% disappeared into it. */}
                 <p className="font-body text-[10px] font-bold uppercase tracking-[0.18em] text-white/75">{label}</p>
-                <p className="mt-2 font-display text-lg font-bold tracking-[-0.02em] text-white md:text-xl">{value}</p>
+                {/* `tabular-nums` so 87% and 54 sit on the same rhythm as the
+                    figures beside them and nothing shifts as they change. */}
+                <p className="mt-1.5 font-display text-[15px] font-bold tabular-nums tracking-[-0.02em] text-white md:mt-2 md:text-xl">
+                  {value}
+                </p>
               </div>
             ))}
           </aside>

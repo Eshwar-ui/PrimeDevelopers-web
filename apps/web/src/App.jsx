@@ -42,6 +42,7 @@ const InvestPage = lazy(() => import('./pages/InvestPage'))
 const PropertiesPage = lazy(() => import('./pages/PropertiesPage'))
 const PropertyDetailPage = lazy(() => import('./pages/PropertyDetailPage'))
 const PropertyInfoPage = lazy(() => import('./pages/PropertyInfoPage'))
+const InvestmentPage = lazy(() => import('./pages/InvestmentPage'))
 const ContactPage = lazy(() => import('./pages/ContactPage'))
 const NewsPage = lazy(() => import('./pages/NewsPage'))
 const NewsPostPage = lazy(() => import('./pages/NewsPostPage'))
@@ -287,6 +288,12 @@ function PublicSite() {
                     be added to `data/centroPlazaInfo` without a new route; a
                     slug with no set redirects back to its listing. */}
                 <Route path="/properties/:slug/info" element={<PropertyInfoPage />} />
+                {/* One building as an asset — asking price, yield, lease terms
+                    and the unit schedule. Slugged by building label rather than
+                    index for the reason the `?building=` handler gives: an
+                    index breaks the moment buildings are reordered, and these
+                    are links brokers forward. */}
+                <Route path="/properties/:slug/investment/:building" element={<InvestmentPage />} />
                 <Route path="/news" element={<NewsPage />} />
                 <Route path="/news/:slug" element={<NewsPostPage />} />
                 <Route path="/learn" element={<LearnPage />} />

@@ -122,14 +122,35 @@ const isSharedTransition = document.documentElement.classList.contains('property
             </div>
           </div>
 
-          <aside className="grid grid-cols-1 gap-px overflow-hidden sm:grid-cols-3 rounded-2xl border border-white/18 bg-white/18 shadow-[0_24px_80px_-38px_rgba(0,0,0,0.9)] backdrop-blur-xl lg:grid-cols-1">
+          {/* The panel sits over the brightest part of the hero — the
+              horizontal scrim has fallen to 0.18 alpha by the time it reaches
+              this column — so the building behind it is worth seeing rather
+              than hiding.
+
+              It used to be `bg-charcoal/58` cells behind `backdrop-blur-xl`,
+              which is two opaque layers: the heavy blur destroyed the detail
+              and the 58% fill then covered what was left, leaving a grey slab
+              on a photograph. Now the fill is light enough to read the
+              frontage through and the blur only takes the edge off the noise.
+
+              What keeps the text legible is the shadow, not the fill. A drop
+              shadow tracks the glyphs, so it buys contrast exactly where the
+              letters are instead of dimming the whole photograph to protect
+              them — and it holds up over a bright sky, which is the worst case
+              this panel ever lands on. */}
+          <aside className="grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-white/25 bg-white/20 shadow-[0_24px_80px_-38px_rgba(0,0,0,0.9)] backdrop-blur-[3px] sm:grid-cols-3 lg:grid-cols-1">
             {[
               ['Availability', availability],
               ['Reserved', `${soldPct}%`],
               ['Total', property.buildings || '—'],
             ].map(([label, value]) => (
-              <div key={label} className="bg-charcoal/58 px-4 py-5 md:px-6">
-                <p className="font-body text-[10px] font-bold uppercase tracking-[0.18em] text-white/48">{label}</p>
+              <div
+                key={label}
+                className="bg-charcoal/26 px-4 py-5 md:px-6 [text-shadow:0_1px_3px_rgba(12,21,27,0.95),0_2px_16px_rgba(12,21,27,0.75)]"
+              >
+                {/* Raised from white/48: the ground under it is a photograph
+                    now, not a near-solid panel, and 48% disappeared into it. */}
+                <p className="font-body text-[10px] font-bold uppercase tracking-[0.18em] text-white/75">{label}</p>
                 <p className="mt-2 font-display text-lg font-bold tracking-[-0.02em] text-white md:text-xl">{value}</p>
               </div>
             ))}

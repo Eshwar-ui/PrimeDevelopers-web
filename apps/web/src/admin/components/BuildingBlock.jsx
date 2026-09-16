@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react'
-import { TextField, TextAreaField, SelectField } from './Field'
+import { TextField, TextAreaField, SelectField, CheckboxField } from './Field'
 import ImageUploader from './ImageUploader'
 import RepeatableList from './RepeatableList'
 import FloorPlanPositionPicker from './FloorPlanPositionPicker'
 import ModelManager from './ModelManager'
 import { UNIT_STATUSES } from '../../lib/unitStatus'
 import { getUnits, makeUnit, meshUnitLabel, reconcile, unitFormId } from '../../lib/units'
+import { FIGURES, makeInvestment, hasInvestmentData } from '../../lib/investment'
 
 // One building's full editor.
 //
@@ -287,6 +288,100 @@ export default function BuildingBlock({ building, onChange, folder }) {
             />
           </div>
         )}
+      </div>
+
+      {/* ── 4. The building as an asset ────────────────────────── */}
+      <InvestmentFields building={building} onChange={onChange} />
+    </div>
+  )
+}
+
+/**
+ * CAP-rate figures for this building, powering its investment page.
+ *
+ * Separate from everything above it because it answers to a different reader.
+ * The unit list describes space to a tenant; this describes a yield to a
+ * buyer, and the two are maintained by different people at different times.
+ *
+ * Nothing here is required. The page omits any figure left blank, so a
+ * building with two of the nine filled in still reads as finished — which
+ * matters, because these arrive one rate sheet at a time.
+ */
+function InvestmentFields({ building, onChange }) {
+  const investment = building.investment ?? makeInvestment()
+  const set = (patch) => onChange({ ...building, investment: { ...investment, ...patch } })
+  const populated = hasInvestmentData({ ...building, investment })
+  const highlights = investment.highlights ?? []
+
+  return (
+    <div className="rounded-lg border border-white/10 bg-void/40 p-3">
+      <span className="text-xs font-bold uppercase tracking-wide text-bone-3">
+        Investment / CAP rate
+      </span>
+      <p className="mt-1 text-[11px] leading-relaxed text-bone-3">
+        Powers this building&rsquo;s investment page. Leave anything you do not have blank — blank
+        figures are left off the page rather than shown empty. The unit schedule on that page is
+        read from the units above, so there is nothing to re-enter here.
+      </p>
+
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        {FIGURES.map(({ key, label, placeholder }) => (
+          <TextField
+            key={key}
+            label={label}
+            value={investment[key]}
+            placeholder={placeholder}
+            onChange={(v) => set({ [key]: v })}
+          />
+        ))}
+      </div>
+
+      <div className="mt-3 flex flex-col gap-3">
+        <TextAreaField
+          label="Summary"
+          rows={3}
+          placeholder="Single-tenant flex building fully let to…"
+          value={investment.summary}
+          onChange={(summary) => set({ summary })}
+        />
+
+        <div>
+          <span className="text-xs font-bold uppercase tracking-wide text-bone-3">Highlights</span>
+          <p className="mb-3 mt-1 text-[11px] leading-relaxed text-bone-3">
+            Short selling points — one per row, shown as a list beside the summary.
+          </p>
+          <RepeatableList
+            items={highlights}
+            onChange={(next) => set({ highlights: next })}
+            makeItem={() => ''}
+            addLabel="Add highlight"
+            renderItem={(value, setValue) => (
+              <TextField
+                value={value}
+                placeholder="NNN lease with 3% annual escalations"
+                onChange={setValue}
+              />
+            )}
+          />
+        </div>
+
+        <TextField
+          label="CAP rate flyer URL"
+          placeholder="https://…"
+          value={investment.flyerUrl}
+          onChange={(flyerUrl) => set({ flyerUrl })}
+        />
+
+        <CheckboxField
+          label="Publish this investment page"
+          hint={
+            populated
+              ? 'Links to it appear in the property\u2019s Resources section. The page is reachable by URL either way, so you can preview it first.'
+              : 'Nothing is filled in yet — until something is, this stays unlinked even when ticked.'
+          }
+          value={investment.published}
+          onChange={(published) => set({ published })}
+        />
       </div>
     </div>
   )

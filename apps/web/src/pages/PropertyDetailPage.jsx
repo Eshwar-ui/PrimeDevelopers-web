@@ -13,6 +13,12 @@ import { sized } from '../lib/images'
 import { scrollToElement } from '../lib/scrollToElement'
 import PropertyHero from '../components/PropertyHero'
 import { youtubeEmbedUrl } from '../lib/video'
+import {
+  buildingFromResourceLabel,
+  buildingSlug,
+  getInvestment,
+  isInvestmentLinkable,
+} from '../lib/investment'
 
 // Eyebrow section label with the accent dash, matching the site system.
 //
@@ -807,44 +813,124 @@ export default function PropertyDetailPage() {
           enquiry. These are the take-aways — flyers, rate sheets, the
           Crexi and LoopNet listings — and they belong at the end, once
           the page has made its case. Opening the page on them sent a
-          visitor off-site before they had seen the property. */}
-      {d?.resourceLinks?.length > 0 && (
-        <section data-band="light" className="bg-surface-alt px-gutter py-16 md:py-24">
-          <SectionTag>{t.resourcesLabel}</SectionTag>
-          <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {d.resourceLinks.map(
-              (link, i) =>
-                link.url &&
-                link.label && (
-                  <a
-                    key={i}
-                    href={link.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="group flex items-center gap-4 rounded-2xl border border-[var(--color-line)] bg-surface p-4 transition-colors duration-300 hover:border-accent"
-                  >
-                    {link.thumbnail ? (
-                      <img
-                        src={link.thumbnail}
-                        alt=""
-                        loading="lazy"
-                        decoding="async"
-                        className="h-12 w-12 shrink-0 rounded-lg object-cover"
-                      />
-                    ) : (
-                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-surface-alt text-accent transition-transform duration-300 group-hover:translate-x-0.5">
-                        →
+          visitor off-site before they had seen the property.
+
+          Split in two, because they were never one kind of thing. A CAP rate
+          sheet is the start of an investment conversation; a LoopNet listing
+          is a link. Flat and uniform, the four rate sheets were four rows of
+          identical grey among nine, and the most valuable items on the page
+          were the easiest to miss. Now they lead, carry the building they
+          describe and — once figures are published — go to a page on this
+          site rather than bouncing the reader to a PDF host. */}
+      {d?.resourceLinks?.length > 0 &&
+        (() => {
+          const buildings = d?.floorPlans?.buildings ?? []
+          const links = d.resourceLinks.filter((link) => link?.url && link?.label)
+          // A CAP-rate label only counts as one if its building actually
+          // exists. Anything unmatched falls through to the ordinary list,
+          // which is exactly what it was before this split.
+          const rated = []
+          const others = []
+          for (const link of links) {
+            const building = buildingFromResourceLabel(link.label, buildings)
+            if (building) rated.push({ link, building })
+            else others.push(link)
+          }
+
+          return (
+            <section data-band="light" className="bg-surface-alt px-gutter py-16 md:py-24">
+              <SectionTag>{t.resourcesLabel}</SectionTag>
+
+              {rated.length > 0 && (
+                <div className="mt-8 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  {rated.map(({ link, building }, i) => {
+                    const internal = isInvestmentLinkable(building)
+                    const capRate = String(getInvestment(building)?.capRate ?? '').trim()
+                    const href = internal
+                      ? `/properties/${property.slug}/investment/${buildingSlug(building.building)}`
+                      : link.url
+                    // Same card either way; only where it goes differs. An
+                    // internal route must not be an <a>, or every visit
+                    // reloads the SPA and loses the scroll position.
+                    const Tag = internal ? Link : 'a'
+                    const nav = internal ? { to: href } : { href, target: '_blank', rel: 'noreferrer' }
+
+                    return (
+                      <Tag
+                        key={`rated-${i}`}
+                        {...nav}
+                        className="group flex flex-col justify-between gap-6 rounded-2xl border border-[var(--color-line)] bg-surface p-5 transition-colors duration-300 hover:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <p className="font-body text-[10px] font-bold uppercase tracking-[0.18em] text-content/55">
+                              {internal ? 'Investment summary' : 'CAP rate flyer'}
+                            </p>
+                            <p className="mt-2 font-display text-xl font-bold tracking-[-0.02em] text-content transition-colors duration-300 group-hover:text-accent">
+                              {building.building}
+                            </p>
+                          </div>
+                          {/* The yield is the number an investor scans for, so
+                              it sits on the card rather than one click in. */}
+                          {capRate && (
+                            <span className="shrink-0 rounded-full bg-accent/12 px-3 py-1 font-body text-[11px] font-bold uppercase tracking-wide text-accent">
+                              {capRate} CAP
+                            </span>
+                          )}
+                        </div>
+
+                        <span className="inline-flex items-center gap-2 font-body text-[12px] font-bold uppercase tracking-[0.12em] text-content/70 transition-colors duration-300 group-hover:text-accent">
+                          {internal ? 'View the figures' : 'Open the flyer'}
+                          <span
+                            aria-hidden
+                            className="transition-transform duration-300 group-hover:translate-x-1"
+                          >
+                            →
+                          </span>
+                        </span>
+                      </Tag>
+                    )
+                  })}
+                </div>
+              )}
+
+              {others.length > 0 && (
+                <div
+                  className={`grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 ${
+                    rated.length > 0 ? 'mt-3' : 'mt-8'
+                  }`}
+                >
+                  {others.map((link, i) => (
+                    <a
+                      key={`other-${i}`}
+                      href={link.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="group flex items-center gap-4 rounded-2xl border border-[var(--color-line)] bg-surface p-4 transition-colors duration-300 hover:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                    >
+                      {link.thumbnail ? (
+                        <img
+                          src={link.thumbnail}
+                          alt=""
+                          loading="lazy"
+                          decoding="async"
+                          className="h-12 w-12 shrink-0 rounded-lg object-cover"
+                        />
+                      ) : (
+                        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-surface-alt text-accent transition-transform duration-300 group-hover:translate-x-0.5">
+                          →
+                        </span>
+                      )}
+                      <span className="font-body text-sm font-bold uppercase tracking-[0.1em] text-content transition-colors duration-300 group-hover:text-accent">
+                        {link.label}
                       </span>
-                    )}
-                    <span className="font-body text-sm font-bold uppercase tracking-[0.1em] text-content transition-colors duration-300 group-hover:text-accent">
-                      {link.label}
-                    </span>
-                  </a>
-                )
-            )}
-          </div>
-        </section>
-      )}
+                    </a>
+                  ))}
+                </div>
+              )}
+            </section>
+          )
+        })()}
 
       {/* ── CTA ──────────────────────────────────────────────── */}
       {/* ── Closing anchor ───────────────────────────────────────

@@ -239,19 +239,63 @@ export default function PropertyDetailPage() {
       {d?.overview?.heading && (
         <section id="overview" data-band="light" className="bg-base px-gutter py-20 md:py-28">
           <div className="mx-auto max-w-[1560px]">
-            {/* `lg:items-center` rather than `items-start`: the copy column runs
-                taller than a pair of 4:3 frames at most widths, and pinning
-                both to the top left the slack as a hard stub under the
-                photographs. Centred, it reads as air around them.
+            {/* One column, photographs first. This ran as two columns with the
+                frames beside the copy; it now leads with them across the full
+                measure and lets the copy answer underneath, so the first thing
+                the section does is show the place rather than describe it.
 
-                The columns collapse to one when the listing has no gallery — a
-                two-column grid with an empty half is worse than a single
-                column, and the copy gets the full measure instead. */}
-            <div
-              className={`grid gap-12 lg:gap-16 ${
-                overviewImages.length > 0 ? 'lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-center' : ''
-              }`}
-            >
+                Nothing here is conditional any more. `lg:items-center` existed
+                to absorb the height difference between two columns, and the
+                empty-half guard existed because a two-column grid with one side
+                missing is worse than a single column — with one column there is
+                no second side to balance or to leave empty, and a listing with
+                no gallery simply drops the first child. */}
+            <div className="grid gap-12 lg:gap-16">
+              {/* Evidence, and now the section's opening statement. `gap-4`
+                  between the two frames against `gap-12` to the copy below: the
+                  pair is one idea and reads as one.
+
+                  Side by side from `sm` up and never stacking. The old
+                  `lg:grid-cols-1` is gone with the two-column layout that
+                  needed it — frames in a half-width column were ~270px wide, so
+                  they had to stack to carry any height, whereas across the full
+                  measure each one is ~770px and a stack would push the copy
+                  most of a screen down.
+
+                  An aspect ratio, not a fixed height — with `h-56 md:h-64` the
+                  same frontage was cropped ~1.5:1 as a pair and ~3:1 alone, so
+                  the photograph changed shape with the size of the gallery. The
+                  ratio turns with the frame's width rather than the layout: 4:3
+                  while a frame is small (at 768 it is 274px, and a letterbox
+                  crop of a shopfront at that size shows nothing), 16:9 from
+                  `lg`, where 4:3 would stand the pair 580px tall and push the
+                  heading under the fold. */}
+              {overviewImages.length > 0 && (
+                <motion.div
+                  variants={stagger}
+                  initial="hidden"
+                  whileInView="show"
+                  viewport={inViewOnce}
+                  className={`grid gap-4 ${overviewImages.length > 1 ? 'sm:grid-cols-2' : ''}`}
+                >
+                  {overviewImages.map((image, i) => (
+                    <motion.div
+                      key={`${image}-${i}`}
+                      variants={rise}
+                      className="overflow-hidden rounded-panel border border-line bg-surface-alt"
+                    >
+                      <img
+                        src={sized(image, 'card')}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        className="aspect-[4/3] w-full object-cover transition-transform duration-700 ease-brand hover:scale-[1.04] lg:aspect-[16/9]"
+                      />
+                    </motion.div>
+                  ))}
+                </motion.div>
+              )}
+
               <motion.div variants={stagger} initial="hidden" whileInView="show" viewport={inViewOnce}>
                 {d.overview.eyebrow && (
                   <motion.div variants={rise}>
@@ -304,53 +348,6 @@ export default function PropertyDetailPage() {
                   </PrimePill>
                 </motion.div>
               </motion.div>
-
-              {/* Evidence. `gap-4` between the two frames against `gap-12` to
-                  the copy column and a ruled band below: the pair is one idea
-                  and reads as one, which the uniform `gap-5` on both axes had
-                  flattened into three equal tiles.
-
-                  Side by side while the column is the full page width, stacked
-                  once it is a half of it. Two landscape frames inside a half
-                  column are ~270px wide — thumbnails floating against a copy
-                  column twice their height, which is what the first pass got
-                  wrong. The reference sets them side by side because its right
-                  column also carried the figures; those now close the section
-                  full-width, so the pair has to hold that height on its own.
-
-                  An aspect ratio, not a fixed height — with `h-56 md:h-64` the
-                  same frontage was cropped ~1.5:1 as a pair and ~3:1 alone, so
-                  the photograph changed shape with the size of the gallery. The
-                  ratio turns with the arrangement: 4:3 while the frames are a
-                  pair (at 768 that is 274px wide, and a letterbox crop of a
-                  shopfront at that size shows nothing), 16:9 once they are
-                  stacked, where a squarer frame would run the pair 290px past
-                  the bottom of the copy beside it. */}
-              {overviewImages.length > 0 && (
-                <motion.div
-                  variants={stagger}
-                  initial="hidden"
-                  whileInView="show"
-                  viewport={inViewOnce}
-                  className={`grid gap-4 ${overviewImages.length > 1 ? 'sm:grid-cols-2 lg:grid-cols-1' : ''}`}
-                >
-                  {overviewImages.map((image, i) => (
-                    <motion.div
-                      key={`${image}-${i}`}
-                      variants={rise}
-                      className="overflow-hidden rounded-panel border border-line bg-surface-alt"
-                    >
-                      <img
-                        src={sized(image, 'card')}
-                        alt=""
-                        loading="lazy"
-                        decoding="async"
-                        className="aspect-[4/3] w-full object-cover transition-transform duration-700 ease-brand hover:scale-[1.04] lg:aspect-[16/9]"
-                      />
-                    </motion.div>
-                  ))}
-                </motion.div>
-              )}
             </div>
 
             {/* The figures. A hairline and generous air rather than a bordered

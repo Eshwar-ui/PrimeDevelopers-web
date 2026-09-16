@@ -18,7 +18,13 @@ const IMAGE_TYPES: Record<string, string> = {
   'image/avif': 'avif',
 };
 
-const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+// Raised from 5MB. The client's photography arrives straight out of Lightroom
+// at 6-9MB, so 5 turned every real upload into a resize-it-yourself errand;
+// the images bucket sets no ceiling of its own, and the render endpoint serves
+// a derivative rather than the original, so the only cost of a larger source
+// is storage. Mirrored in the browser (lib/uploads.js) so an oversized file is
+// refused before it is sent rather than after.
+const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 // Matches the ceiling the models bucket itself enforces (migration 3). Checked
 // here too so an oversized file fails with a useful message instead of a
 // storage-layer error.

@@ -76,40 +76,15 @@ export const SECTIONS = [
       </Section>
     ),
   },
-  {
-    key: 'about_home',
-    label: 'Partners section copy',
-    description: 'The kicker above the homepage logo wall, plus the film and the statistics — neither of which the homepage shows any more.',
-    Editor: ({ value, onChange }) => (
-      <>
-        <Section title="Copy">
-          <TextField label="Eyebrow" value={value.eyebrow} onChange={(eyebrow) => onChange({ eyebrow })} />
-          <TextAreaField label="Heading" rows={2} value={value.heading} onChange={(heading) => onChange({ heading })} />
-          <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
-          <TextAreaField label="Paragraph" value={value.paragraph1} onChange={(paragraph1) => onChange({ paragraph1 })} />
-        </Section>
-        <Section title="Film" description="Plays on click. Leave the link empty to show the still on its own.">
-          <ImageUploader label="Poster still" value={value.videoPoster} onChange={(videoPoster) => onChange({ videoPoster })} folder="site/about" />
-          <TextField label="Video link" value={value.videoUrl} onChange={(videoUrl) => onChange({ videoUrl })} />
-          <p className="-mt-3 text-[11px] text-bone-3">A YouTube or Vimeo link, or a direct link to an .mp4 file.</p>
-        </Section>
-        <Section title="Stats" description="Not shown on the homepage any more — the partners section is the logo wall alone. Kept here and still used elsewhere.">
-          <RepeatableList
-            items={value.stats}
-            onChange={(stats) => onChange({ stats })}
-            makeItem={() => ({ value: '', label: '' })}
-            addLabel="Add stat"
-            renderItem={(item, set) => (
-              <div className="grid grid-cols-2 gap-3">
-                <TextField label="Value" type="number" value={item.value} onChange={(v) => set({ ...item, value: v })} />
-                <TextField label="Label" value={item.label} onChange={(label) => set({ ...item, label })} />
-              </div>
-            )}
-          />
-        </Section>
-      </>
-    ),
-  },
+  // `about_home` no longer has an editor. Of its six fields the site read one
+  // — `eyebrow`, the kicker over the homepage logo wall — while Heading,
+  // Paragraph, Film and Stats drove components/About.jsx, which nothing has
+  // mounted since the homepage was rebuilt. A panel of five dead inputs around
+  // one live one is worse than no panel: it invites edits that change nothing.
+  //
+  // The row itself is untouched, so the stored `eyebrow` still renders. To
+  // change it, edit the `about_home` default in ContentContext or set it with
+  // scripts/set-content-value.mjs.
   {
     key: 'properties_home',
     label: 'Properties (homepage teaser)',

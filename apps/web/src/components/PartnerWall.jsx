@@ -94,6 +94,43 @@ function balanceRows(items, rowCount) {
   return rows
 }
 
+
+/**
+ * One mark on its panel. Extracted so the wall and the phone rail are the
+ * same object at two sizes rather than two things that look alike.
+ */
+function Panel({ logo }) {
+  return (
+    <div
+      className={
+        'flex aspect-[5/3] h-full w-full items-center justify-center rounded-xl ' +
+        'shadow-[0_18px_45px_-24px_rgba(0,0,0,0.7)] transition-transform duration-300 hover:-translate-y-1 ' +
+        (logo.darkPanel ? 'bg-carbon ring-1 ring-white/15' : 'bg-white')
+      }
+    >
+      {/* The mark is capped on both axes rather than sat in a padded box,
+          because the roster is not one shape: a wide wordmark and a square
+          badge in the same padding box come out wildly different optical
+          sizes — the wordmark fills its width and towers, the badge shrinks to
+          the height and floats. Two independent caps let each shape stop at
+          the size that makes it *look* the same weight as its neighbours.
+
+          The numbers are a pair, not two settings. On this 5:3 panel the
+          height cap resolves to 0.35 of the panel's width, so a square mark
+          lands at ~0.35w and a 4:1 wordmark at 0.70w by 0.18w — near enough
+          the same inked area, which is what the eye actually reads as "same
+          size". Changing the panel ratio means re-deriving both. */}
+      <img
+        src={sized(logo.image, 'logo')}
+        alt={logo.alt ?? ''}
+        loading="lazy"
+        decoding="async"
+        className="max-h-[58%] max-w-[70%] object-contain"
+      />
+    </div>
+  )
+}
+
 export default function PartnerWall() {
   const about = useSection('about_home')
   const { logos = [] } = useSection('marquee')
@@ -105,6 +142,9 @@ export default function PartnerWall() {
   // lookup can never miss. TIERS runs widest-first for exactly this reason.
   const tierIndex = useFirstMatchingQuery(TIER_QUERIES)
   const tier = TIERS[tierIndex] ?? TIERS[TIERS.length - 1]
+  // The phone tier is the `all` floor, so this is the same breakpoint the rest
+  // of the component already reasons about — no second media query.
+  const isPhone = tierIndex === TIERS.length - 1
 
   const rows = useMemo(() => {
     if (!visibleLogos.length) return []
@@ -130,15 +170,69 @@ export default function PartnerWall() {
           <span aria-hidden className="h-px flex-1 bg-gradient-to-l from-transparent to-accent-soft/70" />
         </div>
 
-        {/* Full-bleed rather than inside the page gutter: the wall is the one
-            element here that is meant to measure the viewport. The padding left
-            on it is a safety margin, not a gutter — panels flush to a phone's
-            screen edge read as clipped.
+        {/* ── phone: a rail, not a wall ──────────────────────────────
+            Two to a row is the only honest width on a 390px screen, which at
+            21 marks meant eleven rows and 1,291px of scrolling — the roster
+            grows, so that only ever gets worse. Four rows laid out in columns
+            instead, scrolled sideways: the section is a fixed height whatever
+            the client uploads, and the wall keeps its shape.
 
-            Not a list, either: a `ul` of rows announces "4 items" rather than
-            the partners, and a `ul` of logos cannot hold the rows the layout
-            needs. The order is stable and every mark carries its own alt text,
-            so the images are the content on their own. */}
+            Columns are sized so two sit in the viewport with the third
+            showing at the edge. The peek is the affordance — a rail cut flush
+            to the screen looks like a grid that happens to be clipped, and
+            nobody swipes it.
+
+            `overscroll-x-contain` so reaching the end does not hand the
+            gesture to the browser's back-swipe, and the region is focusable
+            with a label so it can be reached and scrolled from a keyboard. */}
+        {isPhone ? (
+          <div
+            tabIndex={0}
+            role="group"
+            aria-label="Our partners — scroll sideways for more"
+            // `scroll-px-4` pairs with the `px-4`: a snap target aligns to the
+            // scrollport edge, not the padding edge, so without it the rail
+            // opened already scrolled 16px and the first column sat flush to
+            // the screen — the exact clipped look the padding is there to
+            // avoid. Scroll padding puts the snap line back on the inset.
+            className="mt-10 grid snap-x snap-mandatory scroll-px-4 grid-flow-col grid-rows-4 overflow-x-auto overscroll-x-contain px-4 pb-2"
+            style={{
+              '--wall-gap': 'clamp(0.5rem, 1.2vw, 1.25rem)',
+              gap: 'var(--wall-gap)',
+              // Two whole columns plus the edge of a third.
+              gridAutoColumns: 'calc((100% - var(--wall-gap)) / 2.22)',
+            }}
+          >
+            {visibleLogos.map((logo, i) => (
+              <motion.div
+                key={logo.image + '-' + i}
+                className="snap-start"
+                initial={reduced ? false : { opacity: 0, y: 18 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                // Columns off to the right are genuinely out of view, so they
+                // arrive as they are swiped to rather than all at once behind
+                // the fold.
+                viewport={{ once: true, margin: '-10% 0px' }}
+                transition={{
+                  duration: 0.6,
+                  ease: [0.16, 1, 0.3, 1],
+                  delay: reduced ? 0 : (i % 4) * 0.06,
+                }}
+              >
+                <Panel logo={logo} />
+              </motion.div>
+            ))}
+          </div>
+        ) : (
+          /* Full-bleed rather than inside the page gutter: the wall is the one
+             element here that is meant to measure the viewport. The padding
+             left on it is a safety margin, not a gutter — panels flush to a
+             phone's screen edge read as clipped.
+
+             Not a list, either: a `ul` of rows announces "4 items" rather than
+             the partners, and a `ul` of logos cannot hold the rows the layout
+             needs. The order is stable and every mark carries its own alt
+             text, so the images are the content on their own. */
         <div
           className="mt-10 flex flex-col px-4 md:mt-14 md:px-6"
           // One gap value for both axes, and the cell width is written against
@@ -168,41 +262,13 @@ export default function PartnerWall() {
                     delay: reduced ? 0 : rowIndex * 0.08 + i * 0.03,
                   }}
                 >
-                  <div
-                    className={
-                      'flex aspect-[5/3] h-full w-full items-center justify-center rounded-xl ' +
-                      'shadow-[0_18px_45px_-24px_rgba(0,0,0,0.7)] transition-transform duration-300 hover:-translate-y-1 ' +
-                      (logo.darkPanel ? 'bg-carbon ring-1 ring-white/15' : 'bg-white')
-                    }
-                  >
-                    {/* The mark is capped on both axes rather than sat in a
-                        padded box, because the roster is not one shape: a wide
-                        wordmark and a square badge in the same padding box come
-                        out wildly different optical sizes — the wordmark fills
-                        its width and towers, the badge shrinks to the height and
-                        floats. Two independent caps let each shape stop at the
-                        size that makes it *look* the same weight as its
-                        neighbours.
-
-                        The numbers are a pair, not two settings. On this 5:3
-                        panel the height cap resolves to 0.35 of the panel's
-                        width, so a square mark lands at ~0.35w and a 4:1
-                        wordmark at 0.70w by 0.18w — near enough the same inked
-                        area, which is what the eye actually reads as "same
-                        size". Changing the panel ratio means re-deriving both. */}
-                    <img
-                      src={sized(logo.image, 'logo')}
-                      alt={logo.alt ?? ''}
-                      loading="lazy"
-                      decoding="async"
-                      className="max-h-[58%] max-w-[70%] object-contain"
-                    />
-                  </div>
+                  <Panel logo={logo} />
                 </motion.div>
               ))}
             </div>
           ))}
         </div>
+        )}
       </div>
     </section>
   )

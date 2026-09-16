@@ -153,10 +153,21 @@ export default function Hero() {
     // has nothing to squeeze and a `dvh` term would only shrink the type for
     // no reason (DESIGN.md §2). The `min-h` floor went with them — a minimum
     // under a fixed height can never apply.
+    // Phones are the exception to the fixed frame. 1024px against an 844px
+    // screen left 609px of hero below the CTA — 389 of it the bottom fade —
+    // so the section ran a fifth past the viewport into what reads as a gap
+    // before the partners. The fixed object is right on a desktop, where the
+    // frame is close to the window anyway; on a phone it is just overshoot.
+    //
+    // `svh`, not `dvh`: the background here drifts on scroll, and `dvh`
+    // changes as the URL bar collapses, so the frame would resize mid-drift
+    // and the photograph would jump. `svh` is the height with the chrome
+    // showing and does not move. The `min-h` floor is for landscape, where
+    // one screen is ~390px and the copy would otherwise be crushed.
     <section
       id="hero"
       ref={scope}
-      className="relative isolate h-256 w-full overflow-hidden bg-void"
+      className="relative isolate h-[100svh] min-h-[34rem] w-full overflow-hidden bg-void md:h-256"
     >
       {/* ── the photograph ──────────────────────────────────────────────
           Oversized and hung above the section so the scroll drift always has
@@ -214,9 +225,13 @@ export default function Hero() {
 
       <span aria-hidden className="pointer-events-none absolute inset-0" style={{ background: SHADE }} />
       <span aria-hidden className="pointer-events-none absolute inset-0" style={{ background: VEIL }} />
+      {/* 38% of a wide frame is a soft landing; 38% of a phone's is 320px of
+          the photograph dissolved into the page ground, which is most of what
+          read as dead space under the building. Shallower on a phone, where
+          the frame is tall and narrow and there is far less picture to spend. */}
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-[38%] bg-base"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-[22%] bg-base md:h-[38%]"
         style={{ maskImage: FADE_MASK, WebkitMaskImage: FADE_MASK }}
       />
 

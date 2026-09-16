@@ -265,14 +265,40 @@ export default function AvailableUnits() {
             below.
           </p>
         ) : (
-          /* Was `sm:grid-cols-2 lg:grid-cols-4`, which skipped the three-up
-             rung and put the whole jump on one pixel: 400px cards at 1023px
-             became 188px at 1024px — a photograph, a name, a size and a price
-             at 188px, on exactly the laptop width where the site starts
-             reading as a desktop. `auto-fit` spaces the change out instead,
-             holding a card at 15rem or better, which is where the name and
-             price still sit comfortably on two lines. */
-          <div className="-mx-gutter mt-10 grid auto-cols-[85%] grid-flow-col snap-x snap-mandatory gap-6 overflow-x-auto overscroll-x-contain px-gutter py-3 scroll-px-gutter md:mx-0 md:auto-cols-auto md:grid-flow-row md:grid-cols-[repeat(auto-fit,minmax(15rem,1fr))] md:overflow-visible md:px-0 md:py-0">
+          /* A rail everywhere below the desktop rung, a grid at it.
+
+             The switch used to happen at `md`, which put the whole tablet
+             range — the widths that are actually called "responsive" — into a
+             wrapping grid: at 768px `auto-fit` fits two columns, so four units
+             came out as two rows of two. A teaser that wraps stops reading as
+             a teaser, because a second row looks like the start of an index.
+             It now stays a single scrollable row until `xl`, which is the
+             first width where four cards genuinely fit across and there is
+             nothing left to scroll. `lg` was the obvious rung and the wrong
+             one: the gutter is `clamp(1.5rem, 6.5vw, 6.25rem)`, so it eats 13%
+             of the viewport through this whole range, and at 1053px the
+             content box is ~916px — three tracks of 15rem, not four. The
+             fourth card dropped to a row of its own, which is a worse
+             stacking than the one the rail was fixing. Four tracks need
+             ~1032px of content, so the grid cannot appear below ~1186px.
+
+             The track width steps down with the breakpoint instead of holding
+             at 85%: one card and a peek is right on a phone, but 85% of a
+             tablet is a 650px card, which is a poster. Each step keeps the
+             next card partly visible, which is what tells a visitor the row
+             moves — there is no other affordance for it.
+
+             `auto-fit` at the top rung, not a fixed `grid-cols-4`, even
+             though the teaser caps at four: a size filter can leave one or two
+             matches, and fixed columns would strand those against two empty
+             tracks. `auto-fit` collapses the empties and lets what is there
+             stretch. It also beats the `sm:grid-cols-2 lg:grid-cols-4` this
+             once had, which skipped the three-up rung and
+             put the whole jump on one pixel, 400px cards at 1023px becoming
+             188px at 1024px, on exactly the laptop width where the site starts
+             reading as a desktop. `auto-fit` holds a card at 15rem or better,
+             which is where the name and price still sit on two lines. */
+          <div className="-mx-gutter mt-10 grid auto-cols-[85%] grid-flow-col snap-x snap-mandatory gap-6 overflow-x-auto overscroll-x-contain px-gutter py-3 scroll-px-gutter sm:auto-cols-[52%] md:auto-cols-[38%] lg:auto-cols-[30%] xl:mx-0 xl:auto-cols-auto xl:grid-flow-row xl:grid-cols-[repeat(auto-fit,minmax(15rem,1fr))] xl:overflow-visible xl:px-0 xl:py-0">
             {shown.map(({ property, building, unit, sf }) => {
               // The card's whole job is to hand the visitor *this* unit, not
               // the property it happens to sit in. The plan section reads

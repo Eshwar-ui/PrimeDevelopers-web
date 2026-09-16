@@ -5,6 +5,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import { useSection, useProperties } from '../context/ContentContext'
 import { sized } from '../lib/images'
+import { renderEmphasis } from '../lib/emphasis'
 import ActionButton from './ActionButton'
 import ArrowRight from './ArrowRight'
 import BrochureRequestModal from './BrochureRequestModal'
@@ -120,7 +121,13 @@ export default function Properties() {
     >
       <div className="mx-auto mb-8 max-w-[1560px] pt-6 text-center md:mb-12 md:pt-10">
         <h2 id="properties-heading" className="text-balance font-display text-[clamp(1.75rem,3.1vw,2.85rem)] font-bold leading-[1.1] tracking-[-0.02em] text-content">
-          {heading || 'Our properties'}
+          {/* Same `*word*` convention the other homepage headings read, so this
+              one can carry an emphasis without a field of its own — and text
+              with no asterisks renders exactly as it did before. `text-ember`
+              rather than the helper's italic accent default, because that is
+              what FeaturedProperty, Gallery and SectionIntro already use: the
+              highlighted word on this page is Deep Saffron, not blue. */}
+          {renderEmphasis(heading || 'Our *properties*.', 'text-ember')}
         </h2>
       </div>
       <div className="-mx-gutter flex max-w-[1560px] snap-x snap-mandatory gap-6 overflow-x-auto overscroll-x-contain px-gutter py-3 scroll-px-gutter md:mx-auto md:flex-col md:overflow-visible md:px-0 md:py-0">

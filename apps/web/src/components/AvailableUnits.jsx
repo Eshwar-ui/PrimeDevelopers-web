@@ -6,7 +6,7 @@ import { useGSAP } from '@gsap/react'
 import { Buildings, Camera, MapPin, Ruler, Stack, Tag } from '@phosphor-icons/react'
 import { useProperties } from '../context/ContentContext'
 import { getBuildings, getUnits, formatArea, formatUnitLabel, getUnitImages } from '../lib/units'
-import { UNIT_STATUSES, unitStatusMeta } from '../lib/unitStatus'
+import { unitStatusMeta } from '../lib/unitStatus'
 import { hasInfoSet } from '../lib/infoSets'
 import { sized } from '../lib/images'
 import ActionButton from './ActionButton'
@@ -136,52 +136,31 @@ export default function AvailableUnits() {
   const navigate = useNavigate()
   const scope = useRef(null)
   const [tier, setTier] = useState('all')
-  // null means every status. A filter rather than a set of tabs: the default
-  // view is the whole inventory, and a visitor narrows it only if they came
-  // with a question about one status in particular.
-  const [status, setStatus] = useState(null)
-
   const allUnits = useMemo(() => collectUnits(properties), [properties])
 
-  // Counted against the size filter but not against itself, so a status pill
-  // always shows how many units it would reveal rather than dropping to zero
-  // the moment a different status is picked.
   const sizeFiltered = useMemo(() => {
     const test = SIZE_TIERS.find((t) => t.id === tier)?.test ?? (() => true)
     return allUnits.filter((row) => test(row.sf))
   }, [allUnits, tier])
 
-  const statusCounts = useMemo(() => {
-    const counts = {}
-    for (const row of sizeFiltered) counts[row.unit.status] = (counts[row.unit.status] ?? 0) + 1
-    return counts
-  }, [sizeFiltered])
-
-  const filtered = useMemo(
-    () => (status ? sizeFiltered.filter((row) => row.unit.status === status) : sizeFiltered),
-    [sizeFiltered, status],
-  )
-
   /**
-   * The four cards actually rendered.
-   *
-   * With a status picked, the first four of it — the visitor has said what
-   * they want to see. With no status picked, a round-robin across the
-   * statuses present instead of the plain top four.
+   * The four cards actually rendered: a round-robin across the statuses
+   * present rather than the plain top four.
    *
    * Straight slicing looked right and wasn't: Centro has 20 available units
-   * and 47 sold ones, available sorts first, so "All statuses" rendered four
-   * available units and no evidence that the other 47 existed. A visitor who
-   * never touches the pills would see the same section as before. The
+   * and 47 sold ones, and available sorts first, so the section rendered four
+   * available units and no evidence that the other 47 existed. The
    * round-robin leads on availability — it takes the first bucket first — and
    * still puts a let unit on screen, which is what makes the rest of the
    * inventory discoverable at all.
+   *
+   * This carries more weight now that the status pills are gone: the mix is
+   * the only thing telling a visitor the inventory is broader than four
+   * vacancies.
    */
   const shown = useMemo(() => {
-    if (status) return filtered.slice(0, TEASER_COUNT)
-
     const buckets = new Map()
-    for (const row of filtered) {
+    for (const row of sizeFiltered) {
       if (!buckets.has(row.unit.status)) buckets.set(row.unit.status, [])
       buckets.get(row.unit.status).push(row)
     }
@@ -196,7 +175,7 @@ export default function AvailableUnits() {
       }
     }
     return picked
-  }, [filtered, status])
+  }, [sizeFiltered])
 
   useGSAP(
     () => {
@@ -251,8 +230,7 @@ export default function AvailableUnits() {
             Find your <span className="text-accent">ideal</span> space
           </h2>
           <p className="mt-3 font-body text-[15px] leading-relaxed text-content/70">
-            Filter by size and availability — every unit across the portfolio, including the ones
-            already let.
+            Filter by size — every unit across the portfolio, including the ones already let.
           </p>
         </div>
 
@@ -281,59 +259,10 @@ export default function AvailableUnits() {
           })}
         </div>
 
-        {/* A second, quieter rail. Size is the question most visitors arrive
-            with, so it keeps the solid pills; status is the one they narrow
-            by afterwards, and it carries its own colour rather than the
-            accent so the two rows cannot be mistaken for one control. A
-            status with nothing under the current size filter is disabled
-            rather than hidden — a pill that appears and vanishes as you
-            change size reads as a glitch. */}
-        <div
-          className="-mx-gutter mt-3 flex snap-x snap-mandatory items-center gap-2.5 overflow-x-auto px-gutter pb-2 scroll-px-gutter sm:mx-0 sm:flex-wrap sm:justify-center sm:overflow-visible sm:px-0 sm:pb-0"
-          role="group"
-          aria-label="Filter units by availability"
-        >
-          <button
-            type="button"
-            aria-pressed={status === null}
-            onClick={() => setStatus(null)}
-            className={`min-h-10 shrink-0 snap-start rounded-full border px-4 font-body text-[12px] font-bold transition-colors duration-200 ease-brand ${
-              status === null
-                ? 'border-content/45 bg-content/10 text-content'
-                : 'border-content/20 text-content/60 hover:border-content/45 hover:text-content'
-            }`}
-          >
-            All statuses
-            <span className="ml-1.5 font-normal opacity-55">{sizeFiltered.length}</span>
-          </button>
-          {UNIT_STATUSES.map((s) => {
-            const count = statusCounts[s.value] ?? 0
-            const isActive = status === s.value
-            return (
-              <button
-                key={s.value}
-                type="button"
-                disabled={!count}
-                aria-pressed={isActive}
-                onClick={() => setStatus(isActive ? null : s.value)}
-                className={`flex min-h-10 shrink-0 snap-start items-center gap-2 rounded-full border px-4 font-body text-[12px] font-bold transition-colors duration-200 ease-brand disabled:cursor-default disabled:opacity-35 ${
-                  isActive
-                    ? 'border-content/45 bg-content/10 text-content'
-                    : 'border-content/20 text-content/60 enabled:hover:border-content/45 enabled:hover:text-content'
-                }`}
-              >
-                <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ backgroundColor: s.hex }} />
-                {s.label}
-                <span className="font-normal opacity-55">{count}</span>
-              </button>
-            )
-          })}
-        </div>
-
         {shown.length === 0 ? (
           <p className="mt-12 text-center font-body text-sm text-content/70">
-            No units match those filters right now — try another size or status, or explore the full
-            list below.
+            No units match that size right now — try another size, or explore the full list
+            below.
           </p>
         ) : (
           /* Was `sm:grid-cols-2 lg:grid-cols-4`, which skipped the three-up
@@ -531,7 +460,7 @@ export default function AvailableUnits() {
           </div>
         )}
 
-        {filtered.length > TEASER_COUNT && (
+        {sizeFiltered.length > TEASER_COUNT && (
           <div className="mt-8 flex justify-center">
             <ActionButton tone="ghost" href="/properties">
               View all properties

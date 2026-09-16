@@ -2,38 +2,10 @@ import { useMemo } from 'react'
 import { motion } from 'motion/react'
 import { rise } from '../lib/motion'
 import CountUp from './CountUp'
+import { sized } from '../lib/images'
+import fallbackHeroImage from '../assets/property-1.webp'
 
-/**
- * The /properties opener: the portfolio stated in figures.
- *
- * This replaced a full-fold map — a synthetic street network drawn in SVG with
- * the towns pinned onto it by real Web Mercator projection. The arrangement was
- * true and the drawing was honest about being texture, but the fold did not
- * work: the streets sat at low opacity on a near-black ground and read as a
- * smudge rather than as a map, and the pins carrying the only real information
- * were pushed under the fold by the copy above them. A picture that has to be
- * explained is not doing the job a picture is for.
- *
- * The figures do what the map was reaching for and could not reach. "We hold a
- * portfolio of this size, this much of it is spoken for, this much is free
- * today" is the shape of the business, and it is legible in one pass at any
- * width, in either theme, with nothing to render badly.
- *
- * ── On sizing ──────────────────────────────────────────────────────────────
- *
- * No `dvh` anywhere, and no viewport-height floor. The old fold carried both
- * because it was a fixed one-screen composition: the copy and the pin band
- * competed for one column of pixels, so a short window had to shrink the type
- * rather than push the pins off the bottom, and a `min-h` of 58rem kept the map
- * from collapsing on a 1366×768 laptop. With the map gone there is no fold to
- * defend — the section is as tall as what it holds, and the grid of listings
- * below now starts roughly 400px further up the page.
- *
- * That is DESIGN.md §2's own rule applied rather than inherited: a `dvh` term
- * belongs only where a heading shares a fixed one-screen fold with something
- * beneath it. Left in place here it would shrink the headline on short windows
- * to make room for nothing.
- */
+/** Portfolio photography with a dark overlay and live availability figures. */
 
 // `buildings` is the total-unit column, not a count of buildings. The admin
 // still labels the field "Buildings" from a schema that changed underneath it,
@@ -79,17 +51,33 @@ function portfolioStats(properties) {
 
 export default function PropertiesHero({ properties = [], children }) {
   const stats = useMemo(() => portfolioStats(properties), [properties])
+  const heroImage = properties.find((property) => property.image)?.image || fallbackHeroImage
 
   return (
     <section
       id="properties-hero"
-      data-band="light"
+      data-band="dark"
       // Padding, not height. The old fold set a floor of 58rem so the map had
       // somewhere to live; this section is as tall as its copy and its figures,
       // which on a laptop puts the collection grid within reach of the first
       // scroll instead of a screen and a half below it.
-      className="bg-base px-gutter pb-20 pt-32 text-content md:pb-24 md:pt-36"
+      className="relative isolate overflow-hidden bg-base px-gutter pb-20 pt-32 text-content md:pb-24 md:pt-36"
+      style={{ '--color-content': '#e9f0f3', '--color-accent': '#60b6dc', '--color-line': 'rgba(255,255,255,0.2)' }}
     >
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10">
+        <img
+          src={sized(heroImage, 'full')}
+          alt=""
+          fetchPriority="high"
+          onError={(event) => {
+            if (event.currentTarget.src.endsWith(fallbackHeroImage)) return
+            event.currentTarget.src = fallbackHeroImage
+          }}
+          className="h-full w-full object-cover object-center"
+        />
+        <div className="absolute inset-0 bg-[#071116]/65" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(7,17,22,0.35)_0%,transparent_45%,var(--color-base)_100%)]" />
+      </div>
       <div className="mx-auto max-w-[1560px]">
         {children}
 
@@ -110,7 +98,7 @@ export default function PropertiesHero({ properties = [], children }) {
             className="mx-auto mt-16 grid max-w-4xl grid-cols-2 gap-px overflow-hidden rounded-panel bg-[var(--color-line)] md:mt-20 md:grid-cols-4"
           >
             {stats.map((stat) => (
-              <div key={stat.label} className="flex flex-col items-center gap-1.5 bg-base px-4 py-7">
+              <div key={stat.label} className="flex flex-col items-center gap-1.5 bg-[#0b1216]/80 px-4 py-7 backdrop-blur-sm">
                 <dt className="order-2 font-body text-[11px] font-bold uppercase tracking-[0.16em] text-content/70">
                   {stat.label}
                 </dt>

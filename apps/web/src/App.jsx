@@ -5,7 +5,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useSmoothScroll, lenis } from './hooks/useSmoothScroll'
 import Navbar from './components/Navbar'
 import Hero from './components/Hero'
-import Partners from './components/Partners'
+import PartnerWall from './components/PartnerWall'
 
 import FeaturedProperty from './components/FeaturedProperty'
 import AvailableUnits from './components/AvailableUnits'
@@ -93,7 +93,7 @@ function Home() {
           shifts the section a couple of dozen pixels inside a clipped box, so
           whatever colour is set here is what shows at the seams. */}
       <LandingParallaxChapter depth={28} className="bg-void">
-        <Partners />
+        <PartnerWall />
       </LandingParallaxChapter>
       <LandingParallaxChapter depth={22}>
         <FeaturedProperty />

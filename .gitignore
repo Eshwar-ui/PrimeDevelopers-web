@@ -77,3 +77,9 @@ test-model.glb
 # so this was three artifacts churning independently. Deleting it only costs a
 # full re-upload on the next deploy.
 .firebase/
+
+# Restore points written by scripts/sync-centro-from-tracker.mjs before it
+# overwrites a property's unit inventory. Worth keeping on disk — the sync is
+# destructive and this is the only copy of what was there — but it is a
+# point-in-time dump of CMS content, not source.
+*-units-backup-*.json

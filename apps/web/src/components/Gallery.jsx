@@ -1,12 +1,16 @@
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { AnimatePresence, motion } from 'motion/react'
 import { useSection, useProperties } from '../context/ContentContext'
 import { renderEmphasis } from '../lib/emphasis'
 import { sized } from '../lib/images'
+import ArrowRight from './ArrowRight'
 
 // Four frames in the mosaic — one under the copy, two stacked in the middle,
 // one down the right. A fifth has nowhere to go without breaking the column
 // rhythm the comp is built on.
 const TILES = 4
+const MOBILE_ROTATE_MS = 4800
 
 /**
  * The portfolio at a glance: three columns of real property photographs with
@@ -20,6 +24,107 @@ const TILES = 4
  * a height, `flex-1` divides whatever is left inside each column and the three
  * feet land on the same line by construction.
  */
+function MobileGallery({ tiles, heading, paragraph, go }) {
+  const [active, setActive] = useState(0)
+
+  useEffect(() => {
+    if (tiles.length < 2 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const id = window.setTimeout(() => setActive((current) => (current + 1) % tiles.length), MOBILE_ROTATE_MS)
+    return () => window.clearTimeout(id)
+  }, [active, tiles.length])
+
+  const property = tiles[active]
+  if (!property) return null
+
+  return (
+    <div className="md:hidden">
+      <div className="mb-6">
+        <h2
+          className="text-balance font-display font-bold leading-[1.1] tracking-[-0.02em] text-content"
+          style={{ fontSize: 'clamp(1.6rem, 8vw, 2.4rem)' }}
+        >
+          {renderEmphasis(heading, 'text-ember')}
+        </h2>
+        {paragraph && (
+          <p className="mt-4 max-w-[46ch] font-body text-[14px] leading-[1.7] text-content/55">
+            {paragraph}
+          </p>
+        )}
+      </div>
+
+      <div className="relative overflow-hidden rounded-panel bg-surface-alt">
+        <AnimatePresence initial={false} mode="wait">
+          <motion.a
+            key={property.slug}
+            href={`/properties/${property.slug}`}
+            onClick={go(`/properties/${property.slug}`)}
+            initial={{ opacity: 0, scale: 1.025 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.985 }}
+            transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+            className="group relative block aspect-[1.18] overflow-hidden outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            aria-label={`View ${property.name}`}
+          >
+            <img
+              src={sized(property.image, 'card')}
+              alt={property.name}
+              loading={active === 0 ? 'eager' : 'lazy'}
+              decoding="async"
+              className="absolute inset-0 size-full object-cover transition-transform duration-700 ease-brand group-hover:scale-[1.035]"
+            />
+            {/* The scrim, and it has to actually reach the text.
+                `h-24 from-void/85 via-void/8` put its midpoint — 48px up, which
+                is where the name sits — at 8% opacity, so the caption was
+                bright white type laid on whatever the photograph happened to
+                be. On a dusk shot it read; on POW Lewisville's daylight
+                concrete it disappeared.
+
+                Taller, and the fade held back to 58% so the whole caption
+                block (two lines plus `p-5`, about 84px) sits on 60% or more
+                before the gradient is allowed to open up. */}
+            <span
+              aria-hidden
+              className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-void/92 via-void/62 via-58% to-transparent"
+            />
+            <span className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-5 text-bone">
+              <span className="min-w-0">
+                <span className="block truncate font-display text-[1.15rem] font-bold leading-tight">{property.name}</span>
+                {property.address && <span className="mt-1 block truncate font-body text-[12px] text-bone/70">{property.address}</span>}
+              </span>
+              <span aria-hidden className="flex size-9 shrink-0 items-center justify-center rounded-full bg-bone text-void transition-transform duration-300 ease-brand group-hover:-rotate-45">
+                <ArrowRight className="size-4 -rotate-45" />
+              </span>
+            </span>
+            <span className="absolute right-4 top-4 rounded-full bg-void/55 px-2.5 py-1 font-body text-[10px] font-bold tracking-[0.12em] text-bone backdrop-blur-sm">
+              {String(active + 1).padStart(2, '0')} / {String(tiles.length).padStart(2, '0')}
+            </span>
+          </motion.a>
+        </AnimatePresence>
+      </div>
+
+      <div className="mt-4 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-1.5" role="tablist" aria-label="Choose a property">
+          {tiles.map((item, index) => (
+            <button
+              key={item.slug}
+              type="button"
+              role="tab"
+              aria-selected={active === index}
+              aria-label={`Show ${item.name}`}
+              onClick={() => setActive(index)}
+              className={`h-1.5 rounded-full transition-[width,background-color] duration-300 ease-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                active === index ? 'w-7 bg-accent' : 'w-1.5 bg-content/25'
+              }`}
+            />
+          ))}
+        </div>
+        <span className="whitespace-nowrap font-body text-[10px] font-bold uppercase tracking-[0.12em] text-content/45">
+          Tap to explore
+        </span>
+      </div>
+    </div>
+  )
+}
 export default function Gallery() {
   const { heading, paragraph, ctaLabel } = useSection('gallery')
   const properties = useProperties()
@@ -70,7 +175,10 @@ export default function Gallery() {
           collapses on a small laptop nor grows into a whole screen of
           photographs on a wide monitor. Below `md` it is dropped entirely and
           the columns stack at their natural heights. */}
-      <div className="mx-auto grid max-w-[1560px] gap-4 md:h-[clamp(30rem,43vw,44rem)] md:grid-cols-3">
+      <div className="mx-auto max-w-[1560px]">
+        <MobileGallery tiles={tiles} heading={heading} paragraph={paragraph} go={go} />
+
+        <div className="hidden gap-4 md:grid md:h-[clamp(30rem,43vw,44rem)] md:grid-cols-3">
         {/* ── column one — the copy, then one tall frame ─────────── */}
         <div className="flex flex-col gap-4">
           <div className="md:pr-4">
@@ -114,6 +222,7 @@ export default function Gallery() {
           >
             {ctaLabel || 'See more projects'}
           </a>
+        </div>
         </div>
       </div>
     </section>

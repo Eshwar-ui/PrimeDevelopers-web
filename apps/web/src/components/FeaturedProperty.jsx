@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useSection } from '../context/ContentContext'
+import { AnimatePresence, motion } from 'motion/react'
+import { useSection, useProperties } from '../context/ContentContext'
 import { renderEmphasis } from '../lib/emphasis'
 import { sized } from '../lib/images'
 import ActionButton from './ActionButton'
@@ -17,7 +19,24 @@ import ArrowRight from './ArrowRight'
  */
 export default function FeaturedProperty() {
   const f = useSection('featured_home')
+  const properties = useProperties()
+  const centroPlaza = properties.find((property) => property.slug === 'centro-plaza')
+  const isCentroFeature = /centro plaza/i.test(`${f.heading ?? ''} ${f.subheading ?? ''} ${f.ctaHref ?? ''}`)
+  const heroImages = isCentroFeature
+    ? centroPlaza
+      ? Array.from(new Set([centroPlaza.image, ...(centroPlaza.gallery ?? [])].filter(Boolean))).slice(0, 6)
+      : []
+    : [f.image].filter(Boolean)
+  const heroName = isCentroFeature ? centroPlaza?.name ?? 'Centro Plaza' : f.imageAlt || 'Featured property'
+  const [activeImage, setActiveImage] = useState(0)
+  const safeActiveImage = heroImages.length ? activeImage % heroImages.length : 0
   const navigate = useNavigate()
+
+  useEffect(() => {
+    if (heroImages.length < 2 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const id = window.setTimeout(() => setActiveImage((current) => (current + 1) % heroImages.length), 5200)
+    return () => window.clearTimeout(id)
+  }, [activeImage, heroImages.length])
 
   // The panel is the client's to switch off. With no heading there is no
   // feature this month, and an empty bordered slab is worse than no section.
@@ -52,13 +71,13 @@ export default function FeaturedProperty() {
             the card grew a band of dead space down the copy side. */}
         <div
           className={`grid gap-8 rounded-frame border border-accent/25 bg-surface p-5 md:gap-10 md:p-7 lg:p-9 ${
-            f.image ? 'lg:grid-cols-[1fr_2fr]' : ''
+            heroImages.length > 0 ? 'lg:grid-cols-[1fr_2fr]' : ''
           }`}
         >
           {/* ── copy ─────────────────────────────────────────────── */}
           <div
             className={
-              f.image ? 'flex flex-col justify-center lg:pr-2' : 'max-w-[68ch]'
+              heroImages.length > 0 ? 'flex flex-col justify-center lg:pr-2' : 'max-w-[68ch]'
             }
           >
             {f.eyebrow && (
@@ -130,19 +149,48 @@ export default function FeaturedProperty() {
           </div>
 
           {/* ── the photograph ───────────────────────────────────── */}
-          {f.image && (
+          {heroImages.length > 0 && (
             // The min-height is the floor, not the height. On a phone this is a
             // single-column grid, so the row has no sibling to take its height
             // from and `h-full` would resolve to nothing; from `lg` up the copy
             // beside it is always taller and the floor never applies.
             <div className="relative min-h-56 overflow-hidden rounded-panel bg-surface-alt sm:min-h-72 lg:h-full lg:min-h-0">
-              <img
-                src={sized(f.image, 'card')}
-                alt={f.imageAlt || ''}
-                loading="lazy"
-                decoding="async"
-                className="absolute inset-0 size-full object-cover transition-transform duration-700 ease-brand hover:scale-[1.03]"
-              />
+              <AnimatePresence initial={false} mode="sync">
+                <motion.img
+                  key={heroImages[safeActiveImage]}
+                  src={sized(heroImages[safeActiveImage], 'card')}
+                  alt={`${centroPlaza?.name ?? 'Centro Plaza'} view ${safeActiveImage + 1}`}
+                  loading={safeActiveImage === 0 ? 'eager' : 'lazy'}
+                  decoding="async"
+                  initial={{ opacity: 0, scale: 1.025 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.99 }}
+                  transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                  className="absolute inset-0 size-full object-cover object-bottom"
+                />
+              </AnimatePresence>
+              {heroImages.length > 1 && (
+                <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-4 bg-gradient-to-t from-void/70 via-void/10 to-transparent px-4 pb-4 pt-12 sm:px-5">
+                  <div className="flex items-center gap-1.5" role="tablist" aria-label="Featured property images">
+                    {heroImages.map((image, index) => (
+                      <button
+                        key={image}
+                        type="button"
+                        role="tab"
+                        aria-selected={safeActiveImage === index}
+                        aria-label={`Show image ${index + 1}`}
+                        onClick={() => setActiveImage(index)}
+                        className={`h-1.5 rounded-full transition-[width,background-color] duration-300 ease-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                          safeActiveImage === index ? 'w-7 bg-bone' : 'w-1.5 bg-bone/45'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <span aria-live="polite" className="font-body text-[10px] font-bold uppercase tracking-[0.12em] text-bone/75">
+                    {String(safeActiveImage + 1).padStart(2, '0')} / {String(heroImages.length).padStart(2, '0')}
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>

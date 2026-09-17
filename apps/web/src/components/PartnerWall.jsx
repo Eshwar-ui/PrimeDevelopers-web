@@ -224,17 +224,23 @@ export default function PartnerWall() {
             ))}
           </div>
         ) : (
-          /* Full-bleed rather than inside the page gutter: the wall is the one
-             element here that is meant to measure the viewport. The padding
-             left on it is a safety margin, not a gutter — panels flush to a
-             phone's screen edge read as clipped.
+          /* On the page measure, not full-bleed: `px-gutter` outside and
+             `max-w-[1560px]` inside is the pair the navbar sets and every
+             section on the page follows, so the wall's outer panels now line
+             up with the logo and the Enquire button above them. It ran to a
+             flat `px-6` before, which at a 1500px window put its edges ~74px
+             outside the nav's — close enough to read as a mistake rather than
+             as a full-bleed band.
 
-             Not a list, either: a `ul` of rows announces "4 items" rather than
-             the partners, and a `ul` of logos cannot hold the rows the layout
+             The cell width is a percentage of this box, so narrowing it is
+             what scales the panels down; nothing else needs touching.
+
+             Not a list: a `ul` of rows announces "4 items" rather than the
+             partners, and a `ul` of logos cannot hold the rows the layout
              needs. The order is stable and every mark carries its own alt
              text, so the images are the content on their own. */
         <div
-          className="mt-10 flex flex-col px-4 md:mt-14 md:px-6"
+          className="mx-auto mt-10 flex w-full max-w-[1560px] flex-col px-gutter md:mt-14"
           // One gap value for both axes, and the cell width is written against
           // it below, so changing it here keeps the rows aligned.
           style={{ '--wall-gap': 'clamp(0.5rem, 1.2vw, 1.25rem)', gap: 'var(--wall-gap)' }}

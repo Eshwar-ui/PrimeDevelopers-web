@@ -52,52 +52,6 @@ const HIGHLIGHT_ICONS = [
 ]
 const HIGHLIGHT_FALLBACK = 'M12 4l8 8-8 8-8-8 8-8Z'
 
-// Glyphs for the overview figures. Chosen by what the label says, the same way
-// HIGHLIGHT_ICONS reads a title, because these labels are free text an admin
-// typed — "SFT Property Size", "Total Units", "Available Units" — and a fixed
-// icon per position would mislabel the moment someone reorders them.
-//
-// Order is load-bearing rather than incidental: "Available Units" satisfies the
-// units test as well as the availability one, so the narrower reading has to be
-// offered first or two of the three figures draw the same mark.
-//
-// Each entry is a list of paths — the two-figure mark can't be drawn in one.
-const STAT_ICONS = [
-  [
-    /\b(available|vacant|remaining|unleased)\b/i,
-    ['M21 8.2 12 3 3 8.2v7.6L12 21l9-5.2V8.2Z', 'M3 8.2l9 5.2 9-5.2', 'M12 13.4V21'],
-  ],
-  [
-    /\b(total|units?|tenants?|occupancy|leased|sold)\b/i,
-    ['M16 21v-1.8a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4V21', 'M9 11.2a4.1 4.1 0 1 0 0-8.2 4.1 4.1 0 0 0 0 8.2', 'M22 21v-1.8a4 4 0 0 0-3-3.87', 'M16 3.13a4.1 4.1 0 0 1 0 7.94'],
-  ],
-  [
-    /\b(sft|sq|square|size|acres?|area|project|feet)\b/i,
-    ['M4 21V6a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v15', 'M12 21V11a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v10', 'M3 21h18', 'M7 9h2M7 13h2M7 17h2', 'M15 14h2M15 18h2'],
-  ],
-]
-
-function StatIcon({ label }) {
-  const match = STAT_ICONS.find(([test]) => test.test(label ?? ''))
-  const paths = match ? match[1] : [HIGHLIGHT_FALLBACK]
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="size-5 text-content/40"
-    >
-      {paths.map((d) => (
-        <path key={d} d={d} />
-      ))}
-    </svg>
-  )
-}
-
 const TILE_TONES = [
   'bg-content/6 text-content/70',
   'bg-[color-mix(in_srgb,var(--color-status-available)_14%,transparent)] text-[var(--color-status-available)]',
@@ -206,11 +160,9 @@ export default function PropertyDetailPage() {
 
   const d = property.detail
   const gallery = property.gallery ?? []
-  // The overview shows two frames, not a collage. The hero photograph is
-  // usually also the first gallery entry, so it is dropped here — showing the
-  // reader the image they just scrolled past reads as a duplicate rather than
-  // as a second view of the site.
-  const overviewImages = gallery.filter((src) => src && src !== property.image).slice(0, 2)
+  // Use several gallery frames so the overview feels like a property tour
+  // rather than a single hero followed by an empty reserved area.
+  const overviewImages = gallery.filter((src) => src && src !== property.image).slice(0, 6)
   // Guarded: a property with no buildings yet would divide 0 by 0 and render
   // "(NaN% currently reserved.)" in the enquiry copy.
   const soldPct = property.buildings > 0 ? Math.round((property.sold / property.buildings) * 100) : 0
@@ -225,80 +177,108 @@ export default function PropertyDetailPage() {
       />
 
       {/* ── Overview ─────────────────────────────────────────── */}
-      {/* The argument on the left, the photography beside it as evidence, and
-          the project's figures on a full-width band that closes the section.
-          Three groups, and which one owns the figures is the whole design:
-          they describe the development, not the two frontages above them, so
-          they sit outside the columns rather than under one of them.
+      {/* Three full-width blocks stacked down the section: the photography,
+          the argument, the figures. Nothing sits beside anything else at the
+          top level, so each block gets the whole measure and the eye moves
+          straight down — show the place, explain it, then prove it.
 
-          That is also the only place they fit. Inside the right column the row
-          had ~390px at 1024px to seat three unwrappable numerals, their icons
-          and their rules — it overflowed its own panel at every desktop width
-          and only got worse with a longer figure or a fourth stat. Full width
-          it has 270px per cell at the narrowest supported layout. */}
+          The copy and the figures stand on panels rather than on the section
+          ground. They are two objects, and a hairline between them read as one
+          continuous column of text. `surface-alt` is the fill because it
+          separates from `base` in both themes (#eeeeee on white, #10191f on
+          #0b1216); a `surface` panel would have been the same white as the
+          ground in light and a raised card only in dark, which is the
+          one-idiom-two-themes failure DESIGN.md §1 warns about.
+
+          The figures stay out of the copy block, as they always have: they
+          describe the development rather than the frontages above them, and in
+          a half-width column at 1024px three unwrappable numerals had ~390px
+          and overflowed their own panel. On their own row they have room for a
+          fourth. */}
       {d?.overview?.heading && (
         <section id="overview" data-band="light" className="bg-base px-gutter py-20 md:py-28">
           <div className="mx-auto max-w-[1560px]">
-            {/* One column, photographs first. This ran as two columns with the
-                frames beside the copy; it now leads with them across the full
-                measure and lets the copy answer underneath, so the first thing
-                the section does is show the place rather than describe it.
+            {/* Each photo has its own frame. The lead image spans the first
+                two desktop columns, while the remaining views fill the grid
+                so no image depends on an absolutely positioned sibling for
+                its height. */}
+            {overviewImages.length > 0 && (
+              <motion.div
+                variants={stagger}
+                initial="hidden"
+                whileInView="show"
+                viewport={inViewOnce}
+                className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
+              >
+                {overviewImages.map((image, index) => (
+                  <motion.div
+                    key={`${image}-${index}`}
+                    variants={rise}
+                    className={`overflow-hidden rounded-panel border border-line bg-surface-alt ${
+                      index === 0 ? 'sm:col-span-2 lg:col-span-2 lg:row-span-2' : ''
+                    }`}
+                  >
+                    <img
+                      src={sized(image, index === 0 ? 'full' : 'card')}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                      className={`w-full object-cover transition-transform duration-700 ease-brand hover:scale-[1.04] ${
+                        index === 0 ? 'aspect-[4/3] sm:aspect-[16/10]' : 'aspect-[16/9]'
+                      }`}
+                    />
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
+            {/* The argument and its figures, on one panel under the mosaic.
 
-                Nothing here is conditional any more. `lg:items-center` existed
-                to absorb the height difference between two columns, and the
-                empty-half guard existed because a two-column grid with one side
-                missing is worse than a single column — with one column there is
-                no second side to balance or to leave empty, and a listing with
-                no gallery simply drops the first child. */}
-            <div className="grid gap-12 lg:gap-16">
-              {/* Evidence, and now the section's opening statement. `gap-4`
-                  between the two frames against `gap-12` to the copy below: the
-                  pair is one idea and reads as one.
+                They were two panels with a gap between them, which set the
+                figures up as a separate object that happened to follow — and
+                they are not a separate object: "150,638 SFT" is the evidence
+                for the sentence directly above it, and the pill is what the
+                whole panel is asking you to do about it. One card with a rule
+                across it says that; two cards said the reader had finished
+                something and started something else.
 
-                  Side by side from `sm` up and never stacking. The old
-                  `lg:grid-cols-1` is gone with the two-column layout that
-                  needed it — frames in a half-width column were ~270px wide, so
-                  they had to stack to carry any height, whereas across the full
-                  measure each one is ~770px and a stack would push the copy
-                  most of a screen down.
+                Inside, two parts. The copy runs as two columns — what the place
+                is on the left, what that means on the right — split 0.9/1.25
+                rather than evenly, because the heading is a two-line statement
+                and the body is a paragraph, and an even split leaves the left
+                column half empty while squeezing the right one under its
+                measure. The body drops to meet the heading's first line when
+                there is an eyebrow above it, and sits flush with the heading
+                when there isn't; aligned to the eyebrow instead, it floated
+                above the sentence it answers. */}
+            <motion.div
+              variants={stagger}
+              initial="hidden"
+              whileInView="show"
+              viewport={inViewOnce}
+              className="mt-6 rounded-panel bg-surface-alt px-6 py-10 sm:px-10 md:px-12 md:py-14"
+            >
+              {/* Three children of one grid rather than a column beside a
+                  paragraph, and that is what aligns the two.
 
-                  An aspect ratio, not a fixed height — with `h-56 md:h-64` the
-                  same frontage was cropped ~1.5:1 as a pair and ~3:1 alone, so
-                  the photograph changed shape with the size of the gallery. The
-                  ratio turns with the frame's width rather than the layout: 4:3
-                  while a frame is small (at 768 it is 274px, and a letterbox
-                  crop of a shopfront at that size shows nothing), 16:9 from
-                  `lg`, where 4:3 would stand the pair 580px tall and push the
-                  heading under the fold. */}
-              {overviewImages.length > 0 && (
-                <motion.div
-                  variants={stagger}
-                  initial="hidden"
-                  whileInView="show"
-                  viewport={inViewOnce}
-                  className={`grid gap-4 ${overviewImages.length > 1 ? 'sm:grid-cols-2' : ''}`}
-                >
-                  {overviewImages.map((image, i) => (
-                    <motion.div
-                      key={`${image}-${i}`}
-                      variants={rise}
-                      className="overflow-hidden rounded-panel border border-line bg-surface-alt"
-                    >
-                      <img
-                        src={sized(image, 'card')}
-                        alt=""
-                        loading="lazy"
-                        decoding="async"
-                        className="aspect-[4/3] w-full object-cover transition-transform duration-700 ease-brand hover:scale-[1.04] lg:aspect-[16/9]"
-                      />
-                    </motion.div>
-                  ))}
-                </motion.div>
-              )}
+                  The eyebrow takes row 1 on its own; the heading and the body
+                  share row 2. So the body starts exactly where the heading
+                  starts, whatever the eyebrow's height and whatever the
+                  heading's clamp has resolved to at this width. It was a
+                  `lg:mt-10` guess at that offset before, fitted to one viewport
+                  — and since the heading is sized in `vw` and the eyebrow in
+                  `px`, the gap it was compensating for changes with the window,
+                  so the two texts drifted apart on either side of wherever the
+                  guess happened to be right.
 
-              <motion.div variants={stagger} initial="hidden" whileInView="show" viewport={inViewOnce}>
+                  `mt-4` on both of them, not a `gap-y`: it is the space under
+                  the eyebrow on a phone, where this is one column, and inside
+                  row 2 it lands on the heading and the body equally and cancels
+                  out. Only one `lg:mt-*` is ever written, because two would
+                  resolve by stylesheet order rather than by the order they are
+                  listed here. */}
+              <div className="grid gap-x-16 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.25fr)] lg:items-start">
                 {d.overview.eyebrow && (
-                  <motion.div variants={rise}>
+                  <motion.div variants={rise} className="lg:col-start-1 lg:row-start-1">
                     <SectionTag>{d.overview.eyebrow}</SectionTag>
                   </motion.div>
                 )}
@@ -316,29 +296,98 @@ export default function PropertyDetailPage() {
                     stub. */}
                 <motion.h2
                   variants={rise}
-                  className="mt-4 max-w-[22ch] text-balance font-display font-bold leading-[1.08] tracking-[-0.02em] text-content [font-size:clamp(1.9rem,3.4vw,3rem)]"
+                  className={`max-w-[22ch] text-balance font-display font-bold leading-[1.08] tracking-[-0.02em] text-content [font-size:clamp(1.9rem,3.4vw,3rem)] lg:col-start-1 lg:row-start-2 ${
+                    d.overview.eyebrow ? 'mt-4' : ''
+                  }`}
                 >
                   {d.overview.heading}
                 </motion.h2>
-                {/* 34rem is ~66 characters of Arimo at this size — a real
-                    reading measure. The 52ch it replaces was set for the old
-                    narrow five-column gutter and left the paragraph visibly
-                    short of its own column. */}
+                {/* 62ch, not the 34rem this carried: that measure was set when
+                    the paragraph ran under the heading in a single column, and
+                    in a column of its own it left the text stopping halfway
+                    across its own half of the panel. */}
                 <motion.p
                   variants={rise}
-                  className="mt-6 max-w-[34rem] font-body text-[16px] leading-[1.75] text-content/70"
+                  className={`mt-8 max-w-[62ch] font-body text-[17px] leading-[1.75] text-content/70 md:text-[18px] lg:col-start-2 lg:row-start-2 ${
+                    d.overview.eyebrow ? 'lg:mt-4' : 'lg:mt-0'
+                  }`}
                 >
                   {d.overview.body}
                 </motion.p>
+              </div>
+
+              {/* The figures and the call to action, on one row under a rule,
+                  because they make the same argument as the copy above: this is
+                  the scale of the place, here is how you ask about it.
+
+                  A hairline rather than the gap between two cards. It divides
+                  the panel without breaking it — the two halves stay one
+                  object, which is the point of merging them.
+
+                  Ink numerals with quiet labels, and the pill the only
+                  saturated mass on the row. The labels were accent blue, which
+                  was defensible while the button lived up with the copy — with
+                  the two side by side, a dozen blue words next to the one blue
+                  thing you can click is a dozen reasons not to notice it.
+
+                  The row renders whether or not there are figures. It was gated
+                  on `stats.length` when the pill lived elsewhere; gating it now
+                  would take the section's only call to action away with them. */}
+              <div className="mt-10 flex flex-col gap-8 border-t border-line pt-8 md:mt-12 md:pt-10 lg:flex-row lg:items-center lg:justify-between lg:gap-12">
+                {/* A divided list at phone width, a single wrapping row from
+                    `sm` up.
+
+                    Not a grid. Two columns held three figures as two and then
+                    an orphan with half a row of dead space beside it, and the
+                    count is CMS copy — three today, two or four as easily, so
+                    any fixed column count is one entry away from that same
+                    hole. Three across doesn't fit either: at 375px each column
+                    is ~93px and "150,638" alone sets 98.
+
+                    So on a phone each figure takes the full width as its own
+                    ruled row, numeral against label on one baseline. The rules
+                    are what let the two sit apart at opposite edges and still
+                    read as a pair, and the rows stay tidy at any number of
+                    figures or any length of label. */}
+                {d.overview.stats?.length > 0 && (
+                  <div className="w-full sm:flex sm:w-auto sm:flex-wrap sm:items-start sm:gap-x-14">
+                    {d.overview.stats.map((s, i) => (
+                      <motion.div
+                        key={`${s.label ?? ''}-${i}`}
+                        variants={rise}
+                        className="flex min-w-0 items-baseline justify-between gap-5 border-b border-line py-3.5 first:pt-0 last:border-b-0 last:pb-0 sm:block sm:border-b-0 sm:py-0"
+                      >
+                        <CountUp
+                          value={s.value}
+                          className="numeral block text-content [font-size:clamp(1.6rem,2.1vw,2.1rem)]"
+                        />
+                        {/* Right-aligned only while it is sitting opposite the
+                            numeral; under it from `sm`, the measure caps it. */}
+                        <span className="block max-w-[18ch] text-right font-body text-[13px] leading-snug text-content/60 sm:mt-1.5 sm:text-left">
+                          {s.label}
+                        </span>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
                 {/* Unconditional. This was gated on `d.overview.flyer`, an
                     unrelated CMS field for a downloadable sheet, so a property
                     whose row simply had no flyer URL lost the section's only
                     call to action — invisible today because the seed sets it to
                     '#', and one blank field away from a persuade section with
                     nothing to click. */}
-                <motion.div variants={rise} className="mt-10 w-fit">
+                {/* Full width on a phone, its drawn width from `sm`. Sitting at
+                    its content width under a row of full-width figures, the
+                    pill read as a loose object dropped into the corner of the
+                    panel rather than as the thing the panel is asking you to
+                    do. `justify-between` is what makes the stretched version
+                    work: the flood pill is `pl-7 pr-1.5` around a label and a
+                    disc, so widening it without it would leave both stranded at
+                    the left edge with the rest of the lozenge empty. */}
+                <motion.div variants={rise} className="w-full shrink-0 sm:w-fit">
                   <PrimePill
                     href="/contact"
+                    className="w-full justify-between sm:w-auto sm:justify-start"
                     onClick={(event) => {
                       event.preventDefault()
                       go(`/contact?property=${property.id}&from=/properties/${property.slug}`)
@@ -347,53 +396,8 @@ export default function PropertyDetailPage() {
                     {t.overviewEnquireLabel}
                   </PrimePill>
                 </motion.div>
-              </motion.div>
-            </div>
-
-            {/* The figures. A hairline and generous air rather than a bordered
-                panel: `bg-surface` and `bg-base` are both #ffffff in the light
-                theme, so the panel this replaces had no fill at all there and
-                existed only as an outline, while in dark it read as a raised
-                card — one idiom that only existed in one theme, which is the
-                exact failure DESIGN.md §1 warns about.
-
-                Ink numerals with accent labels, matching the highlights band
-                below and the homepage stats. Blue is this system's interaction
-                colour; the previous pass had twelve accent-carrying elements
-                here and exactly one of them clickable, so the Enquire pill had
-                no colour advantage over a decorative hairline. It now has five,
-                and it is the only saturated mass among them. */}
-            {d.overview.stats?.length > 0 && (
-              <motion.div
-                variants={stagger}
-                initial="hidden"
-                whileInView="show"
-                viewport={inViewOnce}
-                className="mt-16 grid gap-y-8 border-t border-line pt-12 sm:grid-cols-3 sm:gap-y-0 sm:divide-x sm:divide-line md:mt-20 md:pt-14"
-              >
-                {d.overview.stats.map((s, i) => (
-                  <motion.div
-                    key={`${s.label ?? ''}-${i}`}
-                    variants={rise}
-                    className="min-w-0 sm:px-7 sm:first:pl-0 sm:last:pr-0"
-                  >
-                    {/* Above the numeral, not beside it. Beside it, each icon
-                        took 42px off the one dimension the row was short of,
-                        and five stats would have spent 140px of a 190px cell on
-                        decoration before the first digit rendered. Stacked, a
-                        cell is only ever as wide as its widest line. */}
-                    <StatIcon label={s.label} />
-                    <CountUp
-                      value={s.value}
-                      className="numeral mt-4 block text-content [font-size:clamp(2.4rem,2.9vw,3rem)]"
-                    />
-                    <span className="mt-2.5 block font-body text-[11px] font-bold uppercase tracking-[0.16em] text-accent">
-                      {s.label}
-                    </span>
-                  </motion.div>
-                ))}
-              </motion.div>
-            )}
+              </div>
+            </motion.div>
           </div>
         </section>
       )}

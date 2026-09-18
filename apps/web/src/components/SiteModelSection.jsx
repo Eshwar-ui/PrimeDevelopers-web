@@ -1,4 +1,5 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { ArrowsOut, X } from '@phosphor-icons/react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import FloorPlanInteractive from './FloorPlanInteractive'
 import UnitDetailCard from './UnitDetailCard'
@@ -16,10 +17,10 @@ const ModelViewer = lazy(() => import('./floorplan/ModelViewer'))
 // no longer has the full width to be wide and shallow in. Holding the old
 // full-bleed `100dvh-9rem` there would leave a site plan in a tall narrow
 // slot — the worst shape to orbit one in.
-const PLAN_HEIGHT = 'h-[340px] sm:h-[420px] md:h-[500px] lg:h-[calc(100dvh-7rem)]'
+const PLAN_HEIGHT = 'h-[340px] sm:h-[420px] md:h-[500px] lg:h-[min(640px,calc(100dvh-7rem))]'
 
 // A cap rather than a height — see the note on FloorPlanSection's PANEL_MAX.
-const PANEL_MAX = 'lg:h-[calc(100dvh-7rem)]'
+const PANEL_MAX = 'lg:h-[min(640px,calc(100dvh-7rem))]'
 
 const norm = (value) => String(value ?? '').trim().toLowerCase()
 
@@ -46,6 +47,8 @@ export default function SiteModelSection({ property }) {
   const [selectedLabel, setSelectedLabel] = useState(null)
   const [isolate, setIsolate] = useState(false)
   const [viewerFailed, setViewerFailed] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false)
+  const expandButton = useRef(null)
   // Bumped on the way back out to the site, to re-frame the whole plot.
   const [resetToken, setResetToken] = useState(0)
   const rootRef = useRef(null)
@@ -71,6 +74,28 @@ export default function SiteModelSection({ property }) {
     [],
   )
 
+  useEffect(() => {
+    if (!isExpanded) return undefined
+
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') setIsExpanded(false)
+    }
+    const previousOverflow = document.body.style.overflow
+    const trigger = expandButton.current
+    document.addEventListener('keydown', closeOnEscape)
+    document.body.style.overflow = 'hidden'
+    /* A dialog that never moves focus leaves a keyboard user tabbing through
+       the page still behind it, and closing it leaves them nowhere at all. */
+    rootRef.current?.focus()
+
+    return () => {
+      document.removeEventListener('keydown', closeOnEscape)
+      document.body.style.overflow = previousOverflow
+      /* isConnected, because this cleanup also runs on unmount — a route
+         change would otherwise pull focus back to a button that is gone. */
+      if (trigger?.isConnected) trigger.focus()
+    }
+  }, [isExpanded])
   const buildings = useMemo(() => getBuildings(property), [property])
   const siteModel = getSiteModel(property)
   const meshNames = useMemo(() => siteModel?.meshNames ?? [], [siteModel])
@@ -156,6 +181,10 @@ export default function SiteModelSection({ property }) {
    *  site-wide count is also the better answer to the question a visitor
    *  arrives with. */
   const allUnits = useMemo(() => buildings.flatMap((b) => getUnits(b)), [buildings])
+  const statusCounts = useMemo(() => allUnits.reduce((counts, unit) => {
+    counts[unit.status] = (counts[unit.status] ?? 0) + 1
+    return counts
+  }, {}), [allUnits])
 
   /** Units of the focused building that are actually tagged in the model,
    *  keyed by label, so a chip can fly the camera to one. */
@@ -310,10 +339,58 @@ export default function SiteModelSection({ property }) {
 
   if (!hasSiteModel(property)) return null
 
+  const viewerHeight = isExpanded
+    ? 'h-[min(760px,calc(100dvh-2rem))] sm:h-[min(820px,calc(100dvh-3rem))]'
+    : PLAN_HEIGHT
+  const panelHeight = isExpanded
+    ? 'lg:h-[min(760px,calc(100dvh-2rem))]'
+    : PANEL_MAX
+
   return (
-    <div ref={rootRef} className="flex scroll-mt-24 flex-col gap-4">
+    <div
+      ref={rootRef}
+      role={isExpanded ? 'dialog' : undefined}
+      aria-modal={isExpanded ? 'true' : undefined}
+      aria-label={isExpanded ? 'Interactive site plan canvas' : undefined}
+      tabIndex={isExpanded ? -1 : undefined}
+      className={`${isExpanded ? 'fixed inset-0 z-[80] overflow-y-auto bg-base p-4 outline-none sm:p-6 md:p-8' : ''} flex scroll-mt-24 flex-col gap-4`}
+    >
+      <div className={`${isExpanded ? 'sticky top-0 z-10 p-4 md:p-5' : 'p-5 md:p-6'} border border-line bg-surface`}>
+        {isExpanded && (
+          <h3 className="mb-4 font-display text-xl font-bold leading-tight tracking-[-0.03em] text-content">
+            {property?.name} site plan
+          </h3>
+        )}
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div role="group" aria-label="Unit availability" className="flex flex-wrap gap-x-5 gap-y-2 font-body text-[12px] text-content/65">
+            <span className="inline-flex items-center gap-2"><span aria-hidden className={`size-2 rounded-sm ${unitStatusMeta('available').swatch}`} />Available {statusCounts.available ?? 0}</span>
+            <span className="inline-flex items-center gap-2"><span aria-hidden className={`size-2 rounded-sm ${unitStatusMeta('leased').swatch}`} />Leased {statusCounts.leased ?? 0}</span>
+            <span className="inline-flex items-center gap-2"><span aria-hidden className={`size-2 rounded-sm ${unitStatusMeta('sold').swatch}`} />Sold {statusCounts.sold ?? 0}</span>
+          </div>
+          <button
+            ref={expandButton}
+            type="button"
+            onClick={() => setIsExpanded((value) => !value)}
+            className="inline-flex min-h-11 shrink-0 items-center gap-2 self-start border border-line bg-base px-4 font-body text-[12px] font-bold text-content transition-colors hover:border-content/40 hover:bg-surface md:self-auto"
+            aria-expanded={isExpanded}
+          >
+            {isExpanded
+              ? <X aria-hidden weight="bold" className="size-4" />
+              : <ArrowsOut aria-hidden weight="bold" className="size-4" />}
+            {isExpanded ? 'Close canvas' : 'Open full canvas'}
+          </button>
+        </div>
+        <p aria-live="polite" className="mt-4 border-t border-line pt-4 font-body text-[12px] text-content/55">
+          {selectedUnit
+            ? `${formatUnitLabel(selectedUnit.label) || 'Selected unit'} selected. Review the details beside the plan.`
+            : focusedBuilding
+              ? `${focusedBuilding.label} selected. Choose a unit from the model or the list below.`
+              : 'Choose a building to move from the site overview into its available units.'}
+        </p>
+      </div>
+
       {/* ── building rail ───────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className={`${isExpanded ? 'flex-nowrap overflow-x-auto pb-1' : 'flex-wrap'} flex items-center gap-2`}>
         <span className="mr-1 font-body text-[10px] font-bold uppercase tracking-[0.16em] text-content/45">
           {property?.name}
         </span>
@@ -365,7 +442,7 @@ export default function SiteModelSection({ property }) {
 
       {/* ── unit rail, only once inside a building ──────────────── */}
       {focusedBuilding && focusedUnits.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className={`${isExpanded ? 'flex-nowrap overflow-x-auto pb-1' : 'flex-wrap'} flex items-center gap-2`}>
           <span className="mr-1 font-body text-[10px] font-bold uppercase tracking-[0.16em] text-content/45">Units</span>
           {focusedUnits.map((u) => {
             const meta = unitStatusMeta(u.status)
@@ -399,7 +476,7 @@ export default function SiteModelSection({ property }) {
       <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(19rem,1fr)] lg:items-start">
         <div className="relative min-w-0">
           {canShow3D ? (
-            <Suspense fallback={<ViewerSkeleton poster={siteModel?.poster} />}>
+            <Suspense fallback={<ViewerSkeleton poster={siteModel?.poster} height={viewerHeight} />}>
               <ModelViewer
                 url={modelUrl}
                 siteEntries={entries}
@@ -413,7 +490,7 @@ export default function SiteModelSection({ property }) {
                 groundless
                 orientation={Number.isFinite(siteModel?.orientation) ? siteModel.orientation : null}
                 onError={() => setViewerFailed(true)}
-                height={PLAN_HEIGHT}
+                height={viewerHeight}
               />
             </Suspense>
           ) : planImage ? (
@@ -428,7 +505,7 @@ export default function SiteModelSection({ property }) {
             /* Tier 3 — no model and no plan image. The panel beside this and
                the list below still carry every unit in full, which is the
                whole point of holding selection as labels. */
-            <ViewerSkeleton poster={siteModel?.poster} />
+            <ViewerSkeleton poster={siteModel?.poster} label="Interactive plan unavailable" height={viewerHeight} />
           )}
         </div>
 
@@ -437,7 +514,7 @@ export default function SiteModelSection({ property }) {
             unit={selectedUnit}
             units={focusedBuilding ? focusedUnits : allUnits}
             onEnquire={enquire}
-            maxHeight={canShow3D ? PANEL_MAX : ''}
+            maxHeight={canShow3D ? panelHeight : ''}
             emptyHint={
               focusedBuilding
                 ? ''
@@ -490,12 +567,12 @@ function Chip({ active, onClick, disabled, tone, children }) {
   )
 }
 
-function ViewerSkeleton({ poster }) {
+function ViewerSkeleton({ poster, label = 'Loading interactive model', height = PLAN_HEIGHT }) {
   return (
-    <div className={`relative overflow-hidden rounded-2xl border border-[var(--color-line)] bg-surface-alt ${PLAN_HEIGHT}`}>
+    <div className={`relative overflow-hidden rounded-2xl border border-[var(--color-line)] bg-surface-alt ${height}`}>
       {poster && <img src={poster} alt="" className="h-full w-full object-cover opacity-25" />}
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="eyebrow text-content/70">Loading site model…</span>
+        <span className="eyebrow text-content/70">{label}</span>
       </div>
     </div>
   )

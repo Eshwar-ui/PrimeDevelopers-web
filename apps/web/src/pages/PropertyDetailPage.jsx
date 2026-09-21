@@ -14,6 +14,7 @@ import { sized } from '../lib/images'
 import { scrollToElement } from '../lib/scrollToElement'
 import PropertyHero from '../components/PropertyHero'
 import PropertyGallery from '../components/PropertyGallery'
+import PropertyDetailNav from '../components/PropertyDetailNav'
 import { youtubeEmbedUrl } from '../lib/video'
 import {
   buildingFromResourceLabel,
@@ -179,6 +180,19 @@ export default function PropertyDetailPage() {
       <PropertyHero
         property={property}
         soldPct={soldPct}
+        onEnquire={() => go(`/contact?property=${property.id}&from=/properties/${property.slug}`)}
+      />
+
+      {/* ── Section rail ─────────────────────────────────────── */}
+      {/* Directly under the hero so it sticks from the moment the hero clears,
+          and sharing the hero's own enquiry target rather than carrying a
+          second one — two routes to the same form is how they drift apart.
+
+          It decides its own tabs by looking for the section ids below, so
+          nothing here has to be kept in step with which bands a given property
+          renders. */}
+      <PropertyDetailNav
+        property={property}
         onEnquire={() => go(`/contact?property=${property.id}&from=/properties/${property.slug}`)}
       />
 
@@ -434,7 +448,7 @@ export default function PropertyDetailPage() {
 
       {/* Property highlights */}
       {d?.highlights?.heading && (
-        <section data-band="light" className="bg-surface-alt px-gutter pb-8 pt-16 md:pb-10 md:pt-20">
+        <section id="spaces" data-band="light" className="scroll-mt-24 bg-surface-alt px-gutter pb-8 pt-16 md:pb-10 md:pt-20">
           <div className="grid gap-12 lg:grid-cols-[1fr_1.1fr] lg:gap-16">
             <motion.div
               variants={stagger}
@@ -609,7 +623,7 @@ export default function PropertyDetailPage() {
           pure white with dark type in *both* themes — a blinding slab midway
           down an otherwise dark page. */}
       {d?.location?.heading && (
-        <section data-band="light" className="bg-base px-gutter py-20 md:py-28">
+        <section id="location" data-band="light" className="scroll-mt-24 bg-base px-gutter py-20 md:py-28">
           {/* Capped to the site measure like every other section on the page.
               Without it this was the one band running the full viewport, so at
               1730px the photograph and the copy pulled apart to the window
@@ -694,7 +708,7 @@ export default function PropertyDetailPage() {
           same reason a gallery paints its walls dark behind bright work.
           Deliberately carries no data-band, so the navbar goes light over it. */}
       {d?.extFacade?.length > 0 && (
-        <section className="bg-void px-gutter py-20 text-bone md:py-28">
+        <section id="media" className="scroll-mt-24 bg-void px-gutter py-20 text-bone md:py-28">
           <SectionTag tone="inv">{t.extFacadeLabel}</SectionTag>
           <div className="mt-10 grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-5">
             {d.extFacade.map(
@@ -781,7 +795,7 @@ export default function PropertyDetailPage() {
 
       {/* ── Videos ───────────────────────────────────────────── */}
       {d?.videos?.length > 0 && (
-        <section data-band="light" className="bg-base px-gutter py-20 md:py-28">
+        <section id="video" data-band="light" className="scroll-mt-24 bg-base px-gutter py-20 md:py-28">
           <SectionTag>{t.videosLabel}</SectionTag>
           <h2 className="mt-6 font-display text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] text-content md:text-[3rem]">
             {t.videosHeading}
@@ -842,7 +856,7 @@ export default function PropertyDetailPage() {
           }
 
           return (
-            <section data-band="light" className="bg-surface-alt px-gutter py-20 md:py-28">
+            <section id="resources" data-band="light" className="scroll-mt-24 bg-surface-alt px-gutter py-20 md:py-28">
               {/* Capped to the site measure like the overview and location
                   bands. Uncapped, this was the one section still running to
                   the window edge at 1800px while the sections either side of

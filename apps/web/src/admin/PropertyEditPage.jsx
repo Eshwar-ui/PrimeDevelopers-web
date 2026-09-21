@@ -29,6 +29,13 @@ const emptyDetail = () => ({
   extFacade: [],
 })
 
+const PROPERTY_GALLERY_SLOTS = 3
+const fixedGallery = (gallery) => {
+  const source = Array.isArray(gallery) ? gallery : []
+  return source.length >= PROPERTY_GALLERY_SLOTS
+    ? source
+    : [...source, ...Array(PROPERTY_GALLERY_SLOTS - source.length).fill('')]
+}
 // Which of the 16 sections start open. The rest still hold their data —
 // collapsed just means "not the first thing an editor has to scroll past."
 // Chosen from what actually gets touched most often on a property that
@@ -83,7 +90,7 @@ export default function PropertyEditPage() {
     loadedFor.current = id
     const next = {
       ...original,
-      gallery: original.gallery ?? [],
+      gallery: fixedGallery(original.gallery),
       detail: { ...emptyDetail(), ...(original.detail ?? {}) },
     }
     setForm(next)
@@ -290,7 +297,9 @@ export default function PropertyEditPage() {
                 items={form.gallery}
                 onChange={(gallery) => patch({ gallery })}
                 makeItem={() => ''}
-                addLabel="Add gallery image"
+                allowAdd={false}
+                allowRemove={false}
+                maxItems={PROPERTY_GALLERY_SLOTS}
                 renderItem={(url, set) => (
                   <ImageUploader value={url} onChange={set} folder={`projects/${form.slug}/gallery`} />
                 )}

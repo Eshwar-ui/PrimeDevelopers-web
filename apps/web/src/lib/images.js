@@ -107,3 +107,50 @@ export function withTransformedImages(value, options) {
   }
   return value
 }
+
+/**
+ * Whether the transformer can actually resize this URL.
+ *
+ * Load-bearing for `srcSetFor`: `imageUrl` deliberately returns anything it
+ * doesn't recognise untouched, which is right for a single `src` and actively
+ * wrong for a `srcSet` — four candidates that are all the same untransformed
+ * URL tell the browser it has a choice of widths when it has one file, and it
+ * will happily pick the "1920w" entry for a 400px slot.
+ */
+const isTransformable = (src) =>
+  typeof src === 'string' &&
+  (src.includes(OBJECT_PATH) || src.includes(RENDER_PATH)) &&
+  !/\.glb(\?|$)/i.test(src)
+
+/**
+ * Candidate widths per named slot.
+ *
+ * `WIDTHS` above is the *ceiling* — the 2x retina size — and until now it was
+ * also the floor, because a single `src` has to serve every device. A phone
+ * rendering a 390px-wide hero was handed the 1920px file: four times the pixels
+ * it can show, on the connection least able to afford them.
+ *
+ * The ladders below are roughly 1.5x apart. Closer spacing buys precision the
+ * eye cannot see while multiplying edge-cache misses; wider spacing starts
+ * rounding a phone up to a tablet's file. Each ends on its `WIDTHS` value, so
+ * the top of the ladder is exactly what the slot used to always serve and no
+ * screen ever gets less than it did.
+ */
+export const SRCSET = {
+  thumb: [240, 360, 480, 700],
+  logo: [200, 300, 450, 600],
+  card: [400, 640, 900, 1200],
+  full: [640, 960, 1280, 1600, 1920],
+}
+
+/**
+ * A `srcSet` string for a named slot, or `undefined` when the URL can't be
+ * resized — `undefined` rather than an empty string because React omits the
+ * attribute entirely for the former and emits `srcset=""` for the latter,
+ * which Safari treats as a broken candidate list.
+ */
+export function srcSetFor(src, size) {
+  const widths = SRCSET[size]
+  if (!widths || !isTransformable(src)) return undefined
+  return widths.map((w) => `${imageUrl(src, { width: w })} ${w}w`).join(', ')
+}

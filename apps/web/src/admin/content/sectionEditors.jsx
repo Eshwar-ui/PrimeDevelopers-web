@@ -1160,10 +1160,13 @@ export const SECTIONS = [
         </Section>
         <Section title="Section labels">
           <div className="grid grid-cols-2 gap-4">
-            <TextField label="Resources" value={value.resourcesLabel} onChange={(resourcesLabel) => onChange({ resourcesLabel })} />
-            <TextField label={'Overview "Enquire" pill'} value={value.overviewEnquireLabel} onChange={(overviewEnquireLabel) => onChange({ overviewEnquireLabel })} />
+            <TextField label="Resources eyebrow" value={value.resourcesLabel} onChange={(resourcesLabel) => onChange({ resourcesLabel })} />
+            <TextField label="Resources heading" value={value.resourcesHeading} onChange={(resourcesHeading) => onChange({ resourcesHeading })} />
           </div>
-          <TextField label="Highlights eyebrow" value={value.highlightsEyebrow} onChange={(highlightsEyebrow) => onChange({ highlightsEyebrow })} />
+          <div className="grid grid-cols-2 gap-4">
+            <TextField label={'Overview "Enquire" pill'} value={value.overviewEnquireLabel} onChange={(overviewEnquireLabel) => onChange({ overviewEnquireLabel })} />
+            <TextField label="Highlights eyebrow" value={value.highlightsEyebrow} onChange={(highlightsEyebrow) => onChange({ highlightsEyebrow })} />
+          </div>
           <TextField label="Established sites" value={value.establishedSitesLabel} onChange={(establishedSitesLabel) => onChange({ establishedSitesLabel })} />
           <TextField label="Ext. facade" value={value.extFacadeLabel} onChange={(extFacadeLabel) => onChange({ extFacadeLabel })} />
           <div className="grid grid-cols-2 gap-4">

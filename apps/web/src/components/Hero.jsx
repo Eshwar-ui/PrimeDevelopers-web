@@ -9,6 +9,7 @@ import MaskedHeading, { WORD_STAGGER, wordCount } from './MaskedHeading'
 import TexasFlag from './TexasFlag'
 import { lenis } from '../hooks/useSmoothScroll'
 import { useSection } from '../context/ContentContext'
+import { srcSetFor } from '../lib/images'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -100,6 +101,47 @@ export default function Hero() {
 
   const count = slides.length
 
+  /* ── What is allowed to download, and when ──────────────────────────────
+     Every slide is absolutely positioned over the same frame, so every slide
+     is *in the viewport* — opacity has no bearing on it, the browser only
+     asks whether the element intersects. Which means the `loading="lazy"`
+     that used to sit on slides 2..6 deferred exactly nothing: all six
+     1920px photographs were requested at once, and the only one on screen
+     queued behind five nobody would see for another half minute.
+
+     `mounted` is the fix, and it is a mounting policy rather than a loading
+     hint because a hint the browser is free to ignore is what failed here.
+     An element that does not exist cannot be fetched.
+
+     Forward-only, as a count rather than a set, because `index` only ever
+     advances by one — so the mounted slides are always a prefix. Once a
+     slide is in, it stays: the crossfade needs the *outgoing* frame to still
+     be there to fade out of, and unmounting it on advance would drop it to
+     the black underneath in one frame rather than easing it away. */
+  const [mounted, setMounted] = useState(1)
+
+  // Nothing starts until the first slide is done. It is the LCP element of
+  // the site, and slide 2 is not needed for 6.5 seconds — there is no version
+  // of "sooner" that helps it and every byte it takes early is taken from the
+  // one image the visitor is waiting on.
+  const [primed, setPrimed] = useState(false)
+
+  // A slide already in the browser cache can finish before React attaches its
+  // onLoad, which would strand the carousel on one frame forever. Well inside
+  // SLIDE_MS either way, so the next slide still has four seconds in hand.
+  useEffect(() => {
+    const t = setTimeout(() => setPrimed(true), 2500)
+    return () => clearTimeout(t)
+  }, [])
+
+  // One slide ahead of wherever the carousel is: mounted at the start of a
+  // dwell, needed at the end of it, so it has the full SLIDE_MS to arrive and
+  // the crossfade never begins against a frame that has not loaded.
+  useEffect(() => {
+    if (!primed) return
+    setMounted((m) => Math.max(m, Math.min(index + 2, count)))
+  }, [primed, index, count])
+
   // Auto-advance. No controls are drawn — the design has none — so this is the
   // whole transport, and it is deliberately not paused on hover: there is
   // nothing on the frame for a pointer to be resting on, and a carousel that
@@ -186,20 +228,43 @@ export default function Hero() {
             and throws away the sides, and every extra percent of height was
             another percent off the width of the building. Fitting the height
             gives the strip centre back its wings. */}
-        {slides.map((slide, i) => (
+        {slides.slice(0, mounted).map((slide, i) => (
           <img
             key={i}
             src={slide.image}
-            // Only the slide on screen describes itself. The five behind it are
-            // the same frame at zero opacity, and announcing all six would read
+            // Until now every device downloaded the 1920px file, including a
+            // phone with a 390px frame — sixteen times the pixels it can
+            // resolve, over the connection least able to pay for them. The
+            // transformer will cut any width, so the only thing missing was
+            // telling the browser it had a choice.
+            //
+            // `100vw` is exact rather than approximate: the section is
+            // `w-full` and the image is `size-full object-cover` inside it,
+            // so the slot really is the viewport's width at every breakpoint.
+            srcSet={srcSetFor(slide.image, 'full')}
+            sizes="100vw"
+            // Only the slide on screen describes itself. The others are the
+            // same frame at zero opacity, and announcing them all would read
             // out a list of properties that nobody can see.
             alt={i === index ? slide.place : ''}
-            // The first slide is the LCP element of the whole site. Without the
-            // priority hint the browser schedules it as one image among six and
-            // the only one actually on screen finishes last.
-            fetchPriority={i === 0 ? 'high' : 'auto'}
-            loading={i === 0 ? 'eager' : 'lazy'}
+            // The first slide is the LCP element of the whole site, and the
+            // <head> has already preloaded it — this keeps the <img>'s own
+            // request at the same priority so the two resolve to one fetch
+            // rather than racing at different priorities.
+            //
+            // Everything after it is explicitly *low*. They are mounted a
+            // full dwell before they are needed, so there is nothing to gain
+            // by letting them contend — with `auto` they were scheduled as
+            // peers of the image actually on screen.
+            fetchPriority={i === 0 ? 'high' : 'low'}
+            // No `loading` hint. It used to say `lazy` for i > 0 and did
+            // nothing at all: these are stacked on the viewport, and lazy
+            // only ever defers what is off it. `mounted` above is what
+            // actually holds them back.
             decoding="async"
+            // Drives `primed`. onError counts as done on purpose — a slide
+            // that 404s must not be able to stall the rest of the carousel.
+            {...(i === 0 && { onLoad: () => setPrimed(true), onError: () => setPrimed(true) })}
             // The slow push is a *transition* on transform, not a keyframe, and
             // that is the whole trick: a keyframe belongs to the slide it is on,
             // so pulling it off the outgoing slide snaps that frame back to
@@ -231,7 +296,7 @@ export default function Hero() {
           the frame is tall and narrow and there is far less picture to spend. */}
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-[22%] bg-base md:h-[38%]"
+        className="pointer-events-none absolute inset-x-0 -bottom-px h-[22%] bg-base md:h-[38%]"
         style={{ maskImage: FADE_MASK, WebkitMaskImage: FADE_MASK }}
       />
 

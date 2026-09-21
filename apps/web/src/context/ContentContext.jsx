@@ -630,6 +630,7 @@ const DEFAULTS = {
     notFoundHeading: 'Property not found',
     notFoundBackLabel: '← Back to all properties',
     resourcesLabel: 'Resources',
+    resourcesHeading: 'Everything on file',
     overviewEnquireLabel: 'Enquire',
     highlightsEyebrow: 'Property Highlights',
     establishedSitesLabel: 'Established Sites',

@@ -77,10 +77,10 @@ export default function ContactPage() {
           <img
             src={heroImage}
             alt="Prime Developers property in Texas"
-            className="absolute inset-0 h-full w-full object-cover"
+            className="bleed-fill object-cover"
           />
         )}
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(20,28,33,.64)_0%,rgba(20,28,33,.58)_55%,rgba(20,28,33,.72)_100%)]" />
+        <div className="bleed-fill bg-[linear-gradient(180deg,rgba(20,28,33,.64)_0%,rgba(20,28,33,.58)_55%,rgba(20,28,33,.72)_100%)]" />
 
         <motion.div variants={stagger} initial="hidden" animate="show" className="relative mx-auto max-w-[1200px]">
           <motion.h1

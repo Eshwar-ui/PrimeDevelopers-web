@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion, useReducedMotion } from 'motion/react'
 import { parsePhase } from '../lib/phases'
@@ -37,10 +38,23 @@ function similarityScore(candidate, current) {
   return score
 }
 
-function gridSpan(index, count) {
-  if (count === 1) return 'lg:col-span-12'
-  if (count === 2) return index === 0 ? 'lg:col-span-7' : 'lg:col-span-5'
-  return index === 0 ? 'lg:col-span-6' : 'lg:col-span-3'
+/**
+ * How wide the open card and its siblings sit, by how many the row is showing.
+ *
+ * These are the proportions the twelve-column grid used to hold, expressed as
+ * flex weights instead. The grid could only ever give the *first* card the wide
+ * slot, because a column span is fixed at render; a flex weight is a number
+ * that can change, and `flex-grow` is one of the few layout properties a
+ * browser will interpolate — so the same 6/3/3 becomes 3/6/3 under the pointer,
+ * and travels there rather than jumping.
+ *
+ * Written out as whole literal class strings because Tailwind scans source for
+ * class names and cannot see one that is assembled at runtime.
+ */
+const WEIGHTS = {
+  1: { open: 'lg:flex-[12_1_0%]', rest: 'lg:flex-[12_1_0%]' },
+  2: { open: 'lg:flex-[7_1_0%]', rest: 'lg:flex-[5_1_0%]' },
+  3: { open: 'lg:flex-[6_1_0%]', rest: 'lg:flex-[3_1_0%]' },
 }
 
 export default function FooterSimilarProperties({
@@ -51,6 +65,10 @@ export default function FooterSimilarProperties({
 }) {
   const { pathname } = useLocation()
   const reducedMotion = useReducedMotion()
+  // Which card is open. Index 0 is the resting state, so the row looks exactly
+  // as it did before anyone touches it — the expansion is a response to the
+  // pointer, not a new layout.
+  const [open, setOpen] = useState(0)
   const match = pathname.match(/^\/properties\/([^/]+)\/?$/)
   const current = match ? properties.find((property) => property.slug === match[1]) : null
 
@@ -68,6 +86,10 @@ export default function FooterSimilarProperties({
         .slice(0, 3)
         .map(({ property }) => property)
     : properties.slice(0, 3)
+
+  // The footer never unmounts, so without this the card left open on the last
+  // property page stays open against a different set of three.
+  useEffect(() => setOpen(0), [pathname])
 
   if (shown.length === 0) return null
 
@@ -104,14 +126,31 @@ export default function FooterSimilarProperties({
         </Link>
       </div>
 
-      <div className="-mx-4 mt-7 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-3 sm:-mx-6 sm:mt-8 sm:px-6 lg:mx-0 lg:grid lg:grid-cols-12 lg:gap-5 lg:overflow-visible lg:px-0 lg:pb-0">
+      <div className="-mx-4 mt-7 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-3 sm:-mx-6 sm:mt-8 sm:px-6 lg:mx-0 lg:gap-5 lg:overflow-visible lg:px-0 lg:pb-0"
+        // Leaving the row returns it to rest. On the row rather than on each
+        // card, so crossing the gap between two cards is not read as a leave.
+        onMouseLeave={() => setOpen(0)}
+      >
         {shown.map((property, index) => {
           const availability = property.available > 0 ? `${property.available} available` : 'Fully reserved'
+          const weight = WEIGHTS[shown.length] ?? WEIGHTS[3]
 
           return (
             <article
               key={property.slug}
-              className={`group w-[min(78vw,19rem)] shrink-0 snap-start sm:w-[22rem] lg:w-auto lg:min-w-0 ${gridSpan(index, shown.length)}`}
+              // Hover and focus both open it. `onFocus` is here rather than on
+              // the link because React's focus event bubbles, so one handler on
+              // the card covers whatever inside it takes the keyboard — and a
+              // tab through the row then widens each card in turn, the same way
+              // the pointer does.
+              onMouseEnter={() => setOpen(index)}
+              onFocus={() => setOpen(index)}
+              // Same easing the gallery strip on the property page uses for the
+              // same gesture, `motion-reduce` included — two rows of cards that
+              // widen under the pointer should not be doing it at two speeds.
+              className={`group w-[min(78vw,19rem)] shrink-0 snap-start transition-[flex-grow] duration-700 ease-brand motion-reduce:transition-none sm:w-[22rem] lg:w-auto lg:min-w-0 ${
+                index === open ? weight.open : weight.rest
+              }`}
             >
               <Link
                 to={`/properties/${property.slug}`}

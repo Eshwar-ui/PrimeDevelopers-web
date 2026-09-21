@@ -103,7 +103,16 @@ export default function InvestPage() {
     () => {
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
       gsap.from('[data-hero-copy] > *', { y: 28, opacity: 0, duration: 0.8, ease: 'power3.out', stagger: 0.1 })
-      gsap.from('[data-hero-visual]', { scale: 1.1, opacity: 0, duration: 1.2, ease: 'power3.out' })
+      gsap.from('[data-hero-visual]', {
+        scale: 1.1,
+        opacity: 0,
+        duration: 1.2,
+        ease: 'power3.out',
+        // A `.from()` leaves its inline transform behind for good, and a layer
+        // that still carries one stays composited — which is what antialiases
+        // its clipped bottom edge into a hairline over the section below.
+        clearProps: 'transform,opacity',
+      })
       gsap.utils.toArray('[data-reveal]').forEach((el) => {
         gsap.fromTo(
           el,
@@ -119,7 +128,7 @@ export default function InvestPage() {
     <div ref={scope} className="overflow-x-hidden bg-base text-content">
       <section className="relative min-h-[34rem] overflow-hidden bg-void px-gutter text-white md:min-h-[36rem]">
         {page.heroImage && (
-          <div data-hero-visual className="absolute inset-0">
+          <div data-hero-visual className="bleed-fill">
             <img src={sized(page.heroImage, 'full')} alt="" className="h-full w-full object-cover" />
             <div className="absolute inset-0 bg-[linear-gradient(100deg,#0c151b_0%,rgba(12,21,27,.88)_32%,rgba(12,21,27,.35)_68%,rgba(12,21,27,.2)_100%)]" />
             <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(12,21,27,.6)_0%,transparent_55%)]" />

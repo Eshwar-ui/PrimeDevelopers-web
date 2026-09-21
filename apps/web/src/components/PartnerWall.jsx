@@ -1,274 +1,165 @@
-import { useMemo } from 'react'
 import { motion, useReducedMotion } from 'motion/react'
 import { useSection } from '../context/ContentContext'
-import { sized } from '../lib/images'
-import { useFirstMatchingQuery } from '../hooks/useMediaQuery'
+import { sized, srcSetFor } from '../lib/images'
+import logoMark from '../assets/prime-logomark.svg'
 
-/**
- * The partner wall — every mark at once, as full-width rows.
- *
- * Four rows is the shape this is designed at, but it is a preference rather
- * than a constant: the roster is CMS-driven and only ever grows, so the wall
- * has to stay legible at two marks and at fifty. What is fixed is the *cell* —
- * how small and how large a panel is allowed to get — and the row count moves
- * to respect it. Inside the range the client will realistically upload, that
- * lands on four rows every time.
- */
-const PREFERRED_ROWS = 4
-
-/**
- * How many marks may share a row, per breakpoint. First match wins, so these
- * run widest-first.
- *
- * `min` and `max` are the two failure modes, and both are real. Above `max` the
- * panels fall below the size at which a logo is still a logo rather than a
- * smudge — five to a row is already the floor on a 1024 window. Below `min`, a
- * short roster dealt into four rows leaves one mark per row blown up to a
- * third of the viewport, which reads as a hero image, not a partner wall.
- *
- * Adding a tier is one row here; nothing else in the component knows about
- * breakpoints.
- */
-const TIERS = [
-  { query: '(min-width: 1280px)', min: 3, max: 6 },
-  { query: '(min-width: 768px)', min: 3, max: 4 },
-  // Phone. Three to a row is ~110px a panel on a 390 screen, so this tier is
-  // pinned at two and spends height instead — the one dimension a phone has.
-  { query: null, min: 2, max: 2 },
+const TILE_TONES = [
+  'bg-white',
+  'bg-white',
+  'bg-white',
+  'bg-white',
 ]
 
-const TIER_QUERIES = TIERS.map((tier) => tier.query ?? 'all')
-
-// A hard ceiling on a single panel, for the case the tier bounds cannot reach:
-// two logos at `xl` is one row of two, and two 700px panels is a billboard.
-// Rows centre, so the leftover width falls away either side.
-const MAX_CELL = '20rem'
-
 /**
- * Chooses a row count for `count` marks within a tier's bounds.
- *
- * Starts from the preferred shape and only moves when a bound is breached —
- * too many per row and it adds rows, too few and it takes them away. Returning
- * the row count rather than the column count is deliberate: rows are what the
- * layout is built on, and deriving them here keeps that decision in one place
- * instead of spread across the render.
+ * `sizes` is required rather than defaulted, because this tile renders at two
+ * wildly different scales and a single width could only ever be right for one
+ * of them: ~8vw as background texture in `LogoField`, and a third of the
+ * screen in the wall proper. Every mark used to be fetched at 600px for both —
+ * on a 1440px display that is a 115px slot being handed a 600px file.
  */
-function planRowCount(count, tier) {
-  // Never so many rows that the short ones hold a single mark. Four rows of a
-  // five-logo roster balances to 2/1/1/1 — technically even, and three rows
-  // each holding one centred panel reads as a broken grid. Capping at
-  // count/2 keeps every row a row.
-  const rows = Math.min(PREFERRED_ROWS, Math.max(1, Math.floor(count / 2)))
-  const perRow = Math.ceil(count / rows)
-  // The tier bounds outrank the preference in both directions, and `max` also
-  // outranks the guard above: at two marks to a row an odd roster ends on a
-  // single no matter how the rows are cut.
-  if (perRow > tier.max) return Math.ceil(count / tier.max)
-  if (perRow < tier.min) return Math.ceil(count / Math.min(tier.min, count))
-  return rows
-}
-
-/**
- * Splits `items` into `rowCount` rows whose lengths differ by at most one.
- *
- * Chunking by a fixed column count instead would leave the last row ragged and,
- * worse, would not actually produce the row count asked for: nine logos at
- * ceil(9/4)=3 columns chunk into three rows, not four. Dealing them out by
- * remainder is what makes the row count a guarantee rather than an
- * approximation.
- *
- * The remainder goes to the earliest rows, so a wall that cannot divide evenly
- * is widest at the top and tapers — which reads as deliberate, where a single
- * long row at the bottom reads as overflow.
- */
-function balanceRows(items, rowCount) {
-  const rows = []
-  let cursor = 0
-  for (let i = 0; i < rowCount; i += 1) {
-    const remaining = items.length - cursor
-    const rowsLeft = rowCount - i
-    const take = Math.ceil(remaining / rowsLeft)
-    if (take > 0) rows.push(items.slice(cursor, cursor + take))
-    cursor += take
-  }
-  return rows
-}
-
-
-/**
- * One mark on its panel. Extracted so the wall and the phone rail are the
- * same object at two sizes rather than two things that look alike.
- */
-function Panel({ logo }) {
+function LogoTile({ logo, index, sizes }) {
   return (
-    <div
-      className={
-        'flex aspect-[5/3] h-full w-full items-center justify-center rounded-xl ' +
-        'shadow-[0_18px_45px_-24px_rgba(0,0,0,0.7)] transition-transform duration-300 hover:-translate-y-1 ' +
-        (logo.darkPanel ? 'bg-carbon ring-1 ring-white/15' : 'bg-white')
-      }
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-10% 0px' }}
+      transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: (index % 5) * 0.04 }}
+      className={'flex aspect-square items-center justify-center rounded-xl border border-white/80 p-2.5 shadow-[0_14px_32px_-22px_rgba(0,0,0,.55)] ' + TILE_TONES[index % TILE_TONES.length]}
     >
-      {/* The mark is capped on both axes rather than sat in a padded box,
-          because the roster is not one shape: a wide wordmark and a square
-          badge in the same padding box come out wildly different optical
-          sizes — the wordmark fills its width and towers, the badge shrinks to
-          the height and floats. Two independent caps let each shape stop at
-          the size that makes it *look* the same weight as its neighbours.
-
-          The numbers are a pair, not two settings. On this 5:3 panel the
-          height cap resolves to 0.35 of the panel's width, so a square mark
-          lands at ~0.35w and a 4:1 wordmark at 0.70w by 0.18w — near enough
-          the same inked area, which is what the eye actually reads as "same
-          size". Changing the panel ratio means re-deriving both. */}
       <img
         src={sized(logo.image, 'logo')}
+        srcSet={srcSetFor(logo.image, 'logo')}
+        sizes={sizes}
         alt={logo.alt ?? ''}
         loading="lazy"
         decoding="async"
-        className="max-h-[58%] max-w-[70%] object-contain"
+        className="max-h-[68%] max-w-[76%] object-contain"
       />
+    </motion.div>
+  )
+}
+
+const FIELD_COLUMNS = 4
+
+/**
+ * Where the last, partial row starts so it sits centred under the full rows
+ * above it.
+ *
+ * This was two hardcoded ternaries — `index === 8 ? 'col-start-3' : index === 9
+ * ? 'col-start-4'` — which only lined up for a field of exactly ten marks. The
+ * wall is CMS-managed and currently holds twenty-one, so any count the client
+ * lands on has to compose. Returns null when the last row is full and nothing
+ * needs moving.
+ */
+const lastRowStart = (count) => {
+  const remainder = count % FIELD_COLUMNS
+  if (remainder === 0) return null
+  return { first: count - remainder, column: Math.floor((FIELD_COLUMNS - remainder) / 2) + 1 }
+}
+
+function LogoField({ logos, side, indexOffset = 0 }) {
+  const last = lastRowStart(logos.length)
+  return (
+    <div
+      className={
+        'pointer-events-none absolute inset-y-0 hidden w-[35%] overflow-hidden lg:block ' +
+        (side === 'left' ? 'left-0 bg-gradient-to-r from-void via-void/90 to-transparent' : 'right-0 bg-gradient-to-l from-void via-void/90 to-transparent')
+      }
+    >
+      <div
+        className="absolute inset-0 opacity-55"
+        style={{
+          backgroundImage: 'linear-gradient(rgba(255,255,255,.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.08) 1px, transparent 1px)',
+          backgroundSize: '38px 38px',
+          maskImage: side === 'left' ? 'linear-gradient(90deg, black 0%, transparent 92%)' : 'linear-gradient(270deg, black 0%, transparent 92%)',
+        }}
+      />
+      <div className="relative grid h-full grid-cols-4 content-center gap-3 px-6 py-8 md:gap-3 md:px-8">
+        {logos.map((logo, index) => (
+          <div
+            key={logo.image + '-' + index}
+            style={last && index === last.first ? { gridColumnStart: last.column } : undefined}
+          >
+            <LogoTile
+              logo={logo}
+              index={index + indexOffset}
+              // The field is `w-[35%]` in four columns with gaps and padding,
+              // so a tile is under 8vw. These are decoration behind the copy
+              // and never read as marks — nothing here justifies a large file.
+              sizes="8vw"
+            />
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
 
 export default function PartnerWall() {
-  const about = useSection('about_home')
   const { logos = [] } = useSection('marquee')
   const reduced = useReducedMotion()
+  const visibleLogos = logos.filter((logo) => logo.image)
 
-  const visibleLogos = useMemo(() => logos.filter((logo) => logo.image), [logos])
-
-  // `all` is a query that always holds, so the last tier is the floor and the
-  // lookup can never miss. TIERS runs widest-first for exactly this reason.
-  const tierIndex = useFirstMatchingQuery(TIER_QUERIES)
-  const tier = TIERS[tierIndex] ?? TIERS[TIERS.length - 1]
-  // The phone tier is the `all` floor, so this is the same breakpoint the rest
-  // of the component already reasons about — no second media query.
-  const isPhone = tierIndex === TIERS.length - 1
-
-  const rows = useMemo(() => {
-    if (!visibleLogos.length) return []
-    return balanceRows(visibleLogos, planRowCount(visibleLogos.length, tier))
-  }, [visibleLogos, tier])
-
-  // Every cell is the same width across every row — the widest row is what sets
-  // it, and the shorter rows centre within that. Sizing each row to its own
-  // length instead would make a four-logo row's panels visibly larger than a
-  // five-logo row's directly above it.
-  const perRow = rows.length ? rows[0].length : 1
-
-  // The logos are the section: without them there is nothing but a kicker over
-  // an empty grid.
   if (!visibleLogos.length) return null
 
+  const half = Math.ceil(visibleLogos.length / 2)
+  const leftLogos = visibleLogos.slice(0, half)
+  const rightLogos = visibleLogos.slice(half)
+
   return (
-    <section id="partners" className="relative isolate overflow-hidden bg-void">
-      <div className="py-14 md:py-18 xl:py-20">
-        <div className="mx-auto flex max-w-[34rem] items-center gap-5 px-gutter text-[0.72rem] font-bold uppercase tracking-[0.22em] text-accent-soft md:text-[0.8rem]">
-          <span aria-hidden className="h-px flex-1 bg-gradient-to-r from-transparent to-accent-soft/70" />
-          <h2>{about.eyebrow || 'Our Partners'}</h2>
-          <span aria-hidden className="h-px flex-1 bg-gradient-to-l from-transparent to-accent-soft/70" />
-        </div>
+    <section id="partners" className="relative min-h-[calc(100svh-5rem)] overflow-hidden bg-void px-0 py-0">
+      <div className="relative min-h-[calc(100svh-5rem)] overflow-hidden">
+        <div className="relative min-h-[calc(100svh-5rem)] overflow-hidden">
+          {/* Half the wall either side of the mark, not the whole list on
+              one side. Handed all twenty-one, a four-column field is six rows
+              deep — taller than the band — so the marks ran off the bottom of
+              the right edge and the left half of the section was empty.
 
-        {/* ── phone: a rail, not a wall ──────────────────────────────
-            Two to a row is the only honest width on a 390px screen, which at
-            21 marks meant eleven rows and 1,291px of scrolling — the roster
-            grows, so that only ever gets worse. Four rows laid out in columns
-            instead, scrolled sideways: the section is a fixed height whatever
-            the client uploads, and the wall keeps its shape.
+              `ceil` puts the odd mark on the left, which is the side that is
+              read first. */}
+          <LogoField logos={leftLogos} side="left" />
+          <LogoField logos={rightLogos} side="right" indexOffset={leftLogos.length} />
 
-            Columns are sized so two sit in the viewport with the third
-            showing at the edge. The peek is the affordance — a rail cut flush
-            to the screen looks like a grid that happens to be clipped, and
-            nobody swipes it.
-
-            `overscroll-x-contain` so reaching the end does not hand the
-            gesture to the browser's back-swipe, and the region is focusable
-            with a label so it can be reached and scrolled from a keyboard. */}
-        {isPhone ? (
           <div
-            tabIndex={0}
-            role="group"
-            aria-label="Our partners — scroll sideways for more"
-            // `scroll-px-4` pairs with the `px-4`: a snap target aligns to the
-            // scrollport edge, not the padding edge, so without it the rail
-            // opened already scrolled 16px and the first column sat flush to
-            // the screen — the exact clipped look the padding is there to
-            // avoid. Scroll padding puts the snap line back on the inset.
-            className="mt-10 grid snap-x snap-mandatory scroll-px-4 grid-flow-col grid-rows-4 overflow-x-auto overscroll-x-contain px-4 pb-2"
+            aria-hidden
+            className="pointer-events-none absolute inset-0 hidden lg:block"
             style={{
-              '--wall-gap': 'clamp(0.5rem, 1.2vw, 1.25rem)',
-              gap: 'var(--wall-gap)',
-              // Two whole columns plus the edge of a third.
-              gridAutoColumns: 'calc((100% - var(--wall-gap)) / 2.22)',
+              backgroundImage: 'radial-gradient(circle at center, rgba(0,115,164,.16), transparent 38%)',
             }}
+          />
+
+          <motion.div
+            initial={reduced ? false : { opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-10% 0px' }}
+            transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+            className="relative z-10 mx-auto flex min-h-[calc(100svh-5rem)] flex-col items-center justify-center gap-7 px-6 py-20 text-center md:px-10"
           >
-            {visibleLogos.map((logo, i) => (
-              <motion.div
-                key={logo.image + '-' + i}
-                className="snap-start"
-                initial={reduced ? false : { opacity: 0, y: 18 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                // Columns off to the right are genuinely out of view, so they
-                // arrive as they are swiped to rather than all at once behind
-                // the fold.
-                viewport={{ once: true, margin: '-10% 0px' }}
-                transition={{
-                  duration: 0.6,
-                  ease: [0.16, 1, 0.3, 1],
-                  delay: reduced ? 0 : (i % 4) * 0.06,
-                }}
-              >
-                <Panel logo={logo} />
-              </motion.div>
+            <p className="font-body text-[11px] font-bold uppercase tracking-[0.28em] text-accent md:text-xs">
+              Our Partners
+            </p>
+            <img
+              src={logoMark}
+              alt="Prime Developers"
+              decoding="async"
+              className="h-[min(16rem,40vh)] w-auto max-w-[72vw]"
+            />
+          </motion.div>
+
+          <div className="relative z-10 grid grid-cols-3 gap-3 px-5 pb-8 sm:grid-cols-5 lg:hidden">
+            {visibleLogos.map((logo, index) => (
+              <LogoTile
+                key={logo.image + '-mobile-' + index}
+                logo={logo}
+                index={index}
+                // `grid-cols-3`, then `sm:grid-cols-5`, and gone from `lg` —
+                // so the widest this is ever asked to be is a fifth of a
+                // 1023px viewport.
+                sizes="(min-width: 640px) 20vw, 33vw"
+              />
             ))}
           </div>
-        ) : (
-          /* Full-bleed rather than inside the page gutter: the wall is the one
-             element here that is meant to measure the viewport. The padding
-             left on it is a safety margin, not a gutter — panels flush to a
-             phone's screen edge read as clipped.
-
-             Not a list, either: a `ul` of rows announces "4 items" rather than
-             the partners, and a `ul` of logos cannot hold the rows the layout
-             needs. The order is stable and every mark carries its own alt
-             text, so the images are the content on their own. */
-        <div
-          className="mt-10 flex flex-col px-4 md:mt-14 md:px-6"
-          // One gap value for both axes, and the cell width is written against
-          // it below, so changing it here keeps the rows aligned.
-          style={{ '--wall-gap': 'clamp(0.5rem, 1.2vw, 1.25rem)', gap: 'var(--wall-gap)' }}
-        >
-          {rows.map((row, rowIndex) => (
-            <div key={rowIndex} className="flex justify-center" style={{ gap: 'var(--wall-gap)' }}>
-              {row.map((logo, i) => (
-                <motion.div
-                  key={logo.image + '-' + i}
-                  // Not `flex-1`: a row holding fewer than `perRow` marks would
-                  // stretch its panels to fill the width, and the wall would
-                  // lose the single cell size it is built on.
-                  style={{
-                    width: `calc((100% - ${perRow - 1} * var(--wall-gap)) / ${perRow})`,
-                    maxWidth: MAX_CELL,
-                  }}
-                  initial={reduced ? false : { opacity: 0, y: 18 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: '-10% 0px' }}
-                  transition={{
-                    duration: 0.6,
-                    ease: [0.16, 1, 0.3, 1],
-                    // Staggered down the wall a row at a time, so it assembles
-                    // top to bottom instead of every panel arriving at once.
-                    delay: reduced ? 0 : rowIndex * 0.08 + i * 0.03,
-                  }}
-                >
-                  <Panel logo={logo} />
-                </motion.div>
-              ))}
-            </div>
-          ))}
         </div>
-        )}
       </div>
     </section>
   )

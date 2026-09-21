@@ -776,10 +776,6 @@ function LabelDeclutter({ labels, nodes, selected, hoveredIndex, distanceFactor 
 
 /* ── compass ───────────────────────────────────────────────────────────── */
 
-// North after the admin's orientation: screen-up in plan view, which is the
-// direction they turn the model to match.
-const NORTH = new THREE.Vector3(0, 0, -1)
-
 /**
  * A compass that follows the camera.
  *
@@ -793,15 +789,18 @@ const NORTH = new THREE.Vector3(0, 0, -1)
  */
 function CompassNeedle({ dialRef, bounds }) {
   const camera = useThree((state) => state.camera)
+  const controls = useThree((state) => state.controls)
   // Reused across frames — this runs every frame of an orbit, and three
   // vectors of garbage per frame is exactly the kind of allocation that shows
   // up as jitter on a mid-range phone.
   const base = useRef(new THREE.Vector3())
   const tip = useRef(new THREE.Vector3())
+  const north = useRef(new THREE.Vector3(0, 0, -1))
 
-  useFrame(() => {
+  const update = useCallback(() => {
     const node = dialRef.current
-    if (!node || !bounds) return
+    const center = bounds?.center
+    if (!node || !center || center.length < 3) return
     // North projected into screen space, rather than derived from the camera's
     // azimuth: that would need special-casing for plan view, where the camera
     // looks straight down and its azimuth is degenerate. Projecting two points
@@ -810,18 +809,36 @@ function CompassNeedle({ dialRef, bounds }) {
     // The step is a fraction of the model so the two points stay far enough
     // apart to be numerically stable at this site's scale, where coordinates
     // run into the thousands.
-    const step = Math.max(bounds.radius * 0.25, 1)
-    base.current.set(...bounds.center)
-    tip.current.copy(base.current).add(NORTH.clone().multiplyScalar(step))
+    const step = Math.max(Number(bounds.radius) * 0.25, 1)
+    base.current.set(center[0], center[1], center[2])
+    tip.current.copy(base.current).addScaledVector(north.current, step)
+    camera.updateMatrixWorld()
     base.current.project(camera)
     tip.current.project(camera)
     // NDC y points up, CSS rotation runs clockwise from up — which is what
     // atan2(dx, dy) already gives.
     const dx = tip.current.x - base.current.x
     const dy = tip.current.y - base.current.y
-    if (!dx && !dy) return
+    if (!Number.isFinite(dx) || !Number.isFinite(dy) || Math.hypot(dx, dy) < 1e-7) {
+      node.style.transform = 'rotate(0deg)'
+      return
+    }
+    node.style.transformOrigin = '50% 50%'
     node.style.transform = `rotate(${THREE.MathUtils.radToDeg(Math.atan2(dx, dy))}deg)`
-  })
+  }, [bounds, camera, dialRef])
+
+  // Demand rendering does not guarantee a frame for every control change.
+  // OrbitControls emits the change event after it updates the camera, so use
+  // it as the immediate DOM-update path and keep useFrame for damping/resize
+  // updates that do not emit a discrete event.
+  useEffect(() => {
+    update()
+    if (!controls) return undefined
+    controls.addEventListener('change', update)
+    return () => controls.removeEventListener('change', update)
+  }, [controls, update])
+
+  useFrame(update)
   return null
 }
 

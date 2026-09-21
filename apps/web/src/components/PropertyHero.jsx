@@ -4,7 +4,7 @@ import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import SocialIcon from './SocialIcon'
 import ArrowRight from './ArrowRight'
-import { sized } from '../lib/images'
+import { sized, srcSetFor } from '../lib/images'
 import { useProperties } from '../context/ContentContext'
 import { phaseSiblings } from '../lib/phases'
 
@@ -32,11 +32,22 @@ const isSharedTransition = document.documentElement.classList.contains('property
       timeline.from(image.current, { scale: 1.08, opacity: 0, duration: 1.25 }, 0.1)
     }
 
-    gsap.to(image.current, {
-      yPercent: 8,
-      ease: 'none',
-      scrollTrigger: { trigger: scope.current, start: 'top top', end: 'bottom top', scrub: true },
-    })
+    // `fromTo`, and the travel runs up to zero rather than down from it. The
+    // photograph is 112% of the frame and hangs from its top edge, so the 12%
+    // of slack it has to drift into is all below — translating it *down* 8%
+    // walked its top edge into the frame and opened a band of bare `void`
+    // across the head of the hero, under the navbar, for the whole scroll.
+    // Starting at -8% and settling at 0 spends the same slack in the direction
+    // the frame actually has it, and the image covers at both ends.
+    gsap.fromTo(
+      image.current,
+      { yPercent: -8 },
+      {
+        yPercent: 0,
+        ease: 'none',
+        scrollTrigger: { trigger: scope.current, start: 'top top', end: 'bottom top', scrub: true },
+      }
+    )
   }, { scope })
 
   const words = property.name.split(/\s+/)
@@ -45,10 +56,13 @@ const isSharedTransition = document.documentElement.classList.contains('property
   return (
     <section ref={scope} data-property-hero={property.slug} className="relative min-h-[100dvh] overflow-hidden bg-void text-white">
       {property.image && (
-        <div className="absolute inset-0 overflow-hidden">
+        <div className="bleed-fill overflow-hidden">
           <img
             ref={image}
             src={sized(property.image, 'full')}
+            // Full-bleed, so the slot is the viewport at every breakpoint.
+            srcSet={srcSetFor(property.image, 'full')}
+            sizes="100vw"
             style={{ viewTransitionName: `property-image-${property.slug}` }}
             alt={`${property.name} property exterior`}
             fetchPriority="high"

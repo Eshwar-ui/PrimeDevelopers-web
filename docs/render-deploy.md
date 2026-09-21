@@ -66,8 +66,8 @@ I'll set `VITE_API_BASE_URL`, build, and `firebase deploy --only hosting`.
 The service is live but nothing watches it. When the API stops answering, the
 public site renders empty sections rather than an error, so an outage is
 invisible until someone loads the site and notices the content is missing.
-[`docs/monitoring.md`](monitoring.md) has the UptimeRobot setup — two keyword
-monitors, about five minutes of dashboard work.
+[`docs/monitoring.md`](monitoring.md) has the UptimeRobot setup — three keyword
+monitors. `pnpm run monitors` prints the plan and `--apply` creates them.
 
 ## Notes
 

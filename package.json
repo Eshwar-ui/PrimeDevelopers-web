@@ -10,7 +10,8 @@
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
     "seed": "node --env-file=.env.seed scripts/seed.js",
-    "seed:interiors-demo": "node --env-file=apps/api/.env scripts/seed-interiors-demo.mjs"
+    "seed:interiors-demo": "node --env-file=apps/api/.env scripts/seed-interiors-demo.mjs",
+    "monitors": "node scripts/uptimerobot.mjs"
   },
   "devDependencies": {
     "@supabase/supabase-js": "^2.110.8"

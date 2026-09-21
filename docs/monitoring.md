@@ -8,6 +8,35 @@ Nothing else notices. That is what this monitoring is for.
 Set up in UptimeRobot. The free plan (50 monitors, 5-minute checks, email
 alerts) covers everything below.
 
+## Setting them up
+
+Either click them in from the tables below, or run the script that encodes
+them:
+
+```bash
+export UPTIMEROBOT_API_KEY=u1234567-…   # Settings → API settings → main key
+pnpm run monitors           # dry run — prints the plan, writes nothing
+pnpm run monitors --apply   # create them
+```
+
+[`scripts/uptimerobot.mjs`](../scripts/uptimerobot.mjs) matches monitors by
+friendly name, so re-running never duplicates one: it creates what is missing,
+reports anything that has drifted from the tables below, and with `--apply`
+puts it back. It exits non-zero when a dry run finds drift, which is the part
+worth having — a readiness monitor quietly switched to a plain HTTP(s) check is
+precisely the failure this page is about, and the dashboard would show you
+nothing but green.
+
+It needs the **main** API key; a read-only or monitor-specific key can list
+monitors but not create them. By default it attaches every confirmed alert
+contact on the account to all three monitors, which is the rule below;
+`--alert-contacts 123,456` picks specific ones and `--no-alert-contacts` leaves
+them alone.
+
+One thing it cannot do, because the v2 API has no parameter for it: turn on
+"Send a notification when the monitor goes back up". That stays a per-monitor
+checkbox in the dashboard.
+
 ## The one thing that is easy to get wrong
 
 `/api/health/ready` **returns HTTP 200 even when the database is unreachable.**
@@ -93,6 +122,7 @@ difference between "wait for Supabase" and "go look at Render".
 | Keyword | `Prime Developers` |
 | Keyword type | **Does not exist** |
 | Interval | 5 minutes |
+| Timeout | 30 seconds |
 
 Firebase Hosting rarely goes down, and when it does it isn't ours to fix. The
 value here is different: the site can be up and serving a shell while the API

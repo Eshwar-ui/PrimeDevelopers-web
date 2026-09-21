@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { useSection, useProperties } from '../context/ContentContext'
 import { renderEmphasis } from '../lib/emphasis'
-import { sized } from '../lib/images'
+import { sized, srcSetFor } from '../lib/images'
 import ArrowRight from './ArrowRight'
 
 // Four frames in the mosaic — one under the copy, two stacked in the middle,
@@ -67,7 +67,10 @@ function MobileGallery({ tiles, heading, paragraph, go }) {
           >
             <img
               src={sized(property.image, 'card')}
-              alt={property.name}
+              // This branch is `md:hidden` — it only ever renders on a phone,
+              // where the frame is the full column. One breakpoint, one width.
+              srcSet={srcSetFor(property.image, 'card')}
+              sizes="100vw"
               loading={active === 0 ? 'eager' : 'lazy'}
               decoding="async"
               className="absolute inset-0 size-full object-cover transition-transform duration-700 ease-brand group-hover:scale-[1.035]"
@@ -150,7 +153,10 @@ export default function Gallery() {
       >
         <img
           src={sized(p.image, 'card')}
-          alt={p.name}
+          // The mosaic counterpart, which is `md:` and up: two columns inside
+          // the content measure, so roughly half the viewport apiece.
+          srcSet={srcSetFor(p.image, 'card')}
+          sizes="(min-width: 768px) 50vw, 100vw"
           loading="lazy"
           decoding="async"
           className="absolute inset-0 size-full object-cover transition-transform duration-700 ease-brand group-hover:scale-[1.06]"

@@ -74,6 +74,58 @@
           pending.catch(function () {})
           store[path] = pending
         })
+
+        /**
+         * Preload the hero photograph — the LCP element of the whole site.
+         *
+         * Nothing rendered it until now. <ContentProvider> holds the entire app
+         * behind a splash until /content lands AND a 1.2s floor has passed, so
+         * <Hero> — and therefore the only <img> that matters — did not exist
+         * until both were done. The browser cannot request a URL it has never
+         * been shown, so the hero download began *after* the bundle had
+         * downloaded, parsed and booted, after the API answered, and after the
+         * floor: four waits in series, none of which overlap the one fetch the
+         * visitor is actually waiting to see.
+         *
+         * The URL is knowable far earlier than that. The /content request above
+         * is already in flight at ~10ms, and its response carries the slide. So
+         * the moment it lands we hand the browser the link itself, and the hero
+         * downloads *alongside* the bundle and the splash instead of behind
+         * them. On a slow connection that is most of the wait; on a fast one it
+         * is the whole 1.2s floor.
+         *
+         * imagesrcset rather than href, because <Hero> renders a srcSet: a
+         * plain href would preload 1920w, the browser would then pick 960w off
+         * the srcSet for a phone, and the preload would be a wasted 200KB
+         * rather than a saving. Handing the preload the same candidate list
+         * lets it resolve to the same file the <img> will ask for.
+         *
+         * MUST match srcSetFor(src, 'full') in src/lib/images.js — SRCSET.full
+         * and DEFAULT_QUALITY. A mismatch is not a breakage, it is worse: both
+         * URLs work, so the page still paints and simply downloads the hero
+         * twice, which no test would catch.
+         */
+        var HERO_WIDTHS = [640, 960, 1280, 1600, 1920]
+        store['/content']
+          .then(function (content) {
+            var slides = content && content.hero && content.hero.slides
+            var src = slides && slides[0] && slides[0].image
+            if (typeof src !== 'string' || src.indexOf('/storage/v1/object/public/') < 0) return
+
+            var base = src.split('?')[0].replace('/storage/v1/object/public/', '/storage/v1/render/image/public/')
+            var link = document.createElement('link')
+            link.rel = 'preload'
+            link.as = 'image'
+            link.fetchPriority = 'high'
+            link.imageSrcset = HERO_WIDTHS.map(function (w) {
+              return base + '?width=' + w + '&quality=75&resize=contain ' + w + 'w'
+            }).join(', ')
+            link.imageSizes = '100vw'
+            document.head.appendChild(link)
+          })
+          // Purely an optimisation: a failure here costs the preload and
+          // nothing else, and <Hero> still requests the image the ordinary way.
+          .catch(function () {})
       })()
     </script>
   </head>

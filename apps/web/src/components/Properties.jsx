@@ -4,7 +4,7 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import { useSection, useProperties } from '../context/ContentContext'
-import { sized } from '../lib/images'
+import { sized, srcSetFor } from '../lib/images'
 import { renderEmphasis } from '../lib/emphasis'
 import ActionButton from './ActionButton'
 import ArrowRight from './ArrowRight'
@@ -178,7 +178,11 @@ export default function Properties() {
                 >
                   <img
                     src={sized(p.image, 'card')}
-                    alt={p.name}
+                    // Tracks the frame's own class list above: full width while
+                    // the card is stacked, `lg:w-[68%]` of it once the photo is
+                    // bled in behind the copy.
+                    srcSet={srcSetFor(p.image, 'card')}
+                    sizes="(min-width: 1024px) 68vw, 100vw"
                     loading="lazy"
                     decoding="async"
                     className="absolute inset-0 size-full object-cover transition-transform duration-700 ease-brand group-hover:scale-[1.04]"

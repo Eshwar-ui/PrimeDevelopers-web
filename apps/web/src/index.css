@@ -450,6 +450,36 @@ html {
   display: none;
 }
 
+/* ── Full-bleed hero media ───────────────────────────────────────
+   The photograph behind a hero and every scrim stacked over it, each
+   bled one pixel past the section that clips them.
+
+   The bleed is the whole point of the class. A hero is sized in `svh`,
+   `dvh` or a `rem` minimum, so its height lands on a fractional pixel
+   as a matter of course — and a clipped layer whose box ends mid-pixel
+   has that last row antialiased. The scrim is painted at partial
+   coverage there and the photograph under it is not, so the row the
+   page actually shows is part bare photograph: a bright hairline ruled
+   across the join with the section below. It is worse again once a
+   layer carries a transform — a GSAP entrance leaves one behind — because
+   the compositor then resolves that edge against the layer's own
+   backdrop rather than against what is behind it on the page.
+
+   A pixel of overhang moves the half-covered row outside the clip,
+   where nothing paints it, and leaves the page a fully covered edge.
+
+   Width and height are spelled out because `inset` alone will not
+   stretch a replaced element: an absolutely positioned `<img>` with
+   `width: auto` resolves to its intrinsic width and then drops the
+   `right` offset as over-constrained. This has to work on the
+   photograph itself, not only on a wrapper around it. */
+.bleed-fill {
+  position: absolute;
+  inset: -1px;
+  width: calc(100% + 2px);
+  height: calc(100% + 2px);
+}
+
 /* Rubik display — primary brand font for headings */
 .font-display {
   font-optical-sizing: auto;

@@ -293,7 +293,7 @@ export default function PropertyInfoPage() {
             aria-hidden
             fetchPriority="high"
             decoding="async"
-            className="pointer-events-none absolute inset-0 size-full object-cover"
+            className="bleed-fill pointer-events-none object-cover"
           />
         )}
         {/* Two scrims rather than one flat wash, so the photograph stays bright
@@ -301,11 +301,11 @@ export default function PropertyInfoPage() {
             the left; the vertical one darkens the foot of the section, which is
             where the stat row runs full width and where this has to meet the
             band below without a seam. */}
-        <div aria-hidden className="pointer-events-none absolute inset-0 bg-gradient-to-r from-void via-void/78 to-void/35" />
-        <div aria-hidden className="pointer-events-none absolute inset-0 bg-gradient-to-t from-void via-void/40 to-transparent" />
+        <div aria-hidden className="bleed-fill pointer-events-none bg-gradient-to-r from-void via-void/78 to-void/35" />
+        <div aria-hidden className="bleed-fill pointer-events-none bg-gradient-to-t from-void via-void/40 to-transparent" />
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(100%_70%_at_50%_0%,rgba(0,115,164,0.20),transparent_62%)]"
+          className="bleed-fill pointer-events-none bg-[radial-gradient(100%_70%_at_50%_0%,rgba(0,115,164,0.20),transparent_62%)]"
         />
         <div className="relative mx-auto max-w-[1600px]">
           {/* No route back to the listing. This is an internal reference sheet

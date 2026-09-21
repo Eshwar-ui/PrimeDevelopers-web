@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
+import { ArrowRight, ArrowSquareOut } from '@phosphor-icons/react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import CountUp from '../components/CountUp'
 import { rise, stagger, inViewOnce } from '../lib/motion'
@@ -12,6 +13,7 @@ import { hasSiteModel } from '../lib/siteModel'
 import { sized } from '../lib/images'
 import { scrollToElement } from '../lib/scrollToElement'
 import PropertyHero from '../components/PropertyHero'
+import PropertyGallery from '../components/PropertyGallery'
 import { youtubeEmbedUrl } from '../lib/video'
 import {
   buildingFromResourceLabel,
@@ -19,6 +21,11 @@ import {
   getInvestment,
   isInvestmentLinkable,
 } from '../lib/investment'
+import { resourceKind } from '../lib/resourceKinds'
+import { marketplaceLogo } from '../lib/marketplaceLogos'
+
+
+const PROPERTY_GALLERY_LIMIT = 3
 
 // Eyebrow section label with the accent dash, matching the site system.
 //
@@ -83,7 +90,6 @@ export default function PropertyDetailPage() {
   const go = useSectionNav()
   const [searchParams] = useSearchParams()
   const [tab, setTab] = useState(0)
-  const [galleryMain, setGalleryMain] = useState(0)
   const [openArea, setOpenArea] = useState(0)
 
   // A unit link from the homepage arrives as `?building=…&unit=…`. On the
@@ -159,10 +165,10 @@ export default function PropertyDetailPage() {
   }
 
   const d = property.detail
-  const gallery = property.gallery ?? []
+  const gallery = (property.gallery ?? []).filter(Boolean)
   // Use several gallery frames so the overview feels like a property tour
   // rather than a single hero followed by an empty reserved area.
-  const overviewImages = gallery.filter((src) => src && src !== property.image).slice(0, 6)
+  const overviewImages = gallery.filter((src) => src !== property.image).slice(0, PROPERTY_GALLERY_LIMIT)
   // Guarded: a property with no buildings yet would divide 0 by 0 and render
   // "(NaN% currently reserved.)" in the enquiry copy.
   const soldPct = property.buildings > 0 ? Math.round((property.sold / property.buildings) * 100) : 0
@@ -208,13 +214,13 @@ export default function PropertyDetailPage() {
                 initial="hidden"
                 whileInView="show"
                 viewport={inViewOnce}
-                className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
+                className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:h-[clamp(30rem,43vw,42rem)] lg:grid-rows-2"
               >
                 {overviewImages.map((image, index) => (
                   <motion.div
                     key={`${image}-${index}`}
                     variants={rise}
-                    className={`overflow-hidden rounded-panel border border-line bg-surface-alt ${
+                    className={`h-48 min-h-0 overflow-hidden rounded-panel border border-line bg-surface-alt lg:h-auto ${
                       index === 0 ? 'sm:col-span-2 lg:col-span-2 lg:row-span-2' : ''
                     }`}
                   >
@@ -223,9 +229,7 @@ export default function PropertyDetailPage() {
                       alt=""
                       loading="lazy"
                       decoding="async"
-                      className={`w-full object-cover transition-transform duration-700 ease-brand hover:scale-[1.04] ${
-                        index === 0 ? 'aspect-[4/3] sm:aspect-[16/10]' : 'aspect-[16/9]'
-                      }`}
+                      className="h-full w-full object-cover transition-transform duration-700 ease-brand hover:scale-[1.04]"
                     />
                   </motion.div>
                 ))}
@@ -402,18 +406,28 @@ export default function PropertyDetailPage() {
         </section>
       )}
 
-      {/* ── Tenants ──────────────────────────────────────────── */}
+      {/* ── Tenants ─────────────────────────────────────────────── */}
       {d?.tenants?.length > 0 && (
-        <section data-band="light" className="border-y border-[var(--color-line)] bg-base px-gutter py-16">
-          <div className="flex flex-wrap items-center justify-center gap-x-16 gap-y-8">
-            {d.tenants.map((logo, i) => (
-              <img
-                key={i}
-                src={logo}
-                alt=""
-                className="h-10 w-auto object-contain transition-transform duration-300 hover:scale-105 md:h-12"
-              />
-            ))}
+        <section data-band="light" className="border-y border-[var(--color-line)] bg-base px-gutter py-16 md:py-20">
+          <div className="mx-auto max-w-[1560px]">
+            <div className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_18px_50px_-38px_rgba(0,0,0,.55)]">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                {d.tenants.map((logo, i) => (
+                  <div
+                    key={i}
+                    className="group flex aspect-[1.7] items-center justify-center border-b border-r border-black/10 p-5 transition-colors duration-300 hover:bg-prime-soft"
+                  >
+                    <img
+                      src={logo}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                      className="max-h-[58%] max-w-[78%] object-contain transition-transform duration-300 group-hover:scale-[1.04]"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </section>
       )}
@@ -596,31 +610,17 @@ export default function PropertyDetailPage() {
           down an otherwise dark page. */}
       {d?.location?.heading && (
         <section data-band="light" className="bg-base px-gutter py-20 md:py-28">
-          <div className="grid gap-12 lg:grid-cols-[1.1fr_1fr] lg:gap-20">
-            {/* Image + thumbnails */}
-            {gallery.length > 0 && (
-              <div className="min-w-0">
-                <img
-                  src={gallery[galleryMain]}
-                  alt=""
-                  className="h-[300px] w-full rounded-2xl object-cover md:h-[420px]"
-                />
-                <div className="mt-4 flex gap-3 overflow-x-auto pb-1">
-                  {gallery.slice(0, 5).map((src, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => setGalleryMain(i)}
-                      className={`h-16 w-20 shrink-0 overflow-hidden rounded-lg border transition-colors ${
-                        i === galleryMain ? 'border-accent' : 'border-transparent opacity-60 hover:opacity-100'
-                      }`}
-                    >
-                      <img src={src} alt="" className="h-full w-full object-cover" />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+          {/* Capped to the site measure like every other section on the page.
+              Without it this was the one band running the full viewport, so at
+              1730px the photograph and the copy pulled apart to the window
+              edges while the section above and the section below both stopped
+              at 1560 — the page looked like it lost its margins for one block. */}
+          <div className="mx-auto grid max-w-[1560px] gap-12 lg:grid-cols-[1.1fr_1fr] lg:gap-20">
+            {/* Every photograph the property holds, not the first five.
+                This was a still frame with `gallery.slice(0, 5)` under it,
+                which on Centro Plaza put 5 of 135 images on the page and left
+                the other 130 reachable only through the admin. */}
+            <PropertyGallery images={gallery} label={property.name} />
 
             <div className="flex min-w-0 flex-col justify-center lg:pl-4">
               <SectionTag>{d.location.eyebrow}</SectionTag>
@@ -818,11 +818,14 @@ export default function PropertyDetailPage() {
 
           Split in two, because they were never one kind of thing. A CAP rate
           sheet is the start of an investment conversation; a LoopNet listing
-          is a link. Flat and uniform, the four rate sheets were four rows of
-          identical grey among nine, and the most valuable items on the page
-          were the easiest to miss. Now they lead, carry the building they
-          describe and — once figures are published — go to a page on this
-          site rather than bouncing the reader to a PDF host. */}
+          is a link.
+
+          The split existed in the code long before it existed on screen: both
+          halves were the same rounded rectangle, the same hairline and the
+          same grey, twelve pixels apart, so nine links read as one wall. Rank
+          is carried by ground now — the rate sheets sit on the accent wash,
+          everything else on plain surface — which survives a squint in a way
+          that padding never did. */}
       {d?.resourceLinks?.length > 0 &&
         (() => {
           const buildings = d?.floorPlans?.buildings ?? []
@@ -839,96 +842,272 @@ export default function PropertyDetailPage() {
           }
 
           return (
-            <section data-band="light" className="bg-surface-alt px-gutter py-16 md:py-24">
-              <SectionTag>{t.resourcesLabel}</SectionTag>
+            <section data-band="light" className="bg-surface-alt px-gutter py-20 md:py-28">
+              {/* Capped to the site measure like the overview and location
+                  bands. Uncapped, this was the one section still running to
+                  the window edge at 1800px while the sections either side of
+                  it stopped at 1560. */}
+              <div className="mx-auto max-w-[1560px]">
+                <SectionTag>{t.resourcesLabel}</SectionTag>
+                {t.resourcesHeading && (
+                  <h2 className="mt-6 max-w-[20ch] text-balance font-display font-bold leading-[1.08] tracking-[-0.02em] text-content [font-size:clamp(1.9rem,3.4vw,3rem)]">
+                    {t.resourcesHeading}
+                  </h2>
+                )}
 
-              {rated.length > 0 && (
-                <div className="mt-8 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-                  {rated.map(({ link, building }, i) => {
-                    const internal = isInvestmentLinkable(building)
-                    const capRate = String(getInvestment(building)?.capRate ?? '').trim()
-                    const href = internal
-                      ? `/properties/${property.slug}/investment/${buildingSlug(building.building)}`
-                      : link.url
-                    // Same card either way; only where it goes differs. An
-                    // internal route must not be an <a>, or every visit
-                    // reloads the SPA and loses the scroll position.
-                    const Tag = internal ? Link : 'a'
-                    const nav = internal ? { to: href } : { href, target: '_blank', rel: 'noreferrer' }
+                {rated.length > 0 && (
+                  <motion.div
+                    variants={stagger}
+                    initial="hidden"
+                    whileInView="show"
+                    viewport={inViewOnce}
+                    // Two rules, and both are needed.
+                    //
+                    // The column count is the item count, capped per rung —
+                    // not `auto-fit`, which derives its repetition from the
+                    // *max* track sizing function and so turned a 26rem
+                    // ceiling into three 416px tracks at 1800px, wrapping
+                    // four rate sheets as 3 + 1.
+                    //
+                    // The track carries a ceiling rather than being `1fr`.
+                    // `1fr` divides the container by however many cards there
+                    // are, so a property with one rate sheet got a single
+                    // 1560px card — a poster, not a card. With a ceiling it
+                    // shrinks with the viewport and stops at the width it was
+                    // drawn for. Left-aligned by default: `justify-content`
+                    // resolves to `start` once the tracks are not auto-sized,
+                    // which is what the heading above it wants.
+                    style={{
+                      '--rc-sm': Math.min(rated.length, 2),
+                      '--rc': Math.min(rated.length, 4),
+                    }}
+                    className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-[repeat(var(--rc-sm),minmax(0,24rem))] xl:grid-cols-[repeat(var(--rc),minmax(0,24rem))]"
+                  >
+                    {rated.map(({ link, building }, i) => {
+                      const internal = isInvestmentLinkable(building)
+                      const investment = getInvestment(building)
+                      const capRate = String(investment?.capRate ?? '').trim()
+                      const href = internal
+                        ? `/properties/${property.slug}/investment/${buildingSlug(building.building)}`
+                        : link.url
+                      // Same card either way; only where it goes differs. An
+                      // internal route must not be an <a>, or every visit
+                      // reloads the SPA and loses the scroll position.
+                      const Tag = internal ? Link : 'a'
+                      const nav = internal ? { to: href } : { href, target: '_blank', rel: 'noreferrer' }
+                      const ActionIcon = internal ? ArrowRight : ArrowSquareOut
+                      // Two supporting figures at most. These are the two an
+                      // investor pairs with a yield; the rest of the term
+                      // sheet is one click away, and putting it here would
+                      // turn a card into a table nobody reads on a phone.
+                      const figures = [
+                        { label: 'Asking', value: String(investment?.askingPrice ?? '').trim() },
+                        { label: 'Size', value: String(investment?.buildingSize ?? '').trim() },
+                      ].filter((figure) => figure.value)
 
-                    return (
-                      <Tag
-                        key={`rated-${i}`}
-                        {...nav}
-                        className="group flex flex-col justify-between gap-6 rounded-2xl border border-[var(--color-line)] bg-surface p-5 transition-colors duration-300 hover:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                      >
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <p className="font-body text-[10px] font-bold uppercase tracking-[0.18em] text-content/55">
-                              {internal ? 'Investment summary' : 'CAP rate flyer'}
-                            </p>
-                            <p className="mt-2 font-display text-xl font-bold tracking-[-0.02em] text-content transition-colors duration-300 group-hover:text-accent">
-                              {building.building}
-                            </p>
-                          </div>
-                          {/* The yield is the number an investor scans for, so
-                              it sits on the card rather than one click in. */}
-                          {capRate && (
-                            <span className="shrink-0 rounded-full bg-accent/12 px-3 py-1 font-body text-[11px] font-bold uppercase tracking-wide text-accent">
-                              {capRate} CAP
+                      return (
+                        <motion.div key={`rated-${i}`} variants={rise} className="min-w-0">
+                          <Tag
+                            {...nav}
+                            // The accent wash, not a hairline, is what makes
+                            // these outrank the tiles below — and it is the
+                            // one pale blue in the palette redefined under
+                            // `.dark`, so the card darkens with the page
+                            // instead of hanging off it as a lit panel.
+                            className="group flex h-full flex-col justify-between gap-7 rounded-panel bg-prime-soft p-6 ring-1 ring-inset ring-accent/15 transition-[box-shadow,translate,--tw-ring-color] duration-500 ease-brand hover:-translate-y-1 hover:shadow-[0_22px_48px_-30px_color-mix(in_srgb,var(--color-accent)_85%,transparent)] hover:ring-accent/45 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+                          >
+                            <div>
+                              <p className="font-body text-[10px] font-bold uppercase tracking-[0.2em] text-content/70">
+                                {internal ? 'Investment summary' : 'CAP rate flyer'}
+                              </p>
+
+                              {/* The card promotes whatever real information
+                                  it actually holds. With a published yield
+                                  the figure is the headline and the building
+                                  name becomes its caption; without one — the
+                                  state every building ships in until the
+                                  client supplies figures — the name takes the
+                                  display size itself. The alternative was a
+                                  card built around a number that is usually
+                                  missing, held open by an em dash. */}
+                              {capRate ? (
+                                <>
+                                  {/* Tabular figures, so four yields set in
+                                      four cards line up digit for digit
+                                      across the row and can be compared
+                                      without being read. */}
+                                  <p className="numeral mt-6 text-accent [font-size:clamp(2.5rem,4.4vw,3.25rem)]">
+                                    {capRate}
+                                    <span className="ml-2 align-baseline font-display text-[0.26em] font-bold uppercase tracking-[0.2em] text-content/70">
+                                      CAP
+                                    </span>
+                                  </p>
+                                  <p className="mt-4 font-display text-lg font-bold tracking-[-0.01em] text-content">
+                                    {building.building}
+                                  </p>
+                                </>
+                              ) : (
+                                <p className="mt-5 max-w-[10ch] text-balance font-display font-bold leading-[1.02] tracking-[-0.03em] text-content [font-size:clamp(1.75rem,2.4vw,2.25rem)]">
+                                  {building.building}
+                                </p>
+                              )}
+                            </div>
+
+                            <div>
+                              {figures.length > 0 && (
+                                <dl className="mb-5 flex flex-wrap gap-x-8 gap-y-2 border-t border-accent/20 pt-5">
+                                  {figures.map((figure) => (
+                                    <div key={figure.label}>
+                                      <dt className="font-body text-[10px] font-bold uppercase tracking-[0.18em] text-content/70">
+                                        {figure.label}
+                                      </dt>
+                                      <dd className="mt-1 font-display text-[15px] font-bold tracking-[-0.01em] text-content">
+                                        {figure.value}
+                                      </dd>
+                                    </div>
+                                  ))}
+                                </dl>
+                              )}
+
+                              <span className="inline-flex items-center gap-2 font-body text-[12px] font-bold uppercase tracking-[0.12em] text-accent">
+                                {internal ? 'View the figures' : 'Open the flyer'}
+                                <ActionIcon
+                                  aria-hidden
+                                  weight="bold"
+                                  className="size-4 transition-transform duration-300 ease-brand group-hover:translate-x-1 motion-reduce:transition-none"
+                                />
+                              </span>
+                            </div>
+                          </Tag>
+                        </motion.div>
+                      )
+                    })}
+                  </motion.div>
+                )}
+
+                {others.length > 0 && (
+                  <motion.div
+                    variants={stagger}
+                    initial="hidden"
+                    whileInView="show"
+                    viewport={inViewOnce}
+                    // Same two rules as the rate sheets above, one rung
+                    // lower and one size smaller.
+                    style={{
+                      '--sc-sm': Math.min(others.length, 2),
+                      '--sc-lg': Math.min(others.length, 3),
+                      '--sc-xl': Math.min(others.length, 5),
+                    }}
+                    // The rule is the whole grouping device, and it only earns
+                    // its place when there is a group above it to be separated
+                    // from. On a property with no rate sheets these tiles are
+                    // the section, and a rule under the heading would be a lid.
+                    className={`grid grid-cols-1 gap-3 sm:grid-cols-[repeat(var(--sc-sm),minmax(0,21rem))] lg:grid-cols-[repeat(var(--sc-lg),minmax(0,21rem))] xl:grid-cols-[repeat(var(--sc-xl),minmax(0,21rem))] ${
+                      rated.length > 0 ? 'mt-14 border-t border-line pt-10' : 'mt-10'
+                    }`}
+                  >
+                    {others.map((link, i) => {
+                      const kind = resourceKind(link.label, link.url)
+                      const { Icon, action: ActionIcon } = kind
+                      const logo = marketplaceLogo(link.label)
+
+                      return (
+                        <motion.a
+                          key={`other-${i}`}
+                          variants={rise}
+                          href={link.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          // Hugs its content rather than `justify-between`ing
+                          // the chip and the label to opposite ends of a tall
+                          // box. Stretched apart they read as two unrelated
+                          // marks; the tile is now as tall as what is in it.
+                          className="group flex min-w-0 flex-row items-center gap-4 rounded-panel bg-surface p-4 ring-1 ring-inset ring-line sm:flex-col sm:items-stretch sm:gap-5 sm:p-5 transition-[box-shadow,translate,--tw-ring-color] duration-300 ease-brand hover:-translate-y-0.5 hover:shadow-[0_16px_34px_-26px_color-mix(in_srgb,var(--color-accent)_80%,transparent)] hover:ring-accent/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+                        >
+                          {link.thumbnail ? (
+                            <span className="size-11 shrink-0 overflow-hidden rounded-xl">
+                              <img
+                                src={link.thumbnail}
+                                alt=""
+                                loading="lazy"
+                                decoding="async"
+                                className="size-full object-cover"
+                              />
+                            </span>
+                          ) : logo ? (
+                            // Supplied marks arrive in whatever proportion the
+                            // brand draws them — the Crexi lockup is 4.7:1,
+                            // the LoopNet symbol is square — so the chip is
+                            // sized by its art: fixed height, auto width,
+                            // capped. Forced into a square, a wordmark that
+                            // wide renders about seven pixels tall.
+                            //
+                            // Always on the white it was drawn for, in both
+                            // themes. Tinting someone else's logo to our
+                            // accent is not ours to do, and neither is
+                            // cropping a lockup down to its symbol.
+                            //
+                            // `self-center sm:self-start` because the tile
+                            // turns on its side below `sm`: centred in the
+                            // row, top-aligned in the column, where `stretch`
+                            // would otherwise pull an auto width to the full
+                            // tile. The cap tightens on a phone too — at
+                            // 9.5rem the Crexi lockup took 45% of a 390px row
+                            // and squeezed the label it sits beside.
+                            <img
+                              src={logo}
+                              alt=""
+                              loading="lazy"
+                              decoding="async"
+                              className="h-11 w-auto max-w-[6.5rem] shrink-0 self-center rounded-xl bg-bone object-contain p-2 ring-1 ring-inset ring-line sm:max-w-[9.5rem] sm:self-start"
+                            />
+                          ) : (
+                            // `prime-soft` is the codebase's icon-tile wash
+                            // and it is overridden under `.dark`, so the chip
+                            // darkens with the card. A literal pale blue would
+                            // read as a lit square on an unlit page.
+                            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-prime-soft text-accent">
+                              <Icon aria-hidden className="size-6" />
                             </span>
                           )}
-                        </div>
 
-                        <span className="inline-flex items-center gap-2 font-body text-[12px] font-bold uppercase tracking-[0.12em] text-content/70 transition-colors duration-300 group-hover:text-accent">
-                          {internal ? 'View the figures' : 'Open the flyer'}
-                          <span
-                            aria-hidden
-                            className="transition-transform duration-300 group-hover:translate-x-1"
-                          >
-                            →
+                          {/* The action glyph sits beside the label, never in
+                              the far corner above it. At 300px wide a corner
+                              glyph is most of a tile away from the only word
+                              that says where it goes, which is how the first
+                              pass read as an empty box with two marks
+                              stranded in it.
+
+                              Below `sm` the tile turns on its side: a phone
+                              gives a full-width row and no height to spare,
+                              so the chip, the label and the glyph read across
+                              it instead of stacking down it. */}
+                          <span className="flex min-w-0 flex-1 items-center justify-between gap-3 sm:items-end">
+                            <span className="block min-w-0">
+                              <span className="block truncate font-display text-base font-bold tracking-[-0.01em] text-content transition-colors duration-300 group-hover:text-accent">
+                                {link.label}
+                              </span>
+                              {/* What the link *is*, which the client's
+                                  labels do not say: "Crexi" and "Flyer" are a
+                                  marketplace and a PDF, and nothing on the
+                                  tile said so. */}
+                              <span className="mt-1 block font-body text-[11px] font-bold uppercase tracking-[0.16em] text-content/70">
+                                {kind.caption}
+                              </span>
+                            </span>
+
+                            <ActionIcon
+                              aria-hidden
+                              weight="bold"
+                              className="mb-0.5 size-4 shrink-0 text-content/55 transition-[color,translate] duration-300 ease-brand group-hover:-translate-y-0.5 group-hover:text-accent motion-reduce:transition-none motion-reduce:group-hover:translate-y-0"
+                            />
                           </span>
-                        </span>
-                      </Tag>
-                    )
-                  })}
-                </div>
-              )}
-
-              {others.length > 0 && (
-                <div
-                  className={`grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 ${
-                    rated.length > 0 ? 'mt-3' : 'mt-8'
-                  }`}
-                >
-                  {others.map((link, i) => (
-                    <a
-                      key={`other-${i}`}
-                      href={link.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="group flex items-center gap-4 rounded-2xl border border-[var(--color-line)] bg-surface p-4 transition-colors duration-300 hover:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                    >
-                      {link.thumbnail ? (
-                        <img
-                          src={link.thumbnail}
-                          alt=""
-                          loading="lazy"
-                          decoding="async"
-                          className="h-12 w-12 shrink-0 rounded-lg object-cover"
-                        />
-                      ) : (
-                        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-surface-alt text-accent transition-transform duration-300 group-hover:translate-x-0.5">
-                          →
-                        </span>
-                      )}
-                      <span className="font-body text-sm font-bold uppercase tracking-[0.1em] text-content transition-colors duration-300 group-hover:text-accent">
-                        {link.label}
-                      </span>
-                    </a>
-                  ))}
-                </div>
-              )}
+                        </motion.a>
+                      )
+                    })}
+                  </motion.div>
+                )}
+              </div>
             </section>
           )
         })()}
@@ -948,7 +1127,7 @@ export default function PropertyDetailPage() {
             wide it is the difference between a closing statement and a slab. */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0"
+          className="bleed-fill pointer-events-none"
           style={{
             background:
               'radial-gradient(60% 70% at 100% 100%, rgba(0,115,164,0.22) 0%, rgba(0,115,164,0) 70%)',

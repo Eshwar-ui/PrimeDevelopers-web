@@ -288,17 +288,43 @@ export default function AvailableUnits() {
              next card partly visible, which is what tells a visitor the row
              moves — there is no other affordance for it.
 
-             `auto-fit` at the top rung, not a fixed `grid-cols-4`, even
-             though the teaser caps at four: a size filter can leave one or two
-             matches, and fixed columns would strand those against two empty
-             tracks. `auto-fit` collapses the empties and lets what is there
-             stretch. It also beats the `sm:grid-cols-2 lg:grid-cols-4` this
-             once had, which skipped the three-up rung and
-             put the whole jump on one pixel, 400px cards at 1023px becoming
-             188px at 1024px, on exactly the laptop width where the site starts
-             reading as a desktop. `auto-fit` holds a card at 15rem or better,
-             which is where the name and price still sit on two lines. */
-          <div className="-mx-gutter mt-10 grid auto-cols-[85%] grid-flow-col snap-x snap-mandatory gap-6 overflow-x-auto overscroll-x-contain px-gutter py-3 scroll-px-gutter sm:auto-cols-[52%] md:auto-cols-[38%] lg:auto-cols-[30%] xl:mx-0 xl:auto-cols-auto xl:grid-flow-row xl:grid-cols-[repeat(auto-fit,minmax(15rem,1fr))] xl:overflow-visible xl:px-0 xl:py-0">
+             At the desktop rung the card is measured from the viewport, not
+             set in rem. The tracks there had drifted back to a fixed
+             `auto-cols-[23.25rem]` on `grid-flow-col`, which asks for
+             4 x 372px + 3 x 24px = 1560px of content — and at a 1536px window
+             the content box is 1488px, so the fourth card was clipped by
+             exactly 72px and the row quietly became scrollable on a display
+             wide enough to show everything. A `1fr` track divides whatever is
+             there by the number of cards, so the four always land inside the
+             container at any width above the rung.
+
+             The track is `minmax(0, 23.25rem)`, not `1fr`. A bare `1fr`
+             divides the container however many cards there are, so the size
+             filters — which can leave a single match — turned one unit into a
+             1560px poster with its photograph cropped to a letterbox. With a
+             ceiling the card shrinks with the viewport and stops growing at
+             the width it was drawn for, and `xl:justify-center` centres what
+             is there under a heading that is already centred.
+
+             The count is `shown.length` capped at four rather than a fixed
+             `grid-cols-4`: fixed columns would leave one match sitting
+             against three empty tracks, and an empty `minmax(0, …)` track
+             still takes its share of the free space. It is not `auto-fit`
+             either — `auto-fit` derives its repetition from the *max* track
+             sizing function, so the ceiling would silently decide the column
+             count too.
+
+             `xl`, not `lg`, is still the rung. The gutter is
+             `clamp(1.5rem, 6.5vw, 6.25rem)` and eats 13% of the viewport
+             through that range; at 1053px the content box is ~916px, which is
+             229px a card — under the ~15rem where the unit name and the price
+             stop fitting on two lines. At 1280px the content box is 1114px
+             and a card is 260px, which clears it; 1536px gives 316px and
+             1920px is held at the 1560px cap, four 372px cards. */
+          <div
+            style={{ '--uc': Math.min(shown.length, TEASER_COUNT) }}
+            className="-mx-gutter mt-10 grid auto-cols-[85%] grid-flow-col snap-x snap-mandatory gap-6 overflow-x-auto overscroll-x-contain px-gutter py-3 scroll-px-gutter sm:auto-cols-[20rem] md:auto-cols-[21rem] lg:auto-cols-[22rem] xl:mx-0 xl:grid-flow-row xl:grid-cols-[repeat(var(--uc),minmax(0,23.25rem))] xl:justify-center xl:overflow-x-visible xl:px-0 xl:py-0"
+          >
             {shown.map(({ property, building, unit, sf }) => {
               // The card's whole job is to hand the visitor *this* unit, not
               // the property it happens to sit in. The plan section reads

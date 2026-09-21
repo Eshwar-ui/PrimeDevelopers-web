@@ -75,7 +75,7 @@ export default function InteriorsPage() {
   return (
     <div ref={scope} className="overflow-x-hidden bg-base text-content">
       <section className="relative min-h-[34rem] overflow-hidden bg-void px-gutter text-white md:min-h-[36rem]">
-        <div aria-hidden="true" className="absolute inset-0">
+        <div aria-hidden="true" className="bleed-fill">
           <img
             src={sized(heroImage || '/images/expertise/interiors.webp', 'full')}
             alt=""

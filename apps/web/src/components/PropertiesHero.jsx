@@ -95,10 +95,27 @@ export default function PropertiesHero({ properties = [], children }) {
             initial="hidden"
             whileInView="show"
             viewport={{ once: true, margin: '-10% 0px' }}
-            className="mx-auto mt-16 grid max-w-4xl grid-cols-2 gap-px overflow-hidden rounded-panel bg-[var(--color-line)] md:mt-20 md:grid-cols-4"
+            // Glass, and the `gap-px` trick above is what makes it possible to
+            // do properly: the blur belongs on the panel, once, so there is a
+            // single sheet of glass rather than four tiles each blurring their
+            // own patch of the photograph. The cells only tint.
+            //
+            // The hairlines move from the solid line colour to `white/10` for
+            // the same reason — an opaque rule between two translucent cells
+            // reads as a seam in the glass instead of an edge cut into it.
+            //
+            // `ring` rather than `border`: a border would sit inside
+            // `overflow-hidden` and get clipped at the corner radius, and the
+            // thin bright edge is most of what sells the material.
+            className="mx-auto mt-16 grid max-w-4xl grid-cols-2 gap-px overflow-hidden rounded-panel bg-white/10 shadow-[0_32px_70px_-30px_rgba(0,0,0,0.85)] ring-1 ring-white/15 backdrop-blur-xl backdrop-saturate-150 md:mt-20 md:grid-cols-4"
           >
             {stats.map((stat) => (
-              <div key={stat.label} className="flex flex-col items-center gap-1.5 bg-[#0b1216]/80 px-4 py-7 backdrop-blur-sm">
+              // Tint only, no blur of its own — see the panel above. Kept dark
+              // rather than the usual white wash because the panel sits over a
+              // photograph of a building: a light tint would drop the numerals
+              // towards the contrast floor exactly where the picture is
+              // brightest.
+              <div key={stat.label} className="flex flex-col items-center gap-1.5 bg-[#0b1216]/55 px-4 py-7">
                 <dt className="order-2 font-body text-[11px] font-bold uppercase tracking-[0.16em] text-content/70">
                   {stat.label}
                 </dt>

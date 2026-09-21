@@ -66,6 +66,10 @@ function RevealGroup({ className, children }) {
 
 function Card({ p, onOpen }) {
   const reduced = useReducedMotion()
+  // A card with no picture at all has nothing to wait for, so it starts
+  // settled — otherwise the well would shimmer forever on a listing that
+  // simply has no image.
+  const [imageLoaded, setImageLoaded] = useState(!p.image)
   const reveal = reduced
     ? {}
     : {
@@ -106,7 +110,12 @@ function Card({ p, onOpen }) {
       // is what makes a site feel assembled rather than designed.
       className="group flex cursor-pointer flex-col overflow-hidden rounded-panel border border-accent/45 bg-surface transition-[border-color,box-shadow] duration-500 ease-brand hover:border-accent/75 hover:shadow-[0_36px_80px_-52px_rgba(0,0,0,0.85)] focus-visible:border-accent/75"
     >
-      <div className="relative h-60 overflow-hidden bg-surface-alt">
+      {/* `image-shimmer` on the well itself rather than as an overlay element:
+          the picture is painted on top of it and simply covers it once it
+          arrives, so nothing has to be unmounted and there is no frame where
+          both are visible. It keeps running underneath — invisible, but also
+          free, since a covered background is not composited. */}
+      <div className={'relative h-60 overflow-hidden ' + (imageLoaded ? 'bg-surface-alt' : 'image-shimmer')}>
         {p.image && (
           <img
             src={sized(p.image, 'card')}
@@ -114,7 +123,15 @@ function Card({ p, onOpen }) {
             alt={p.name}
             loading="lazy"
             decoding="async"
-            className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
+            // `onError` sets it too. A card whose picture 404s should settle on
+            // the plain well, not shimmer for the rest of the session as though
+            // something were still on its way.
+            onLoad={() => setImageLoaded(true)}
+            onError={() => setImageLoaded(true)}
+            className={
+              'h-full w-full object-cover transition-[transform,opacity] duration-700 ease-out group-hover:scale-[1.04] ' +
+              (imageLoaded ? 'opacity-100' : 'opacity-0')
+            }
           />
         )}
         <span className="absolute left-4 top-4 rounded-full bg-void/70 px-4 py-1.5 font-body text-[13px] text-bone backdrop-blur-sm">

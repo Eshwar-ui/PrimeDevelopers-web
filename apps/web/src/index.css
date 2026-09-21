@@ -87,6 +87,57 @@
   .prime-logo-loader__reveal { clip-path: none; }
 }
 
+/* Markers on the Texas map fade up as they appear. Only the ones a zoom
+   reveals actually animate — the rest are mounted once and never re-keyed, so
+   they run this on first paint and then sit still. Position is not animated
+   here: a magnified cluster is replaced by its towns rather than moved to them,
+   and there is no honest path to tween between a group and its members. */
+.texas-marker {
+  animation: texas-marker-in 450ms cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+@keyframes texas-marker-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .texas-marker { animation: none; }
+}
+
+/* Image-loading shimmer: a highlight travelling across the empty well while
+   the picture is still in flight, so a slot that is waiting looks different
+   from a slot that is simply empty.
+
+   The sweep is a background-position animation rather than a transformed
+   pseudo-element, because the well it runs in is `overflow-hidden` with a
+   radius — a translating child would need its own clip, and this needs none.
+
+   `200% 100%` with the stop band in the middle third is what gives the
+   highlight somewhere to travel from and to; at `100%` the gradient is already
+   fully on screen and the animation only slides it against its own edges. */
+.image-shimmer {
+  background-color: var(--color-surface-alt, #141c21);
+  background-image: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgb(255 255 255 / 0.07) 40%,
+    rgb(255 255 255 / 0.12) 50%,
+    rgb(255 255 255 / 0.07) 60%,
+    transparent 80%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: image-shimmer 1.4s linear infinite;
+}
+@keyframes image-shimmer {
+  from { background-position: 150% 0; }
+  to { background-position: -50% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* The tinted ground stays — it is what marks the slot as pending. Only the
+     travelling highlight goes. */
+  .image-shimmer { background-image: none; animation: none; }
+}
+
 /* ─────────────────────────────────────────────────────────────
    Self-hosted brand fonts.
 

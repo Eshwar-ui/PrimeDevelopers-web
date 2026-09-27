@@ -7,7 +7,7 @@ import LogoLoader from '../components/LogoLoader'
 // Fallback shape per section so a missing/not-yet-seeded row never crashes a
 // component — every field a component reads is guaranteed to exist.
 const DEFAULTS = {
-  hero: { eyebrow: '', heading: '', paragraph: '', ctaLabel: 'View Properties', ctaHref: '#properties', slides: [] },
+  hero: { eyebrow: 'Prime Developer | Est. 2017', heading: 'We build the *landmarks* of Texas', paragraph: 'Retail in Cedar Park. Flex space in Leander. Open lots in Liberty Hill. One team, start to finish - acquisition, design, and handover.', ctaLabel: 'View Properties', ctaHref: '#properties', slides: [] },
   marquee: { logos: [] },
   // The film ships with the app rather than being uploaded, so it lands here
   // as a default: the live content row predates these two keys, and a key the
@@ -667,32 +667,14 @@ export function ContentProvider({ children }) {
   const [news, setNews] = useState(null)
   const [error, setError] = useState(null)
 
-  // Two timers, both governing the splash and neither faking progress.
-  //
-  // `minimumElapsed` is a floor, not a delay: on a warm API the content lands in
-  // a few hundred milliseconds, and a splash that appears and vanishes inside
-  // that reads as a flicker rather than as an entrance. 1.2s is long enough for
-  // the mark to resolve once.
-  //
-  // `slowStart` is the ceiling nobody can control. The API sleeps when idle, so
-  // the first visit after a quiet spell waits on a cold start that can run past
-  // half a minute. There is no percentage to show — the server either answers or
-  // it does not — so at six seconds the screen stops looking broken and says
-  // what it is waiting for instead.
-  //
-  // Timers rather than rAF, deliberately: rAF does not fire in a tab that is not
-  // rendering, which would leave a backgrounded first visit stuck on the splash
-  // until it was focused (DESIGN.md §9).
-  const [minimumElapsed, setMinimumElapsed] = useState(false)
-  const [slowStart, setSlowStart] = useState(false)
+  // A short floor prevents a warm request from flashing the splash. Public
+  // routes mount from DEFAULTS after it and hydrate as API responses arrive;
+  // admin routes continue waiting for complete data below.
+  const [shellReady, setShellReady] = useState(false)
 
   useEffect(() => {
-    const floor = setTimeout(() => setMinimumElapsed(true), 1200)
-    const slow = setTimeout(() => setSlowStart(true), 6000)
-    return () => {
-      clearTimeout(floor)
-      clearTimeout(slow)
-    }
+    const timer = setTimeout(() => setShellReady(true), 300)
+    return () => clearTimeout(timer)
   }, [])
 
   // Signed-in admins read the admin endpoints, which include unpublished
@@ -711,16 +693,20 @@ export function ContentProvider({ children }) {
     // it a derived one would save the transformed URL back into the CMS.
     const transform = (data) => (isAdmin ? data : withTransformedImages(data))
 
-    // Each response is applied the moment it lands rather than awaited together.
-    // Under `Promise.all` the header and hero — which only need `/content` —
-    // sat behind `/properties`, the slowest and largest of the three, for no
-    // reason beyond the three having been requested in one statement.
-    const settle = (promise, apply) => promise.then((data) => apply(transform(data)))
+    // Content is fetched for hydration; public routes can mount from DEFAULTS while the
+    // public UI can safely start from DEFAULTS. Properties and news are optional
+    // for public routes, so a slow or failed secondary request cannot blank the
+    // site. Admin routes still require all three datasets before they mount.
+    const request = (promise, apply, optional = false) =>
+      promise.then((data) => apply(transform(data))).catch((err) => {
+        if (!optional) throw err
+        console.warn('Optional site data failed to load:', err)
+      })
 
     return Promise.all([
-      settle(api.get('/content'), setContent),
-      settle(api.get(`${prefix}/properties`), setProperties),
-      settle(api.get(`${prefix}/news`), setNews),
+      request(api.get('/content'), setContent),
+      request(api.get(`${prefix}/properties`), setProperties, !isAdmin),
+      request(api.get(`${prefix}/news`), setNews, !isAdmin),
     ])
   }, [isAdmin])
 
@@ -737,7 +723,7 @@ export function ContentProvider({ children }) {
     const getSection = (section) => ({ ...DEFAULTS[section], ...(content?.[section] ?? {}) })
     const categories = ['All', ...new Set((properties ?? []).map((p) => p.category))]
     return {
-      // `/content` alone is what the shell needs — navbar, hero, footer. The
+      // Public routes mount from DEFAULTS and replace them as `/content` arrives. The
       // property and news lists feed sections further down, and every consumer
       // of them already renders nothing for an empty array, so holding the
       // whole page behind them bought a blank screen and nothing else.
@@ -745,7 +731,7 @@ export function ContentProvider({ children }) {
       // The admin still waits for all three: its lists are the entire point of
       // the screen, and flashing "no properties" at an editor mid-load reads as
       // data loss rather than as loading.
-      ready: content !== null && (!isAdmin || (properties !== null && news !== null)),
+      ready: shellReady && (!isAdmin || (content !== null && properties !== null && news !== null)),
       error,
       properties: properties ?? [],
       categories,
@@ -755,7 +741,7 @@ export function ContentProvider({ children }) {
       getSection,
       refetch: load,
     }
-  }, [content, properties, news, error, load, isAdmin])
+  }, [content, properties, news, error, load, isAdmin, shellReady])
 
   if (error) {
     return (
@@ -766,15 +752,9 @@ export function ContentProvider({ children }) {
     )
   }
 
-  if (!value.ready || !minimumElapsed) {
+  if (!value.ready) {
     return (
-      <LogoLoader
-        hint={
-          slowStart
-            ? 'Waking the server — the first visit after a quiet spell takes a moment.'
-            : null
-        }
-      />
+      <LogoLoader />
     )
   }
 

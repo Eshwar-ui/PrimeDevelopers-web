@@ -149,7 +149,7 @@ function LogoField({ logos, side, indexOffset = 0 }) {
           </div>
         ))}
       </div>
-    </div>
+    </motion.div>
   )
 }
 
@@ -159,10 +159,6 @@ export default function PartnerWall() {
   const visibleLogos = logos.filter((logo) => logo.image)
 
   if (!visibleLogos.length) return null
-
-  const half = Math.ceil(visibleLogos.length / 2)
-  const leftLogos = visibleLogos.slice(0, half)
-  const rightLogos = visibleLogos.slice(half)
 
   return (
     <section id="partners" className="relative min-h-[calc(100svh-5rem)] overflow-hidden bg-void px-0 py-0">

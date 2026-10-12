@@ -76,3 +76,6 @@ test-model.glb
 # destructive and this is the only copy of what was there — but it is a
 # point-in-time dump of CMS content, not source.
 *-units-backup-*.json
+
+# Stray archives dropped into the repo root.
+*.zip

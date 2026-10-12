@@ -74,7 +74,13 @@ function ParallaxWatermark({ index }) {
 }
 
 export default function Testimonials({ sectionKey = 'testimonials', id = 'testimonials' }) {
-  const { eyebrow, heading, paragraph, items } = useSection(sectionKey)
+  const { eyebrow, heading, paragraph, items: ownItems } = useSection(sectionKey)
+  const homeItems = useSection('testimonials').items
+
+  // A page with no quotes of its own borrows the home set rather than
+  // dropping the section, keeping its own eyebrow and heading. Adding real
+  // ones under Content → <page> testimonials replaces the borrowed set.
+  const items = ownItems?.length ? ownItems : homeItems
 
   if (!items?.length) return null
 

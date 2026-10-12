@@ -145,54 +145,56 @@ export default function InvestPage() {
         </div>
       </section>
 
-      <section id={TRACKS[0].id} data-band="light" data-reveal className="scroll-mt-24 bg-surface-alt px-gutter py-20 md:py-28">
+      {/* The two tracks sit side by side from `lg` so they read as a choice
+          between alternatives rather than as two chapters, and stack below it.
+          Each keeps its own `id` — `#property-cap` is what the properties
+          page's "Show more" links to, and what the enquiry form's track
+          selector writes. */}
+      <section data-band="light" className="bg-surface-alt px-gutter py-20 md:py-28">
         <div className="mx-auto max-w-[1360px]">
-          <span aria-hidden className={`block h-1 w-14 rounded-full ${TONE.accent.bar}`} />
-          <p className={`mt-6 font-body text-xs font-bold uppercase tracking-[0.14em] ${TONE.accent.text}`}>{TRACKS[0].label}</p>
-          <h2 className="mt-3 max-w-[24ch] text-balance font-display text-[clamp(1.9rem,3.5vw,3rem)] font-bold leading-[1.05] tracking-[-0.035em]">
-            {TRACKS[0].name}
-          </h2>
-          {page.planningPhase?.description && (
-            <p className="mt-5 max-w-[62ch] font-body text-[16px] leading-[1.75] text-content/70">{page.planningPhase.description}</p>
-          )}
-          <div className="mt-10">
-            <TrackFacts rows={planningRows} />
+          <div className="grid gap-16 lg:grid-cols-2 lg:gap-0">
+            {[
+              { track: TRACKS[0], description: page.planningPhase?.description, rows: planningRows },
+              { track: TRACKS[1], description: page.propertyCap?.description, rows: capRows },
+            ].map(({ track: t, description, rows }, index) => (
+              <article
+                key={t.id}
+                id={t.id}
+                data-reveal
+                className={`flex scroll-mt-24 flex-col ${index === 0 ? 'lg:pr-12 xl:pr-16' : 'border-t border-line pt-16 lg:border-l lg:border-t-0 lg:pl-12 lg:pt-0 xl:pl-16'}`}
+              >
+                <span aria-hidden className={`block h-1 w-14 rounded-full ${TONE[t.tone].bar}`} />
+                <p className={`mt-6 font-body text-xs font-bold uppercase tracking-[0.14em] ${TONE[t.tone].text}`}>{t.label}</p>
+                <h2 className="mt-3 max-w-[24ch] text-balance font-display text-[clamp(1.9rem,3.5vw,3rem)] font-bold leading-[1.05] tracking-[-0.035em]">
+                  {t.name}
+                </h2>
+                {description && (
+                  <p className="mt-5 max-w-[62ch] font-body text-[16px] leading-[1.75] text-content/70">{description}</p>
+                )}
+                <div className="mt-10">
+                  <TrackFacts rows={rows} />
+                </div>
+              </article>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* `id` matches TRACKS[1].id, which is also what the track selector in
-          the enquiry form writes — so one name identifies this track whether it
-          is being linked to or submitted. */}
-      <section id={TRACKS[1].id} data-band="light" data-reveal className="scroll-mt-24 px-gutter py-20 md:py-28">
+      <section data-band="light" data-reveal className="px-gutter py-20 md:py-28">
         <div className="mx-auto max-w-[1360px]">
-          <span aria-hidden className={`block h-1 w-14 rounded-full ${TONE.ember.bar}`} />
-          <p className={`mt-6 font-body text-xs font-bold uppercase tracking-[0.14em] ${TONE.ember.text}`}>{TRACKS[1].label}</p>
-          <h2 className="mt-3 max-w-[24ch] text-balance font-display text-[clamp(1.9rem,3.5vw,3rem)] font-bold leading-[1.05] tracking-[-0.035em]">
-            {TRACKS[1].name}
-          </h2>
-          {page.propertyCap?.description && (
-            <p className="mt-5 max-w-[62ch] font-body text-[16px] leading-[1.75] text-content/70">{page.propertyCap.description}</p>
-          )}
-          <div className="mt-10">
-            <TrackFacts rows={capRows} />
-          </div>
-
-          <div className="mt-16">
-            <p className="font-body text-xs font-bold uppercase tracking-[0.14em] text-content/40">Structured for CAP / NNN investment</p>
-            <CapPropertyGrid
-              items={capProperties}
-              className="mt-6"
-              emptyState={
-                <div className="mt-6 rounded-panel border border-dashed border-content/20 px-5 py-8 text-center sm:px-8 sm:py-10">
-                  <p className="font-display text-lg font-bold text-content">CAP / NNN listings are still being structured</p>
-                  <p className="mx-auto mt-2 max-w-md font-body text-[14px] leading-relaxed text-content/60">
-                    Stabilized properties will be shown here once they're set up for CAP / NNN investment.
-                  </p>
-                </div>
-              }
-            />
-          </div>
+          <p className="font-body text-xs font-bold uppercase tracking-[0.14em] text-content/40">Structured for CAP / NNN investment</p>
+          <CapPropertyGrid
+            items={capProperties}
+            className="mt-6"
+            emptyState={
+              <div className="mt-6 rounded-panel border border-dashed border-content/20 px-5 py-8 text-center sm:px-8 sm:py-10">
+                <p className="font-display text-lg font-bold text-content">CAP / NNN listings are still being structured</p>
+                <p className="mx-auto mt-2 max-w-md font-body text-[14px] leading-relaxed text-content/60">
+                  Stabilized properties will be shown here once they're set up for CAP / NNN investment.
+                </p>
+              </div>
+            }
+          />
         </div>
       </section>
 

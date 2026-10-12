@@ -76,7 +76,7 @@ export default function CollabPage() {
         </div>
       </section>
 
-      {partnerships.length > 0 ? (
+      {partnerships.length > 0 && (
         <section data-band="light" data-reveal className="bg-surface-alt px-gutter py-16 md:py-24">
           <div className="mx-auto max-w-[1360px]">
             <p className="font-body text-xs font-bold uppercase tracking-[0.14em] text-content/40">Current partnerships</p>
@@ -98,15 +98,6 @@ export default function CollabPage() {
                 </div>
               ))}
             </div>
-          </div>
-        </section>
-      ) : (
-        <section data-band="light" data-reveal className="bg-surface-alt px-gutter py-14 md:py-16">
-          <div className="mx-auto max-w-[1360px] rounded-panel border border-dashed border-content/20 px-5 py-8 text-center sm:px-8 sm:py-10">
-            <p className="font-display text-lg font-bold text-content">The first joint ventures are still ahead</p>
-            <p className="mx-auto mt-2 max-w-md font-body text-[14px] leading-relaxed text-content/60">
-              Active partnerships will be showcased here once structured and operating.
-            </p>
           </div>
         </section>
       )}

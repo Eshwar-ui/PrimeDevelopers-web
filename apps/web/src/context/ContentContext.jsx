@@ -667,14 +667,34 @@ export function ContentProvider({ children }) {
   const [news, setNews] = useState(null)
   const [error, setError] = useState(null)
 
-  // A short floor prevents a warm request from flashing the splash. Public
-  // routes mount from DEFAULTS after it and hydrate as API responses arrive;
-  // admin routes continue waiting for complete data below.
-  const [shellReady, setShellReady] = useState(false)
+  // Two timers, both governing the splash and neither faking progress.
+  //
+  // `minimumElapsed` is a floor, not a delay: on a warm API the content lands in
+  // a few hundred milliseconds, and a splash that appears and vanishes inside
+  // that reads as a flicker rather than as an entrance. 1.2s is long enough for
+  // the mark to resolve once.
+  //
+  // `slowStart` is the ceiling nobody can control. The API sleeps when idle, so
+  // the first visit after a quiet spell waits on a cold start that can run past
+  // half a minute. At six seconds the screen says what it is waiting for.
+  //
+  // The page itself never mounts from DEFAULTS: doing so painted placeholder
+  // copy and an empty hero, then swapped the real content in underneath the
+  // visitor once `/content` landed.
+  //
+  // Timers rather than rAF, deliberately: rAF does not fire in a tab that is not
+  // rendering, which would leave a backgrounded first visit stuck on the splash
+  // until it was focused (DESIGN.md §9).
+  const [minimumElapsed, setMinimumElapsed] = useState(false)
+  const [slowStart, setSlowStart] = useState(false)
 
   useEffect(() => {
-    const timer = setTimeout(() => setShellReady(true), 300)
-    return () => clearTimeout(timer)
+    const floor = setTimeout(() => setMinimumElapsed(true), 1200)
+    const slow = setTimeout(() => setSlowStart(true), 6000)
+    return () => {
+      clearTimeout(floor)
+      clearTimeout(slow)
+    }
   }, [])
 
   // Signed-in admins read the admin endpoints, which include unpublished
@@ -693,10 +713,9 @@ export function ContentProvider({ children }) {
     // it a derived one would save the transformed URL back into the CMS.
     const transform = (data) => (isAdmin ? data : withTransformedImages(data))
 
-    // Content is fetched for hydration; public routes can mount from DEFAULTS while the
-    // public UI can safely start from DEFAULTS. Properties and news are optional
-    // for public routes, so a slow or failed secondary request cannot blank the
-    // site. Admin routes still require all three datasets before they mount.
+    // `/content` is required: the shell waits on it. Properties and news are
+    // optional for public routes, so a slow or failed secondary request cannot
+    // blank the site. Admin routes still require all three datasets.
     const request = (promise, apply, optional = false) =>
       promise.then((data) => apply(transform(data))).catch((err) => {
         if (!optional) throw err
@@ -723,7 +742,7 @@ export function ContentProvider({ children }) {
     const getSection = (section) => ({ ...DEFAULTS[section], ...(content?.[section] ?? {}) })
     const categories = ['All', ...new Set((properties ?? []).map((p) => p.category))]
     return {
-      // Public routes mount from DEFAULTS and replace them as `/content` arrives. The
+      // `/content` alone is what the shell needs — navbar, hero, footer. The
       // property and news lists feed sections further down, and every consumer
       // of them already renders nothing for an empty array, so holding the
       // whole page behind them bought a blank screen and nothing else.
@@ -731,7 +750,7 @@ export function ContentProvider({ children }) {
       // The admin still waits for all three: its lists are the entire point of
       // the screen, and flashing "no properties" at an editor mid-load reads as
       // data loss rather than as loading.
-      ready: shellReady && (!isAdmin || (content !== null && properties !== null && news !== null)),
+      ready: content !== null && (!isAdmin || (properties !== null && news !== null)),
       error,
       properties: properties ?? [],
       categories,
@@ -741,7 +760,7 @@ export function ContentProvider({ children }) {
       getSection,
       refetch: load,
     }
-  }, [content, properties, news, error, load, isAdmin, shellReady])
+  }, [content, properties, news, error, load, isAdmin])
 
   if (error) {
     return (
@@ -752,9 +771,15 @@ export function ContentProvider({ children }) {
     )
   }
 
-  if (!value.ready) {
+  if (!value.ready || !minimumElapsed) {
     return (
-      <LogoLoader />
+      <LogoLoader
+        hint={
+          slowStart
+            ? 'Waking the server — the first visit after a quiet spell takes a moment.'
+            : null
+        }
+      />
     )
   }
 

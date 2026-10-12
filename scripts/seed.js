@@ -29,8 +29,7 @@ const assets = (p) => path.join(root, 'apps/web/src/assets', p)
  * throwing, so a partial set still seeds the rest of the site.
  */
 const PARTNER_LOGOS = [
-  // The one knockout in the set: white lettering on a dark ground.
-  { file: 'niva-dental', alt: 'NIVA Dental Specialists', darkPanel: true },
+  { file: 'niva-dental', alt: 'NIVA Dental Specialists' },
   { file: 'shipley-donuts', alt: 'Shipley Do-Nuts' },
   { file: 'brass-tap', alt: 'The Brass Tap' },
   { file: 'learning-experience', alt: 'The Learning Experience' },
@@ -52,13 +51,12 @@ const PARTNER_LOGOS = [
   { file: 'lava', alt: 'LAVA' },
   { file: 'bawarchi', alt: 'Bawarchi Indian Cuisine' },
   { file: 'farm2cook', alt: 'Farm2Cook' },
-  { file: 'lego', alt: 'LEGO' },
   { file: 'qahwah', alt: 'Qahwah House' },
 ]
 
 // Marks the wall does not carry but the property pages still reference in their
 // tenant strips.
-const TENANT_ONLY_LOGOS = []
+const TENANT_ONLY_LOGOS = ['lego']
 
 // Prefer newly supplied source PNGs when an older optimized copy also exists.
 const LOGO_EXTENSIONS = ['png', 'webp', 'svg', 'jpg', 'jpeg']

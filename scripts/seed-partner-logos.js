@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { createHash } from 'node:crypto'
 import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -8,7 +9,7 @@ const logoDir = path.join(root, 'apps/web/src/assets/logos')
 const extensions = ['png', 'webp', 'svg', 'jpg', 'jpeg']
 
 const manifest = [
-  { file: 'niva-dental', alt: 'NIVA Dental Specialists', darkPanel: true },
+  { file: 'niva-dental', alt: 'NIVA Dental Specialists' },
   { file: 'shipley-donuts', alt: 'Shipley Do-Nuts' },
   { file: 'brass-tap', alt: 'The Brass Tap' },
   { file: 'learning-experience', alt: 'The Learning Experience' },
@@ -27,7 +28,6 @@ const manifest = [
   { file: 'lava', alt: 'LAVA' },
   { file: 'bawarchi', alt: 'Bawarchi Indian Cuisine' },
   { file: 'farm2cook', alt: 'Farm2Cook' },
-  { file: 'lego', alt: 'LEGO' },
   { file: 'qahwah', alt: 'Qahwah House' },
 ]
 
@@ -54,10 +54,15 @@ async function main() {
     if (!extension) throw new Error(`Missing logo asset: ${entry.file}`)
 
     const localPath = path.join(logoDir, `${entry.file}.${extension}`)
-    const storagePath = `site/logos/${entry.file}.${extension}`
+    const bytes = readFileSync(localPath)
+    // Content-hashed so replaced artwork gets a new URL. Overwriting the old
+    // path left the render endpoint's per-width copies, and browsers, serving
+    // the previous logo indefinitely.
+    const hash = createHash('sha256').update(bytes).digest('hex').slice(0, 8)
+    const storagePath = `site/logos/${entry.file}-${hash}.${extension}`
     const { error } = await supabase.storage.from('images').upload(
       storagePath,
-      readFileSync(localPath),
+      bytes,
       { contentType: contentType(extension), upsert: true }
     )
     if (error) throw error

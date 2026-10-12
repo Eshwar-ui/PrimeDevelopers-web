@@ -4,7 +4,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import ArrowRight from '../components/ArrowRight'
 import ActionButton from '../components/ActionButton'
-import { useProperties, useSection } from '../context/ContentContext'
+import { useListings, useSection } from '../context/ContentContext'
 import { renderEmphasis } from '../lib/emphasis'
 import { sized } from '../lib/images'
 import { serviceImage, slugify } from '../lib/expertise'
@@ -14,7 +14,7 @@ gsap.registerPlugin(ScrollTrigger)
 export default function EnterprisePage() {
   const scope = useRef(null)
   const page = useSection('enterprise_page')
-  const properties = useProperties()
+  const properties = useListings()
   const services = (page.capabilities ?? []).slice(0, 4)
   const propertyImages = properties.flatMap((property) => [property.image, ...(property.gallery ?? [])]).filter(Boolean)
   const imageFor = (service, index) =>

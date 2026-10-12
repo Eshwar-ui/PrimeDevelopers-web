@@ -17,7 +17,7 @@ const SECTIONS = [
   { id: 'resources', label: 'Resources' },
 ]
 
-export default function PropertyDetailNav({ property, onEnquire }) {
+export default function PropertyDetailNav({ property }) {
   /**
    * The sections the page actually rendered, read from the DOM rather than
    * re-derived from the CMS record.
@@ -100,12 +100,11 @@ export default function PropertyDetailNav({ property, onEnquire }) {
        reaching for a second value is a section disagreeing with the page. */
     <nav aria-label="Property details" className="sticky top-[68px] z-30 border-b border-line bg-base/95 px-gutter backdrop-blur-xl md:top-[72px] lg:top-[76px]">
       <div className="mx-auto flex max-w-[1560px] items-center gap-4 py-2.5">
-        {/* Only the rail scrolls. The enquire button used to sit inside this
-            overflow box, so on a phone the page's primary action was parked off
-            the right edge, reachable only by swiping the bar sideways. The
-            negative margin cancels the padding the focus ring needs: an
-            overflow-x box resolves overflow-y to auto, which would otherwise
-            clip the ring top and bottom. */}
+        {/* The bar is the section links alone — no Enquire button of its own;
+            the site header's Enquire is already pinned above it. The negative
+            margin cancels the padding the focus ring needs: an overflow-x box
+            resolves overflow-y to auto, which would otherwise clip the ring top
+            and bottom. */}
         <div className="-my-2 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto py-2">
           {items.map((item) => (
             <a
@@ -123,13 +122,6 @@ export default function PropertyDetailNav({ property, onEnquire }) {
             </a>
           ))}
         </div>
-        <button
-          type="button"
-          onClick={onEnquire}
-          className="min-h-11 shrink-0 rounded-full bg-accent px-5 font-body text-[12px] font-bold uppercase tracking-[0.1em] text-white transition hover:bg-prime-deep active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent dark:text-void"
-        >
-          Enquire
-        </button>
       </div>
     </nav>
   )

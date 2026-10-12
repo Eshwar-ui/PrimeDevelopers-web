@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
-import { useSection, useProperties } from '../context/ContentContext'
+import { useSection, useListings } from '../context/ContentContext'
 import { sized, srcSetFor } from '../lib/images'
 import { renderEmphasis } from '../lib/emphasis'
 import ActionButton from './ActionButton'
@@ -82,7 +82,7 @@ function chipsFor(p, unitsLabel) {
 
 export default function Properties() {
   const { heading, unitsLabel, viewLabel, brochureLabel } = useSection('properties_home')
-  const properties = useProperties().slice(0, TEASER_COUNT)
+  const properties = useListings().slice(0, TEASER_COUNT)
   const scope = useRef(null)
   const navigate = useNavigate()
   const [brochureProperty, setBrochureProperty] = useState(null)

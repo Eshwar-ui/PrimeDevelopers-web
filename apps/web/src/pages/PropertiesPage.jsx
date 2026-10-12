@@ -1,8 +1,8 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { flushSync } from 'react-dom'
 import { motion, AnimatePresence, useReducedMotion, useInView } from 'motion/react'
-import { useSection, useProperties, useCategories } from '../context/ContentContext'
+import { useSection, useListings, useCategories } from '../context/ContentContext'
 import { renderEmphasis } from '../lib/emphasis'
 import { sized } from '../lib/images'
 import { lenis } from '../hooks/useSmoothScroll'
@@ -26,6 +26,29 @@ const specsFor = (p) => {
   if (Array.isArray(custom) && custom.length) return custom.slice(0, 3).map(String)
   return [`${p.buildings} buildings`, `${p.sold} sold`, `${p.available} available`]
 }
+
+/**
+ * Photographs listed under more than one property. A picture that belongs to
+ * several listings belongs to none of them — today that is the site's own hero
+ * renders, filled into every gallery that had nothing yet — and a card that
+ * cycled through them put the same building on three different properties at
+ * once. Those are left out of the cycle; a listing's cover is still shown.
+ */
+function sharedImages(properties) {
+  const seen = new Map()
+  for (const property of properties) {
+    for (const src of new Set([property.image, ...(property.gallery ?? [])].filter(Boolean))) {
+      seen.set(src, (seen.get(src) ?? 0) + 1)
+    }
+  }
+  return new Set([...seen].filter(([, count]) => count > 1).map(([src]) => src))
+}
+
+const IMAGE_INTERVAL = 4200
+// How far each column's first change lags the one to its left, so a row of
+// three never flips in unison — a grid changing all at once reads as the page
+// reloading, not as a set of listings each showing itself off.
+const IMAGE_STAGGER = 1400
 
 /**
  * A block the reader scrolls to, revealed in the site's shared vocabulary —
@@ -64,12 +87,42 @@ function RevealGroup({ className, children }) {
   )
 }
 
-function Card({ p, onOpen }) {
+function Card({ p, index, shared, onOpen }) {
   const reduced = useReducedMotion()
+  const ref = useRef(null)
+  const inView = useInView(ref, { amount: 0.4 })
+  // The cover first, then the property's own gallery — without anything it
+  // shares with another listing (see `sharedImages`).
+  const images = Array.from(
+    new Set([p.image, ...(p.gallery ?? []).filter((src) => !shared.has(src))].filter(Boolean)),
+  ).slice(0, 6)
+  const [active, setActive] = useState(0)
+  // How far into the set this card has been. Photographs are mounted up to one
+  // past it and then kept, so the next one has loaded before it is asked for
+  // and the crossfade never shows a blank — without a grid of six cards pulling
+  // thirty full-size images the moment the page opens.
+  const [reached, setReached] = useState(0)
+  const ticks = useRef(0)
   // A card with no picture at all has nothing to wait for, so it starts
   // settled — otherwise the well would shimmer forever on a listing that
   // simply has no image.
   const [imageLoaded, setImageLoaded] = useState(!p.image)
+  const cycles = images.length > 1 && !reduced
+
+  // Only while the card is on screen: off it, nobody is watching, and every
+  // change would be a download spent on nothing.
+  useEffect(() => {
+    if (!cycles || !inView || !imageLoaded) return
+    const delay = IMAGE_INTERVAL + (ticks.current === 0 ? (index % 3) * IMAGE_STAGGER : 0)
+    const id = window.setTimeout(() => {
+      ticks.current += 1
+      const next = (active + 1) % images.length
+      setActive(next)
+      setReached((r) => Math.max(r, next))
+    }, delay)
+    return () => window.clearTimeout(id)
+  }, [cycles, inView, imageLoaded, active, images.length, index])
+
   const reveal = reduced
     ? {}
     : {
@@ -80,6 +133,7 @@ function Card({ p, onOpen }) {
 
   return (
     <motion.article
+      ref={ref}
       layout
       {...reveal}
       // `whileInView`, not `animate`. On mount every card in the list animated
@@ -116,27 +170,52 @@ function Card({ p, onOpen }) {
           both are visible. It keeps running underneath — invisible, but also
           free, since a covered background is not composited. */}
       <div className={'relative h-60 overflow-hidden ' + (imageLoaded ? 'bg-surface-alt' : 'image-shimmer')}>
-        {p.image && (
-          <img
-            src={sized(p.image, 'card')}
-            style={{ viewTransitionName: `property-image-${p.slug}` }}
-            alt={p.name}
-            loading="lazy"
-            decoding="async"
-            // `onError` sets it too. A card whose picture 404s should settle on
-            // the plain well, not shimmer for the rest of the session as though
-            // something were still on its way.
-            onLoad={() => setImageLoaded(true)}
-            onError={() => setImageLoaded(true)}
-            className={
-              'h-full w-full object-cover transition-[transform,opacity] duration-700 ease-out group-hover:scale-[1.04] ' +
-              (imageLoaded ? 'opacity-100' : 'opacity-0')
-            }
-          />
-        )}
+        {/* Stacked, and crossfaded by opacity alone. The one showing carries
+            the view-transition name, and only that one: the name has to be
+            unique on the page, and it is the photograph on screen that should
+            grow into the property's hero when the card is opened. */}
+        {images.slice(0, Math.min(images.length, reached + 2)).map((src, i) => {
+          const shown = i === active
+          return (
+            <img
+              key={src}
+              src={sized(src, 'card')}
+              style={shown ? { viewTransitionName: `property-image-${p.slug}` } : undefined}
+              alt={shown ? p.name : ''}
+              aria-hidden={!shown}
+              loading={i === 0 ? 'lazy' : 'eager'}
+              decoding="async"
+              // `onError` sets it too. A card whose picture 404s should settle on
+              // the plain well, not shimmer for the rest of the session as though
+              // something were still on its way.
+              onLoad={i === 0 ? () => setImageLoaded(true) : undefined}
+              onError={i === 0 ? () => setImageLoaded(true) : undefined}
+              className={`absolute inset-0 h-full w-full object-cover transition-[transform,opacity] duration-700 ease-out group-hover:scale-[1.04] ${
+                shown && imageLoaded ? 'opacity-100' : 'opacity-0'
+              }`}
+            />
+          )
+        })}
         <span className="absolute left-4 top-4 rounded-full bg-void/70 px-4 py-1.5 font-body text-[13px] text-bone backdrop-blur-sm">
           {p.category}
         </span>
+        {cycles && (
+          // Where in the set the card is. Marks, not controls — the whole card
+          // is one link, and buttons inside it would be links inside a link.
+          <div
+            aria-hidden
+            className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 bg-gradient-to-t from-void/55 to-transparent px-4 pb-3.5 pt-10"
+          >
+            {images.map((src, i) => (
+              <span
+                key={src}
+                className={`h-1 rounded-full transition-[width,background-color] duration-500 ease-brand ${
+                  i === active ? 'w-5 bg-bone' : 'w-1 bg-bone/50'
+                }`}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-1 flex-col p-6">
@@ -162,7 +241,9 @@ function Card({ p, onOpen }) {
 
 export default function PropertiesPage() {
   const p = useSection('properties_page')
-  const properties = useProperties()
+  // One card per development: a phased one is a single listing — see
+  // collapsePhases — and its phases are reached from the switch on its page.
+  const properties = useListings()
   const categories = useCategories()
   // Curated on the invest page, shown here as a teaser — see CapProperties.jsx.
   const capProperties = useCapProperties()
@@ -170,6 +251,11 @@ export default function PropertiesPage() {
 
   const [filter, setFilter] = useState('All')
   const list = filter === 'All' ? properties : properties.filter((pr) => pr.category === filter)
+  // Across every listing, not the filtered list: a photograph shared with a
+  // listing that is filtered out is still not this one's own. Listings, not
+  // records, so two phases of one development sharing photographs does not
+  // disqualify them — those are that development's own.
+  const shared = sharedImages(properties)
   const openProperty = async (property) => {
     const path = `/properties/${property.slug}`
     const root = document.documentElement
@@ -388,8 +474,8 @@ export default function PropertiesPage() {
 
           <motion.div layout className="mt-12 grid grid-cols-1 gap-7 md:grid-cols-2 lg:grid-cols-3">
             <AnimatePresence mode="popLayout">
-              {list.map((pr) => (
-                <Card key={pr.slug} p={pr} onOpen={() => openProperty(pr)} />
+              {list.map((pr, i) => (
+                <Card key={pr.slug} p={pr} index={i} shared={shared} onOpen={() => openProperty(pr)} />
               ))}
             </AnimatePresence>
           </motion.div>

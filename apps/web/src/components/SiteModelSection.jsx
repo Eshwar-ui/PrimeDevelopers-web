@@ -3,13 +3,17 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import FloorPlanInteractive from './FloorPlanInteractive'
 import UnitDetailCard from './UnitDetailCard'
 import UnitList from './UnitList'
+import ViewerLaunch from './floorplan/ViewerLaunch'
 import { formatUnitLabel, getBuildings, getUnits } from '../lib/units'
 import { unitStatusMeta } from '../lib/unitStatus'
 import { getSiteModel, hasSiteModel, reconcileSite, toViewerEntries } from '../lib/siteModel'
 import { hasWebGL } from '../lib/webgl'
 import { scrollToElement } from '../lib/scrollToElement'
 
-const ModelViewer = lazy(() => import('./floorplan/ModelViewer'))
+// Named so the launch button can start the chunk on hover — see the same
+// pair in FloorPlanSection.
+const loadViewer = () => import('./floorplan/ModelViewer')
+const ModelViewer = lazy(loadViewer)
 
 // Matches FloorPlanSection's own PLAN_HEIGHT, and for the same reason: the
 // detail panel now takes a column out of this row from `lg` up, so the model
@@ -45,6 +49,11 @@ export default function SiteModelSection({ property }) {
   const [focusedLabel, setFocusedLabel] = useState(null)
   const [selectedLabel, setSelectedLabel] = useState(null)
   const [isolate, setIsolate] = useState(false)
+  // The model waits for "View 3D model" rather than mounting with the page.
+  // Selection is held as labels, not mesh indexes, so everything chosen
+  // before the press — from the rails, the panel or a deep link — is simply
+  // what the camera frames once it arrives.
+  const [activated, setActivated] = useState(false)
   const [viewerFailed, setViewerFailed] = useState(false)
   // Bumped on the way back out to the site, to re-frame the whole plot.
   const [resetToken, setResetToken] = useState(0)
@@ -398,7 +407,14 @@ export default function SiteModelSection({ property }) {
           model some width and buys back the whole surface. */}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(19rem,1fr)] lg:items-start">
         <div className="relative min-w-0">
-          {canShow3D ? (
+          {canShow3D && !activated ? (
+            <ViewerLaunch
+              poster={siteModel?.poster}
+              height={PLAN_HEIGHT}
+              onLaunch={() => setActivated(true)}
+              onPrefetch={loadViewer}
+            />
+          ) : canShow3D ? (
             <Suspense fallback={<ViewerSkeleton poster={siteModel?.poster} />}>
               <ModelViewer
                 url={modelUrl}
@@ -413,6 +429,8 @@ export default function SiteModelSection({ property }) {
                 groundless
                 orientation={Number.isFinite(siteModel?.orientation) ? siteModel.orientation : null}
                 onError={() => setViewerFailed(true)}
+                // Straight into 3D: the button said "3D model".
+                defaultMode="3d"
                 height={PLAN_HEIGHT}
               />
             </Suspense>

@@ -60,11 +60,14 @@ function Reveal({ className, children }) {
  * keyboard is a floor plan half the readers of this page cannot open.
  */
 function Plate({ image, index, onOpen, layout, dark }) {
-  // The two kinds want opposite things, and treating them alike is what made
-  // the grid ragged. A photograph may be cropped to a shared rhythm — the frame
-  // is not the information, and the full one is a click away. A floor plan may
-  // not: crop a unit off a plan and the sheet is wrong, so those are contained
-  // whole inside a fixed box, which lines the rows up just as well.
+  // The two kinds want opposite things. A photograph may be cropped to a shared
+  // rhythm — the frame is not the information, and the full one is a click
+  // away. A floor plan may not: crop a unit off a plan and the sheet is wrong.
+  // Containing a plan inside a fixed box kept it whole but left empty bands
+  // around every sheet that wasn't that exact shape, so the card takes the
+  // sheet's own proportions once it loads instead — whole, and edge to edge.
+  // The fixed ratio below only holds the space until then.
+  const [sheetRatio, setSheetRatio] = useState(null)
   const photo = layout === 'photo'
   const span = image.feature || image.wide ? 'sm:col-span-2' : undefined
   const ratio = photo
@@ -90,8 +93,10 @@ function Plate({ image, index, onOpen, layout, dark }) {
           alt={image.alt}
           loading="lazy"
           decoding="async"
+          onLoad={photo ? undefined : (e) => setSheetRatio(e.currentTarget.naturalWidth / e.currentTarget.naturalHeight)}
+          style={sheetRatio ? { aspectRatio: sheetRatio } : undefined}
           className={`${ratio} w-full transition-transform duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.03] ${
-            photo ? 'object-cover' : 'object-contain p-4'
+            photo ? 'object-cover' : 'object-contain'
           }`}
         />
       </button>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'motion/react'
-import { useSection, useProperties } from '../context/ContentContext'
+import { useSection, useListings } from '../context/ContentContext'
 import { renderEmphasis } from '../lib/emphasis'
 import { sized, srcSetFor } from '../lib/images'
 import ArrowRight from './ArrowRight'
@@ -130,7 +130,7 @@ function MobileGallery({ tiles, heading, paragraph, go }) {
 }
 export default function Gallery() {
   const { heading, paragraph, ctaLabel } = useSection('gallery')
-  const properties = useProperties()
+  const properties = useListings()
   const navigate = useNavigate()
 
   const tiles = properties.filter((p) => p.image).slice(0, TILES)

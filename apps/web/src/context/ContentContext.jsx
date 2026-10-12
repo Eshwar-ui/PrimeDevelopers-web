@@ -1,8 +1,27 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api'
 import { withTransformedImages } from '../lib/images'
+import { collapsePhases } from '../lib/phases'
 import { useAuth } from './AuthContext'
 import LogoLoader from '../components/LogoLoader'
+
+/**
+ * A property's name as the public site shows it: "Reagan Crossing Phase II"
+ * reads as "Reagan Crossing". The phase is how the build is scheduled, not
+ * what a buyer is shopping for, and the client asked for it off the site.
+ *
+ * Stripped here rather than in the CMS, because the database is shared with
+ * the construction-management app, where the phase is exactly what tells two
+ * stages of one development apart. It takes "Phase II", "Phase 2", and the
+ * same in brackets or after a dash.
+ */
+const publicName = (name) =>
+  typeof name === 'string'
+    ? name
+        .replace(/\s*[-–—,]?\s*\(?\bphase\s+(?:[ivxlc]+|\d+)\b\)?/gi, '')
+        .replace(/\s{2,}/g, ' ')
+        .trim() || name
+    : name
 
 // Fallback shape per section so a missing/not-yet-seeded row never crashes a
 // component — every field a component reads is guaranteed to exist.
@@ -89,20 +108,6 @@ const DEFAULTS = {
         secondaryLabel: 'Schedule a Visit',
         secondaryHref: '/contact',
         propertySlug: 'centro-plaza',
-        image: '',
-        imageAlt: '',
-      },
-      {
-        eyebrow: 'CAP / NNN Investment',
-        heading: 'Income-Producing Retail at\n*Reagan Crossing*',
-        subheading: 'Triple-net leases *already in place.*',
-        paragraph:
-          'Retail frontage on Ronald Reagan Blvd in Leander, structured for stabilized CAP / NNN investment — tenants cover taxes, insurance, and maintenance. Current cap rates are shared directly with qualified investors.',
-        ctaLabel: 'Explore Property',
-        ctaHref: '/properties/reagan-crossing-phase-ii',
-        secondaryLabel: 'Invest in CAP / NNN',
-        secondaryHref: '/enterprise/invest#property-cap',
-        propertySlug: 'reagan-crossing-phase-ii',
         image: '',
         imageAlt: '',
       },
@@ -636,11 +641,6 @@ const DEFAULTS = {
           tenancy: 'Stabilized retail centre with established anchor tenancy.',
         },
         {
-          propertySlug: 'reagan-crossing-phase-ii',
-          capRate: '',
-          tenancy: 'Retail frontage on Ronald Reagan Blvd, NNN leases in place.',
-        },
-        {
           propertySlug: 'cap-rate-projects',
           capRate: '',
           tenancy: 'Office assets structured specifically for CAP-rate entry.',
@@ -775,9 +775,20 @@ export function ContentProvider({ children }) {
         console.warn('Optional site data failed to load:', err)
       })
 
+    // The same exclusion as the images, for the same reason: the admin edits
+    // the stored name, and a shortened one would be saved back over it.
+    //
+    // `fullName` keeps the stored name, phase and all. lib/phases.js reads it to
+    // tell Phase I from Phase II of one development — with only the shortened
+    // name to go on, the two would be the same property.
+    const publicProperties = (list) =>
+      isAdmin || !Array.isArray(list)
+        ? list
+        : list.map((p) => ({ ...p, name: publicName(p.name), fullName: p.name }))
+
     return Promise.all([
       request(api.get('/content'), setContent),
-      request(api.get(`${prefix}/properties`), setProperties, !isAdmin),
+      request(api.get(`${prefix}/properties`), (list) => setProperties(publicProperties(list)), !isAdmin),
       request(api.get(`${prefix}/news`), setNews, !isAdmin),
     ])
   }, [isAdmin])
@@ -806,6 +817,10 @@ export function ContentProvider({ children }) {
       ready: content !== null && (!isAdmin || (properties !== null && news !== null)),
       error,
       properties: properties ?? [],
+      // One entry per development — see collapsePhases. For anything that
+      // lists properties as cards, pins or options; `properties` stays the
+      // full set of records for anything that looks one up by slug.
+      listings: collapsePhases(properties ?? []),
       categories,
       getProperty: (slug) => (properties ?? []).find((p) => p.slug === slug),
       news: news ?? [],
@@ -853,6 +868,7 @@ export const sectionDefaults = (section) => DEFAULTS[section] ?? {}
 
 export const useSection = (section) => useContentContext().getSection(section)
 export const useProperties = () => useContentContext().properties
+export const useListings = () => useContentContext().listings
 export const useCategories = () => useContentContext().categories
 export const useProperty = (slug) => useContentContext().getProperty(slug)
 export const useNews = () => useContentContext().news

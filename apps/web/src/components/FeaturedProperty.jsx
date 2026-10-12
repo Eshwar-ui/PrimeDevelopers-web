@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { CaretLeft, CaretRight } from '@phosphor-icons/react'
 import { useSection, useProperties } from '../context/ContentContext'
 import { renderEmphasis } from '../lib/emphasis'
 import { sized } from '../lib/images'
@@ -10,6 +9,9 @@ import ArrowRight from './ArrowRight'
 
 const CARD_INTERVAL = 9000
 const IMAGE_INTERVAL = 5200
+
+/** `n` folded into 0…length-1, negatives included. */
+const wrap = (n, length) => ((n % length) + length) % length
 
 /**
  * The cards this panel cycles through.
@@ -50,37 +52,122 @@ export default function FeaturedProperty() {
   const f = useSection('featured_home')
   const properties = useProperties()
   const cards = featuredCards(f)
+  const count = cards.length
   const reducedMotion = useReducedMotion()
-  const [active, setActive] = useState(0)
-  const [direction, setDirection] = useState(1)
+  // Three runs of the cards back to back, the strip parked in the middle one.
+  // There is then always a card to either side to peek in, and when the strip
+  // comes to rest in an outer run it hops a whole run back to the middle —
+  // onto an identical card, so the hop cannot be seen — and the loop has no
+  // end in either direction.
+  const slides = count > 1 ? [...cards, ...cards, ...cards] : cards
+  const strip = useRef(null)
+  const [at, setAt] = useState(count)
+  const atRef = useRef(count)
+  const settle = useRef(0)
+  const touching = useRef(false)
+  // Opacity eases as the centre card changes hands, but not across a hop: the
+  // card in the middle is swapped for its twin, and fading the twin up from
+  // dim would flash the very card the hop is meant to hide.
+  const [hopping, setHopping] = useState(false)
   const [paused, setPaused] = useState(false)
-  const current = cards.length ? active % cards.length : 0
+  // Someone swiping is driving; the timer stops for good rather than fight
+  // them for the strip.
+  const [touched, setTouched] = useState(false)
+  // Which photograph each card is on, held here rather than in the card so a
+  // card and its twins in the other runs always show the same one.
+  const [imageAt, setImageAt] = useState({})
+  const current = count ? wrap(at, count) : 0
 
-  const show = (index, dir) => {
-    setDirection(dir)
-    setActive((index + cards.length) % cards.length)
+  const stepOf = (el) => el.children[1].offsetLeft - el.children[0].offsetLeft
+
+  const scrollToSlide = (index) => {
+    const el = strip.current
+    el.scrollTo({ left: index * stepOf(el), behavior: reducedMotion ? 'instant' : 'smooth' })
   }
+
+  // The dots name a card, not a slide, so take the short way round to it.
+  const showCard = (index) => {
+    let step = wrap(index - current, count)
+    if (step > count / 2) step -= count
+    scrollToSlide(at + step)
+  }
+
+  const scheduleSettle = () => {
+    window.clearTimeout(settle.current)
+    settle.current = window.setTimeout(() => {
+      const el = strip.current
+      if (!el || touching.current) return
+      const step = stepOf(el)
+      const index = Math.round(el.scrollLeft / step)
+      const home = count + wrap(index, count)
+      if (home === index) return
+      atRef.current = home
+      setHopping(true)
+      setAt(home)
+      el.scrollLeft += (home - index) * step
+      window.requestAnimationFrame(() => window.requestAnimationFrame(() => setHopping(false)))
+    }, 160)
+  }
+
+  const onScroll = () => {
+    const el = strip.current
+    const index = Math.round(el.scrollLeft / stepOf(el))
+    atRef.current = index
+    setAt(index)
+    scheduleSettle()
+  }
+
+  // Park on the middle run before first paint, and keep the same card centred
+  // when a resize changes how far apart the cards are.
+  useLayoutEffect(() => {
+    const el = strip.current
+    if (!el || count < 2) return
+    atRef.current = count
+    setAt(count)
+    const place = () => {
+      el.scrollLeft = atRef.current * stepOf(el)
+    }
+    place()
+    const observer = new ResizeObserver(place)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [count])
+
+  useEffect(() => () => window.clearTimeout(settle.current), [])
 
   // Held while the pointer or focus is inside, so nobody has a card pulled
   // out from under them mid-read or mid-click.
   useEffect(() => {
-    if (cards.length < 2 || paused || reducedMotion) return
-    const id = window.setTimeout(() => show(current + 1, 1), CARD_INTERVAL)
+    if (count < 2 || paused || touched || reducedMotion) return
+    const id = window.setTimeout(() => scrollToSlide(atRef.current + 1), CARD_INTERVAL)
     return () => window.clearTimeout(id)
-  }, [current, cards.length, paused, reducedMotion]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [at, count, paused, touched, reducedMotion]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // No heading on any card means no feature this month, and an empty bordered
   // slab is worse than no section.
-  if (cards.length === 0) return null
+  if (count === 0) return null
 
-  const card = cards[current]
+  const imageProps = (index) => ({
+    activeImage: imageAt[index] ?? 0,
+    onImage: (image) => setImageAt((images) => ({ ...images, [index]: image })),
+  })
+
+  if (count === 1) {
+    return (
+      <section data-band="light" className="bg-base px-gutter pb-6 pt-6 text-content">
+        <div className="mx-auto max-w-[1560px]">
+          <FeaturedCard card={cards[0]} property={linkedProperty(cards[0], properties)} active {...imageProps(0)} />
+        </div>
+      </section>
+    )
+  }
 
   return (
     <section
       data-band="light"
-      aria-roledescription={cards.length > 1 ? 'carousel' : undefined}
-      aria-label={cards.length > 1 ? 'Featured properties' : undefined}
-      className="bg-base px-gutter pb-6 pt-6 text-content"
+      aria-roledescription="carousel"
+      aria-label="Featured properties"
+      className="bg-base pb-6 pt-6 text-content"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
@@ -88,96 +175,110 @@ export default function FeaturedProperty() {
         if (!e.currentTarget.contains(e.relatedTarget)) setPaused(false)
       }}
     >
-      <div className="mx-auto max-w-[1560px]">
-        <div className="relative overflow-hidden">
-          <AnimatePresence initial={false} mode="wait" custom={direction}>
-            <motion.div
-              key={current}
-              custom={direction}
-              variants={{
-                enter: (dir) => ({ opacity: 0, x: reducedMotion ? 0 : dir * 40 }),
-                center: { opacity: 1, x: 0 },
-                exit: (dir) => ({ opacity: 0, x: reducedMotion ? 0 : dir * -40 }),
-              }}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-              // Swipe on touch; the buttons below cover everything else.
-              drag={cards.length > 1 ? 'x' : false}
-              dragConstraints={{ left: 0, right: 0 }}
-              dragElastic={0.12}
-              onDragEnd={(_, info) => {
-                if (info.offset.x < -60) show(current + 1, 1)
-                else if (info.offset.x > 60) show(current - 1, -1)
-              }}
-              aria-roledescription={cards.length > 1 ? 'slide' : undefined}
-              aria-label={cards.length > 1 ? `${current + 1} of ${cards.length}` : undefined}
-            >
-              <FeaturedCard card={card} property={linkedProperty(card, properties)} />
-            </motion.div>
-          </AnimatePresence>
-        </div>
+      {/* A native scroller, so a swipe or a sideways trackpad gesture moves
+          it and snapping lands each card in the centre. It runs the full
+          width of the screen; the padding puts the centred card where the
+          page column is, less `--peek` on each side, and that inset plus the
+          gutter is what the neighbours show through.
 
-        {cards.length > 1 && (
-          <div className="mt-5 flex items-center justify-center gap-4">
-            <button
-              type="button"
-              onClick={() => show(current - 1, -1)}
-              aria-label="Previous featured property"
-              className="flex size-10 items-center justify-center rounded-full border border-content/20 text-content transition-colors duration-200 hover:border-accent hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          `data-lenis-prevent-horizontal` hands sideways gestures to the
+          browser and leaves vertical ones to Lenis, so the page still scrolls
+          smoothly over the strip but the strip itself can be swiped. */}
+      <div
+        ref={strip}
+        data-lenis-prevent-horizontal
+        onScroll={onScroll}
+        onTouchStart={() => {
+          touching.current = true
+          setTouched(true)
+        }}
+        onTouchEnd={() => {
+          touching.current = false
+          scheduleSettle()
+        }}
+        className="relative flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain [--peek:0.75rem] md:gap-5 md:[--peek:3rem] lg:gap-6 lg:[--peek:5rem]"
+        style={{ paddingInline: 'calc(max(var(--spacing-gutter), (100% - 1560px) / 2) + var(--peek))' }}
+      >
+        {slides.map((card, index) => {
+          const centred = index === at
+          const cardIndex = wrap(index, count)
+          return (
+            <div
+              key={index}
+              aria-roledescription="slide"
+              aria-label={`${cardIndex + 1} of ${count}`}
+              aria-hidden={!centred}
+              // Only the centred card is lit; the neighbours either side are
+              // dimmed, there as a promise of more rather than to be read.
+              className={`relative w-full shrink-0 snap-center snap-always ${
+                hopping ? '' : 'transition-opacity duration-500 ease-brand motion-reduce:transition-none'
+              } ${centred ? 'opacity-100' : 'opacity-45 hover:opacity-70'}`}
             >
-              <CaretLeft aria-hidden className="size-4" />
-            </button>
-            <div className="flex items-center gap-1.5" role="tablist" aria-label="Featured properties">
-              {cards.map((c, index) => (
-                <button
-                  key={index}
-                  type="button"
-                  role="tab"
-                  aria-selected={current === index}
-                  aria-label={`Show featured property ${index + 1}`}
-                  onClick={() => show(index, index > current ? 1 : -1)}
-                  className={`h-1.5 rounded-full transition-[width,background-color] duration-300 ease-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
-                    current === index ? 'w-7 bg-accent' : 'w-1.5 bg-content/25 hover:bg-content/45'
-                  }`}
+              <div inert={!centred} className="h-full">
+                <FeaturedCard
+                  card={card}
+                  property={linkedProperty(card, properties)}
+                  active={centred}
+                  {...imageProps(cardIndex)}
                 />
-              ))}
+              </div>
+              {!centred && (
+                // A peeking card is a way to it in its own right. Kept out of
+                // the tab order and the accessibility tree: the dots below
+                // already are that.
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  aria-hidden
+                  onClick={() => scrollToSlide(index)}
+                  className="absolute inset-0 cursor-pointer rounded-frame"
+                />
+              )}
             </div>
+          )
+        })}
+      </div>
+
+      <div className="mt-5 flex items-center justify-center gap-4 px-gutter">
+        <div className="flex items-center gap-1.5" role="tablist" aria-label="Featured properties">
+          {cards.map((c, index) => (
             <button
+              key={index}
               type="button"
-              onClick={() => show(current + 1, 1)}
-              aria-label="Next featured property"
-              className="flex size-10 items-center justify-center rounded-full border border-content/20 text-content transition-colors duration-200 hover:border-accent hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-            >
-              <CaretRight aria-hidden className="size-4" />
-            </button>
-            <span aria-live="polite" className="ml-1 font-body text-[10px] font-bold uppercase tracking-[0.12em] text-content/50">
-              {String(current + 1).padStart(2, '0')} / {String(cards.length).padStart(2, '0')}
-            </span>
-          </div>
-        )}
+              role="tab"
+              aria-selected={current === index}
+              aria-label={`Show featured property ${index + 1}`}
+              onClick={() => showCard(index)}
+              className={`h-1.5 rounded-full transition-[width,background-color] duration-300 ease-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                current === index ? 'w-7 bg-accent' : 'w-1.5 bg-content/25 hover:bg-content/45'
+              }`}
+            />
+          ))}
+        </div>
+        <span aria-live="polite" className="ml-1 font-body text-[10px] font-bold uppercase tracking-[0.12em] text-content/50">
+          {String(current + 1).padStart(2, '0')} / {String(count).padStart(2, '0')}
+        </span>
       </div>
     </section>
   )
 }
 
-function FeaturedCard({ card: f, property }) {
+function FeaturedCard({ card: f, property, active, activeImage, onImage }) {
   // A linked property's own photographs; an uploaded image only when the card
   // points at nothing in the listings.
   const heroImages = property
     ? Array.from(new Set([property.image, ...(property.gallery ?? [])].filter(Boolean))).slice(0, 6)
     : [f.image].filter(Boolean)
   const heroName = property?.name ?? (f.imageAlt || 'Featured property')
-  const [activeImage, setActiveImage] = useState(0)
   const safeActiveImage = heroImages.length ? activeImage % heroImages.length : 0
   const navigate = useNavigate()
 
+  // Only the centred card cycles; a peeking or off-screen one holds still.
   useEffect(() => {
-    if (heroImages.length < 2 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    const id = window.setTimeout(() => setActiveImage((current) => (current + 1) % heroImages.length), IMAGE_INTERVAL)
+    if (!active || heroImages.length < 2 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const id = window.setTimeout(() => onImage((safeActiveImage + 1) % heroImages.length), IMAGE_INTERVAL)
     return () => window.clearTimeout(id)
-  }, [activeImage, heroImages.length])
+  }, [active, safeActiveImage, heroImages.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const go = (href) => (e) => {
     if (!href || /^https?:/.test(href)) return
@@ -205,7 +306,7 @@ function FeaturedCard({ card: f, property }) {
        a 16:10 frame is over 500px tall, so the picture set the height and
        the card grew a band of dead space down the copy side. */
     <div
-      className={`grid gap-8 rounded-frame border border-accent/25 bg-surface p-5 md:gap-10 md:p-7 lg:p-9 ${
+      className={`grid h-full gap-8 rounded-frame border border-accent/25 bg-surface p-5 md:gap-10 md:p-7 lg:p-9 ${
         heroImages.length > 0 ? 'lg:grid-cols-[1fr_2fr]' : ''
       }`}
     >
@@ -287,7 +388,7 @@ function FeaturedCard({ card: f, property }) {
               key={heroImages[safeActiveImage]}
               src={sized(heroImages[safeActiveImage], 'card')}
               alt={heroImages.length > 1 ? `${heroName} view ${safeActiveImage + 1}` : f.imageAlt || ''}
-              loading={safeActiveImage === 0 ? 'eager' : 'lazy'}
+              loading={active && safeActiveImage === 0 ? 'eager' : 'lazy'}
               decoding="async"
               draggable={false}
               initial={{ opacity: 0, scale: 1.025 }}
@@ -307,7 +408,7 @@ function FeaturedCard({ card: f, property }) {
                     role="tab"
                     aria-selected={safeActiveImage === index}
                     aria-label={`Show image ${index + 1}`}
-                    onClick={() => setActiveImage(index)}
+                    onClick={() => onImage(index)}
                     className={`h-1.5 rounded-full transition-[width,background-color] duration-300 ease-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
                       safeActiveImage === index ? 'w-7 bg-bone' : 'w-1.5 bg-bone/45'
                     }`}

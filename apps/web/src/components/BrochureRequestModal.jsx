@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { api } from '../lib/api'
 import { useSection } from '../context/ContentContext'
 import ArrowRight from './ArrowRight'
@@ -41,7 +42,11 @@ export default function BrochureRequestModal({ property, onClose }) {
     } catch { setStatus('error') }
   }
 
-  return (
+  // Portalled to <body>: on the home page this opens from inside a parallax
+  // chapter, and a transformed ancestor becomes the containing block for
+  // anything `fixed` beneath it — the overlay then covered and centred on that
+  // section instead of the screen.
+  return createPortal(
     <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-charcoal/70 px-4 py-[max(1rem,env(safe-area-inset-top))] backdrop-blur-sm sm:items-center sm:px-5 sm:py-8" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby="brochure-title" tabIndex={-1} className="relative w-full max-w-xl rounded-3xl bg-surface p-6 sm:p-7 shadow-2xl outline-none md:p-10">
         <button type="button" onClick={onClose} aria-label="Close brochure request" className="absolute right-4 top-4 flex size-11 sm:right-5 sm:top-5 items-center justify-center rounded-full border border-[var(--color-line)] text-xl text-content/70 hover:text-content">×</button>
@@ -74,6 +79,7 @@ export default function BrochureRequestModal({ property, onClose }) {
           </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

@@ -25,6 +25,13 @@ const PHASE_RE = /^(.+?)[\s,–—-]*\bphase\s+([ivxlcdm]+|\d+)\.?$/i
 const ROMAN = { i: 1, ii: 2, iii: 3, iv: 4, v: 5, vi: 6, vii: 7, viii: 8, ix: 9, x: 10 }
 
 /**
+ * The name as stored, phase included. The public site shows names with the
+ * phase taken off (ContentContext's `publicName`) and keeps the original as
+ * `fullName`; the admin gets the stored name as `name` and no `fullName`.
+ */
+export const storedName = (property) => property?.fullName ?? property?.name
+
+/**
  * `"POW Lewisville Phase II"` → `{ base: 'pow lewisville', label: 'Phase II', order: 2 }`.
  * Anything without a trailing phase returns null, which is most properties.
  */
@@ -52,17 +59,62 @@ export function parsePhase(name) {
  * including `current` itself.
  *
  * Returns an empty array when there is nothing to switch between. That covers
- * the ordinary case of an unphased property, and one real case in the live
- * data: "Reagan Crossing Phase II" is named as a phase but is the only one
- * published, and a control offering a single destination is worse than no
- * control — it implies a choice that does not exist.
+ * the ordinary case of an unphased property, and a property named as a phase
+ * that is the only one published — a control offering a single destination is
+ * worse than no control, because it implies a choice that does not exist.
  */
+/**
+ * The portfolio as a visitor should see it listed: one entry per development.
+ *
+ * The phases of a development are separate records — each has its own page,
+ * buildings and units, and the hero's phase switch moves between them — but in
+ * a list of properties they are one property. The entry is the earliest phase,
+ * so a card opens on Phase I and the switch leads on from there, carrying the
+ * buildings, sold and available counts of every phase added together so the
+ * card describes the whole development rather than the part it opens on.
+ *
+ * Order is kept: a development sits where its first phase sorts. Properties
+ * with no phase pass through untouched.
+ */
+export function collapsePhases(properties) {
+  const groups = new Map()
+  const entries = []
+  for (const property of properties ?? []) {
+    const phase = parsePhase(storedName(property))
+    if (!phase) {
+      entries.push({ property })
+      continue
+    }
+    const group = groups.get(phase.base)
+    if (group) {
+      group.push({ property, order: phase.order })
+      continue
+    }
+    const members = [{ property, order: phase.order }]
+    groups.set(phase.base, members)
+    entries.push({ members })
+  }
+
+  return entries.map(({ property, members }) => {
+    if (property) return property
+    if (members.length === 1) return members[0].property
+    const sorted = [...members].sort((a, b) => a.order - b.order)
+    const sum = (key) => sorted.reduce((total, { property: p }) => total + (Number(p[key]) || 0), 0)
+    return {
+      ...sorted[0].property,
+      buildings: sum('buildings'),
+      sold: sum('sold'),
+      available: sum('available'),
+    }
+  })
+}
+
 export function phaseSiblings(properties, current) {
-  const self = parsePhase(current?.name)
+  const self = parsePhase(storedName(current))
   if (!self) return []
 
   const group = (properties ?? [])
-    .map((property) => ({ property, phase: parsePhase(property.name) }))
+    .map((property) => ({ property, phase: parsePhase(storedName(property)) }))
     .filter(({ phase }) => phase?.base === self.base)
     .sort((a, b) => a.phase.order - b.phase.order)
 

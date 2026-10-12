@@ -23,16 +23,22 @@ const TEASER_COUNT = 4
 // scans for ("Small", "Medium"...) — separate from `label`, the filter
 // pill's own wording. `all` carries no `name`: the overview tab shows every
 // unit under its own tier, not one shared name.
+//
+// There is no "Under 500 SF" pill — the client asked for it to go. A unit
+// that small still turns up under "Under 1,000 SF", which is what that
+// label says anyway, rather than becoming reachable from Overview alone.
 const SIZE_TIERS = [
   { id: 'all', label: 'Overview', name: null, test: () => true },
-  { id: 'xs', label: 'Under 500 SF', name: 'Small', test: (sf) => sf > 0 && sf < 500 },
-  { id: 'sm', label: 'Under 1,000 SF', name: 'Medium', test: (sf) => sf >= 500 && sf < 1000 },
+  { id: 'sm', label: 'Under 1,000 SF', name: 'Medium', test: (sf) => sf > 0 && sf < 1000 },
   { id: 'md', label: '1,000 – 2,000 SF', name: 'Large', test: (sf) => sf >= 1000 && sf < 2000 },
   { id: 'lg', label: '2,000 – 4,000 SF', name: 'X-Large', test: (sf) => sf >= 2000 && sf < 4000 },
   { id: 'xl', label: '4,000+ SF', name: 'XX-Large', test: (sf) => sf >= 4000 },
 ]
 
-const tierNameFor = (sf) => SIZE_TIERS.slice(1).find((t) => t.test(sf))?.name ?? null
+// The card keeps calling a sub-500 unit "Small" even without a pill of its
+// own; the name describes the unit, not the filter it was found under.
+const tierNameFor = (sf) =>
+  sf > 0 && sf < 500 ? 'Small' : (SIZE_TIERS.slice(1).find((t) => t.test(sf))?.name ?? null)
 
 const parseSF = (size) => {
   const n = Number(String(size ?? '').replace(/[^\d.]/g, ''))

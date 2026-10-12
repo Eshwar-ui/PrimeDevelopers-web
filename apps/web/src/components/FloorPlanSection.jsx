@@ -1,16 +1,20 @@
-import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import FloorPlanInteractive from './FloorPlanInteractive'
 import UnitComparePanel from './UnitComparePanel'
 import UnitDetailCard from './UnitDetailCard'
 import UnitList from './UnitList'
+import ViewerLaunch from './floorplan/ViewerLaunch'
 import { UNIT_STATUSES } from '../lib/unitStatus'
 import { bearingLabel, countByStatus, findUnitByLabel, getModel, getUnits } from '../lib/units'
 import { hasWebGL } from '../lib/webgl'
 
 // Lazy so three/fiber/drei never enter the main bundle. A visitor who does not
-// open the 3D view pays nothing for it.
-const ModelViewer = lazy(() => import('./floorplan/ModelViewer'))
+// open the 3D view pays nothing for it. The loader is kept by name so the
+// launch button can start it on hover; the module cache makes the second call
+// free.
+const loadViewer = () => import('./floorplan/ModelViewer')
+const ModelViewer = lazy(loadViewer)
 
 // One source of truth for the height of the plan column, so the 3D viewer, its
 // poster, its skeleton and the detail panel beside it all agree. If these drift
@@ -71,7 +75,6 @@ export default function FloorPlanSection({ building, propertyId }) {
   // orientation — aspect is a claim about the real world, so it is only made
   // when someone has said which way the model actually points.
   const [facings, setFacings] = useState(null)
-  const planRef = useRef(null)
 
   const units = useMemo(() => getUnits(building), [building])
   const model = getModel(building)
@@ -150,36 +153,8 @@ export default function FloorPlanSection({ building, propertyId }) {
     setActivated(true)
   }, [])
 
-  // The plan mounts itself when it scrolls into reach, rather than waiting for
-  // a button press. Nothing about a leasing map is improved by making someone
-  // click "show me the plan" before they can see the plan.
-  //
-  // Still deferred rather than mounted with the page: three/fiber/drei is
-  // ~620KB gzipped in its own lazy chunk, and a visitor who never reaches this
-  // section should not pay for it. Observing instead of pressing keeps that
-  // property while removing the press — the chunk starts fetching a screen
-  // early, so by the time the section is actually in view it is usually there.
-  useEffect(() => {
-    if (!canShow3D || activated) return
-    const node = planRef.current
-    if (!node) return
-    // No IntersectionObserver means an old browser, and an old browser should
-    // get the plan rather than a permanent skeleton.
-    if (typeof IntersectionObserver === 'undefined') {
-      activate()
-      return
-    }
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (!entries.some((entry) => entry.isIntersecting)) return
-        observer.disconnect()
-        activate()
-      },
-      { rootMargin: '400px' },
-    )
-    observer.observe(node)
-    return () => observer.disconnect()
-  }, [canShow3D, activated, activate])
+  // No observer mounting the viewer as it scrolls into reach any more: the
+  // model waits for the visitor to press "View 3D model". See ViewerLaunch.
 
   // The most recent pick, not the first: see the note on `selection`.
   const primaryIndex = selection.length ? selection[selection.length - 1] : null
@@ -228,7 +203,7 @@ export default function FloorPlanSection({ building, propertyId }) {
           the answer in one glance. Below lg there is no room for that, so the
           panel falls back underneath, which is where it always was. */}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(18rem,1fr)] lg:items-start">
-        <div ref={planRef} className="relative min-w-0">
+        <div className="relative min-w-0">
           <div className="absolute right-4 top-4 z-20 flex max-w-[calc(100%-6.5rem)] flex-nowrap justify-end gap-2 overflow-x-auto sm:right-5 sm:top-5">
             {UNIT_STATUSES.map((status) => {
               const count = counts[status.value] ?? 0
@@ -254,9 +229,10 @@ export default function FloorPlanSection({ building, propertyId }) {
               <button type="button" onClick={() => setStatusFilter(null)} aria-label="Clear status filter" className="grid size-10 shrink-0 place-items-center rounded-full border border-white/12 bg-black/48 text-sm text-white/60 backdrop-blur-xl hover:border-white/28 hover:bg-black/62 hover:text-white">×</button>
             )}
           </div>
-          {/* Tier 1 — the interactive plan, mounted once it scrolls into
-              reach so WebGL is never spun up for a visitor who never gets
-              here. See the observer above. */}
+          {/* Tier 1 — the interactive model, mounted only once the visitor
+              presses for it, so WebGL is never spun up for one who doesn't.
+              It opens in 3D rather than the viewer's usual plan view: the
+              button said "3D model", and the plan is one tap back. */}
           {canShow3D && activated && (
             <Suspense fallback={<ViewerSkeleton poster={poster} />}>
               <ModelViewer
@@ -269,12 +245,15 @@ export default function FloorPlanSection({ building, propertyId }) {
                 orientation={Number.isFinite(model?.orientation) ? model.orientation : null}
                 onFacings={setFacings}
                 onError={() => setViewerFailed(true)}
+                defaultMode="3d"
                 height={PLAN_HEIGHT}
               />
             </Suspense>
           )}
 
-          {canShow3D && !activated && <ViewerSkeleton poster={poster} />}
+          {canShow3D && !activated && (
+            <ViewerLaunch poster={poster} height={PLAN_HEIGHT} onLaunch={activate} onPrefetch={loadViewer} />
+          )}
 
           {/* Tier 2 — the original pin plan, retained rather than replaced. */}
           {!canShow3D && building?.planImage && (
@@ -320,9 +299,8 @@ export default function FloorPlanSection({ building, propertyId }) {
           on the model is then the intended way in; expanded when it is not,
           because it is the only way in. */}
       <UnitList
-        // Keyed on the tier alone, not on activation. Activation is now
-        // automatic, so keying on it would expand the list and then collapse
-        // it under the visitor a moment later as the plan mounts.
+        // Keyed on the tier alone, not on activation, so pressing "View 3D
+        // model" does not reset a list the visitor has already opened.
         key={canShow3D ? 'plan' : 'flat'}
         units={units}
         selection={selection}
@@ -343,9 +321,9 @@ function ViewerSkeleton({ poster }) {
     <div className={`relative overflow-hidden rounded-2xl border border-[var(--color-line)] bg-surface-alt ${PLAN_HEIGHT}`}>
       {poster && <img src={poster} alt="" className="h-full w-full object-cover opacity-25" />}
       <div className="absolute inset-0 flex items-center justify-center">
-        {/* "Floor plan", not "3D model": this is what the visitor is about to
-            see, and the plan is now what loads. */}
-        <span className="eyebrow text-content/70">Loading floor plan…</span>
+        {/* "3D model", because the viewer now opens in 3D — it only loads
+            once someone has pressed a button that says so. */}
+        <span className="eyebrow text-content/70">Loading 3D model…</span>
       </div>
     </div>
   )

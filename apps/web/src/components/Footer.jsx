@@ -5,7 +5,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import { useSectionNav } from '../hooks/useSectionNav'
 import { lenis } from '../hooks/useSmoothScroll'
-import { useSection, useProperties } from '../context/ContentContext'
+import { useSection, useListings } from '../context/ContentContext'
 import { renderEmphasis } from '../lib/emphasis'
 import { organizationSchema } from '../lib/structuredData'
 import SocialIcon from './SocialIcon'
@@ -122,7 +122,9 @@ export default function Footer() {
   } = footer
   const cta = useSection('cta_home')
   const { cities } = useSection('texas_map')
-  const properties = useProperties()
+  // Developments, not records: the portfolio links, the map's pins and the
+  // structured data each name a phased development once.
+  const properties = useListings()
   const scope = useRef(null)
   const go = useSectionNav()
 

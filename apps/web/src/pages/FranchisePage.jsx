@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
-import { useProperties, useSection } from '../context/ContentContext'
+import { useListings, useProperties, useSection } from '../context/ContentContext'
 import PropertyPicker from '../components/PropertyPicker'
 import QuoteForm from '../components/QuoteForm'
 import Testimonials from '../components/Testimonials'
@@ -14,6 +14,8 @@ gsap.registerPlugin(ScrollTrigger)
 export default function FranchisePage() {
   const page = useSection('franchise_page')
   const properties = useProperties()
+  // The picker offers developments; a phased one is a single choice.
+  const listings = useListings()
   const franchisees = page.existingFranchisees ?? []
   const whyPartner = page.openToNew?.whyPartner ?? []
   const scope = useRef(null)
@@ -155,11 +157,11 @@ export default function FranchisePage() {
 
       <section id="inquire" className="px-gutter pb-24 md:pb-32">
         <div className="mx-auto max-w-[1360px]">
-          {properties.length > 0 && (
+          {listings.length > 0 && (
             <div className="mb-8 rounded-panel border border-line bg-surface-alt p-5 sm:p-7 md:p-9">
               <p className="font-body text-[11px] font-bold uppercase tracking-[0.15em] text-content/50">Which property interests you?</p>
               <div className="mt-5">
-                <PropertyPicker properties={properties} value={desiredProperty} onChange={setDesiredProperty} />
+                <PropertyPicker properties={listings} value={desiredProperty} onChange={setDesiredProperty} />
               </div>
             </div>
           )}

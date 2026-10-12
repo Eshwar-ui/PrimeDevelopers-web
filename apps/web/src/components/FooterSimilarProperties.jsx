@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion, useReducedMotion } from 'motion/react'
-import { parsePhase } from '../lib/phases'
+import { useProperties } from '../context/ContentContext'
+import { parsePhase, storedName } from '../lib/phases'
 import { sized } from '../lib/images'
 import ArrowRight from './ArrowRight'
 
@@ -28,8 +29,8 @@ const cityFrom = (address = '') => {
 
 function similarityScore(candidate, current) {
   let score = 0
-  const candidatePhase = parsePhase(candidate.name)
-  const currentPhase = parsePhase(current.name)
+  const candidatePhase = parsePhase(storedName(candidate))
+  const currentPhase = parsePhase(storedName(current))
 
   if (candidatePhase?.base && candidatePhase.base === currentPhase?.base) score += 100
   if (candidate.category && candidate.category === current.category) score += 30
@@ -69,15 +70,27 @@ export default function FooterSimilarProperties({
   // as it did before anyone touches it — the expansion is a response to the
   // pointer, not a new layout.
   const [open, setOpen] = useState(0)
+  // `properties` is one listing per development, so the page being viewed is
+  // looked up among every record instead — a Phase II page has no listing of
+  // its own to be found in.
+  const records = useProperties()
   const match = pathname.match(/^\/properties\/([^/]+)\/?$/)
-  const current = match ? properties.find((property) => property.slug === match[1]) : null
+  const current = match ? records.find((property) => property.slug === match[1]) : null
+  const currentBase = current ? parsePhase(storedName(current))?.base : undefined
 
   // Ranked against the property being viewed, or simply the head of the
-  // portfolio when there is nothing to rank against.
+  // portfolio when there is nothing to rank against. The development being
+  // viewed is left out whichever phase it is: its other phases are one click
+  // away in the hero's phase switch, and suggesting them here as "similar"
+  // would offer the same place twice.
   const shown = current
     ? properties
         .map((property, index) => ({ property, index }))
-        .filter(({ property }) => property.slug !== current.slug)
+        .filter(
+          ({ property }) =>
+            property.slug !== current.slug &&
+            !(currentBase && parsePhase(storedName(property))?.base === currentBase),
+        )
         .sort(
           (a, b) =>
             similarityScore(b.property, current) - similarityScore(a.property, current) ||

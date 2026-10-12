@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
-import { ArrowRight, ArrowSquareOut } from '@phosphor-icons/react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import CountUp from '../components/CountUp'
 import { rise, stagger, inViewOnce } from '../lib/motion'
@@ -16,12 +15,7 @@ import PropertyHero from '../components/PropertyHero'
 import PropertyGallery from '../components/PropertyGallery'
 import PropertyDetailNav from '../components/PropertyDetailNav'
 import { youtubeEmbedUrl } from '../lib/video'
-import {
-  buildingFromResourceLabel,
-  buildingSlug,
-  getInvestment,
-  isInvestmentLinkable,
-} from '../lib/investment'
+import { buildingFromResourceLabel } from '../lib/investment'
 import { resourceKind } from '../lib/resourceKinds'
 import { marketplaceLogo } from '../lib/marketplaceLogos'
 
@@ -825,35 +819,24 @@ export default function PropertyDetailPage() {
 
       {/* ── Resources ────────────────────────────────────────────
           Last of the content sections, immediately before the closing
-          enquiry. These are the take-aways — flyers, rate sheets, the
-          Crexi and LoopNet listings — and they belong at the end, once
-          the page has made its case. Opening the page on them sent a
-          visitor off-site before they had seen the property.
+          enquiry. These are the take-aways — flyers, the Crexi and
+          LoopNet listings — and they belong at the end, once the page has
+          made its case. Opening the page on them sent a visitor off-site
+          before they had seen the property.
 
-          Split in two, because they were never one kind of thing. A CAP rate
-          sheet is the start of an investment conversation; a LoopNet listing
-          is a link.
-
-          The split existed in the code long before it existed on screen: both
-          halves were the same rounded rectangle, the same hairline and the
-          same grey, twelve pixels apart, so nine links read as one wall. Rank
-          is carried by ground now — the rate sheets sit on the accent wash,
-          everything else on plain surface — which survives a squint in a way
-          that padding never did. */}
+          The per-building CAP rate flyers are left out. They had their own
+          row of cards above these tiles, and the client asked for that row
+          to go. A CAP-rate label only counts as one if its building actually
+          exists; anything unmatched stays an ordinary tile. */}
       {d?.resourceLinks?.length > 0 &&
         (() => {
           const buildings = d?.floorPlans?.buildings ?? []
-          const links = d.resourceLinks.filter((link) => link?.url && link?.label)
-          // A CAP-rate label only counts as one if its building actually
-          // exists. Anything unmatched falls through to the ordinary list,
-          // which is exactly what it was before this split.
-          const rated = []
-          const others = []
-          for (const link of links) {
-            const building = buildingFromResourceLabel(link.label, buildings)
-            if (building) rated.push({ link, building })
-            else others.push(link)
-          }
+          const others = d.resourceLinks.filter(
+            (link) => link?.url && link?.label && !buildingFromResourceLabel(link.label, buildings),
+          )
+          // A property whose only resources were building flyers has no
+          // section left, rather than a heading over nothing.
+          if (!others.length) return null
 
           return (
             <section id="resources" data-band="light" className="scroll-mt-24 bg-surface-alt px-gutter py-20 md:py-28">
@@ -869,7 +852,7 @@ export default function PropertyDetailPage() {
                   </h2>
                 )}
 
-                {rated.length > 0 && (
+                {others.length > 0 && (
                   <motion.div
                     variants={stagger}
                     initial="hidden"
@@ -879,146 +862,18 @@ export default function PropertyDetailPage() {
                     //
                     // The column count is the item count, capped per rung —
                     // not `auto-fit`, which derives its repetition from the
-                    // *max* track sizing function and so turned a 26rem
-                    // ceiling into three 416px tracks at 1800px, wrapping
-                    // four rate sheets as 3 + 1.
+                    // *max* track sizing function and so stretches a ceiling
+                    // into more tracks than there are tiles.
                     //
-                    // The track carries a ceiling rather than being `1fr`.
-                    // `1fr` divides the container by however many cards there
-                    // are, so a property with one rate sheet got a single
-                    // 1560px card — a poster, not a card. With a ceiling it
-                    // shrinks with the viewport and stops at the width it was
-                    // drawn for. Left-aligned by default: `justify-content`
-                    // resolves to `start` once the tracks are not auto-sized,
-                    // which is what the heading above it wants.
-                    style={{
-                      '--rc-sm': Math.min(rated.length, 2),
-                      '--rc': Math.min(rated.length, 4),
-                    }}
-                    className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-[repeat(var(--rc-sm),minmax(0,24rem))] xl:grid-cols-[repeat(var(--rc),minmax(0,24rem))]"
-                  >
-                    {rated.map(({ link, building }, i) => {
-                      const internal = isInvestmentLinkable(building)
-                      const investment = getInvestment(building)
-                      const capRate = String(investment?.capRate ?? '').trim()
-                      const href = internal
-                        ? `/properties/${property.slug}/investment/${buildingSlug(building.building)}`
-                        : link.url
-                      // Same card either way; only where it goes differs. An
-                      // internal route must not be an <a>, or every visit
-                      // reloads the SPA and loses the scroll position.
-                      const Tag = internal ? Link : 'a'
-                      const nav = internal ? { to: href } : { href, target: '_blank', rel: 'noreferrer' }
-                      const ActionIcon = internal ? ArrowRight : ArrowSquareOut
-                      // Two supporting figures at most. These are the two an
-                      // investor pairs with a yield; the rest of the term
-                      // sheet is one click away, and putting it here would
-                      // turn a card into a table nobody reads on a phone.
-                      const figures = [
-                        { label: 'Asking', value: String(investment?.askingPrice ?? '').trim() },
-                        { label: 'Size', value: String(investment?.buildingSize ?? '').trim() },
-                      ].filter((figure) => figure.value)
-
-                      return (
-                        <motion.div key={`rated-${i}`} variants={rise} className="min-w-0">
-                          <Tag
-                            {...nav}
-                            // The accent wash, not a hairline, is what makes
-                            // these outrank the tiles below — and it is the
-                            // one pale blue in the palette redefined under
-                            // `.dark`, so the card darkens with the page
-                            // instead of hanging off it as a lit panel.
-                            className="group flex h-full flex-col justify-between gap-7 rounded-panel bg-prime-soft p-6 ring-1 ring-inset ring-accent/15 transition-[box-shadow,translate,--tw-ring-color] duration-500 ease-brand hover:-translate-y-1 hover:shadow-[0_22px_48px_-30px_color-mix(in_srgb,var(--color-accent)_85%,transparent)] hover:ring-accent/45 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none motion-reduce:hover:translate-y-0"
-                          >
-                            <div>
-                              <p className="font-body text-[10px] font-bold uppercase tracking-[0.2em] text-content/70">
-                                {internal ? 'Investment summary' : 'CAP rate flyer'}
-                              </p>
-
-                              {/* The card promotes whatever real information
-                                  it actually holds. With a published yield
-                                  the figure is the headline and the building
-                                  name becomes its caption; without one — the
-                                  state every building ships in until the
-                                  client supplies figures — the name takes the
-                                  display size itself. The alternative was a
-                                  card built around a number that is usually
-                                  missing, held open by an em dash. */}
-                              {capRate ? (
-                                <>
-                                  {/* Tabular figures, so four yields set in
-                                      four cards line up digit for digit
-                                      across the row and can be compared
-                                      without being read. */}
-                                  <p className="numeral mt-6 text-accent [font-size:clamp(2.5rem,4.4vw,3.25rem)]">
-                                    {capRate}
-                                    <span className="ml-2 align-baseline font-display text-[0.26em] font-bold uppercase tracking-[0.2em] text-content/70">
-                                      CAP
-                                    </span>
-                                  </p>
-                                  <p className="mt-4 font-display text-lg font-bold tracking-[-0.01em] text-content">
-                                    {building.building}
-                                  </p>
-                                </>
-                              ) : (
-                                <p className="mt-5 max-w-[10ch] text-balance font-display font-bold leading-[1.02] tracking-[-0.03em] text-content [font-size:clamp(1.75rem,2.4vw,2.25rem)]">
-                                  {building.building}
-                                </p>
-                              )}
-                            </div>
-
-                            <div>
-                              {figures.length > 0 && (
-                                <dl className="mb-5 flex flex-wrap gap-x-8 gap-y-2 border-t border-accent/20 pt-5">
-                                  {figures.map((figure) => (
-                                    <div key={figure.label}>
-                                      <dt className="font-body text-[10px] font-bold uppercase tracking-[0.18em] text-content/70">
-                                        {figure.label}
-                                      </dt>
-                                      <dd className="mt-1 font-display text-[15px] font-bold tracking-[-0.01em] text-content">
-                                        {figure.value}
-                                      </dd>
-                                    </div>
-                                  ))}
-                                </dl>
-                              )}
-
-                              <span className="inline-flex items-center gap-2 font-body text-[12px] font-bold uppercase tracking-[0.12em] text-accent">
-                                {internal ? 'View the figures' : 'Open the flyer'}
-                                <ActionIcon
-                                  aria-hidden
-                                  weight="bold"
-                                  className="size-4 transition-transform duration-300 ease-brand group-hover:translate-x-1 motion-reduce:transition-none"
-                                />
-                              </span>
-                            </div>
-                          </Tag>
-                        </motion.div>
-                      )
-                    })}
-                  </motion.div>
-                )}
-
-                {others.length > 0 && (
-                  <motion.div
-                    variants={stagger}
-                    initial="hidden"
-                    whileInView="show"
-                    viewport={inViewOnce}
-                    // Same two rules as the rate sheets above, one rung
-                    // lower and one size smaller.
+                    // The track carries a ceiling rather than being `1fr`,
+                    // so a property with one link gets a tile, not a banner
+                    // the width of the section.
                     style={{
                       '--sc-sm': Math.min(others.length, 2),
                       '--sc-lg': Math.min(others.length, 3),
                       '--sc-xl': Math.min(others.length, 5),
                     }}
-                    // The rule is the whole grouping device, and it only earns
-                    // its place when there is a group above it to be separated
-                    // from. On a property with no rate sheets these tiles are
-                    // the section, and a rule under the heading would be a lid.
-                    className={`grid grid-cols-1 gap-3 sm:grid-cols-[repeat(var(--sc-sm),minmax(0,21rem))] lg:grid-cols-[repeat(var(--sc-lg),minmax(0,21rem))] xl:grid-cols-[repeat(var(--sc-xl),minmax(0,21rem))] ${
-                      rated.length > 0 ? 'mt-14 border-t border-line pt-10' : 'mt-10'
-                    }`}
+                    className="mt-10 grid grid-cols-1 gap-3 sm:grid-cols-[repeat(var(--sc-sm),minmax(0,21rem))] lg:grid-cols-[repeat(var(--sc-lg),minmax(0,21rem))] xl:grid-cols-[repeat(var(--sc-xl),minmax(0,21rem))]"
                   >
                     {others.map((link, i) => {
                       const kind = resourceKind(link.label, link.url)

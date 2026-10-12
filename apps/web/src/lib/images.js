@@ -98,7 +98,11 @@ export const sized = (src, size) => imageUrl(src, { width: WIDTHS[size] ?? size 
  * blob without needing to know its shape.
  */
 export function withTransformedImages(value, options) {
-  if (typeof value === 'string') return imageUrl(value, options)
+  // Only a string that is a URL and nothing else. A journal post's Markdown
+  // body can *contain* a storage URL, and handing the whole body to imageUrl
+  // cut it off at the first "?" in the prose. Images inside a body are sized
+  // where they render instead.
+  if (typeof value === 'string') return /^https?:\/\/\S+$/.test(value) ? imageUrl(value, options) : value
   if (Array.isArray(value)) return value.map((item) => withTransformedImages(item, options))
   if (value && typeof value === 'object') {
     const out = {}

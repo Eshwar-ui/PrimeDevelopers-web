@@ -68,6 +68,59 @@ const DEFAULTS = {
     secondaryHref: '/contact',
     image: '',
     imageAlt: '',
+    // The carousel's cards — see featuredCards() in FeaturedProperty.jsx. The
+    // live row predates the list and holds its one feature as the top-level
+    // fields above, so this default is what it shows until the list is saved
+    // from the admin. Card 1 repeats that feature; 2 and 3 are the CAP / NNN
+    // listings from invest_page.propertyCap that resolve to live properties.
+    //
+    // No cap rates or yields in the copy, for the same reason `capRate` is
+    // blank on those listings: it is a financial claim only the business can
+    // make, and the invest page already promises ranges on request.
+    cards: [
+      {
+        eyebrow: 'Featured Property',
+        heading: 'Grow Your Business at\n*Centro Plaza*',
+        subheading: 'Premium Commercial Spaces in a *Prime Location.*',
+        paragraph:
+          'Discover modern retail and office spaces designed for visibility, accessibility, and long-term business growth. Secure your space at Centro Plaza today.',
+        ctaLabel: 'Explore Property',
+        ctaHref: '/properties/centro-plaza',
+        secondaryLabel: 'Schedule a Visit',
+        secondaryHref: '/contact',
+        propertySlug: 'centro-plaza',
+        image: '',
+        imageAlt: '',
+      },
+      {
+        eyebrow: 'CAP / NNN Investment',
+        heading: 'Income-Producing Retail at\n*Reagan Crossing*',
+        subheading: 'Triple-net leases *already in place.*',
+        paragraph:
+          'Retail frontage on Ronald Reagan Blvd in Leander, structured for stabilized CAP / NNN investment — tenants cover taxes, insurance, and maintenance. Current cap rates are shared directly with qualified investors.',
+        ctaLabel: 'Explore Property',
+        ctaHref: '/properties/reagan-crossing-phase-ii',
+        secondaryLabel: 'Invest in CAP / NNN',
+        secondaryHref: '/enterprise/invest#property-cap',
+        propertySlug: 'reagan-crossing-phase-ii',
+        image: '',
+        imageAlt: '',
+      },
+      {
+        eyebrow: 'CAP / NNN Investment',
+        heading: 'Office Assets Built for\n*CAP Rate* Entry',
+        subheading: 'Landlord-style returns, *largely passive.*',
+        paragraph:
+          'Austin office properties structured specifically for CAP-rate investment, on triple-net leases that keep day-to-day involvement to a minimum. Current ranges are shared directly with qualified investors.',
+        ctaLabel: 'Explore Property',
+        ctaHref: '/properties/cap-rate-projects',
+        secondaryLabel: 'Invest in CAP / NNN',
+        secondaryHref: '/enterprise/invest#property-cap',
+        propertySlug: 'cap-rate-projects',
+        image: '',
+        imageAlt: '',
+      },
+    ],
   },
   // Ships with its copy rather than waiting on a seed, for the same reason
   // about_home's film does: the live content row predates this key entirely, so

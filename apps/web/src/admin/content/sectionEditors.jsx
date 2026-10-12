@@ -3,10 +3,89 @@ import ImageUploader from '../components/ImageUploader'
 import RepeatableList from '../components/RepeatableList'
 import { PLATFORM_KEYS } from '../../lib/platforms'
 import { TIERS } from '../../lib/interiors'
+import { useProperties } from '../../context/ContentContext'
 
 // Shared hint for the *word* → italic accent-color convention used across
 // headings, so admins get the same visual flourish as the original hardcoded copy.
 const emphasisHint = 'Wrap a word in *asterisks* to render it italic in accent color, e.g. "We build the *landmarks* of Texas".'
+
+const FEATURED_FIELDS = ['eyebrow', 'heading', 'subheading', 'paragraph', 'ctaLabel', 'ctaHref', 'secondaryLabel', 'secondaryHref', 'image', 'imageAlt']
+
+function FeaturedEditor({ value, onChange }) {
+  const properties = useProperties()
+  // A row saved before the carousel holds its one feature as top-level
+  // fields. It opens here as the first card, so nothing is lost on first save.
+  const cards = value.cards?.length
+    ? value.cards
+    : value.heading
+      ? [Object.fromEntries(FEATURED_FIELDS.map((key) => [key, value[key] ?? '']))]
+      : []
+  // Writing the list also blanks the old top-level heading. Otherwise removing
+  // every card would fall back to that stale single feature instead of hiding
+  // the panel.
+  const setCards = (next) => onChange({ cards: next, heading: '' })
+
+  return (
+    <Section title="Cards">
+      <RepeatableList
+        items={cards}
+        onChange={setCards}
+        makeItem={() => ({
+          eyebrow: 'Featured Property',
+          heading: '',
+          subheading: '',
+          paragraph: '',
+          ctaLabel: 'Explore Property',
+          ctaHref: '',
+          secondaryLabel: 'Schedule a Visit',
+          secondaryHref: '/contact',
+          propertySlug: '',
+          image: '',
+          imageAlt: '',
+        })}
+        addLabel="Add featured card"
+        renderItem={(card, set, index) => (
+          <div className="flex flex-col gap-3">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-bone-3">Card {index + 1}</p>
+            <SelectField
+              label="Property"
+              value={card.propertySlug ?? ''}
+              onChange={(propertySlug) =>
+                set({
+                  ...card,
+                  propertySlug,
+                  // Pointing the button at the chosen property is almost always
+                  // what is meant; an edited link is left alone.
+                  ctaHref: !card.ctaHref || card.ctaHref.startsWith('/properties/') ? (propertySlug ? `/properties/${propertySlug}` : card.ctaHref) : card.ctaHref,
+                })
+              }
+              options={[{ value: '', label: 'None (use uploaded photo)' }, ...properties.map((p) => ({ value: p.slug, label: p.name }))]}
+            />
+            <p className="-mt-1 text-[11px] text-bone-3">
+              The card shows that property&apos;s own photos. A card whose primary link goes to /properties/… uses that property too.
+            </p>
+            <TextField label="Eyebrow" value={card.eyebrow} onChange={(eyebrow) => set({ ...card, eyebrow })} />
+            <TextAreaField label="Heading" rows={2} value={card.heading} onChange={(heading) => set({ ...card, heading })} />
+            <p className="-mt-1 text-[11px] text-bone-3">
+              Wrap the property name in *asterisks* to set it in saffron. A line break puts it on its own line. A card with no heading is hidden.
+            </p>
+            <TextField label="Subheading" value={card.subheading} onChange={(subheading) => set({ ...card, subheading })} />
+            <TextAreaField label="Paragraph" rows={3} value={card.paragraph} onChange={(paragraph) => set({ ...card, paragraph })} />
+            <div className="grid grid-cols-2 gap-3">
+              <TextField label="Primary label" value={card.ctaLabel} onChange={(ctaLabel) => set({ ...card, ctaLabel })} />
+              <TextField label="Primary link" value={card.ctaHref} onChange={(ctaHref) => set({ ...card, ctaHref })} />
+              <TextField label="Secondary label" value={card.secondaryLabel} onChange={(secondaryLabel) => set({ ...card, secondaryLabel })} />
+              <TextField label="Secondary link" value={card.secondaryHref} onChange={(secondaryHref) => set({ ...card, secondaryHref })} />
+            </div>
+            <p className="-mt-1 text-[11px] text-bone-3">Leave a label empty to hide that button.</p>
+            <ImageUploader label="Photo (only used when no property is linked)" value={card.image} onChange={(image) => set({ ...card, image })} folder="site/featured" />
+            <TextField label="Photo alt text" value={card.imageAlt} onChange={(imageAlt) => set({ ...card, imageAlt })} />
+          </div>
+        )}
+      />
+    </Section>
+  )
+}
 
 export const SECTIONS = [
   {
@@ -142,38 +221,9 @@ export const SECTIONS = [
   },
   {
     key: 'featured_home',
-    label: 'Featured property (homepage panel)',
-    description: 'The single property lifted out of the list into a bordered panel. Clear the heading to hide the panel entirely.',
-    Editor: ({ value, onChange }) => (
-      <>
-        <Section title="Copy">
-          <TextField label="Eyebrow" value={value.eyebrow} onChange={(eyebrow) => onChange({ eyebrow })} />
-          <TextAreaField label="Heading" rows={2} value={value.heading} onChange={(heading) => onChange({ heading })} />
-          <p className="-mt-3 text-[11px] text-bone-3">
-            Wrap the property name in *asterisks* to set it in saffron, e.g. &quot;Grow Your Business at *Centro Plaza*&quot;. A line break puts it on its own line.
-          </p>
-          <TextField label="Subheading" value={value.subheading} onChange={(subheading) => onChange({ subheading })} />
-          <p className="-mt-3 text-[11px] text-bone-3">Asterisks here set the wrapped words in blue instead.</p>
-          <TextAreaField label="Paragraph" rows={3} value={value.paragraph} onChange={(paragraph) => onChange({ paragraph })} />
-        </Section>
-        <Section title="Buttons">
-          <div className="grid grid-cols-2 gap-4">
-            <TextField label="Primary label" value={value.ctaLabel} onChange={(ctaLabel) => onChange({ ctaLabel })} />
-            <TextField label="Primary link" value={value.ctaHref} onChange={(ctaHref) => onChange({ ctaHref })} />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <TextField label="Secondary label" value={value.secondaryLabel} onChange={(secondaryLabel) => onChange({ secondaryLabel })} />
-            <TextField label="Secondary link" value={value.secondaryHref} onChange={(secondaryHref) => onChange({ secondaryHref })} />
-          </div>
-          <p className="-mt-3 text-[11px] text-bone-3">Leave a label empty to hide that button.</p>
-        </Section>
-        <Section title="Photograph">
-          <ImageUploader value={value.image} onChange={(image) => onChange({ image })} folder="site/featured" />
-          <TextField label="Alt text" value={value.imageAlt} onChange={(imageAlt) => onChange({ imageAlt })} />
-          <p className="-mt-3 text-[11px] text-bone-3">Describe the photo for screen readers. Leave empty if it adds nothing the copy does not already say.</p>
-        </Section>
-      </>
-    ),
+    label: 'Featured properties (homepage carousel)',
+    description: 'Properties lifted out of the list into a bordered panel. With more than one card the panel becomes a carousel. Remove every card to hide the panel.',
+    Editor: FeaturedEditor,
   },
   {
     key: 'services_home',

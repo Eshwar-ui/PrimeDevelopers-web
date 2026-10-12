@@ -5,6 +5,7 @@ import { api } from '../lib/api'
 import { slugify } from '../lib/slugify'
 import { Section, TextField, TextAreaField } from './components/Field'
 import ImageUploader from './components/ImageUploader'
+import { DEFAULT_CATEGORY, parsePost, serializePost } from '../lib/posts'
 
 const toDateInput = (iso) => (iso ? new Date(iso).toISOString().slice(0, 10) : '')
 
@@ -36,6 +37,13 @@ export default function NewsEditPage() {
   if (!form) return null
 
   const patch = (partial) => setForm((f) => ({ ...f, ...partial }))
+
+  // Category and byline live in a front-matter block at the top of the body
+  // (see lib/posts.js). These fields edit that block; the textarea shows only
+  // the article beneath it.
+  const { meta, content } = parsePost(form.body)
+  const setMeta = (partial) => patch({ body: serializePost({ ...meta, ...partial }, content) })
+  const setContent = (next) => patch({ body: serializePost(meta, next) })
 
   const save = async () => {
     setSaving(true)
@@ -106,13 +114,31 @@ export default function NewsEditPage() {
             <TextField label="Slug (URL)" value={form.slug} onChange={(slug) => patch({ slug, _slugTouched: true })} />
           </div>
           <TextAreaField label="Excerpt" rows={2} value={form.excerpt} onChange={(excerpt) => patch({ excerpt })} />
-          <TextAreaField
-            label="Body"
-            rows={14}
-            value={form.body}
-            onChange={(body) => patch({ body })}
-          />
-          <p className="-mt-3 text-[11px] text-bone-3">Separate paragraphs with a blank line.</p>
+          <div className="grid grid-cols-3 gap-5">
+            <TextField label="Category" value={meta.category ?? ''} onChange={(category) => setMeta({ category })} />
+            <TextField label="Author" value={meta.author ?? ''} onChange={(author) => setMeta({ author })} />
+            <TextField label="Author role" value={meta.authorRole ?? ''} onChange={(authorRole) => setMeta({ authorRole })} />
+          </div>
+          <p className="-mt-3 text-[11px] text-bone-3">
+            Category shows above the title and on the card (defaults to &quot;{DEFAULT_CATEGORY}&quot;). With no author, the byline reads Prime Developers.
+          </p>
+          <TextAreaField label="Body" rows={22} value={content} onChange={setContent} />
+          <details className="-mt-3 text-[11px] text-bone-3">
+            <summary className="cursor-pointer select-none font-bold uppercase tracking-wide hover:text-bone/70">Formatting help</summary>
+            <div className="mt-3 grid gap-x-8 gap-y-1.5 font-mono sm:grid-cols-2">
+              <span>Blank line — new paragraph</span>
+              <span>## Section heading</span>
+              <span>### Sub-heading</span>
+              <span>**bold** · *italic*</span>
+              <span>[link text](/properties) or (https://…)</span>
+              <span>- bullet item</span>
+              <span>1. numbered item</span>
+              <span>&gt; pull quote</span>
+              <span>![alt text](image URL &quot;caption&quot;)</span>
+              <span>--- divider</span>
+            </div>
+            <p className="mt-3">Section headings (##) also build the &quot;On this page&quot; list beside the article. For an inline image, paste the image&apos;s full URL into an image line.</p>
+          </details>
           <ImageUploader label="Cover image" value={form.coverImage} onChange={(coverImage) => patch({ coverImage })} folder="blog" />
           <div className="grid grid-cols-2 gap-5">
             <TextField label="Published date" type="date" value={toDateInput(form.publishedAt)} onChange={(v) => patch({ publishedAt: v })} />

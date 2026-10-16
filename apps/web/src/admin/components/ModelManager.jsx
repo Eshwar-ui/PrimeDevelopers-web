@@ -1,6 +1,7 @@
 import { Suspense, lazy, useCallback, useMemo, useRef, useState } from 'react'
 import { uploadImage, uploadModel } from '../../lib/uploads'
 import { inspectGlb, triangleWarning, validateModelFile } from '../../lib/glbInspect'
+import { ConfirmButton } from './ui'
 import {
   diffModels,
   formatBytes,
@@ -222,7 +223,7 @@ export default function ModelManager({ building, onChange, folder }) {
         </button>
         {model?.url && (
           <>
-            <span className="text-[11px] text-bone-3">
+            <span className="text-xs text-bone-3">
               {formatBytes(model.fileSize)} · {Number(model.triangles ?? 0).toLocaleString()} triangles ·{' '}
               {report.matched.length} of {units.length} units bound
             </span>
@@ -233,7 +234,7 @@ export default function ModelManager({ building, onChange, folder }) {
                 setArmedIndex(null) // the two picking modes would fight over a click
               }}
               aria-pressed={tagMode}
-              className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${
+              className={`rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide ${
                 tagMode
                   ? 'border-ember bg-ember text-void'
                   : 'border-white/20 text-bone/70 hover:border-ember hover:text-ember'
@@ -241,15 +242,15 @@ export default function ModelManager({ building, onChange, folder }) {
             >
               {tagMode ? 'Done tagging' : 'Tag units by tapping'}
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (confirm('Remove the 3D model? The building falls back to its 2D floor plan.')) setModel(null)
-              }}
-              className="text-[11px] text-bone-3 hover:text-red-400"
-            >
-              Remove
-            </button>
+            {/* Inline, not window.confirm — see ConfirmButton. Takes effect on
+                Save, like every other edit here. */}
+            <ConfirmButton
+              label="Remove"
+              prompt="Remove the model? The building falls back to its 2D floor plan."
+              confirmLabel="Remove"
+              busyLabel="Removing…"
+              onConfirm={() => setModel(null)}
+            />
           </>
         )}
         <input ref={inputRef} type="file" accept=".glb,model/gltf-binary" className="hidden" onChange={onFile} />
@@ -316,17 +317,17 @@ export default function ModelManager({ building, onChange, folder }) {
             <div className="mt-4 flex flex-col gap-3 rounded-lg border border-white/10 p-3">
               {report.unmatched.length > 0 && (
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-ember">
+                  <p className="text-xs font-bold uppercase tracking-wide text-ember">
                     {report.unmatched.length} shape{report.unmatched.length === 1 ? '' : 's'} not matched to a unit
                   </p>
                   <div className="mt-2 flex flex-col gap-2">
                     {report.unmatched.map((meshName) => (
                       <div key={meshName} className="flex flex-wrap items-center gap-2">
-                        <span className="font-mono text-[11px] text-bone/60">{meshName}</span>
+                        <span className="font-mono text-xs text-bone/60">{meshName}</span>
                         <select
                           value={model.bindings?.[meshName] ?? ''}
                           onChange={(e) => bind(meshName, e.target.value)}
-                          className="rounded-md border border-white/15 bg-void px-2 py-1 text-[11px] text-bone/80"
+                          className="rounded-md border border-white/15 bg-void px-2 py-1 text-xs text-bone/80"
                         >
                           <option value="">Not a unit — leave as scenery</option>
                           {report.unmodelled.map((unit) => (
@@ -343,10 +344,10 @@ export default function ModelManager({ building, onChange, folder }) {
 
               {report.unmodelled.length > 0 && (
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-bone-3">
+                  <p className="text-xs font-bold uppercase tracking-wide text-bone-3">
                     {report.unmodelled.length} unit{report.unmodelled.length === 1 ? '' : 's'} with no shape in the model
                   </p>
-                  <p className="mt-1 text-[11px] text-bone-3">
+                  <p className="mt-1 text-xs text-bone-3">
                     These still appear in the unit list and on the 2D plan — they just cannot be clicked in 3D.
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2">
@@ -355,7 +356,7 @@ export default function ModelManager({ building, onChange, folder }) {
                         key={unit.index}
                         type="button"
                         onClick={() => setArmedIndex(armedIndex === unit.index ? null : unit.index)}
-                        className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${
+                        className={`rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide ${
                           armedIndex === unit.index
                             ? 'border-ember bg-ember text-void'
                             : 'border-white/20 text-bone/70 hover:border-ember hover:text-ember'
@@ -372,7 +373,7 @@ export default function ModelManager({ building, onChange, folder }) {
 
           <div className="relative mt-4">
             {(armedUnit || tagMode) && (
-              <div className="pointer-events-none absolute inset-x-0 top-0 z-20 bg-ember px-3 py-1.5 text-center text-[11px] font-bold uppercase tracking-wide text-void">
+              <div className="pointer-events-none absolute inset-x-0 top-0 z-20 bg-ember px-3 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-void">
                 {armedUnit
                   ? canPick
                     ? `Click the shape in the model that is unit ${armedLabel}`
@@ -419,17 +420,17 @@ export default function ModelManager({ building, onChange, folder }) {
                 type="button"
                 onClick={capturePoster}
                 disabled={busy}
-                className="rounded-full border border-white/20 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-bone/70 hover:border-ember hover:text-ember disabled:opacity-40"
+                className="rounded-full border border-white/20 px-3 py-1 text-xs font-bold uppercase tracking-wide text-bone/70 hover:border-ember hover:text-ember disabled:opacity-40"
               >
                 {model.poster ? 'Update preview image' : 'Use this view as preview image'}
               </button>
-              <span className="text-[11px] text-bone-3">
+              <span className="text-xs text-bone-3">
                 {model.poster
                   ? 'Visitors see this still before tapping into 3D.'
                   : 'Orbit to a good angle, then capture the still visitors see before tapping into 3D.'}
               </span>
             </div>
-            <p className="mt-2 text-[11px] text-bone-3">
+            <p className="mt-2 text-xs text-bone-3">
               This is exactly what a visitor sees. Unbound shapes are highlighted in orange.
             </p>
           </div>
@@ -466,8 +467,8 @@ function OrientationControl({ model, setModel }) {
   return (
     <div className="mt-4 rounded-xl border border-white/10 bg-black/20 px-4 py-3">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <span className="text-[11px] font-bold uppercase tracking-wide text-bone/70">Orientation</span>
-        <span className="text-[11px] text-bone-3">
+        <span className="text-xs font-bold uppercase tracking-wide text-bone/70">Orientation</span>
+        <span className="text-xs text-bone-3">
           Turn the model until north points up in the plan.
         </span>
       </div>
@@ -496,7 +497,7 @@ function OrientationControl({ model, setModel }) {
             type="button"
             onClick={() => set(deg)}
             aria-pressed={value === deg}
-            className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${
+            className={`rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide ${
               value === deg
                 ? 'border-ember bg-ember text-void'
                 : 'border-white/20 text-bone/70 hover:border-ember hover:text-ember'
@@ -506,7 +507,7 @@ function OrientationControl({ model, setModel }) {
           </button>
         ))}
 
-        <label className="flex items-center gap-2 text-[11px] text-bone/50">
+        <label className="flex items-center gap-2 text-xs text-bone/50">
           <span className="sr-only">Orientation in degrees</span>
           <input
             type="number"
@@ -528,14 +529,14 @@ function OrientationControl({ model, setModel }) {
           <button
             type="button"
             onClick={() => set(null)}
-            className="text-[11px] text-bone-3 hover:text-ember"
+            className="text-xs text-bone-3 hover:text-ember"
           >
             Clear
           </button>
         )}
       </div>
 
-      <p className="mt-2 text-[11px] text-bone-3">
+      <p className="mt-2 text-xs text-bone-3">
         {value == null
           ? 'Not set — the model is shown exactly as uploaded and no compass or unit aspect is published.'
           : `North is ${value}° clockwise from the model's own front. Visitors see a compass and each unit's aspect.`}

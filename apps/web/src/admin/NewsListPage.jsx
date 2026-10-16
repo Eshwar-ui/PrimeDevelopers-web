@@ -1,82 +1,114 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { ArrowSquareOut, MagnifyingGlass, Newspaper, PencilSimple, Plus, Trash } from '@phosphor-icons/react'
 import { useNews, useContentRefetch } from '../context/ContentContext'
 import { api } from '../lib/api'
-import { slugify } from '../lib/slugify'
+import { useCreatePost } from './useCreate'
+import { Alert, Button, Card, ConfirmButton, EmptyState, IconButton, PageHeader, SearchInput, StatusPill, focusRing } from './components/ui'
+import { useAdminTitle } from './adminUtils'
+
+const dateLabel = (iso) =>
+  iso ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : 'No date'
 
 export default function NewsListPage() {
+  useAdminTitle('News')
   const posts = useNews()
   const refetch = useContentRefetch()
-  const navigate = useNavigate()
+  const { create, creating, error: createError } = useCreatePost()
+  const [error, setError] = useState(null)
+  const [query, setQuery] = useState('')
 
-  const createPost = async () => {
-    const title = 'New Post'
-    const slug = `${slugify(title)}-${Date.now().toString(36)}`
-    try {
-      const created = await api.post('/admin/news', {
-        title,
-        slug,
-        sortOrder: posts.length,
-        published: false,
-      })
-      await refetch()
-      navigate(`/admin/news/${created.id}`)
-    } catch (err) {
-      alert(err.message)
-    }
-  }
-
+  // Confirmed inline rather than with `window.confirm` / `alert` — see
+  // ConfirmButton for why a native dialog can silently stop working.
   const remove = async (id) => {
-    if (!confirm('Delete this post? This cannot be undone.')) return
+    setError(null)
     try {
       await api.del(`/admin/news/${id}`)
-      refetch()
+      await refetch()
     } catch (err) {
-      alert(err.message)
+      setError(`Could not delete that post — ${err.message}`)
     }
   }
 
-  return (
-    <div>
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-display text-2xl font-medium">News</h1>
-          <p className="mt-1 text-sm text-bone/50">{posts.length} posts</p>
-        </div>
-        <button
-          type="button"
-          onClick={createPost}
-          className="rounded-full bg-accent px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-void"
-        >
-          + New post
-        </button>
-      </div>
+  const q = query.trim().toLowerCase()
+  const shown = q ? posts.filter((p) => [p.title, p.excerpt, p.slug].some((f) => f?.toLowerCase().includes(q))) : posts
+  const drafts = posts.filter((p) => !p.published).length
 
-      <div className="mt-8 flex flex-col gap-3">
-        {posts.map((post) => (
-          <div key={post.id} className="flex items-center gap-4 rounded-2xl border border-white/10 bg-carbon p-4">
-            <div className="h-14 w-20 shrink-0 overflow-hidden rounded-lg bg-black/20">
-              {post.coverImage && <img src={post.coverImage} alt="" className="h-full w-full object-cover" />}
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <p className="font-display text-base font-medium">{post.title}</p>
-                {!post.published && (
-                  <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-bone/50">
-                    Draft
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-bone-3">{post.excerpt}</p>
-            </div>
-            <div className="flex shrink-0 items-center gap-4 text-xs font-bold uppercase tracking-wide">
-              <Link to={`/admin/news/${post.id}`} className="text-bone/60 hover:text-bone">
+  return (
+    <div className="mx-auto max-w-5xl">
+      <PageHeader
+        title="News"
+        description={`${posts.length} posts · ${posts.length - drafts} live · ${drafts} draft.`}
+        actions={
+          <Button variant="primary" icon={Plus} onClick={create} disabled={creating}>
+            {creating ? 'Creating…' : 'New post'}
+          </Button>
+        }
+      />
+
+      {posts.length > 5 && (
+        <div className="mt-6">
+          <SearchInput value={query} onChange={setQuery} placeholder="Search posts…" label="Search posts" icon={MagnifyingGlass} />
+        </div>
+      )}
+
+      {(error || createError) && (
+        <div className="mt-6">
+          <Alert>{error || `Could not create a post — ${createError}`}</Alert>
+        </div>
+      )}
+
+      <div className="mt-6 flex flex-col gap-3">
+        {posts.length === 0 && (
+          <EmptyState
+            icon={Newspaper}
+            title="No posts yet"
+            action={
+              <Button variant="primary" icon={Plus} onClick={create} disabled={creating}>
+                Write the first post
+              </Button>
+            }
+          >
+            A new post starts as a draft, so nothing appears on the site until you publish it.
+          </EmptyState>
+        )}
+
+        {posts.length > 0 && shown.length === 0 && (
+          <p className="py-8 text-center text-sm text-bone-3">No posts match “{query}”.</p>
+        )}
+
+        {shown.map((post) => (
+          <Card key={post.id} className="flex flex-wrap items-center gap-x-4 gap-y-3 p-3 sm:flex-nowrap sm:p-4">
+            <Link to={`/admin/news/${post.id}`} className={`flex min-w-0 flex-1 items-center gap-4 rounded-xl ${focusRing}`}>
+              <span className="h-14 w-20 shrink-0 overflow-hidden rounded-lg bg-black/20">
+                {post.coverImage && <img src={post.coverImage} alt="" className="h-full w-full object-cover" />}
+              </span>
+              <span className="min-w-0">
+                <span className="flex flex-wrap items-center gap-2">
+                  <span className="truncate font-display text-[16px] font-medium text-bone">{post.title || 'Untitled post'}</span>
+                  <StatusPill live={post.published} />
+                </span>
+                <span className="block text-xs text-bone-3">{dateLabel(post.publishedAt)}</span>
+                {post.excerpt && <span className="line-clamp-1 text-xs text-bone-3">{post.excerpt}</span>}
+              </span>
+            </Link>
+            <div className="flex w-full shrink-0 items-center justify-end gap-1 sm:w-auto">
+              {post.published && (
+                <IconButton
+                  icon={ArrowSquareOut}
+                  label={`View “${post.title}” on the site`}
+                  size="sm"
+                  href={`/news/${post.slug}`}
+                  target="_blank"
+                  rel="noreferrer"
+                />
+              )}
+              <Button size="sm" to={`/admin/news/${post.id}`} icon={PencilSimple}>
                 Edit
-              </Link>
-              <button type="button" onClick={() => remove(post.id)} className="text-red-400/70 hover:text-red-400">
-                Delete
-              </button>
+              </Button>
+              <ConfirmButton icon={Trash} onConfirm={() => remove(post.id)} />
             </div>
-          </div>
+          </Card>
         ))}
       </div>
     </div>

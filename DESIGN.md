@@ -251,6 +251,13 @@ field exists but nobody can change it.
 
 Each of these has cost real debugging time.
 
+**`text-base` is a colour here, not a size.** `--color-base` exists, so
+Tailwind resolves `text-base` to `color: var(--color-base)` — the page ground —
+and never emits the 16px font size. Beside another colour utility it happens to
+lose and looks harmless; responsive (`md:text-base`) it comes later in the
+stylesheet and wins, painting the text the colour of the background. That hid
+the info page's address and summary. Write `text-[16px]`.
+
 **GSAP leaves an inline transform.** Any element revealed by GSAP on `y` carries
 `transform` inline afterwards, and an inline style always beats a utility class.
 `hover:-translate-y-*` on such an element silently stops working once the reveal
@@ -282,3 +289,36 @@ cannot be verified there** — only structure and computed styles can.
 **Absolutely positioned replaced elements ignore over-constrained insets.** For
 an `<img>` with `width: auto`, `-inset-16` resolves to the intrinsic size, not
 the box. Use a transform, or state the size.
+
+---
+
+## 10. Admin
+
+The admin (`apps/web/src/admin`) is always dark, in both themes, so it uses
+**pigments only** — `void`, `carbon`, `bone-*`, `accent-soft`, `ember` — never
+role tokens. `accent` in particular is CG Blue under the light theme, and
+near-black type on it measures 3.6:1; the admin's primary fill is
+`accent-soft` with `void` type.
+
+Build from the shared pieces rather than hand-rolling class strings:
+
+| Piece | Job |
+|---|---|
+| [`components/ui.jsx`](apps/web/src/admin/components/ui.jsx) | `Button` (primary / secondary / ghost / danger), `IconButton`, `Badge`, `StatusPill`, `Card`, `PageHeader`, `Alert`, `EmptyState`, `SearchInput`, `ConfirmButton`. |
+| [`components/EditorChrome.jsx`](apps/web/src/admin/components/EditorChrome.jsx) | `EditorBar` — the sticky top of every editor (status, View live, Save, ⌘S). `LeaveGuard` — the unsaved-changes dialog. |
+| [`components/Field.jsx`](apps/web/src/admin/components/Field.jsx) | Every input. Put helper copy in the field's `hint`, not a sibling paragraph. |
+
+Rules that have each been broken once:
+
+- **Never `window.confirm` / `alert`.** Browsers let a user suppress them, after
+  which `confirm()` returns false silently forever. Use `ConfirmButton`.
+- **`<main>` is the scroll container**, not the window. A sticky `top` is
+  measured from its content edge, so anything sticky inside it needs a negative
+  `top` equal to `<main>`'s padding (see `EditorBar`).
+- Targets are 44px (`min-h-11`), 36px (`sm`) only inside dense card rows. Text
+  is 12px minimum; inputs are 16px on phones so iOS doesn't zoom.
+- Editors' `save` resolves `true` on success — `LeaveGuard`'s "Save and leave"
+  depends on it.
+- A new content section belongs in a group in
+  [`content/sectionMeta.js`](apps/web/src/admin/content/sectionMeta.js); one left
+  out still shows, under "Other".

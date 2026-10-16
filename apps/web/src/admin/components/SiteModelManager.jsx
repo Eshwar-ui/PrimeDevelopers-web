@@ -1,6 +1,7 @@
 import { Suspense, lazy, useMemo, useRef, useState } from 'react'
 import { uploadModel } from '../../lib/uploads'
 import { inspectGlb, triangleWarning, validateModelFile } from '../../lib/glbInspect'
+import { ConfirmButton } from './ui'
 import { formatBytes, getUnits, makeUnit, nextUnitLabel } from '../../lib/units'
 import {
   bindSiteMeshes,
@@ -213,19 +214,19 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
         </button>
         {model?.url && (
           <>
-            <span className="text-[11px] text-bone-3">
+            <span className="text-xs text-bone-3">
               {formatBytes(model.fileSize)} · {Number(model.triangles ?? 0).toLocaleString()} triangles ·{' '}
               {report.resolved.length} of {meshNames.length} shapes tagged
             </span>
-            <button
-              type="button"
-              onClick={() => {
-                if (confirm('Remove the whole-site model? The public page falls back to per-building floor plans.')) setModel(null)
-              }}
-              className="text-[11px] text-bone-3 hover:text-red-400"
-            >
-              Remove
-            </button>
+            {/* Inline, not window.confirm — see ConfirmButton. Takes effect on
+                Save, like every other edit here. */}
+            <ConfirmButton
+              label="Remove"
+              prompt="Remove the site model? The page falls back to per-building floor plans."
+              confirmLabel="Remove"
+              busyLabel="Removing…"
+              onConfirm={() => setModel(null)}
+            />
           </>
         )}
         <input ref={inputRef} type="file" accept=".glb,model/gltf-binary" className="hidden" onChange={onFile} />
@@ -284,7 +285,7 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
                   setPendingMeshNames([])
                 }}
                 aria-pressed={tab === t.key}
-                className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${
+                className={`rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide ${
                   tab === t.key ? 'border-ember bg-ember text-void' : 'border-white/20 text-bone/70 hover:border-ember hover:text-ember'
                 }`}
               >
@@ -292,7 +293,7 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
               </button>
             ))}
             <span className="mx-1 h-4 w-px bg-white/15" />
-            <label className="flex items-center gap-1.5 text-[11px] text-bone/70">
+            <label className="flex items-center gap-1.5 text-xs text-bone/70">
               <input
                 type="checkbox"
                 checked={multiSelect}
@@ -303,7 +304,7 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
               />
               Select multiple shapes before binding
             </label>
-            <label className="flex items-center gap-1.5 text-[11px] text-bone/70">
+            <label className="flex items-center gap-1.5 text-xs text-bone/70">
               <input type="checkbox" checked={showUnbound} onChange={(e) => setShowUnbound(e.target.checked)} />
               Highlight untagged shapes ({report.unbound.length})
             </label>
@@ -313,7 +314,7 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
           {tab === 'buildings' && (
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {buildings.length === 0 && (
-                <p className="text-[11px] text-bone-3">Add a building in Floor Plans above first — this panel only tags buildings that already exist.</p>
+                <p className="text-xs text-bone-3">Add a building in Floor Plans above first — this panel only tags buildings that already exist.</p>
               )}
               {buildings.map((b) => (
                 <button
@@ -321,7 +322,7 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
                   type="button"
                   onClick={() => setArmedBuildingLabel(armedBuildingLabel === b.building ? '' : b.building)}
                   disabled={!b.building}
-                  className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-wide disabled:opacity-40 ${
+                  className={`rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide disabled:opacity-40 ${
                     armedBuildingLabel === b.building ? 'border-ember bg-ember text-void' : 'border-white/20 text-bone/70 hover:border-ember hover:text-ember'
                   }`}
                 >
@@ -335,7 +336,7 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
           {tab === 'units' && (
             <div className="mt-3 flex flex-col gap-2">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[11px] text-bone-3">Building:</span>
+                <span className="text-xs text-bone-3">Building:</span>
                 {buildings.map((b) => (
                   <button
                     key={b.building || Math.random()}
@@ -345,7 +346,7 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
                       setArmedUnitLabel('')
                     }}
                     disabled={!b.building}
-                    className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-wide disabled:opacity-40 ${
+                    className={`rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide disabled:opacity-40 ${
                       armedBuildingLabel === b.building ? 'border-ember bg-ember text-void' : 'border-white/20 text-bone/70 hover:border-ember hover:text-ember'
                     }`}
                   >
@@ -355,14 +356,14 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
               </div>
               {armedBuilding && (
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[11px] text-bone-3">Unit:</span>
+                  <span className="text-xs text-bone-3">Unit:</span>
                   {armedBuildingUnits.map((u) => (
                     <button
                       key={u.index}
                       type="button"
                       onClick={() => setArmedUnitLabel(armedUnitLabel === u.label ? '' : u.label)}
                       disabled={!u.label}
-                      className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-wide disabled:opacity-40 ${
+                      className={`rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide disabled:opacity-40 ${
                         armedUnitLabel === u.label ? 'border-ember bg-ember text-void' : 'border-white/20 text-bone/70 hover:border-ember hover:text-ember'
                       }`}
                     >
@@ -376,7 +377,7 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
                       setArmedUnitLabel('')
                     }}
                     aria-pressed={tagUnitMode}
-                    className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${
+                    className={`rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide ${
                       tagUnitMode ? 'border-ember bg-ember text-void' : 'border-white/20 text-bone/70 hover:border-ember hover:text-ember'
                     }`}
                   >
@@ -396,7 +397,7 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
                     <button
                       type="button"
                       onClick={() => setArmedRoadName(armedRoadName === r.name ? '' : r.name)}
-                      className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${
+                      className={`rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide ${
                         armedRoadName === r.name ? 'border-ember bg-ember text-void' : 'border-white/20 text-bone/70 hover:border-ember hover:text-ember'
                       }`}
                     >
@@ -410,7 +411,7 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
                 <button
                   type="button"
                   onClick={addRoad}
-                  className="rounded-full border border-white/20 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-bone/70 hover:border-ember hover:text-ember"
+                  className="rounded-full border border-white/20 px-3 py-1 text-xs font-bold uppercase tracking-wide text-bone/70 hover:border-ember hover:text-ember"
                 >
                   + New road
                 </button>
@@ -440,7 +441,7 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
 
           {multiSelect && (
             <div className="mt-3 flex items-center gap-3 rounded-lg border border-ember/40 bg-ember/5 px-3 py-2">
-              <span className="text-[11px] text-bone/80">
+              <span className="text-xs text-bone/80">
                 {pendingMeshNames.length} shape{pendingMeshNames.length === 1 ? '' : 's'} selected — use this for shapes
                 that won't group together on their own.
               </span>
@@ -448,7 +449,7 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
                 type="button"
                 onClick={commitPendingSelection}
                 disabled={!pendingMeshNames.length || !armedTarget()}
-                className="rounded-full bg-ember px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-void disabled:opacity-40"
+                className="rounded-full bg-ember px-3 py-1 text-xs font-bold uppercase tracking-wide text-void disabled:opacity-40"
               >
                 Bind selected as one
               </button>
@@ -456,7 +457,7 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
                 type="button"
                 onClick={() => setPendingMeshNames([])}
                 disabled={!pendingMeshNames.length}
-                className="text-[11px] text-bone-3 hover:text-ember disabled:opacity-40"
+                className="text-xs text-bone-3 hover:text-ember disabled:opacity-40"
               >
                 Clear
               </button>
@@ -464,13 +465,13 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
           )}
 
           {/* ── coverage summary ─────────────────────────────────── */}
-          <div className="mt-4 grid grid-cols-3 gap-3 text-[11px] text-bone-3">
+          <div className="mt-4 grid grid-cols-3 gap-3 text-xs text-bone-3">
             <span>{report.unmodelledBuildings.length} building{report.unmodelledBuildings.length === 1 ? '' : 's'} not yet tagged</span>
             <span>{report.unmodelledUnits.length} unit{report.unmodelledUnits.length === 1 ? '' : 's'} not yet tagged</span>
             <span>{report.unmodelledRoads.length} road{report.unmodelledRoads.length === 1 ? '' : 's'} not yet tagged</span>
           </div>
           {report.staleBindings.length > 0 && (
-            <p className="mt-2 text-[11px] leading-relaxed text-ember">
+            <p className="mt-2 text-xs leading-relaxed text-ember">
               {report.staleBindings.length} shape{report.staleBindings.length === 1 ? ' points' : 's point'} at a
               building/unit/road that no longer exists — will be dropped on the next upload.
             </p>
@@ -478,7 +479,7 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
 
           {/* ── viewer ───────────────────────────────────────────── */}
           <div className="relative mt-4">
-            <div className="pointer-events-none absolute inset-x-0 top-0 z-20 bg-ember px-3 py-1.5 text-center text-[11px] font-bold uppercase tracking-wide text-void">
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-20 bg-ember px-3 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-void">
               {armedTarget()
                 ? multiSelect
                   ? `Click shapes to add them to the selection`
@@ -509,7 +510,7 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
                 height="h-64 md:h-80"
               />
             </Suspense>
-            <p className="mt-2 text-[11px] text-bone-3">This is exactly what a visitor sees. Untagged shapes are highlighted in orange when the toggle above is on.</p>
+            <p className="mt-2 text-xs text-bone-3">This is exactly what a visitor sees. Untagged shapes are highlighted in orange when the toggle above is on.</p>
           </div>
         </>
       )}

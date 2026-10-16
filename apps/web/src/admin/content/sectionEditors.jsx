@@ -44,9 +44,8 @@ function FeaturedEditor({ value, onChange }) {
           imageAlt: '',
         })}
         addLabel="Add featured card"
-        renderItem={(card, set, index) => (
+        renderItem={(card, set) => (
           <div className="flex flex-col gap-3">
-            <p className="text-[11px] font-bold uppercase tracking-wide text-bone-3">Card {index + 1}</p>
             <SelectField
               label="Property"
               value={card.propertySlug ?? ''}
@@ -61,23 +60,23 @@ function FeaturedEditor({ value, onChange }) {
               }
               options={[{ value: '', label: 'None (use uploaded photo)' }, ...properties.map((p) => ({ value: p.slug, label: p.name }))]}
             />
-            <p className="-mt-1 text-[11px] text-bone-3">
+            <p className="-mt-1 text-xs text-bone-3">
               The card shows that property&apos;s own photos. A card whose primary link goes to /properties/… uses that property too.
             </p>
             <TextField label="Eyebrow" value={card.eyebrow} onChange={(eyebrow) => set({ ...card, eyebrow })} />
             <TextAreaField label="Heading" rows={2} value={card.heading} onChange={(heading) => set({ ...card, heading })} />
-            <p className="-mt-1 text-[11px] text-bone-3">
+            <p className="-mt-1 text-xs text-bone-3">
               Wrap the property name in *asterisks* to set it in saffron. A line break puts it on its own line. A card with no heading is hidden.
             </p>
             <TextField label="Subheading" value={card.subheading} onChange={(subheading) => set({ ...card, subheading })} />
             <TextAreaField label="Paragraph" rows={3} value={card.paragraph} onChange={(paragraph) => set({ ...card, paragraph })} />
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <TextField label="Primary label" value={card.ctaLabel} onChange={(ctaLabel) => set({ ...card, ctaLabel })} />
               <TextField label="Primary link" value={card.ctaHref} onChange={(ctaHref) => set({ ...card, ctaHref })} />
               <TextField label="Secondary label" value={card.secondaryLabel} onChange={(secondaryLabel) => set({ ...card, secondaryLabel })} />
               <TextField label="Secondary link" value={card.secondaryHref} onChange={(secondaryHref) => set({ ...card, secondaryHref })} />
             </div>
-            <p className="-mt-1 text-[11px] text-bone-3">Leave a label empty to hide that button.</p>
+            <p className="-mt-1 text-xs text-bone-3">Leave a label empty to hide that button.</p>
             <ImageUploader label="Photo (only used when no property is linked)" value={card.image} onChange={(image) => set({ ...card, image })} folder="site/featured" />
             <TextField label="Photo alt text" value={card.imageAlt} onChange={(imageAlt) => set({ ...card, imageAlt })} />
           </div>
@@ -97,9 +96,9 @@ export const SECTIONS = [
         <Section title="Copy">
           <TextField label="Eyebrow" value={value.eyebrow} onChange={(eyebrow) => onChange({ eyebrow })} />
           <TextAreaField label="Heading" rows={2} value={value.heading} onChange={(heading) => onChange({ heading })} />
-          <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
+          <p className="-mt-3 text-xs text-bone-3">{emphasisHint}</p>
           <TextAreaField label="Paragraph" value={value.paragraph} onChange={(paragraph) => onChange({ paragraph })} />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <TextField label="Button label" value={value.ctaLabel} onChange={(ctaLabel) => onChange({ ctaLabel })} />
             <TextField label="Button link" value={value.ctaHref} onChange={(ctaHref) => onChange({ ctaHref })} />
           </div>
@@ -113,7 +112,7 @@ export const SECTIONS = [
             renderItem={(item, set) => (
               <div className="flex flex-col gap-3">
                 <ImageUploader value={item.image} onChange={(image) => set({ ...item, image })} folder="site/hero" />
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <TextField label="Place" value={item.place} onChange={(place) => set({ ...item, place })} />
                   <TextField label="Type" value={item.kind} onChange={(kind) => set({ ...item, kind })} />
                 </div>
@@ -172,11 +171,11 @@ export const SECTIONS = [
       <>
         <Section title="Copy">
           <TextAreaField label="Heading" rows={2} value={value.heading} onChange={(heading) => onChange({ heading })} />
-          <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
+          <p className="-mt-3 text-xs text-bone-3">{emphasisHint}</p>
         </Section>
         <Section title="Card labels">
           <TextField label="Units chip label" value={value.unitsLabel} onChange={(unitsLabel) => onChange({ unitsLabel })} />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <TextField label={'"View property" button'} value={value.viewLabel} onChange={(viewLabel) => onChange({ viewLabel })} />
             <TextField label={'"Download brochure" button'} value={value.brochureLabel} onChange={(brochureLabel) => onChange({ brochureLabel })} />
           </div>
@@ -193,14 +192,14 @@ export const SECTIONS = [
         <Section title="Form">
           <TextField label="Eyebrow" value={value.eyebrow} onChange={(eyebrow) => onChange({ eyebrow })} />
           <TextField label="Heading" value={value.heading} onChange={(heading) => onChange({ heading })} />
-          <p className="-mt-3 text-[11px] text-bone-3">Use <code>{'{name}'}</code> where the property's name should appear, e.g. "Receive {'{name}'} by email".</p>
+          <p className="-mt-3 text-xs text-bone-3">Use <code>{'{name}'}</code> where the property's name should appear, e.g. "Receive {'{name}'} by email".</p>
           <TextAreaField label="Paragraph" value={value.paragraph} onChange={(paragraph) => onChange({ paragraph })} />
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <TextField label="Name placeholder" value={value.namePlaceholder} onChange={(namePlaceholder) => onChange({ namePlaceholder })} />
             <TextField label="Email placeholder" value={value.emailPlaceholder} onChange={(emailPlaceholder) => onChange({ emailPlaceholder })} />
             <TextField label="Phone placeholder" value={value.phonePlaceholder} onChange={(phonePlaceholder) => onChange({ phonePlaceholder })} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <TextField label="Submit button" value={value.submitLabel} onChange={(submitLabel) => onChange({ submitLabel })} />
             <TextField label="Submit button (sending)" value={value.sendingLabel} onChange={(sendingLabel) => onChange({ sendingLabel })} />
           </div>
@@ -209,7 +208,7 @@ export const SECTIONS = [
         <Section title="Success state">
           <TextField label="Heading" value={value.successHeading} onChange={(successHeading) => onChange({ successHeading })} />
           <TextAreaField label="Body" rows={2} value={value.successBody} onChange={(successBody) => onChange({ successBody })} />
-          <p className="-mt-3 text-[11px] text-bone-3">Use <code>{'{name}'}</code> for the property's name here too.</p>
+          <p className="-mt-3 text-xs text-bone-3">Use <code>{'{name}'}</code> for the property's name here too.</p>
           <TextField label="Done button" value={value.doneLabel} onChange={(doneLabel) => onChange({ doneLabel })} />
         </Section>
         <Section title="Received state" description="Shown when the request was logged but no brochure was emailed — email not set up, no brochure on file, or the send failed.">
@@ -234,7 +233,7 @@ export const SECTIONS = [
         <Section title="Copy">
           <TextField label="Eyebrow" value={value.eyebrow} onChange={(eyebrow) => onChange({ eyebrow })} />
           <TextAreaField label="Heading" rows={2} value={value.heading} onChange={(heading) => onChange({ heading })} />
-          <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
+          <p className="-mt-3 text-xs text-bone-3">{emphasisHint}</p>
           <TextAreaField label="Paragraph" rows={3} value={value.paragraph} onChange={(paragraph) => onChange({ paragraph })} />
         </Section>
         <Section title="Cards" description="A photograph and a name each. Cards with no photograph show the Prime mark until one is uploaded.">
@@ -246,11 +245,11 @@ export const SECTIONS = [
             renderItem={(item, set) => (
               <div className="flex flex-col gap-3">
                 <ImageUploader value={item.image} onChange={(image) => set({ ...item, image })} folder="site/services" />
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <TextField label="Title" value={item.title} onChange={(title) => set({ ...item, title })} />
                   <TextField label="Link" value={item.href} onChange={(href) => set({ ...item, href })} />
                 </div>
-                <p className="-mt-3 text-[11px] text-bone-3">Leave the link empty and the card is shown but not clickable.</p>
+                <p className="-mt-3 text-xs text-bone-3">Leave the link empty and the card is shown but not clickable.</p>
               </div>
             )}
           />
@@ -281,11 +280,11 @@ export const SECTIONS = [
             addLabel="Add term"
             renderItem={(item, set) => (
               <div className="flex flex-col gap-3">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <TextField label="Term" value={item.term} onChange={(term) => set({ ...item, term })} />
                   <TextField label="URL slug" value={item.slug} onChange={(slug) => set({ ...item, slug })} />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <TextField label="Category" value={item.category} onChange={(category) => set({ ...item, category })} />
                   <TextField label="YouTube link" value={item.videoUrl} onChange={(videoUrl) => set({ ...item, videoUrl })} />
                 </div>
@@ -307,10 +306,10 @@ export const SECTIONS = [
     Editor: ({ value, onChange }) => (
       <Section title="Copy">
         <TextAreaField label="Heading" rows={2} value={value.heading} onChange={(heading) => onChange({ heading })} />
-        <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
+        <p className="-mt-3 text-xs text-bone-3">{emphasisHint}</p>
         <TextAreaField label="Paragraph" rows={4} value={value.paragraph} onChange={(paragraph) => onChange({ paragraph })} />
         <TextField label="Button label" value={value.ctaLabel} onChange={(ctaLabel) => onChange({ ctaLabel })} />
-        <p className="-mt-3 text-[11px] text-bone-3">The button always goes to the properties page.</p>
+        <p className="-mt-3 text-xs text-bone-3">The button always goes to the properties page.</p>
       </Section>
     ),
   },
@@ -334,13 +333,13 @@ export const SECTIONS = [
             renderItem={(item, set) => (
               <div className="flex flex-col gap-3">
                 <TextAreaField label="Quote" value={item.quote} onChange={(quote) => set({ ...item, quote })} />
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <TextField label="Name" value={item.name} onChange={(name) => set({ ...item, name })} />
                   <TextField label="Role" value={item.role} onChange={(role) => set({ ...item, role })} />
                 </div>
                 <TextField label="Rating (0–5)" type="number" value={item.rating ?? 5} onChange={(rating) => set({ ...item, rating })} />
                 <ImageUploader label="Portrait" value={item.avatar} onChange={(avatar) => set({ ...item, avatar })} folder="site/testimonials" />
-                <p className="-mt-3 text-[11px] text-bone-3">Optional — initials are shown when no portrait is uploaded.</p>
+                <p className="-mt-3 text-xs text-bone-3">Optional — initials are shown when no portrait is uploaded.</p>
               </div>
             )}
           />
@@ -368,13 +367,13 @@ export const SECTIONS = [
             renderItem={(item, set) => (
               <div className="flex flex-col gap-3">
                 <TextAreaField label="Quote" value={item.quote} onChange={(quote) => set({ ...item, quote })} />
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <TextField label="Name" value={item.name} onChange={(name) => set({ ...item, name })} />
                   <TextField label="Role" value={item.role} onChange={(role) => set({ ...item, role })} />
                 </div>
                 <TextField label="Rating (0–5)" type="number" value={item.rating ?? 5} onChange={(rating) => set({ ...item, rating })} />
                 <ImageUploader label="Portrait" value={item.avatar} onChange={(avatar) => set({ ...item, avatar })} folder="site/testimonials" />
-                <p className="-mt-3 text-[11px] text-bone-3">Optional — initials are shown when no portrait is uploaded.</p>
+                <p className="-mt-3 text-xs text-bone-3">Optional — initials are shown when no portrait is uploaded.</p>
               </div>
             )}
           />
@@ -402,13 +401,13 @@ export const SECTIONS = [
             renderItem={(item, set) => (
               <div className="flex flex-col gap-3">
                 <TextAreaField label="Quote" value={item.quote} onChange={(quote) => set({ ...item, quote })} />
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <TextField label="Name" value={item.name} onChange={(name) => set({ ...item, name })} />
                   <TextField label="Role" value={item.role} onChange={(role) => set({ ...item, role })} />
                 </div>
                 <TextField label="Rating (0–5)" type="number" value={item.rating ?? 5} onChange={(rating) => set({ ...item, rating })} />
                 <ImageUploader label="Portrait" value={item.avatar} onChange={(avatar) => set({ ...item, avatar })} folder="site/testimonials" />
-                <p className="-mt-3 text-[11px] text-bone-3">Optional — initials are shown when no portrait is uploaded.</p>
+                <p className="-mt-3 text-xs text-bone-3">Optional — initials are shown when no portrait is uploaded.</p>
               </div>
             )}
           />
@@ -436,13 +435,13 @@ export const SECTIONS = [
             renderItem={(item, set) => (
               <div className="flex flex-col gap-3">
                 <TextAreaField label="Quote" value={item.quote} onChange={(quote) => set({ ...item, quote })} />
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <TextField label="Name" value={item.name} onChange={(name) => set({ ...item, name })} />
                   <TextField label="Role" value={item.role} onChange={(role) => set({ ...item, role })} />
                 </div>
                 <TextField label="Rating (0–5)" type="number" value={item.rating ?? 5} onChange={(rating) => set({ ...item, rating })} />
                 <ImageUploader label="Portrait" value={item.avatar} onChange={(avatar) => set({ ...item, avatar })} folder="site/testimonials" />
-                <p className="-mt-3 text-[11px] text-bone-3">Optional — initials are shown when no portrait is uploaded.</p>
+                <p className="-mt-3 text-xs text-bone-3">Optional — initials are shown when no portrait is uploaded.</p>
               </div>
             )}
           />
@@ -467,7 +466,7 @@ export const SECTIONS = [
             value={value.followText}
             onChange={(followText) => onChange({ followText })}
           />
-          <p className="-mt-3 text-[11px] text-bone-3">Sits next to the social links at the bottom of the section — separate from the paragraph above.</p>
+          <p className="-mt-3 text-xs text-bone-3">Sits next to the social links at the bottom of the section — separate from the paragraph above.</p>
         </Section>
         <Section
           title="Social posts"
@@ -481,7 +480,7 @@ export const SECTIONS = [
             renderItem={(item, set) => (
               <div className="flex flex-col gap-3">
                 <ImageUploader value={item.image} onChange={(image) => set({ ...item, image })} folder="site/updates" />
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <SelectField
                     label="Platform"
                     value={item.platform}
@@ -498,7 +497,7 @@ export const SECTIONS = [
                 <TextField label="Title" value={item.title} onChange={(title) => set({ ...item, title })} />
                 <TextAreaField label="Caption" rows={2} value={item.caption} onChange={(caption) => set({ ...item, caption })} />
                 <TextField label="Link to the post" value={item.href} onChange={(href) => set({ ...item, href })} />
-                <p className="-mt-3 text-[11px] text-bone-3">
+                <p className="-mt-3 text-xs text-bone-3">
                   Paste the post&apos;s own URL — the card opens it in a new tab. Leave the date empty and the post falls to the end of the stream.
                 </p>
               </div>
@@ -516,9 +515,9 @@ export const SECTIONS = [
       <>
         <Section title="Copy">
           <TextAreaField label="Heading" rows={2} value={value.heading} onChange={(heading) => onChange({ heading })} />
-          <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
+          <p className="-mt-3 text-xs text-bone-3">{emphasisHint}</p>
           <TextAreaField label="Paragraph" value={value.paragraph} onChange={(paragraph) => onChange({ paragraph })} />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <TextField label="Button label" value={value.ctaLabel} onChange={(ctaLabel) => onChange({ ctaLabel })} />
             <TextField label="Button link" value={value.ctaHref} onChange={(ctaHref) => onChange({ ctaHref })} />
           </div>
@@ -542,7 +541,7 @@ export const SECTIONS = [
             makeItem={() => ({ label: '', to: '/' })}
             addLabel="Add link"
             renderItem={(item, set) => (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <TextField label="Label" value={item.label} onChange={(label) => set({ ...item, label })} />
                 <TextField label="Route" value={item.to} onChange={(to) => set({ ...item, to })} />
               </div>
@@ -570,7 +569,7 @@ export const SECTIONS = [
             value={value.whatsappDialogParagraph}
             onChange={(whatsappDialogParagraph) => onChange({ whatsappDialogParagraph })}
           />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <TextField
               label={'"Join the updates group" button'}
               value={value.whatsappJoinLabel}
@@ -593,7 +592,7 @@ export const SECTIONS = [
     Editor: ({ value, onChange }) => (
       <>
         <Section title="Contact details">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <TextField label="Email" value={value.email} onChange={(email) => onChange({ email })} />
             <TextField label="Phone" value={value.phone} onChange={(phone) => onChange({ phone })} />
           </div>
@@ -604,7 +603,7 @@ export const SECTIONS = [
           description="Fill these in and the footer prints them instead of the studio line above. They are also what search engines read as the business address, so a partial address is worse than none — a blank field is left out of that markup rather than guessed at."
         >
           <TextField label="Street" value={value.addressStreet} onChange={(addressStreet) => onChange({ addressStreet })} />
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <TextField label="City" value={value.addressLocality} onChange={(addressLocality) => onChange({ addressLocality })} />
             <TextField label="State" value={value.addressRegion} onChange={(addressRegion) => onChange({ addressRegion })} />
             <TextField label="ZIP" value={value.addressPostalCode} onChange={(addressPostalCode) => onChange({ addressPostalCode })} />
@@ -616,11 +615,11 @@ export const SECTIONS = [
           description="Printed at the foot of the plate and published as the business's structured data. The legal name is the registered entity, which is usually not the same string as the copyright line."
         >
           <TextField label="Registered entity name" value={value.legalName} onChange={(legalName) => onChange({ legalName })} />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <TextField label="Licence label" value={value.licenseLabel} onChange={(licenseLabel) => onChange({ licenseLabel })} />
             <TextField label="Licence number" value={value.licenseNumber} onChange={(licenseNumber) => onChange({ licenseNumber })} />
           </div>
-          <p className="-mt-3 text-[11px] text-bone-3">e.g. label &ldquo;TREC Broker Licence&rdquo;, number &ldquo;#123456&rdquo;. Leave both blank to hide the line.</p>
+          <p className="-mt-3 text-xs text-bone-3">e.g. label &ldquo;TREC Broker Licence&rdquo;, number &ldquo;#123456&rdquo;. Leave both blank to hide the line.</p>
         </Section>
         <Section title="Quick links">
           <TextField label="Column heading" value={value.quickLinksHeading} onChange={(quickLinksHeading) => onChange({ quickLinksHeading })} />
@@ -630,7 +629,7 @@ export const SECTIONS = [
             makeItem={() => ({ label: '', href: '/' })}
             addLabel="Add link"
             renderItem={(item, set) => (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <TextField label="Label" value={item.label} onChange={(label) => set({ ...item, label })} />
                 <TextField label="Link" value={item.href} onChange={(href) => set({ ...item, href })} />
               </div>
@@ -640,13 +639,13 @@ export const SECTIONS = [
         <Section title="Portfolio column">
           <TextField label="Column heading" value={value.portfolioHeading} onChange={(portfolioHeading) => onChange({ portfolioHeading })} />
           <TextField label={'"All properties" link'} value={value.allPropertiesLabel} onChange={(allPropertiesLabel) => onChange({ allPropertiesLabel })} />
-          <p className="-mt-3 text-[11px] text-bone-3">The properties listed here come from the Properties list, in sort order.</p>
+          <p className="-mt-3 text-xs text-bone-3">The properties listed here come from the Properties list, in sort order.</p>
         </Section>
         <Section
           title="Property strip"
           description="The three property cards under the closing CTA. On a property page the strip heads itself “Similar properties” and picks the closest matches; everywhere else it uses the copy below and shows the first three properties in sort order."
         >
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <TextField label="Eyebrow" value={value.exploreEyebrow} onChange={(exploreEyebrow) => onChange({ exploreEyebrow })} />
             <TextField label="Heading" value={value.exploreHeading} onChange={(exploreHeading) => onChange({ exploreHeading })} />
           </div>
@@ -660,7 +659,7 @@ export const SECTIONS = [
             makeItem={() => ({ label: '', href: '#' })}
             addLabel="Add social"
             renderItem={(item, set) => (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <TextField label="Label" value={item.label} onChange={(label) => set({ ...item, label })} />
                 <TextField label="Link" value={item.href} onChange={(href) => set({ ...item, href })} />
               </div>
@@ -668,7 +667,7 @@ export const SECTIONS = [
           />
         </Section>
         <Section title="Copyright bar">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <TextField label="Left text" value={value.copyrightLeft} onChange={(copyrightLeft) => onChange({ copyrightLeft })} />
             <TextField label="Right text" value={value.copyrightRight} onChange={(copyrightRight) => onChange({ copyrightRight })} />
           </div>
@@ -679,13 +678,13 @@ export const SECTIONS = [
             makeItem={() => ({ label: '', href: '/' })}
             addLabel="Add legal link"
             renderItem={(item, set) => (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <TextField label="Label" value={item.label} onChange={(label) => set({ ...item, label })} />
                 <TextField label="Link" value={item.href} onChange={(href) => set({ ...item, href })} />
               </div>
             )}
           />
-          <p className="-mt-3 text-[11px] text-bone-3">Privacy Policy and Terms of Use ship with the site at /privacy and /terms. Point a row anywhere else and check the page exists first — a footer link that 404s is worse than one link fewer.</p>
+          <p className="-mt-3 text-xs text-bone-3">Privacy Policy and Terms of Use ship with the site at /privacy and /terms. Point a row anywhere else and check the page exists first — a footer link that 404s is worse than one link fewer.</p>
         </Section>
       </>
     ),
@@ -702,7 +701,7 @@ export const SECTIONS = [
           makeItem={() => ({ name: '', lat: '', lon: '' })}
           addLabel="Add city"
           renderItem={(item, set) => (
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <TextField label="City" value={item.name} onChange={(name) => set({ ...item, name })} />
               <TextField label="Latitude" type="number" value={item.lat} onChange={(lat) => set({ ...item, lat })} />
               <TextField label="Longitude" type="number" value={item.lon} onChange={(lon) => set({ ...item, lon })} />
@@ -721,13 +720,13 @@ export const SECTIONS = [
         <Section title="Hero">
           <TextField label="Eyebrow" value={value.heroEyebrow} onChange={(heroEyebrow) => onChange({ heroEyebrow })} />
           <TextAreaField label="Heading" rows={2} value={value.heroHeading} onChange={(heroHeading) => onChange({ heroHeading })} />
-          <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
+          <p className="-mt-3 text-xs text-bone-3">{emphasisHint}</p>
           <TextAreaField label="Paragraph" value={value.heroParagraph} onChange={(heroParagraph) => onChange({ heroParagraph })} />
           <ImageUploader label="Hero image" value={value.heroImage} onChange={(heroImage) => onChange({ heroImage })} folder="site/about" />
         </Section>
         <Section title="The firm">
           <TextAreaField label="Heading" rows={2} value={value.firmHeading} onChange={(firmHeading) => onChange({ firmHeading })} />
-          <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
+          <p className="-mt-3 text-xs text-bone-3">{emphasisHint}</p>
           <TextAreaField label="Paragraph 1" value={value.firmParagraph1} onChange={(firmParagraph1) => onChange({ firmParagraph1 })} />
           <TextAreaField label="Paragraph 2" value={value.firmParagraph2} onChange={(firmParagraph2) => onChange({ firmParagraph2 })} />
           <TextField label="Button label" value={value.ctaLabel} onChange={(ctaLabel) => onChange({ ctaLabel })} />
@@ -739,7 +738,7 @@ export const SECTIONS = [
             makeItem={() => ({ value: '', label: '' })}
             addLabel="Add stat"
             renderItem={(item, set) => (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <TextField label="Value" type="number" value={item.value} onChange={(v) => set({ ...item, value: v })} />
                 <TextField label="Label" value={item.label} onChange={(label) => set({ ...item, label })} />
               </div>
@@ -769,7 +768,7 @@ export const SECTIONS = [
             renderItem={(item, set) => (
               <div className="flex flex-col gap-3">
                 <ImageUploader value={item.image} onChange={(image) => set({ ...item, image })} folder="site/founders" />
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <TextField label="Name" value={item.name} onChange={(name) => set({ ...item, name })} />
                   <TextField label="Role" value={item.role} onChange={(role) => set({ ...item, role })} />
                 </div>
@@ -780,7 +779,7 @@ export const SECTIONS = [
         </Section>
         <Section title="Closing band">
           <TextAreaField label="Heading" rows={2} value={value.closingHeading} onChange={(closingHeading) => onChange({ closingHeading })} />
-          <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
+          <p className="-mt-3 text-xs text-bone-3">{emphasisHint}</p>
           <ImageUploader label="Background image" value={value.closingImage} onChange={(closingImage) => onChange({ closingImage })} folder="site/about" />
         </Section>
       </>
@@ -795,13 +794,13 @@ export const SECTIONS = [
         <Section title="Hero">
           <TextField label="Eyebrow" value={value.heroEyebrow} onChange={(heroEyebrow) => onChange({ heroEyebrow })} />
           <TextAreaField label="Heading" rows={2} value={value.heroHeading} onChange={(heroHeading) => onChange({ heroHeading })} />
-          <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
+          <p className="-mt-3 text-xs text-bone-3">{emphasisHint}</p>
           <TextAreaField label="Paragraph" value={value.heroParagraph} onChange={(heroParagraph) => onChange({ heroParagraph })} />
           <TextField label="Subheading" value={value.heroSubheading} onChange={(heroSubheading) => onChange({ heroSubheading })} />
-          <p className="-mt-3 text-[11px] text-bone-3">The smaller line under the eyebrow (e.g. "Start a Conversation").</p>
+          <p className="-mt-3 text-xs text-bone-3">The smaller line under the eyebrow (e.g. "Start a Conversation").</p>
         </Section>
         <Section title="Contact details">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <TextField label="Email" value={value.email} onChange={(email) => onChange({ email })} />
             <TextField label="Phone" value={value.phone} onChange={(phone) => onChange({ phone })} />
           </div>
@@ -814,7 +813,7 @@ export const SECTIONS = [
             makeItem={() => ({ label: '', href: '#' })}
             addLabel="Add social"
             renderItem={(item, set) => (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <TextField label="Label" value={item.label} onChange={(label) => set({ ...item, label })} />
                 <TextField label="Link" value={item.href} onChange={(href) => set({ ...item, href })} />
               </div>
@@ -831,7 +830,7 @@ export const SECTIONS = [
           <TextAreaField label="Heading" rows={2} value={value.mapHeading} onChange={(mapHeading) => onChange({ mapHeading })} />
           <TextAreaField label="Paragraph" value={value.mapParagraph} onChange={(mapParagraph) => onChange({ mapParagraph })} />
           <TextField label="Map search query" value={value.mapQuery} onChange={(mapQuery) => onChange({ mapQuery })} />
-          <p className="-mt-3 text-[11px] text-bone-3">What the embedded Google Map searches for, e.g. "Texas, USA" or a specific city.</p>
+          <p className="-mt-3 text-xs text-bone-3">What the embedded Google Map searches for, e.g. "Texas, USA" or a specific city.</p>
         </Section>
       </>
     ),
@@ -845,10 +844,10 @@ export const SECTIONS = [
         <Section title="Hero">
           <TextField label="Eyebrow" value={value.heroEyebrow} onChange={(heroEyebrow) => onChange({ heroEyebrow })} />
           <TextAreaField label="Heading" rows={2} value={value.heroHeading} onChange={(heroHeading) => onChange({ heroHeading })} />
-          <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
+          <p className="-mt-3 text-xs text-bone-3">{emphasisHint}</p>
           <TextAreaField label="Paragraph" value={value.heroParagraph} onChange={(heroParagraph) => onChange({ heroParagraph })} />
           <ImageUploader label="Banner image" value={value.heroImage} onChange={(heroImage) => onChange({ heroImage })} folder="site/enterprise" />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <TextField label="Button label" value={value.ctaLabel} onChange={(ctaLabel) => onChange({ ctaLabel })} />
             <TextField label="Button link" value={value.ctaHref} onChange={(ctaHref) => onChange({ ctaHref })} />
           </div>
@@ -884,7 +883,7 @@ export const SECTIONS = [
             makeItem={() => ({ value: '', label: '' })}
             addLabel="Add stat"
             renderItem={(item, set) => (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <TextField label="Value" value={item.value} onChange={(v) => set({ ...item, value: v })} />
                 <TextField label="Label" value={item.label} onChange={(label) => set({ ...item, label })} />
               </div>
@@ -893,8 +892,8 @@ export const SECTIONS = [
         </Section>
         <Section title="Closing band">
           <TextAreaField label="Heading" rows={2} value={value.closingHeading} onChange={(closingHeading) => onChange({ closingHeading })} />
-          <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
-          <div className="grid grid-cols-2 gap-4">
+          <p className="-mt-3 text-xs text-bone-3">{emphasisHint}</p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <TextField label="Button label" value={value.closingLabel} onChange={(closingLabel) => onChange({ closingLabel })} />
             <TextField label="Button link" value={value.closingHref} onChange={(closingHref) => onChange({ closingHref })} />
           </div>
@@ -923,11 +922,11 @@ export const SECTIONS = [
             addLabel="Add option"
             renderItem={(item, set) => (
               <div className="flex flex-col gap-3">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <TextField label="Name" value={item.name} onChange={(name) => set({ ...item, name })} />
                   <TextField label="URL slug" value={item.slug} onChange={(slug) => set({ ...item, slug })} />
                 </div>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <SelectField label="Tier" value={item.tier} onChange={(tier) => set({ ...item, tier })} options={TIERS} />
                   <TextField label="Category" value={item.category} onChange={(category) => set({ ...item, category })} />
                   <TextField label="Price per sqft" value={item.pricePerSqft} onChange={(pricePerSqft) => set({ ...item, pricePerSqft })} />
@@ -958,7 +957,7 @@ export const SECTIONS = [
                       makeItem={() => ({ label: '', value: '' })}
                       addLabel="Add spec"
                       renderItem={(spec, setSpec) => (
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                           <TextField label="Label" value={spec.label} onChange={(label) => setSpec({ ...spec, label })} />
                           <TextField label="Value" value={spec.value} onChange={(value) => setSpec({ ...spec, value })} />
                         </div>
@@ -990,11 +989,11 @@ export const SECTIONS = [
             addLabel="Add entry"
             renderItem={(item, set) => (
               <div className="flex flex-col gap-3">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <TextField label="URL slug" value={item.slug} onChange={(slug) => set({ ...item, slug })} />
                   <SelectField label="Tier" value={item.tier} onChange={(tier) => set({ ...item, tier })} options={TIERS} />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <TextField label="Property slug" value={item.propertySlug} onChange={(propertySlug) => set({ ...item, propertySlug })} />
                   <TextField label="Unit label" value={item.unitLabel} onChange={(unitLabel) => set({ ...item, unitLabel })} />
                 </div>
@@ -1040,7 +1039,7 @@ export const SECTIONS = [
               <div className="flex flex-col gap-3">
                 <ImageUploader label="Storefront photo" value={item.image} onChange={(image) => set({ ...item, image })} folder="site/franchise" />
                 <ImageUploader label="Logo" value={item.logo} onChange={(logo) => set({ ...item, logo })} folder="site/franchise" />
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <TextField label="Brand name" value={item.brandName} onChange={(brandName) => set({ ...item, brandName })} />
                   <TextField label="Property slug" value={item.propertySlug} onChange={(propertySlug) => set({ ...item, propertySlug })} />
                 </div>
@@ -1089,7 +1088,7 @@ export const SECTIONS = [
             renderItem={(item, set) => (
               <div className="flex flex-col gap-3">
                 <ImageUploader label="Photo" value={item.image} onChange={(image) => set({ ...item, image })} folder="site/collab" />
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <TextField label="Partner name" value={item.partnerName} onChange={(partnerName) => set({ ...item, partnerName })} />
                   <TextField label="Concept" value={item.concept} onChange={(concept) => set({ ...item, concept })} />
                 </div>
@@ -1140,7 +1139,7 @@ export const SECTIONS = [
             addLabel="Add property"
             renderItem={(item, set) => (
               <div className="flex flex-col gap-3">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <TextField label="Property slug" value={item.propertySlug} onChange={(propertySlug) => set({ ...item, propertySlug })} />
                   <TextField label="Cap rate" value={item.capRate} onChange={(capRate) => set({ ...item, capRate })} />
                 </div>
@@ -1148,7 +1147,7 @@ export const SECTIONS = [
               </div>
             )}
           />
-          <p className="-mt-3 text-[11px] text-bone-3">Cap rate is printed on the card as e.g. &ldquo;6.5% cap&rdquo; — enter it as &ldquo;6.5%&rdquo;. Leave it blank and the card reads &ldquo;Cap rate on request&rdquo;, matching the range note above.</p>
+          <p className="-mt-3 text-xs text-bone-3">Cap rate is printed on the card as e.g. &ldquo;6.5% cap&rdquo; — enter it as &ldquo;6.5%&rdquo;. Leave it blank and the card reads &ldquo;Cap rate on request&rdquo;, matching the range note above.</p>
         </Section>
       </>
     ),
@@ -1162,11 +1161,11 @@ export const SECTIONS = [
         <Section title="Hero">
           <TextField label="Eyebrow" value={value.heroEyebrow} onChange={(heroEyebrow) => onChange({ heroEyebrow })} />
           <TextAreaField label="Heading" rows={2} value={value.heroHeading} onChange={(heroHeading) => onChange({ heroHeading })} />
-          <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
+          <p className="-mt-3 text-xs text-bone-3">{emphasisHint}</p>
           <TextAreaField label="Paragraph" value={value.heroParagraph} onChange={(heroParagraph) => onChange({ heroParagraph })} />
         </Section>
         <Section title="Hero buttons">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <TextField label="Primary label" value={value.ctaLabel} onChange={(ctaLabel) => onChange({ ctaLabel })} />
             <TextField label="Primary link" value={value.ctaHref} onChange={(ctaHref) => onChange({ ctaHref })} />
             <TextField label="Secondary label" value={value.ctaSecondaryLabel} onChange={(ctaSecondaryLabel) => onChange({ ctaSecondaryLabel })} />
@@ -1179,7 +1178,7 @@ export const SECTIONS = [
         <Section title="The collection">
           <TextField label="Eyebrow" value={value.curatedEyebrow} onChange={(curatedEyebrow) => onChange({ curatedEyebrow })} />
           <TextAreaField label="Heading" rows={2} value={value.curatedHeading} onChange={(curatedHeading) => onChange({ curatedHeading })} />
-          <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
+          <p className="-mt-3 text-xs text-bone-3">{emphasisHint}</p>
           <TextAreaField label="Paragraph" value={value.curatedParagraph} onChange={(curatedParagraph) => onChange({ curatedParagraph })} />
         </Section>
       </>
@@ -1193,7 +1192,7 @@ export const SECTIONS = [
       <Section title="Hero">
         <TextField label="Eyebrow" value={value.heroEyebrow} onChange={(heroEyebrow) => onChange({ heroEyebrow })} />
         <TextAreaField label="Heading" rows={2} value={value.heroHeading} onChange={(heroHeading) => onChange({ heroHeading })} />
-        <p className="-mt-3 text-[11px] text-bone-3">{emphasisHint}</p>
+        <p className="-mt-3 text-xs text-bone-3">{emphasisHint}</p>
         <TextAreaField label="Paragraph" value={value.heroParagraph} onChange={(heroParagraph) => onChange({ heroParagraph })} />
       </Section>
     ),
@@ -1209,21 +1208,21 @@ export const SECTIONS = [
           <TextField label="Back link" value={value.notFoundBackLabel} onChange={(notFoundBackLabel) => onChange({ notFoundBackLabel })} />
         </Section>
         <Section title="Section labels">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <TextField label="Resources eyebrow" value={value.resourcesLabel} onChange={(resourcesLabel) => onChange({ resourcesLabel })} />
             <TextField label="Resources heading" value={value.resourcesHeading} onChange={(resourcesHeading) => onChange({ resourcesHeading })} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <TextField label={'Overview "Enquire" pill'} value={value.overviewEnquireLabel} onChange={(overviewEnquireLabel) => onChange({ overviewEnquireLabel })} />
             <TextField label="Highlights eyebrow" value={value.highlightsEyebrow} onChange={(highlightsEyebrow) => onChange({ highlightsEyebrow })} />
           </div>
           <TextField label="Established sites" value={value.establishedSitesLabel} onChange={(establishedSitesLabel) => onChange({ establishedSitesLabel })} />
           <TextField label="Ext. facade" value={value.extFacadeLabel} onChange={(extFacadeLabel) => onChange({ extFacadeLabel })} />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <TextField label="Neighborhoods eyebrow" value={value.neighborhoodsLabel} onChange={(neighborhoodsLabel) => onChange({ neighborhoodsLabel })} />
             <TextField label="Neighborhoods heading" value={value.neighborhoodsHeading} onChange={(neighborhoodsHeading) => onChange({ neighborhoodsHeading })} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <TextField label="Videos eyebrow" value={value.videosLabel} onChange={(videosLabel) => onChange({ videosLabel })} />
             <TextField label="Videos heading" value={value.videosHeading} onChange={(videosHeading) => onChange({ videosHeading })} />
           </div>
@@ -1231,9 +1230,9 @@ export const SECTIONS = [
         <Section title="Closing call to action">
           <TextField label="Eyebrow" value={value.closingLabel} onChange={(closingLabel) => onChange({ closingLabel })} />
           <TextField label="Heading" value={value.closingHeading} onChange={(closingHeading) => onChange({ closingHeading })} />
-          <p className="-mt-3 text-[11px] text-bone-3">Use <code>{'{name}'}</code> for the property's name, e.g. "Interested in {'{name}'}?".</p>
+          <p className="-mt-3 text-xs text-bone-3">Use <code>{'{name}'}</code> for the property's name, e.g. "Interested in {'{name}'}?".</p>
           <TextAreaField label="Paragraph" rows={2} value={value.closingParagraph} onChange={(closingParagraph) => onChange({ closingParagraph })} />
-          <p className="-mt-3 text-[11px] text-bone-3">Use <code>{'{soldPct}'}</code> for the percentage currently reserved.</p>
+          <p className="-mt-3 text-xs text-bone-3">Use <code>{'{soldPct}'}</code> for the percentage currently reserved.</p>
           <TextField label="Button label" value={value.closingCtaLabel} onChange={(closingCtaLabel) => onChange({ closingCtaLabel })} />
         </Section>
       </>
@@ -1246,11 +1245,11 @@ export const SECTIONS = [
     Editor: ({ value, onChange }) => (
       <>
         <Section title="Section labels">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <TextField label={'"Listings" eyebrow'} value={value.listingsLabel} onChange={(listingsLabel) => onChange({ listingsLabel })} />
             <TextField label="Listings heading" value={value.elsewhereHeading} onChange={(elsewhereHeading) => onChange({ elsewhereHeading })} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <TextField label={'"Enquiries" eyebrow'} value={value.enquiriesLabel} onChange={(enquiriesLabel) => onChange({ enquiriesLabel })} />
             <TextField label="Enquiries heading" value={value.talkToTeamHeading} onChange={(talkToTeamHeading) => onChange({ talkToTeamHeading })} />
           </div>

@@ -1,17 +1,29 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
+import { ArrowLeft } from '@phosphor-icons/react'
 import { useCategories, useContentRefetch, useProperties } from '../context/ContentContext'
 import { api } from '../lib/api'
 import { slugify } from '../lib/slugify'
-import { Section, TextField, TextAreaField } from './components/Field'
+import { CheckboxField, Section, TextField, TextAreaField } from './components/Field'
+import { stable, useAdminTitle } from './adminUtils'
+import { EditorBar, LeaveGuard } from './components/EditorChrome'
+import { Alert, Button, EmptyState, focusRing } from './components/ui'
 import ImageUploader from './components/ImageUploader'
 import RepeatableList from './components/RepeatableList'
 import BuildingBlock from './components/BuildingBlock'
 import SiteModelManager from './components/SiteModelManager'
+import InfoPageEditor from './components/InfoPageEditor'
+import { DEFAULT_INFO } from '../data/centroPlazaInfo'
+import { emptyInfo } from '../lib/propertyInfo'
 
 const emptyDetail = () => ({
   tagline: '',
   offer: '',
+  // The three free-text figures under the name on the /properties card
+  // ("2.5 Acres", "Ready", "12 retail slots"). Empty means the card falls back
+  // to the buildings / sold / available columns — see specsFor in
+  // PropertiesPage.jsx. It had no field until now, so nobody could set it.
+  specs: [],
   overview: { eyebrow: '', heading: '', body: '', flyer: '', stats: [] },
   tenants: [],
   highlights: { heading: '', body: '', bigStats: [], cards: [] },
@@ -30,6 +42,13 @@ const emptyDetail = () => ({
 })
 
 const PROPERTY_GALLERY_SLOTS = 3
+const SPEC_SLOTS = 3
+// Held as three slots while editing, so typing in the third box doesn't jump
+// into the second. Empty slots are dropped on save.
+const fixedSpecs = (specs) => {
+  const source = Array.isArray(specs) ? specs.map(String).slice(0, SPEC_SLOTS) : []
+  return [...source, ...Array(SPEC_SLOTS - source.length).fill('')]
+}
 const fixedGallery = (gallery) => {
   const source = Array.isArray(gallery) ? gallery : []
   return source.length >= PROPERTY_GALLERY_SLOTS
@@ -44,7 +63,7 @@ const fixedGallery = (gallery) => {
 //
 // Only the *initial* state: what is open lives in `openSections` below from
 // then on, so switching tabs does not reopen what an editor collapsed.
-const OPEN_ON_LOAD = new Set(['basics', 'images', 'overview', 'highlights', 'floorplans'])
+const OPEN_ON_LOAD = new Set(['basics', 'images', 'overview', 'highlights', 'floorplans', 'info-page', 'info-buildings'])
 
 // One tab per cluster. `id` is the tab's own key (distinct from any
 // individual Section's `id` below it) — used to build both the ARIA
@@ -55,6 +74,7 @@ const TABS = [
   { id: 'plans', label: 'Floor plans & 3D' },
   { id: 'location', label: 'Location & nearby' },
   { id: 'extras', label: 'Extras & links' },
+  { id: 'info', label: 'Info page' },
 ]
 
 export default function PropertyEditPage() {
@@ -76,6 +96,7 @@ export default function PropertyEditPage() {
   const [saving, setSaving] = useState(false)
   const [savedAt, setSavedAt] = useState(null)
   const [error, setError] = useState(null)
+  useAdminTitle(form?.name || 'Property')
 
   // Seeded once per property, not on every change of `original`'s identity.
   // `save` ends in `refetch()`, which rebuilds the properties list and so hands
@@ -88,10 +109,11 @@ export default function PropertyEditPage() {
   useEffect(() => {
     if (!original || loadedFor.current === id) return
     loadedFor.current = id
+    const detail = { ...emptyDetail(), ...(original.detail ?? {}) }
     const next = {
       ...original,
       gallery: fixedGallery(original.gallery),
-      detail: { ...emptyDetail(), ...(original.detail ?? {}) },
+      detail: { ...detail, specs: fixedSpecs(detail.specs) },
     }
     setForm(next)
     setBaseline(next)
@@ -101,16 +123,20 @@ export default function PropertyEditPage() {
   // nested, admin-editor-shaped blob (see emptyDetail above), and a
   // dirty-flag per field would have to be threaded through every one of the
   // ~16 sections below for a payoff that a single comparison already gives.
-  const isDirty = Boolean(form && baseline && JSON.stringify(form) !== JSON.stringify(baseline))
+  const isDirty = Boolean(form && baseline && stable(form) !== stable(baseline))
 
   if (!original) {
     return (
-      <div>
-        <p className="text-bone/60">Property not found.</p>
-        <Link to="/admin/properties" className="text-ember">
-          ← Back to properties
-        </Link>
-      </div>
+      <EmptyState
+        title="Property not found"
+        action={
+          <Button to="/admin/properties" icon={ArrowLeft}>
+            All properties
+          </Button>
+        }
+      >
+        It may have been deleted.
+      </EmptyState>
     )
   }
   if (!form) return null
@@ -151,67 +177,57 @@ export default function PropertyEditPage() {
   const patchDetail = (section, partial) =>
     setForm((f) => ({ ...f, detail: { ...f.detail, [section]: { ...f.detail[section], ...partial } } }))
 
+  /** Resolves true when the save landed — LeaveGuard's "Save and leave" relies on it. */
   const save = async () => {
     setSaving(true)
     setError(null)
+    const snapshot = form
     const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, _slugTouched, ...payload } = form
+    payload.detail = { ...payload.detail, specs: payload.detail.specs.map((v) => v.trim()).filter(Boolean) }
     try {
       await api.patch(`/admin/properties/${id}`, payload)
     } catch (err) {
       setSaving(false)
       setError(err.message)
-      return
+      return false
     }
     setSaving(false)
     setSavedAt(Date.now())
-    setBaseline(form)
+    setBaseline(snapshot)
     refetch()
+    return true
   }
+
+  // What the Info page tab edits: the property's own copy, or — until it has
+  // one — the set shipped for its slug. Looked up by the slug as loaded, so
+  // retyping the slug field doesn't make the shipped set vanish mid-edit.
+  const storedInfo = form.detail.info
+  const shippedInfo = DEFAULT_INFO[original.slug]
+  const info = storedInfo ? { ...emptyInfo(), ...storedInfo } : shippedInfo ? { ...emptyInfo(), ...shippedInfo } : null
+  const setInfo = (next) => setForm((f) => ({ ...f, detail: { ...f.detail, info: next } }))
+
+  const setSpec = (i, value) =>
+    setForm((f) => ({ ...f, detail: { ...f.detail, specs: f.detail.specs.map((v, idx) => (idx === i ? value : v)) } }))
 
   return (
     <div className="pb-24">
-      {/* Negative-margined to run full-bleed under <main>'s own padding, then
-          re-adds it — the standard trick for a sticky bar inside a padded
-          scroll container. Sticks to <main>'s scroll, not the window: Save
-          and the tab list need to stay reachable without a round trip to
-          the top. */}
-      <div className="sticky top-0 z-20 -mx-4 -mt-4 border-b border-white/10 bg-carbon/95 px-4 pb-4 pt-4 backdrop-blur sm:-mx-6 sm:-mt-6 sm:px-6 sm:pt-6 lg:-mx-8 lg:-mt-8 lg:px-8 lg:pt-8">
-        <div className="flex items-center justify-between gap-4">
-          <div className="min-w-0">
-            <Link to="/admin/properties" className="text-xs font-bold uppercase tracking-wide text-bone-3 hover:text-bone/70">
-              ← All properties
-            </Link>
-            <h1 className="mt-2 truncate font-display text-2xl font-medium">{form.name || 'Untitled property'}</h1>
-          </div>
-          <div className="flex shrink-0 items-center gap-4">
-            <span className="text-xs text-bone-3">
-              {saving ? 'Saving…' : isDirty ? 'Unsaved changes' : savedAt ? 'Saved' : null}
-            </span>
-            {form.published && (
-              <a
-                href={`/properties/${form.slug}`}
-                target="_blank"
-                rel="noreferrer"
-                className="text-xs font-bold uppercase tracking-wide text-bone/50 hover:text-bone"
-              >
-                View live ↗
-              </a>
-            )}
-            <button
-              type="button"
-              onClick={save}
-              disabled={saving}
-              className="rounded-full bg-accent px-6 py-2.5 text-xs font-bold uppercase tracking-wide text-void disabled:opacity-50"
-            >
-              {saving ? 'Saving…' : 'Save'}
-            </button>
-          </div>
-        </div>
-
+      <EditorBar
+        backTo="/admin/properties"
+        backLabel="All properties"
+        title={form.name || 'Untitled property'}
+        live={form.published}
+        viewHref={baseline.published ? `/properties/${baseline.slug}` : undefined}
+        dirty={isDirty}
+        saving={saving}
+        savedAt={savedAt}
+        error={error}
+        onSave={save}
+        maxWidth="max-w-5xl"
+      >
         {/* Real tabs, not a jump rail: only the active cluster's sections are
             in the DOM at all, so the heavy ones — the 3D site model chief
             among them — mount only when an editor actually opens that tab. */}
-        <div role="tablist" aria-label="Property sections" className="mt-4 flex flex-wrap gap-2" onKeyDown={onTabKeyDown}>
+        <div role="tablist" aria-label="Property sections" className="-mb-1 mt-4 flex gap-1.5 overflow-x-auto pb-1" onKeyDown={onTabKeyDown}>
           {TABS.map((t) => {
             const selected = activeTab === t.id
             return (
@@ -224,10 +240,10 @@ export default function PropertyEditPage() {
                 aria-controls={`panel-${t.id}`}
                 tabIndex={selected ? 0 : -1}
                 onClick={() => setActiveTab(t.id)}
-                className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                className={`inline-flex min-h-9 shrink-0 cursor-pointer items-center rounded-full border px-3.5 text-xs font-medium transition-colors ${focusRing} ${
                   selected
-                    ? 'border-accent bg-accent/10 text-bone'
-                    : 'border-white/15 text-bone/70 hover:border-white/30 hover:text-bone'
+                    ? 'border-accent-soft bg-accent-soft/15 text-bone'
+                    : 'border-white/15 text-bone-2 hover:border-white/30 hover:text-bone'
                 }`}
               >
                 {t.label}
@@ -235,13 +251,20 @@ export default function PropertyEditPage() {
             )
           })}
         </div>
-      </div>
+      </EditorBar>
 
-      {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
+      <LeaveGuard when={isDirty} onSave={save} />
+
+      <div className="mx-auto max-w-5xl">
+      {error && (
+        <div className="mt-6">
+          <Alert>Couldn&apos;t save — {error}</Alert>
+        </div>
+      )}
 
       <TabPanel id="basics" activeTab={activeTab}>
         <Section {...section('basics')} title="Basics">
-          <div className="grid grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <TextField
               label="Name"
               value={form.name}
@@ -251,12 +274,25 @@ export default function PropertyEditPage() {
               label="Slug (URL)"
               value={form.slug}
               onChange={(slug) => patch({ slug, _slugTouched: true })}
+              hint={`The address: /properties/${form.slug || '…'}`}
             />
             <TextField label="Address" value={form.address} onChange={(address) => patch({ address })} />
-            <div>
-              <TextField label="Category" value={form.category} onChange={(category) => patch({ category })} />
-              <p className="mt-1 text-[11px] text-bone-3">Existing: {categories.filter((c) => c !== 'All').join(', ')}</p>
-            </div>
+            {/* A datalist rather than a select: the existing categories are
+                offered as you type, and a new one can still be entered. */}
+            <TextField
+              label="Category"
+              value={form.category}
+              onChange={(category) => patch({ category })}
+              list="property-categories"
+              hint={`Existing: ${categories.filter((c) => c !== 'All').join(', ')}`}
+            />
+            <datalist id="property-categories">
+              {categories
+                .filter((c) => c !== 'All')
+                .map((c) => (
+                  <option key={c} value={c} />
+                ))}
+            </datalist>
             <TextField
               label="Buildings"
               type="number"
@@ -271,21 +307,36 @@ export default function PropertyEditPage() {
               onChange={(available) => patch({ available })}
             />
             <TextField
-              label="Sort order (lower shows first)"
+              label="Sort order"
               type="number"
               value={form.sortOrder}
               onChange={(sortOrder) => patch({ sortOrder })}
+              hint="Lower numbers show first."
             />
           </div>
-          <label className="flex w-fit items-center gap-2.5">
-            <input
-              type="checkbox"
-              checked={form.published}
-              onChange={(e) => patch({ published: e.target.checked })}
-              className="size-4 accent-ember"
-            />
-            <span className="text-sm text-bone/70">Published (visible on the public site)</span>
-          </label>
+          <div>
+            <span className="text-xs font-bold uppercase tracking-wide text-bone-3">Listing card figures</span>
+            <p className="mt-1 text-xs leading-relaxed text-bone-3">
+              The three short facts under the name on the Properties page — e.g. &quot;2.5 Acres&quot;, &quot;Ready&quot;,
+              &quot;12 retail slots&quot;. Leave all three empty to show the building, sold and available counts instead.
+            </p>
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {form.detail.specs.map((value, i) => (
+                <TextField
+                  key={i}
+                  value={value}
+                  onChange={(v) => setSpec(i, v)}
+                  placeholder={[`${form.buildings} buildings`, `${form.sold} sold`, `${form.available} available`][i]}
+                />
+              ))}
+            </div>
+          </div>
+          <CheckboxField
+            label="Published"
+            value={form.published}
+            onChange={(published) => patch({ published })}
+            hint="Visible on the public site once saved. Untick to take it down without deleting it."
+          />
         </Section>
 
         <Section {...section('images')} title="Images">
@@ -339,7 +390,7 @@ export default function PropertyEditPage() {
                 makeItem={() => ({ value: '', label: '' })}
                 addLabel="Add stat"
                 renderItem={(item, set) => (
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <TextField label="Value" value={item.value} onChange={(value) => set({ ...item, value })} />
                     <TextField label="Label" value={item.label} onChange={(label) => set({ ...item, label })} />
                   </div>
@@ -371,7 +422,7 @@ export default function PropertyEditPage() {
                 makeItem={() => ({ value: '', label: '' })}
                 addLabel="Add stat"
                 renderItem={(item, set) => (
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <TextField label="Value" value={item.value} onChange={(value) => set({ ...item, value })} />
                     <TextField label="Label" value={item.label} onChange={(label) => set({ ...item, label })} />
                   </div>
@@ -543,7 +594,7 @@ export default function PropertyEditPage() {
             renderItem={(item, set) => (
               <div className="flex flex-col gap-3">
                 <ImageUploader label="Thumbnail (optional)" value={item.thumbnail} onChange={(thumbnail) => set({ ...item, thumbnail })} folder={`projects/${form.slug}/links`} />
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <TextField label="Label" value={item.label} onChange={(label) => set({ ...item, label })} />
                   <TextField label="URL" value={item.url} onChange={(url) => set({ ...item, url })} />
                 </div>
@@ -563,7 +614,7 @@ export default function PropertyEditPage() {
             makeItem={() => ({ platform: 'instagram', url: '' })}
             addLabel="Add social"
             renderItem={(item, set) => (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <TextField label="Platform" value={item.platform} onChange={(platform) => set({ ...item, platform })} />
                 <TextField label="URL" value={item.url} onChange={(url) => set({ ...item, url })} />
               </div>
@@ -571,6 +622,20 @@ export default function PropertyEditPage() {
           />
         </Section>
       </TabPanel>
+
+      <TabPanel id="info" activeTab={activeTab}>
+        <InfoPageEditor
+          info={info}
+          usingDefault={!storedInfo && Boolean(shippedInfo)}
+          slug={form.slug}
+          property={{ name: form.name, address: form.address }}
+          floorBuildings={form.detail.floorPlans.buildings}
+          onChange={setInfo}
+          onCreate={() => setInfo(emptyInfo())}
+          section={section}
+        />
+      </TabPanel>
+      </div>
     </div>
   )
 }

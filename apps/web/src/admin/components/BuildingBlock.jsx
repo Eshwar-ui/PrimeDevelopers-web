@@ -90,7 +90,7 @@ export default function BuildingBlock({ building, onChange, folder }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <TextField label="Building" value={building.building} onChange={(v) => onChange({ ...building, building: v })} />
         <TextField label="Area (sq ft)" value={building.area} onChange={(v) => onChange({ ...building, area: v })} />
         <TextField label="Number" value={building.number} onChange={(v) => onChange({ ...building, number: v })} />
@@ -128,7 +128,7 @@ export default function BuildingBlock({ building, onChange, folder }) {
                 // Addressable so tap-to-tag in the model panel above can scroll
                 // a just-created unit into view and focus its Label field.
                 <div id={unitFormId(folder, i)} className="flex flex-col gap-3">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <TextField label="Label" placeholder="Unit 101" value={unit.label} onChange={(label) => set({ ...unit, label })} />
                     <SelectField label="Status" value={unit.status} onChange={(status) => set({ ...unit, status })} options={UNIT_STATUSES} />
                     <TextField
@@ -160,7 +160,7 @@ export default function BuildingBlock({ building, onChange, folder }) {
                       empty unit these two would be two more blank boxes in an
                       already long form, and neither has anywhere to appear. */}
                   {String(unit.tenant ?? '').trim() && (
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <TextField
                         label="Tenant website"
                         placeholder="https://…"
@@ -182,7 +182,7 @@ export default function BuildingBlock({ building, onChange, folder }) {
                     onChange={(logo) => set({ ...unit, logo })}
                     folder={`${folder}/unit-logos`}
                   />
-                  <p className="-mt-2 text-[11px] text-bone-3">
+                  <p className="-mt-2 text-xs text-bone-3">
                     Shown on this unit in the 3D model instead of its number — for a unit that is
                     leased or sold and you want the tenant's mark on the plan.
                   </p>
@@ -194,7 +194,7 @@ export default function BuildingBlock({ building, onChange, folder }) {
                     <span className="text-xs font-bold uppercase tracking-wide text-bone-3">
                       Unit photographs
                     </span>
-                    <p className="mb-3 mt-1 text-[11px] leading-relaxed text-bone-3">
+                    <p className="mb-3 mt-1 text-xs leading-relaxed text-bone-3">
                       Photographs of this space specifically, not of the property. The first one is
                       used as the unit's card image on the homepage; the rest appear on the detail
                       card when a visitor taps the unit. Worth filling in for leased and sold units
@@ -224,14 +224,14 @@ export default function BuildingBlock({ building, onChange, folder }) {
                   {hasModel ? (
                     <div className="flex items-center gap-2">
                       <span
-                        className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${
+                        className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${
                           isBound ? 'bg-[var(--color-status-available)] text-void' : 'bg-ember text-void'
                         }`}
                       >
                         {isBound ? 'Linked to 3D model' : 'No shape in model'}
                       </span>
                       {!isBound && (
-                        <span className="text-[11px] text-bone-3">
+                        <span className="text-xs text-bone-3">
                           Still shown in the unit list — link it in the 3D model panel above.
                         </span>
                       )}
@@ -242,11 +242,11 @@ export default function BuildingBlock({ building, onChange, folder }) {
                         type="button"
                         onClick={() => setPlacingUnitIndex(i)}
                         disabled={!building.planImage}
-                        className="rounded-full border border-white/20 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-bone/70 hover:border-ember hover:text-ember disabled:opacity-40"
+                        className="rounded-full border border-white/20 px-3 py-1 text-xs font-bold uppercase tracking-wide text-bone/70 hover:border-ember hover:text-ember disabled:opacity-40"
                       >
                         {unit.x != null ? 'Reposition on map' : 'Place on map'}
                       </button>
-                      <span className="text-[11px] text-bone-3">
+                      <span className="text-xs text-bone-3">
                         {unit.x != null ? `Placed at ${unit.x.toFixed(0)}%, ${unit.y.toFixed(0)}%` : 'Not placed yet'}
                       </span>
                     </div>
@@ -263,7 +263,7 @@ export default function BuildingBlock({ building, onChange, folder }) {
         <span className="text-xs font-bold uppercase tracking-wide text-bone-3">
           2D floor plan image — fallback only
         </span>
-        <p className="mt-1 text-[11px] leading-relaxed text-bone-3">
+        <p className="mt-1 text-xs leading-relaxed text-bone-3">
           {hasModel
             ? 'Not needed for this building. Visitors get the 3D model, and its plan view is generated from the same model — this image is only used if the model fails to load on an old device.'
             : 'Used when a building has no 3D model. Upload the plan, then place each unit on it.'}
@@ -318,7 +318,7 @@ function InvestmentFields({ building, onChange }) {
       <span className="text-xs font-bold uppercase tracking-wide text-bone-3">
         Investment / CAP rate
       </span>
-      <p className="mt-1 text-[11px] leading-relaxed text-bone-3">
+      <p className="mt-1 text-xs leading-relaxed text-bone-3">
         Powers this building&rsquo;s investment page. Leave anything you do not have blank — blank
         figures are left off the page rather than shown empty. The unit schedule on that page is
         read from the units above, so there is nothing to re-enter here.
@@ -347,7 +347,7 @@ function InvestmentFields({ building, onChange }) {
 
         <div>
           <span className="text-xs font-bold uppercase tracking-wide text-bone-3">Highlights</span>
-          <p className="mb-3 mt-1 text-[11px] leading-relaxed text-bone-3">
+          <p className="mb-3 mt-1 text-xs leading-relaxed text-bone-3">
             Short selling points — one per row, shown as a list beside the summary.
           </p>
           <RepeatableList

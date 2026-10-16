@@ -12,6 +12,7 @@ import { hasInfoPage } from '../lib/infoSets'
 import { sized } from '../lib/images'
 import ActionButton from './ActionButton'
 import ArrowRight from './ArrowRight'
+import { coverImage } from '../lib/covers'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -354,7 +355,7 @@ export default function AvailableUnits() {
               // for unit 605 showing the plaza from the road is the same
               // picture as the three cards beside it; the storefront is what
               // tells them apart.
-              const photo = getUnitImages(unit)[0] ?? property.image
+              const photo = getUnitImages(unit)[0] ?? coverImage(property, 'unitFallback')
               // Only a property with a real media set gets the button. Every
               // other slug redirects straight back to its own listing, so the
               // control would promise photographs and deliver the page the
@@ -375,7 +376,7 @@ export default function AvailableUnits() {
                     {photo && (
                       <img
                         src={sized(photo, 'card')}
-                        alt={photo === property.image ? property.name : `Unit ${unit.label || ''} at ${property.name}`.trim()}
+                        alt={!getUnitImages(unit).length ? property.name : `Unit ${unit.label || ''} at ${property.name}`.trim()}
                         loading="lazy"
                         decoding="async"
                         className="absolute inset-0 size-full object-cover transition-transform duration-700 ease-brand group-hover:scale-[1.04]"

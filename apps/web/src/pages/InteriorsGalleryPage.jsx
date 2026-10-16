@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useProperties, useSection } from '../context/ContentContext'
 import { TIERS, tierMeta, parseSlugList } from '../lib/interiors'
 import { sized } from '../lib/images'
+import { coverImage } from '../lib/covers'
 
 export default function InteriorsGalleryPage() {
   const { heading, entries = [] } = useSection('interiors_gallery')
@@ -44,7 +45,7 @@ export default function InteriorsGalleryPage() {
             <div className="flex flex-col gap-4 border-b border-line pb-7 sm:gap-6 sm:pb-8">
               <div className="-mx-gutter flex snap-x gap-2 overflow-x-auto px-gutter pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0" role="group" aria-label="Filter by property">
                 {propertySlugs.map((slug) => {
-                  const image = slug !== 'All' ? propertyOf(slug)?.image : null
+                  const image = slug !== 'All' ? coverImage(propertyOf(slug), 'thumbnail') : null
                   return (
                     <button
                       key={slug}

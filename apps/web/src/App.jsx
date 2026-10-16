@@ -69,6 +69,7 @@ const LeadsPage = lazy(() => import('./admin/LeadsPage'))
 const NewsListPage = lazy(() => import('./admin/NewsListPage'))
 const NewsEditPage = lazy(() => import('./admin/NewsEditPage'))
 const UnitsAdminPage = lazy(() => import('./admin/UnitsAdminPage'))
+const CoversAdminPage = lazy(() => import('./admin/CoversAdminPage'))
 const UnitEditPage = lazy(() => import('./admin/UnitEditPage'))
 const CapAdminPage = lazy(() => import('./admin/CapAdminPage'))
 const CapEditPage = lazy(() => import('./admin/CapEditPage'))
@@ -360,6 +361,7 @@ function App() {
           <Route path="news/:id" element={<NewsEditPage />} />
           <Route path="leads" element={<LeadsPage />} />
           <Route path="units" element={<UnitsAdminPage />} />
+          <Route path="covers" element={<CoversAdminPage />} />
           <Route path="units/new" element={<UnitEditPage />} />
           <Route path="units/:propertyId/:building/:unit" element={<UnitEditPage />} />
           <Route path="cap" element={<CapAdminPage />} />

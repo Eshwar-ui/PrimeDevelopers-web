@@ -7,6 +7,7 @@ import { findUnitBySlugs, formatArea, formatUnitLabel, getUnitImages, getUnits, 
 import PrimePill from '../components/PrimePill'
 import { TenantBlock, UnitGallery, UnitLabel } from '../components/UnitDetailCard'
 import { useCapListings } from '../components/CapListings'
+import { coverImage } from '../lib/covers'
 
 /**
  * One unit, on its own page — everything the floor-plan card shows beside the
@@ -93,10 +94,10 @@ export default function UnitPage() {
                 // No photographs of this space yet. The property's own photo
                 // stands in, captioned as what it is rather than passed off
                 // as the unit.
-                property.image && (
+                coverImage(property, 'unitFallback') && (
                   <figure>
                     <img
-                      src={sized(property.image, 'card')}
+                      src={sized(coverImage(property, 'unitFallback'), 'card')}
                       alt={property.name}
                       className="aspect-[4/3] w-full rounded-xl border border-[var(--color-line-inv)] object-cover"
                     />

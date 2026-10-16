@@ -1,4 +1,5 @@
 import { sized } from '../lib/images'
+import { coverImage } from '../lib/covers'
 
 /**
  * The visual stand-in for a `<select>` of properties — Franchise and Collab
@@ -35,8 +36,8 @@ export default function PropertyPicker({ properties, value, onChange }) {
           }`}
         >
           <span className="block h-full w-14 shrink-0 overflow-hidden bg-surface-alt">
-            {p.image && (
-              <img src={sized(p.image, 'thumb')} alt="" loading="lazy" decoding="async" className="size-full object-cover" />
+            {coverImage(p, 'thumbnail') && (
+              <img src={sized(coverImage(p, 'thumbnail'), 'thumb')} alt="" loading="lazy" decoding="async" className="size-full object-cover" />
             )}
           </span>
           <span className={`min-w-0 truncate font-body text-[13px] font-bold ${value === p.slug ? 'text-accent' : 'text-content/75'}`}>{p.name}</span>

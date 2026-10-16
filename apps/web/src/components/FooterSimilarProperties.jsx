@@ -5,6 +5,7 @@ import { useProperties } from '../context/ContentContext'
 import { parsePhase, storedName } from '../lib/phases'
 import { sized } from '../lib/images'
 import ArrowRight from './ArrowRight'
+import { coverImage } from '../lib/covers'
 
 /**
  * The property strip that opens the footer plate, directly below the closing
@@ -169,9 +170,9 @@ export default function FooterSimilarProperties({
                 to={`/properties/${property.slug}`}
                 className="relative block h-64 overflow-hidden rounded-[18px] bg-carbon outline-none sm:h-80 sm:rounded-[22px] focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-4 focus-visible:ring-offset-void"
               >
-                {property.image && (
+                {coverImage(property, 'footerCard') && (
                   <img
-                    src={sized(property.image, 'card')}
+                    src={sized(coverImage(property, 'footerCard'), 'card')}
                     alt={`${property.name} property`}
                     loading="lazy"
                     decoding="async"

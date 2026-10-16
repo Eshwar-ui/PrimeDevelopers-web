@@ -5,6 +5,7 @@ import { useSection, useListings } from '../context/ContentContext'
 import { renderEmphasis } from '../lib/emphasis'
 import { sized, srcSetFor } from '../lib/images'
 import ArrowRight from './ArrowRight'
+import { coverImage } from '../lib/covers'
 
 // Four frames in the mosaic — one under the copy, two stacked in the middle,
 // one down the right. A fifth has nowhere to go without breaking the column
@@ -66,10 +67,10 @@ function MobileGallery({ tiles, heading, paragraph, go }) {
             aria-label={`View ${property.name}`}
           >
             <img
-              src={sized(property.image, 'card')}
+              src={sized(coverImage(property, 'mosaic'), 'card')}
               // This branch is `md:hidden` — it only ever renders on a phone,
               // where the frame is the full column. One breakpoint, one width.
-              srcSet={srcSetFor(property.image, 'card')}
+              srcSet={srcSetFor(coverImage(property, 'mosaic'), 'card')}
               sizes="100vw"
               loading={active === 0 ? 'eager' : 'lazy'}
               decoding="async"
@@ -133,7 +134,7 @@ export default function Gallery() {
   const properties = useListings()
   const navigate = useNavigate()
 
-  const tiles = properties.filter((p) => p.image).slice(0, TILES)
+  const tiles = properties.filter((p) => coverImage(p, 'mosaic')).slice(0, TILES)
   if (tiles.length === 0) return null
 
   const go = (to) => (e) => {
@@ -152,10 +153,10 @@ export default function Gallery() {
         className="group relative block min-h-56 flex-1 overflow-hidden rounded-panel bg-surface-alt outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent md:min-h-0"
       >
         <img
-          src={sized(p.image, 'card')}
+          src={sized(coverImage(p, 'mosaic'), 'card')}
           // The mosaic counterpart, which is `md:` and up: two columns inside
           // the content measure, so roughly half the viewport apiece.
-          srcSet={srcSetFor(p.image, 'card')}
+          srcSet={srcSetFor(coverImage(p, 'mosaic'), 'card')}
           sizes="(min-width: 768px) 50vw, 100vw"
           loading="lazy"
           decoding="async"

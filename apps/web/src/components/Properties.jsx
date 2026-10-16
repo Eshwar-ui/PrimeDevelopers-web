@@ -9,6 +9,7 @@ import { renderEmphasis } from '../lib/emphasis'
 import ActionButton from './ActionButton'
 import ArrowRight from './ArrowRight'
 import BrochureRequestModal from './BrochureRequestModal'
+import { coverImage } from '../lib/covers'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -156,7 +157,7 @@ export default function Properties() {
               // colour.
               className="group relative flex min-w-0 flex-col basis-[85%] shrink-0 snap-start overflow-hidden rounded-panel md:basis-auto border border-accent/45 bg-surface transition-[border-color,box-shadow] duration-500 ease-brand hover:border-accent/75 hover:shadow-[0_36px_80px_-52px_rgba(0,0,0,0.85)] focus-within:border-accent/75"
             >
-              {p.image && (
+              {coverImage(p, 'homeTeaser') && (
                 // A block in the flow on a phone, lifted out of it from `md` up.
                 // That switch is what lets one element be a stacked banner at
                 // one size and a bled-in backdrop at another: absolute here
@@ -177,11 +178,11 @@ export default function Properties() {
                   }`}
                 >
                   <img
-                    src={sized(p.image, 'card')}
+                    src={sized(coverImage(p, 'homeTeaser'), 'card')}
                     // Tracks the frame's own class list above: full width while
                     // the card is stacked, `lg:w-[68%]` of it once the photo is
                     // bled in behind the copy.
-                    srcSet={srcSetFor(p.image, 'card')}
+                    srcSet={srcSetFor(coverImage(p, 'homeTeaser'), 'card')}
                     sizes="(min-width: 1024px) 68vw, 100vw"
                     loading="lazy"
                     decoding="async"

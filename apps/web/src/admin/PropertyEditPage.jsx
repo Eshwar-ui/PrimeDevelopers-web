@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft } from '@phosphor-icons/react'
 import { useCategories, useContentRefetch, useProperties } from '../context/ContentContext'
 import { api } from '../lib/api'
@@ -41,19 +41,12 @@ const emptyDetail = () => ({
   extFacade: [],
 })
 
-const PROPERTY_GALLERY_SLOTS = 3
 const SPEC_SLOTS = 3
 // Held as three slots while editing, so typing in the third box doesn't jump
 // into the second. Empty slots are dropped on save.
 const fixedSpecs = (specs) => {
   const source = Array.isArray(specs) ? specs.map(String).slice(0, SPEC_SLOTS) : []
   return [...source, ...Array(SPEC_SLOTS - source.length).fill('')]
-}
-const fixedGallery = (gallery) => {
-  const source = Array.isArray(gallery) ? gallery : []
-  return source.length >= PROPERTY_GALLERY_SLOTS
-    ? source
-    : [...source, ...Array(PROPERTY_GALLERY_SLOTS - source.length).fill('')]
 }
 // Which of the 16 sections start open. The rest still hold their data —
 // collapsed just means "not the first thing an editor has to scroll past."
@@ -114,7 +107,7 @@ export default function PropertyEditPage() {
     const detail = { ...emptyDetail(), ...(original.detail ?? {}) }
     const next = {
       ...original,
-      gallery: fixedGallery(original.gallery),
+      gallery: Array.isArray(original.gallery) ? original.gallery : [],
       detail: { ...detail, specs: fixedSpecs(detail.specs) },
     }
     setForm(next)
@@ -196,6 +189,7 @@ export default function PropertyEditPage() {
     const snapshot = form
     const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, _slugTouched, ...payload } = form
     payload.detail = { ...payload.detail, specs: payload.detail.specs.map((v) => v.trim()).filter(Boolean) }
+    payload.gallery = (payload.gallery ?? []).filter(Boolean)
     let saved
     try {
       if (!force && baseline.updatedAt) {
@@ -388,14 +382,20 @@ export default function PropertyEditPage() {
           <ImageUploader label="Main image" value={form.image} onChange={(image) => patch({ image })} folder={`projects/${form.slug}`} />
           <div>
             <span className="text-xs font-bold uppercase tracking-wide text-bone-3">Gallery</span>
+            <p className="mt-1 text-xs leading-relaxed text-bone-3">
+              Order matters: the first three fill the property page&apos;s overview. To choose which photo shows on the
+              homepage, the listing card and everywhere else, use{' '}
+              <Link to="/admin/covers" className="text-accent-soft underline underline-offset-4">
+                Cover images
+              </Link>
+              .
+            </p>
             <div className="mt-3">
               <RepeatableList
                 items={form.gallery}
                 onChange={(gallery) => patch({ gallery })}
                 makeItem={() => ''}
-                allowAdd={false}
-                allowRemove={false}
-                maxItems={PROPERTY_GALLERY_SLOTS}
+                addLabel="Add photo"
                 renderItem={(url, set) => (
                   <ImageUploader value={url} onChange={set} folder={`projects/${form.slug}/gallery`} />
                 )}

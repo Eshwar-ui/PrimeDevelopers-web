@@ -7,6 +7,7 @@ import ArrowRight from './ArrowRight'
 import { sized, srcSetFor } from '../lib/images'
 import { useProperties } from '../context/ContentContext'
 import { phaseSiblings } from '../lib/phases'
+import { coverImage } from '../lib/covers'
 
 export default function PropertyHero({ property, soldPct, onEnquire }) {
   const scope = useRef(null)
@@ -55,13 +56,13 @@ const isSharedTransition = document.documentElement.classList.contains('property
 
   return (
     <section ref={scope} data-property-hero={property.slug} className="relative min-h-[100dvh] overflow-hidden bg-void text-white">
-      {property.image && (
+      {coverImage(property, 'detailHero') && (
         <div className="bleed-fill overflow-hidden">
           <img
             ref={image}
-            src={sized(property.image, 'full')}
+            src={sized(coverImage(property, 'detailHero'), 'full')}
             // Full-bleed, so the slot is the viewport at every breakpoint.
-            srcSet={srcSetFor(property.image, 'full')}
+            srcSet={srcSetFor(coverImage(property, 'detailHero'), 'full')}
             sizes="100vw"
             style={{ viewTransitionName: `property-image-${property.slug}` }}
             alt={`${property.name} property exterior`}

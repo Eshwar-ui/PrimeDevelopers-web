@@ -4,6 +4,7 @@ import { rise } from '../lib/motion'
 import CountUp from './CountUp'
 import { sized } from '../lib/images'
 import fallbackHeroImage from '../assets/property-1.webp'
+import { coverImage } from '../lib/covers'
 
 /** Portfolio photography with a dark overlay and live availability figures. */
 
@@ -51,7 +52,7 @@ function portfolioStats(properties) {
 
 export default function PropertiesHero({ properties = [], children }) {
   const stats = useMemo(() => portfolioStats(properties), [properties])
-  const heroImage = properties.find((property) => property.image)?.image || fallbackHeroImage
+  const heroImage = properties.map((property) => coverImage(property, 'listingsHero')).find(Boolean) || fallbackHeroImage
 
   return (
     <section

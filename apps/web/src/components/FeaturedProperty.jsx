@@ -6,6 +6,7 @@ import { renderEmphasis } from '../lib/emphasis'
 import { sized } from '../lib/images'
 import ActionButton from './ActionButton'
 import ArrowRight from './ArrowRight'
+import { coverImage } from '../lib/covers'
 
 const CARD_INTERVAL = 9000
 const IMAGE_INTERVAL = 5200
@@ -267,7 +268,7 @@ function FeaturedCard({ card: f, property, active, activeImage, onImage }) {
   // A linked property's own photographs; an uploaded image only when the card
   // points at nothing in the listings.
   const heroImages = property
-    ? Array.from(new Set([property.image, ...(property.gallery ?? [])].filter(Boolean))).slice(0, 6)
+    ? Array.from(new Set([coverImage(property, 'featured'), property.image, ...(property.gallery ?? [])].filter(Boolean))).slice(0, 6)
     : [f.image].filter(Boolean)
   const heroName = property?.name ?? (f.imageAlt || 'Featured property')
   const safeActiveImage = heroImages.length ? activeImage % heroImages.length : 0

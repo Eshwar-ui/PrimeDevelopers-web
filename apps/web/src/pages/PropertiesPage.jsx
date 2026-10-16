@@ -14,6 +14,7 @@ import ArrowRight from '../components/ArrowRight'
 import { useCapListings, CapListingGrid } from '../components/CapListings'
 // import Marquee from '../components/Marquee'
 import Services from '../components/Services'
+import { coverImage } from '../lib/covers'
 
 // The three figures under each card name. The design writes them as free text —
 // "2.5 Acres", "Ready", "12 retail slots" — which the integer columns on the
@@ -94,7 +95,7 @@ function Card({ p, index, shared, onOpen }) {
   // The cover first, then the property's own gallery — without anything it
   // shares with another listing (see `sharedImages`).
   const images = Array.from(
-    new Set([p.image, ...(p.gallery ?? []).filter((src) => !shared.has(src))].filter(Boolean)),
+    new Set([coverImage(p, 'listingCard'), p.image, ...(p.gallery ?? []).filter((src) => !shared.has(src))].filter(Boolean)),
   ).slice(0, 6)
   const [active, setActive] = useState(0)
   // How far into the set this card has been. Photographs are mounted up to one

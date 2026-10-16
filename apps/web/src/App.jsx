@@ -43,6 +43,7 @@ const PropertiesPage = lazy(() => import('./pages/PropertiesPage'))
 const PropertyDetailPage = lazy(() => import('./pages/PropertyDetailPage'))
 const PropertyInfoPage = lazy(() => import('./pages/PropertyInfoPage'))
 const InvestmentPage = lazy(() => import('./pages/InvestmentPage'))
+const UnitPage = lazy(() => import('./pages/UnitPage'))
 const CapListingsPage = lazy(() => import('./pages/CapListingsPage'))
 const CapListingPage = lazy(() => import('./pages/CapListingPage'))
 const ContactPage = lazy(() => import('./pages/ContactPage'))
@@ -67,6 +68,8 @@ const ContentSectionPage = lazy(() => import('./admin/ContentSectionPage'))
 const LeadsPage = lazy(() => import('./admin/LeadsPage'))
 const NewsListPage = lazy(() => import('./admin/NewsListPage'))
 const NewsEditPage = lazy(() => import('./admin/NewsEditPage'))
+const UnitsAdminPage = lazy(() => import('./admin/UnitsAdminPage'))
+const UnitEditPage = lazy(() => import('./admin/UnitEditPage'))
 const CapAdminPage = lazy(() => import('./admin/CapAdminPage'))
 const CapEditPage = lazy(() => import('./admin/CapEditPage'))
 const CapSettingsPage = lazy(() => import('./admin/CapSettingsPage'))
@@ -299,6 +302,9 @@ function PublicSite() {
                     index breaks the moment buildings are reordered, and these
                     are links brokers forward. */}
                 <Route path="/properties/:slug/investment/:building" element={<InvestmentPage />} />
+                {/* One unit on its own page — addressed by building and unit
+                    label, slugged ("building-7/701"), never by index. */}
+                <Route path="/properties/:slug/units/:building/:unit" element={<UnitPage />} />
                 {/* CAP / NNN deals — one tenanted unit each, from the cap_listings
                     section. Their own path rather than under /properties/:slug,
                     because a deal is not a property and several sit at an
@@ -353,6 +359,9 @@ function App() {
           <Route path="news" element={<NewsListPage />} />
           <Route path="news/:id" element={<NewsEditPage />} />
           <Route path="leads" element={<LeadsPage />} />
+          <Route path="units" element={<UnitsAdminPage />} />
+          <Route path="units/new" element={<UnitEditPage />} />
+          <Route path="units/:propertyId/:building/:unit" element={<UnitEditPage />} />
           <Route path="cap" element={<CapAdminPage />} />
           <Route path="cap/settings" element={<CapSettingsPage />} />
           <Route path="cap/:id" element={<CapEditPage />} />

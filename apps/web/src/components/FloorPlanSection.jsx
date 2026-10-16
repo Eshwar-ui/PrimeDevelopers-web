@@ -1,12 +1,12 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import FloorPlanInteractive from './FloorPlanInteractive'
 import UnitComparePanel from './UnitComparePanel'
 import UnitDetailCard from './UnitDetailCard'
 import UnitList from './UnitList'
 import ViewerLaunch from './floorplan/ViewerLaunch'
 import { UNIT_STATUSES } from '../lib/unitStatus'
-import { bearingLabel, countByStatus, findUnitByLabel, getModel, getUnits } from '../lib/units'
+import { bearingLabel, countByStatus, findUnitByLabel, getModel, getUnits, unitPath } from '../lib/units'
 import { hasWebGL } from '../lib/webgl'
 
 // Lazy so three/fiber/drei never enter the main bundle. A visitor who does not
@@ -55,6 +55,8 @@ const sameSelection = (a, b) => a.length === b.length && a.every((value, i) => v
  * than aspirational.
  */
 export default function FloorPlanSection({ building, propertyId }) {
+  // The route's own slug: this section only ever renders on /properties/:slug.
+  const { slug: propertySlug } = useParams()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   // Unit indexes in the order they were picked. The *last* one is the primary
@@ -279,6 +281,7 @@ export default function FloorPlanSection({ building, propertyId }) {
             aspect={aspectOf(primaryIndex)}
             onEnquire={enquire}
             maxHeight={canShow3D ? PANEL_MAX : ''}
+            detailsHref={selectedUnit && propertySlug ? unitPath(propertySlug, building?.building, selectedUnit.label) : null}
           />
         </aside>
       </div>

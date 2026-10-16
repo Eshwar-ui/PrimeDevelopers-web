@@ -295,3 +295,68 @@ export const formatBytes = (bytes) => {
   if (!Number.isFinite(n) || n <= 0) return null
   return n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.round(n / 1024)} KB`
 }
+
+/**
+ * URL-safe form of a building or unit label — "Building 10" → "building-10",
+ * "101+102+103+106" → "101-102-103-106". Labels rather than indexes, because an
+ * index breaks the moment the client reorders the list, and these URLs are
+ * ones people send each other.
+ */
+export const labelSlug = (label) =>
+  String(label ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
+/** The public page for one unit. */
+export const unitPath = (propertySlug, buildingLabel, unitLabel) =>
+  `/properties/${propertySlug}/units/${labelSlug(buildingLabel)}/${labelSlug(unitLabel)}`
+
+/** Every unit in a property, with where it sits. */
+export const listUnits = (property) =>
+  getBuildings(property).flatMap((building, buildingIndex) =>
+    getUnits(building).map((unit) => ({ building, buildingIndex, unit, unitIndex: unit.index })),
+  )
+
+/** A unit by its slugged building and unit labels, or null. */
+export const findUnitBySlugs = (property, buildingSlugValue, unitSlugValue) =>
+  listUnits(property).find(
+    (u) => labelSlug(u.building.building) === buildingSlugValue && labelSlug(u.unit.label) === unitSlugValue,
+  ) ?? null
+
+/**
+ * The building after changing one of its units.
+ *
+ * Matching to the 3D model is by label, so renaming a unit would otherwise
+ * break its link: `301` → `301A` leaves whatever shape was linked to `301`
+ * matching nothing. Two cases, both handled: a shape named `unit-301` was
+ * linked by *name* (nothing stored — the match was implicit), or some other
+ * shape had been *manually* bound to `301` (an explicit `bindings` entry).
+ * Either way, whatever mesh resolves to the old label is re-pointed at the
+ * new one. Shared by the property editor and the Units section, so a rename
+ * from either keeps the link.
+ */
+export function applyUnitChange(building, index, next) {
+  const units = building.unitList ?? []
+  const previous = units[index]
+  const unitList = units.map((unit, i) => (i === index ? next : unit))
+  const model = building.model ?? null
+
+  const wasLabel = String(previous?.label ?? '').trim().toLowerCase()
+  const nowLabel = String(next?.label ?? '').trim()
+  if (!model?.url || !wasLabel || !nowLabel || wasLabel === nowLabel.toLowerCase()) {
+    return { ...building, unitList }
+  }
+
+  const bindings = model.bindings ?? {}
+  const explicitMatch = Object.entries(bindings).find(([, label]) => String(label ?? '').trim().toLowerCase() === wasLabel)
+  const meshName =
+    explicitMatch?.[0] ?? (model.meshNames ?? []).find((name) => (meshUnitLabel(name) ?? '').toLowerCase() === wasLabel)
+
+  return {
+    ...building,
+    unitList,
+    model: meshName ? { ...model, bindings: { ...bindings, [meshName]: nowLabel } } : model,
+  }
+}

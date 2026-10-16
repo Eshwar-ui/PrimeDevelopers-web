@@ -10,7 +10,7 @@ export const GROUPS = [
   {
     id: 'home',
     label: 'Homepage',
-    keys: ['hero', 'featured_home', 'properties_home', 'gallery', 'services_home', 'marquee', 'testimonials', 'news_home', 'cta_home'],
+    keys: ['hero', 'featured_home', 'units_home', 'properties_home', 'gallery', 'services_home', 'marquee', 'testimonials', 'news_home', 'cta_home'],
   },
   {
     id: 'global',
@@ -47,6 +47,7 @@ export const GROUPS = [
 export const SECTION_PATHS = {
   hero: '/',
   featured_home: '/',
+  units_home: '/',
   properties_home: '/',
   gallery: '/',
   services_home: '/',

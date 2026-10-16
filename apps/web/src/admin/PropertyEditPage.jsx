@@ -96,6 +96,8 @@ export default function PropertyEditPage() {
   const [saving, setSaving] = useState(false)
   const [savedAt, setSavedAt] = useState(null)
   const [error, setError] = useState(null)
+  // Set when the property was saved somewhere else after this form loaded.
+  const [conflict, setConflict] = useState(false)
   useAdminTitle(form?.name || 'Property')
 
   // Seeded once per property, not on every change of `original`'s identity.
@@ -178,22 +180,45 @@ export default function PropertyEditPage() {
     setForm((f) => ({ ...f, detail: { ...f.detail, [section]: { ...f.detail[section], ...partial } } }))
 
   /** Resolves true when the save landed — LeaveGuard's "Save and leave" relies on it. */
-  const save = async () => {
+  /**
+   * Resolves true when the save landed — LeaveGuard's "Save and leave" relies on it.
+   *
+   * This form sends the whole property, `detail` and all, so saving a copy
+   * loaded before someone else's change would quietly undo it — a unit edited
+   * in the Units section, or this property open in a second tab. So it checks
+   * first: if the stored property is newer than the one this form opened, it
+   * stops and asks, rather than overwriting. `force` is the "Save anyway".
+   */
+  const save = async ({ force = false } = {}) => {
     setSaving(true)
     setError(null)
+    setConflict(false)
     const snapshot = form
     const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, _slugTouched, ...payload } = form
     payload.detail = { ...payload.detail, specs: payload.detail.specs.map((v) => v.trim()).filter(Boolean) }
+    let saved
     try {
-      await api.patch(`/admin/properties/${id}`, payload)
+      if (!force && baseline.updatedAt) {
+        const fresh = await api.get(`/admin/properties/${encodeURIComponent(original.slug)}`)
+        if (fresh?.updatedAt && fresh.updatedAt !== baseline.updatedAt) {
+          setSaving(false)
+          setConflict(true)
+          return false
+        }
+      }
+      saved = await api.patch(`/admin/properties/${id}`, payload)
     } catch (err) {
       setSaving(false)
       setError(err.message)
       return false
     }
+    // Carry the server's timestamp forward, so the next save compares
+    // against this one rather than against the version this form opened.
+    const updatedAt = saved?.updatedAt ?? snapshot.updatedAt
     setSaving(false)
     setSavedAt(Date.now())
-    setBaseline(snapshot)
+    setBaseline({ ...snapshot, updatedAt })
+    setForm((f) => ({ ...f, updatedAt }))
     refetch()
     return true
   }
@@ -256,6 +281,26 @@ export default function PropertyEditPage() {
       <LeaveGuard when={isDirty} onSave={save} />
 
       <div className="mx-auto max-w-5xl">
+      {conflict && (
+        <div className="mt-6">
+          <Alert
+            action={
+              <span className="flex flex-wrap gap-2">
+                <Button size="sm" onClick={() => window.location.reload()}>
+                  Reload latest
+                </Button>
+                <Button size="sm" variant="danger-ghost" onClick={() => save({ force: true })}>
+                  Save anyway
+                </Button>
+              </span>
+            }
+          >
+            This property was changed somewhere else after you opened it — perhaps a unit in Units, or another tab. Saving
+            now would undo that. Reload to start from the latest (your changes here will be lost), or save anyway.
+          </Alert>
+        </div>
+      )}
+
       {error && (
         <div className="mt-6">
           <Alert>Couldn&apos;t save — {error}</Alert>

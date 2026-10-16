@@ -4,7 +4,7 @@ import FloorPlanInteractive from './FloorPlanInteractive'
 import UnitDetailCard from './UnitDetailCard'
 import UnitList from './UnitList'
 import ViewerLaunch from './floorplan/ViewerLaunch'
-import { formatUnitLabel, getBuildings, getUnits } from '../lib/units'
+import { formatUnitLabel, getBuildings, getUnits, unitPath } from '../lib/units'
 import { unitStatusMeta } from '../lib/unitStatus'
 import { getSiteModel, hasSiteModel, reconcileSite, toViewerEntries } from '../lib/siteModel'
 import { hasWebGL } from '../lib/webgl'
@@ -456,6 +456,7 @@ export default function SiteModelSection({ property }) {
             units={focusedBuilding ? focusedUnits : allUnits}
             onEnquire={enquire}
             maxHeight={canShow3D ? PANEL_MAX : ''}
+            detailsHref={selectedUnit && focusedBuilding ? unitPath(property.slug, focusedBuilding.label, selectedUnit.label) : null}
             emptyHint={
               focusedBuilding
                 ? ''

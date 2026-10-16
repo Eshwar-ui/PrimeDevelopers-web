@@ -67,3 +67,19 @@ export const ROAD_HEX = '#5b7a8c'
 export const BUILDING_HEX = '#9c8558'
 
 export const unitStatusMeta = (value) => UNIT_STATUSES.find((s) => s.value === value) ?? UNIT_STATUSES[0]
+
+// What a unit card says when the admin wrote no description, by status —
+// shared by the floor-plan detail card and the unit page.
+export const STATUS_COPY = {
+  available: 'Available for lease. Contact our team for pricing and tour availability.',
+  leased: 'Currently leased.',
+  'coming-soon': 'Coming soon — leasing details available shortly.',
+  sold: 'This unit has been sold.',
+}
+
+// A unit nobody can lease today still has to be worth reading. These two
+// statuses put the tenant at the top of the card rather than treating them as
+// a footnote to an availability that no longer exists — for a retail plaza the
+// tenant mix *is* the pitch, and a wall of "Currently leased." says nothing
+// about the place a prospect is deciding to join.
+export const TENANTED = new Set(['leased', 'sold'])

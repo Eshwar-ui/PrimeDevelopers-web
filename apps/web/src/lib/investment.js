@@ -11,7 +11,7 @@
 // A half-filled investment page has to look deliberate, because that is the
 // state it will be in for a while.
 
-import { getUnits } from './units'
+import { getUnits, labelSlug } from './units'
 
 /**
  * Every field the editor writes, in one place.
@@ -106,12 +106,7 @@ export const rentRoll = (building) =>
  * `?building=`: an index breaks the moment the client reorders buildings in
  * the admin, and these are links people send each other.
  */
-export const buildingSlug = (label) =>
-  String(label ?? '')
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
+export const buildingSlug = labelSlug
 
 export const findBuildingBySlug = (buildings, slug) =>
   (buildings ?? []).find((b) => buildingSlug(b?.building) === String(slug ?? '').toLowerCase()) ?? null

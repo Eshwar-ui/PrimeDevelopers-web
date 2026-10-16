@@ -301,6 +301,18 @@ export const SECTIONS = [
       </>
     ),
   },  {
+    key: 'units_home',
+    label: 'Find your ideal space (homepage units)',
+    description: 'The homepage unit finder. The units come from each property — edit them under Units in the sidebar.',
+    Editor: ({ value, onChange }) => (
+      <Section title="Copy">
+        <TextField label="Eyebrow" value={value.eyebrow} onChange={(eyebrow) => onChange({ eyebrow })} />
+        <TextField label="Heading" value={value.heading} onChange={(heading) => onChange({ heading })} hint={emphasisHint} />
+        <TextAreaField label="Intro" rows={2} value={value.paragraph} onChange={(paragraph) => onChange({ paragraph })} />
+      </Section>
+    ),
+  },
+  {
     key: 'gallery',
     label: 'Explore our properties (homepage mosaic)',
     description: 'The four-photo mosaic — photos and names come from the Properties list, in their sort order.',

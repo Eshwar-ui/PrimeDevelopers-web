@@ -43,6 +43,8 @@ const PropertiesPage = lazy(() => import('./pages/PropertiesPage'))
 const PropertyDetailPage = lazy(() => import('./pages/PropertyDetailPage'))
 const PropertyInfoPage = lazy(() => import('./pages/PropertyInfoPage'))
 const InvestmentPage = lazy(() => import('./pages/InvestmentPage'))
+const CapListingsPage = lazy(() => import('./pages/CapListingsPage'))
+const CapListingPage = lazy(() => import('./pages/CapListingPage'))
 const ContactPage = lazy(() => import('./pages/ContactPage'))
 const NewsPage = lazy(() => import('./pages/NewsPage'))
 const NewsPostPage = lazy(() => import('./pages/NewsPostPage'))
@@ -65,6 +67,9 @@ const ContentSectionPage = lazy(() => import('./admin/ContentSectionPage'))
 const LeadsPage = lazy(() => import('./admin/LeadsPage'))
 const NewsListPage = lazy(() => import('./admin/NewsListPage'))
 const NewsEditPage = lazy(() => import('./admin/NewsEditPage'))
+const CapAdminPage = lazy(() => import('./admin/CapAdminPage'))
+const CapEditPage = lazy(() => import('./admin/CapEditPage'))
+const CapSettingsPage = lazy(() => import('./admin/CapSettingsPage'))
 
 // RequireAuth is the gate in front of every admin route, so it is not lazy —
 // splitting it would mean fetching a chunk to discover the visitor should be
@@ -294,6 +299,12 @@ function PublicSite() {
                     index breaks the moment buildings are reordered, and these
                     are links brokers forward. */}
                 <Route path="/properties/:slug/investment/:building" element={<InvestmentPage />} />
+                {/* CAP / NNN deals — one tenanted unit each, from the cap_listings
+                    section. Their own path rather than under /properties/:slug,
+                    because a deal is not a property and several sit at an
+                    address the site has no property for. */}
+                <Route path="/cap-properties" element={<CapListingsPage />} />
+                <Route path="/cap-properties/:slug" element={<CapListingPage />} />
                 <Route path="/news" element={<NewsPage />} />
                 <Route path="/news/:slug" element={<NewsPostPage />} />
                 <Route path="/learn" element={<LearnPage />} />
@@ -342,6 +353,9 @@ function App() {
           <Route path="news" element={<NewsListPage />} />
           <Route path="news/:id" element={<NewsEditPage />} />
           <Route path="leads" element={<LeadsPage />} />
+          <Route path="cap" element={<CapAdminPage />} />
+          <Route path="cap/settings" element={<CapSettingsPage />} />
+          <Route path="cap/:id" element={<CapEditPage />} />
 
           {/* Legacy admin routes — old bookmarks to the admin panel still land */}
           <Route path="projects" element={<Navigate to="/admin/properties" replace />} />

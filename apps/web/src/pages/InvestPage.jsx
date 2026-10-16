@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import { useSection } from '../context/ContentContext'
 import QuoteForm from '../components/QuoteForm'
 import Testimonials from '../components/Testimonials'
-import { useCapProperties, CapPropertyGrid } from '../components/CapProperties'
+import { useCapListings, CapListingGrid } from '../components/CapListings'
 import { lenis } from '../hooks/useSmoothScroll'
 import { sized } from '../lib/images'
 
@@ -87,7 +87,7 @@ export default function InvestPage() {
     ['Passive income', page.propertyCap?.passiveIncomeNote],
   ].filter(([, value]) => value)
 
-  const capProperties = useCapProperties()
+  const capListings = useCapListings()
 
   const extraFields = useMemo(
     () => [
@@ -183,8 +183,9 @@ export default function InvestPage() {
       <section data-band="light" data-reveal className="px-gutter py-20 md:py-28">
         <div className="mx-auto max-w-[1360px]">
           <p className="font-body text-xs font-bold uppercase tracking-[0.14em] text-content/40">Structured for CAP / NNN investment</p>
-          <CapPropertyGrid
-            items={capProperties}
+          <CapListingGrid
+            items={capListings}
+            limit={6}
             className="mt-6"
             emptyState={
               <div className="mt-6 rounded-panel border border-dashed border-content/20 px-5 py-8 text-center sm:px-8 sm:py-10">
@@ -195,6 +196,14 @@ export default function InvestPage() {
               </div>
             }
           />
+          {capListings.length > 6 && (
+            <Link
+              to="/cap-properties"
+              className="mt-10 inline-flex min-h-12 items-center gap-2.5 rounded-full border border-[var(--color-line)] px-7 font-body text-[14px] font-semibold uppercase tracking-[0.1em] text-content/75 transition-colors duration-300 hover:border-ember/60 hover:text-ember focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-accent"
+            >
+              See all {capListings.length} listings →
+            </Link>
+          )}
         </div>
       </section>
 

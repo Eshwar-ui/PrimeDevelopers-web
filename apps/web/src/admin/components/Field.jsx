@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { CaretDown } from '@phosphor-icons/react'
 
 // Shared by every text control. 16px on phones because anything smaller makes
@@ -29,6 +30,43 @@ export function TextField({ label, value, onChange, type = 'text', placeholder, 
         list={list}
         className={inputClass}
       />
+      <Hint>{hint}</Hint>
+    </label>
+  )
+}
+
+/**
+ * A figure that may be unset. `type="number"` turns an empty box into 0,
+ * which on a listing would publish "$0" as a price; this keeps empty as
+ * null. Accepts what people paste — "$1,145,018", "5.5%" — and stores the
+ * number alone. `prefix` / `suffix` are shown, never stored.
+ */
+export function NumberField({ label, value, onChange, prefix, suffix, hint, placeholder }) {
+  // What the box shows while it has focus. Held apart from `value` so a
+  // half-typed "5." or "1,1" survives the round trip through a number.
+  const [draft, setDraft] = useState(null)
+  return (
+    <label className="flex flex-col gap-1.5">
+      {label && <span className={labelClass}>{label}</span>}
+      <span className="relative flex items-center">
+        {prefix && <span className="pointer-events-none absolute left-3 text-sm text-bone-3">{prefix}</span>}
+        <input
+          type="text"
+          inputMode="decimal"
+          value={draft ?? (value ?? '')}
+          placeholder={placeholder}
+          onChange={(e) => {
+            setDraft(e.target.value)
+            const raw = e.target.value.replace(/[^\d.-]/g, '')
+            if (raw === '' || raw === '-' || raw === '.') return onChange(null)
+            const n = Number(raw)
+            if (Number.isFinite(n)) onChange(n)
+          }}
+          onBlur={() => setDraft(null)}
+          className={`${inputClass} tabular-nums ${prefix ? 'pl-7' : ''} ${suffix ? 'pr-14' : ''}`}
+        />
+        {suffix && <span className="pointer-events-none absolute right-3 text-sm text-bone-3">{suffix}</span>}
+      </span>
       <Hint>{hint}</Hint>
     </label>
   )

@@ -6,37 +6,14 @@ import { renderEmphasis } from '../lib/emphasis'
 import { sized } from '../lib/images'
 import ActionButton from './ActionButton'
 import ArrowRight from './ArrowRight'
-import { coverImage } from '../lib/covers'
+import { cardKind, featuredCards, featuredMedia, isCardShowing, primaryHref } from '../lib/featured'
+import { useCapItemsLazy } from './useCapItemsLazy'
 
 const CARD_INTERVAL = 9000
 const IMAGE_INTERVAL = 5200
 
 /** `n` folded into 0…length-1, negatives included. */
 const wrap = (n, length) => ((n % length) + length) % length
-
-/**
- * The cards this panel cycles through.
- *
- * `cards` is the list the admin edits. A row saved before the list existed
- * holds a single feature as top-level fields instead, and that row is still
- * live, so with no list it becomes the only card. A card with no heading is a
- * card switched off.
- */
-function featuredCards(f) {
-  const cards = f.cards?.length ? f.cards : [f]
-  return cards.filter((card) => card?.heading)
-}
-
-/**
- * The property a card features — the one it names in `propertySlug`, or the
- * one its primary button links to. That property's own photographs then fill
- * the panel, so a card needs no upload of its own and never drifts out of date
- * with the listing.
- */
-function linkedProperty(card, properties) {
-  const slug = card.propertySlug || card.ctaHref?.match(/^\/properties\/([^/?#]+)/)?.[1]
-  return slug ? properties.find((property) => property.slug === slug) : undefined
-}
 
 /**
  * Properties lifted out of the list and given a panel of their own.
@@ -52,7 +29,11 @@ function linkedProperty(card, properties) {
 export default function FeaturedProperty() {
   const f = useSection('featured_home')
   const properties = useProperties()
-  const cards = featuredCards(f)
+  // Switched-on cards inside their date window — the rest wait in the admin.
+  // A card with no heading is still skipped, as it always was.
+  const cards = featuredCards(f).filter((card) => isCardShowing(card))
+  const capListings = useCapItemsLazy(cards.some((card) => cardKind(card) === 'cap'))
+  const mediaFor = (card) => featuredMedia(card, { properties, capListings })
   const count = cards.length
   const reducedMotion = useReducedMotion()
   // Three runs of the cards back to back, the strip parked in the middle one.
@@ -157,7 +138,7 @@ export default function FeaturedProperty() {
     return (
       <section data-band="light" className="bg-base px-gutter pb-6 pt-6 text-content">
         <div className="mx-auto max-w-[1560px]">
-          <FeaturedCard card={cards[0]} property={linkedProperty(cards[0], properties)} active {...imageProps(0)} />
+          <FeaturedCard card={cards[0]} media={mediaFor(cards[0])} active {...imageProps(0)} />
         </div>
       </section>
     )
@@ -218,7 +199,7 @@ export default function FeaturedProperty() {
               <div inert={!centred} className="h-full">
                 <FeaturedCard
                   card={card}
-                  property={linkedProperty(card, properties)}
+                  media={mediaFor(card)}
                   active={centred}
                   {...imageProps(cardIndex)}
                 />
@@ -264,13 +245,12 @@ export default function FeaturedProperty() {
   )
 }
 
-function FeaturedCard({ card: f, property, active, activeImage, onImage }) {
-  // A linked property's own photographs; an uploaded image only when the card
-  // points at nothing in the listings.
-  const heroImages = property
-    ? Array.from(new Set([coverImage(property, 'featured'), property.image, ...(property.gallery ?? [])].filter(Boolean))).slice(0, 6)
-    : [f.image].filter(Boolean)
-  const heroName = property?.name ?? (f.imageAlt || 'Featured property')
+export function FeaturedCard({ card: f, media, active, activeImage, onImage }) {
+  // The photos the admin chose for this card, or what it advertises brings
+  // with it — a property's own photographs, a deal's, a unit's. See
+  // lib/featured.js.
+  const heroImages = media.images
+  const heroName = media.name
   const safeActiveImage = heroImages.length ? activeImage % heroImages.length : 0
   const navigate = useNavigate()
 
@@ -313,6 +293,12 @@ function FeaturedCard({ card: f, property, active, activeImage, onImage }) {
     >
       {/* ── copy ─────────────────────────────────────────────── */}
       <div className={heroImages.length > 0 ? 'flex flex-col justify-center lg:pr-2' : 'max-w-[68ch]'}>
+        {/* No photo to carry the badge: it leads the copy instead. */}
+        {f.badge && heroImages.length === 0 && (
+          <span className="mb-5 w-fit rounded-full bg-ember px-3 py-1.5 font-body text-[12px] font-bold uppercase tracking-[0.08em] text-void">
+            {f.badge}
+          </span>
+        )}
         {f.eyebrow && (
           <p className="flex items-center gap-3 font-body text-[11px] font-bold uppercase tracking-[0.28em] text-accent">
             {f.eyebrow}
@@ -359,7 +345,7 @@ function FeaturedCard({ card: f, property, active, activeImage, onImage }) {
 
         <div className="mt-8 flex flex-wrap items-center gap-3">
           {f.ctaLabel && (
-            <ActionButton href={f.ctaHref || '/properties'} onClick={go(f.ctaHref)}>
+            <ActionButton href={primaryHref(f)} onClick={go(primaryHref(f))}>
               {f.ctaLabel}
               {/* A bare arrow rather than the white disc this used to
                   carry. The disc is PrimePill's mark and belongs to the
@@ -384,6 +370,14 @@ function FeaturedCard({ card: f, property, active, activeImage, onImage }) {
         // from and `h-full` would resolve to nothing; from `lg` up the copy
         // beside it is always taller and the floor never applies.
         <div className="relative min-h-56 overflow-hidden rounded-panel bg-surface-alt sm:min-h-72 lg:h-full lg:min-h-0">
+          {/* The admin's label — "Just listed", "Price reduced" — sits on the
+              photo, the first thing the eye lands on in this card. Above the
+              crossfading images, so it holds still while they change. */}
+          {f.badge && (
+            <span className="absolute left-4 top-4 z-10 rounded-full bg-ember px-3 py-1.5 font-body text-[12px] font-bold uppercase tracking-[0.08em] text-void shadow-[0_8px_20px_-10px_rgba(0,0,0,0.6)]">
+              {f.badge}
+            </span>
+          )}
           <AnimatePresence initial={false} mode="sync">
             <motion.img
               key={heroImages[safeActiveImage]}

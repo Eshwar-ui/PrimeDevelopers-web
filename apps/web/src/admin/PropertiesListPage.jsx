@@ -1,45 +1,23 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
+import { ArrowSquareOut, Buildings, MagnifyingGlass, PencilSimple, Plus, Trash } from '@phosphor-icons/react'
 import { useProperties, useContentRefetch } from '../context/ContentContext'
 import { api } from '../lib/api'
-import { slugify } from '../lib/slugify'
+import { useCreateProperty } from './useCreate'
+import { Alert, Button, Card, ConfirmButton, EmptyState, IconButton, PageHeader, SearchInput, StatusPill, focusRing } from './components/ui'
+import { useAdminTitle } from './adminUtils'
 
 export default function PropertiesListPage() {
+  useAdminTitle('Properties')
   const properties = useProperties()
   const refetch = useContentRefetch()
-  const navigate = useNavigate()
-
-  // Which row is asking "are you sure", which is mid-request, and what went
-  // wrong. Kept per-id rather than as a single boolean so one row's failure
-  // cannot disable the others.
-  const [confirming, setConfirming] = useState(null)
-  const [deleting, setDeleting] = useState(null)
+  const { create, creating, error: createError } = useCreateProperty()
   const [error, setError] = useState(null)
-  const [creating, setCreating] = useState(false)
-
-  const createProperty = async () => {
-    const name = 'New Property'
-    const slug = `${slugify(name)}-${Date.now().toString(36)}`
-    setError(null)
-    setCreating(true)
-    try {
-      const created = await api.post('/admin/properties', {
-        name,
-        slug,
-        sortOrder: properties.length,
-        published: false,
-      })
-      await refetch()
-      navigate(`/admin/properties/${created.id}`)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setCreating(false)
-    }
-  }
+  const [query, setQuery] = useState('')
 
   /**
-   * Delete, confirmed inline rather than through `window.confirm`.
+   * Delete, confirmed inline (ConfirmButton) rather than through
+   * `window.confirm`.
    *
    * The native dialog is why this button could look broken: Chrome and Firefox
    * both offer "don't let this page create more dialogs" after a couple of
@@ -47,14 +25,9 @@ export default function PropertiesListPage() {
    * showing anything. The handler then returned at its first line, so clicking
    * Delete did nothing at all, with no error and nothing in the console — and
    * it stays that way for the rest of the tab's life.
-   *
-   * A dialog the page draws itself cannot be suppressed, and it is also the
-   * better affordance: the confirmation appears on the row being deleted
-   * rather than in a system alert that does not say which one it means.
    */
   const remove = async (id) => {
     setError(null)
-    setDeleting(id)
     try {
       await api.del(`/admin/properties/${id}`)
       // Awaited, so the row is still visibly mid-delete until the list it is
@@ -62,104 +35,101 @@ export default function PropertiesListPage() {
       // the request was done, the spinner was gone and the row was still
       // there, which reads as the delete having failed.
       await refetch()
-      setConfirming(null)
     } catch (err) {
       setError(`Could not delete that property — ${err.message}`)
-    } finally {
-      setDeleting(null)
     }
   }
 
-  return (
-    <div>
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-display text-2xl font-medium">Properties</h1>
-          <p className="mt-1 text-sm text-bone/50">{properties.length} properties</p>
-        </div>
-        <button
-          type="button"
-          onClick={createProperty}
-          disabled={creating}
-          className="rounded-full bg-accent px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-void disabled:opacity-50"
-        >
-          {creating ? 'Creating…' : '+ New property'}
-        </button>
-      </div>
+  const q = query.trim().toLowerCase()
+  const shown = q
+    ? properties.filter((p) => [p.name, p.address, p.category, p.slug].some((f) => f?.toLowerCase().includes(q)))
+    : properties
+  const drafts = properties.filter((p) => !p.published).length
 
-      {error && (
-        <p role="alert" className="mt-4 rounded-lg border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-300">
-          {error}
-        </p>
+  return (
+    <div className="mx-auto max-w-5xl">
+      <PageHeader
+        title="Properties"
+        description={`${properties.length} properties · ${properties.length - drafts} live · ${drafts} draft. Lower sort order shows first on the site.`}
+        actions={
+          <Button variant="primary" icon={Plus} onClick={create} disabled={creating}>
+            {creating ? 'Creating…' : 'New property'}
+          </Button>
+        }
+      />
+
+      {properties.length > 5 && (
+        <div className="mt-6">
+          <SearchInput value={query} onChange={setQuery} placeholder="Search name, address, category…" label="Search properties" icon={MagnifyingGlass} />
+        </div>
       )}
 
-      <div className="mt-8 flex flex-col gap-3">
-        {properties.map((p) => {
-          const isConfirming = confirming === p.id
-          const isDeleting = deleting === p.id
-          return (
-            <div
-              key={p.id}
-              className={`flex items-center gap-4 rounded-2xl border bg-carbon p-4 transition-colors ${
-                isConfirming ? 'border-red-400/50' : 'border-white/10'
-              }`}
-            >
-              <div className="h-14 w-20 shrink-0 overflow-hidden rounded-lg bg-black/20">
-                {p.image && <img src={p.image} alt="" className="h-full w-full object-cover" />}
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <p className="font-display text-base font-medium">{p.name}</p>
-                  {!p.published && (
-                    <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-bone/50">
-                      Draft
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-bone-3">
-                  {p.category} · {p.address}
-                </p>
-              </div>
+      {(error || createError) && (
+        <div className="mt-6">
+          <Alert>{error || `Could not create a property — ${createError}`}</Alert>
+        </div>
+      )}
 
-              <div className="flex shrink-0 items-center gap-4 text-xs font-bold uppercase tracking-wide">
-                {isConfirming ? (
-                  <>
-                    <span className="normal-case tracking-normal text-bone/70">Delete permanently?</span>
-                    <button
-                      type="button"
-                      onClick={() => remove(p.id)}
-                      disabled={isDeleting}
-                      className="rounded-full bg-red-500/90 px-3 py-1.5 text-white hover:bg-red-500 disabled:opacity-60"
-                    >
-                      {isDeleting ? 'Deleting…' : 'Yes, delete'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setConfirming(null)}
-                      disabled={isDeleting}
-                      className="text-bone/60 hover:text-bone disabled:opacity-60"
-                    >
-                      Cancel
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <Link to={`/admin/properties/${p.id}`} className="text-bone/60 hover:text-bone">
-                      Edit
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => { setError(null); setConfirming(p.id) }}
-                      className="text-red-400/70 hover:text-red-400"
-                    >
-                      Delete
-                    </button>
-                  </>
-                )}
-              </div>
+      <div className="mt-6 flex flex-col gap-3">
+        {properties.length === 0 && (
+          <EmptyState
+            icon={Buildings}
+            title="No properties yet"
+            action={
+              <Button variant="primary" icon={Plus} onClick={create} disabled={creating}>
+                New property
+              </Button>
+            }
+          >
+            A new property starts as a draft, so nothing appears on the site until you publish it.
+          </EmptyState>
+        )}
+
+        {properties.length > 0 && shown.length === 0 && (
+          <p className="py-8 text-center text-sm text-bone-3">No properties match “{query}”.</p>
+        )}
+
+        {shown.map((p) => (
+          <Card key={p.id} className="flex flex-wrap items-center gap-x-4 gap-y-3 p-3 sm:flex-nowrap sm:p-4">
+            <Link
+              to={`/admin/properties/${p.id}`}
+              className={`flex min-w-0 flex-1 items-center gap-4 rounded-xl ${focusRing}`}
+            >
+              <span className="h-14 w-20 shrink-0 overflow-hidden rounded-lg bg-black/20">
+                {p.image && <img src={p.image} alt="" className="h-full w-full object-cover" />}
+              </span>
+              <span className="min-w-0">
+                <span className="flex flex-wrap items-center gap-2">
+                  <span className="truncate font-display text-[16px] font-medium text-bone">{p.name}</span>
+                  <StatusPill live={p.published} />
+                </span>
+                <span className="block truncate text-xs text-bone-3">
+                  {[p.category, p.address].filter(Boolean).join(' · ')}
+                </span>
+                <span className="block text-xs text-bone-3">
+                  {p.available} available · {p.sold} sold · {p.buildings} buildings
+                </span>
+              </span>
+            </Link>
+
+            <div className="flex w-full shrink-0 items-center justify-end gap-1 sm:w-auto">
+              {p.published && (
+                <IconButton
+                  icon={ArrowSquareOut}
+                  label={`View ${p.name} on the site`}
+                  size="sm"
+                  href={`/properties/${p.slug}`}
+                  target="_blank"
+                  rel="noreferrer"
+                />
+              )}
+              <Button size="sm" to={`/admin/properties/${p.id}`} icon={PencilSimple}>
+                Edit
+              </Button>
+              <ConfirmButton icon={Trash} onConfirm={() => remove(p.id)} />
             </div>
-          )
-        })}
+          </Card>
+        ))}
       </div>
     </div>
   )

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
+import { ImageSquare, UploadSimple, X } from '@phosphor-icons/react'
 import { uploadImage, assertImageOk, IMAGE_ACCEPT, IMAGE_TYPES, IMAGE_MAX_BYTES, formatBytes } from '../../lib/uploads'
+import { Button } from './ui'
 
 /**
  * Pick an image, see it immediately, then upload it.
@@ -66,40 +68,50 @@ export default function ImageUploader({ value, onChange, folder, label, hint = t
 
   return (
     <div className="flex flex-col gap-2">
-      {label && <span className="text-xs font-bold uppercase tracking-wide text-bone/50">{label}</span>}
-      <div className="flex items-center gap-4">
-        <div className="relative flex h-20 w-28 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-white/15 bg-black/20">
+      {label && <span className="text-xs font-bold uppercase tracking-wide text-bone-3">{label}</span>}
+      <div className="flex flex-wrap items-center gap-4">
+        {/* The frame itself picks a file too — it is the biggest target on the
+            row and the obvious thing to click. */}
+        <button
+          type="button"
+          onClick={pick}
+          disabled={busy}
+          aria-label={value ? 'Replace image' : 'Upload image'}
+          className="relative flex h-20 w-28 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-dashed border-white/20 bg-black/20 transition-colors hover:border-accent-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-soft disabled:cursor-wait"
+        >
           {shown ? (
             <img src={shown} alt="" className="h-full w-full object-cover" />
           ) : (
-            <span className="text-[10px] text-bone/30">No image</span>
+            <span className="flex flex-col items-center gap-1 text-[11px] text-bone-3">
+              <ImageSquare weight="duotone" className="size-6" aria-hidden />
+              No image
+            </span>
           )}
           {/* Over the picture rather than replacing it: the editor is checking
               they chose the right frame, and hiding it to say "working" takes
               away the one thing they are looking at. */}
           {busy && (
-            <span className="absolute inset-0 grid place-items-center bg-black/55 text-[10px] font-bold uppercase tracking-wide text-bone">
+            <span className="absolute inset-0 grid place-items-center bg-black/55 text-[11px] font-bold uppercase tracking-wide text-bone">
               Uploading…
             </span>
           )}
-        </div>
-        <div className="flex flex-col gap-2">
-          <button
-            type="button"
-            onClick={pick}
-            disabled={busy}
-            className="rounded-full border border-white/20 px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-bone/80 hover:border-ember hover:text-ember disabled:opacity-50"
-          >
+        </button>
+        <div className="flex flex-wrap items-center gap-1">
+          <Button size="sm" icon={UploadSimple} onClick={pick} disabled={busy}>
             {busy ? 'Uploading…' : value ? 'Replace' : 'Upload'}
-          </button>
+          </Button>
           {value && !busy && (
-            <button
-              type="button"
-              onClick={() => { clearPreview(); onChange('') }}
-              className="text-left text-[11px] text-bone-3 hover:text-bone/70"
+            <Button
+              size="sm"
+              variant="danger-ghost"
+              icon={X}
+              onClick={() => {
+                clearPreview()
+                onChange('')
+              }}
             >
               Remove
-            </button>
+            </Button>
           )}
         </div>
         <input ref={inputRef} type="file" accept={IMAGE_ACCEPT} className="hidden" onChange={onFile} />
@@ -108,13 +120,17 @@ export default function ImageUploader({ value, onChange, folder, label, hint = t
       {/* Said once, here, rather than in a dozen section descriptions that
           would drift apart. The order is the recommendation. */}
       {hint && (
-        <p className="text-[11px] leading-relaxed text-bone-3">
+        <p className="text-xs leading-relaxed text-bone-3">
           {IMAGE_TYPES.map((t) => t.ext).join(', ')} · up to {formatBytes(IMAGE_MAX_BYTES)}. WebP is
           smallest; use JPEG for photographs and keep PNG for logos and flat graphics.
         </p>
       )}
 
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && (
+        <p role="alert" className="text-xs text-red-300">
+          {error}
+        </p>
+      )}
     </div>
   )
 }

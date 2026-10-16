@@ -7,7 +7,7 @@ import { Buildings, Camera, MapPin, Ruler, Stack, Tag } from '@phosphor-icons/re
 import { useProperties } from '../context/ContentContext'
 import { getBuildings, getUnits, formatArea, formatUnitLabel, getUnitImages } from '../lib/units'
 import { unitStatusMeta } from '../lib/unitStatus'
-import { hasInfoSet } from '../lib/infoSets'
+import { hasInfoPage } from '../lib/infoSets'
 import { sized } from '../lib/images'
 import ActionButton from './ActionButton'
 import ArrowRight from './ArrowRight'
@@ -360,7 +360,7 @@ export default function AvailableUnits() {
               // other slug redirects straight back to its own listing, so the
               // control would promise photographs and deliver the page the
               // visitor is already looking at.
-              const hasPhotos = hasInfoSet(property.slug)
+              const hasPhotos = hasInfoPage(property)
 
               return (
                 // The building has to be in the key. `unit.index` is the

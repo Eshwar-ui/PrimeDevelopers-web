@@ -79,7 +79,7 @@ export default function InvestmentPage() {
             {building.building}
           </h1>
           {property.address && (
-            <p className="mt-3 font-body text-sm text-bone/70 md:text-base">{property.address}</p>
+            <p className="mt-3 font-body text-sm text-bone/70 md:text-[16px]">{property.address}</p>
           )}
 
           {/* The headline figures. `auto-fit` rather than a fixed column count

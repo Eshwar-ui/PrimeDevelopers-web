@@ -183,6 +183,13 @@ const DEFAULTS = {
   // `features` is no longer read — the section is a photographic mosaic now,
   // not a spec list. Left in the shape so an existing row carrying it still
   // merges without complaint.
+  // The homepage unit finder (components/AvailableUnits.jsx). The units
+  // themselves come from each property's Floor plans; only the copy lives here.
+  units_home: {
+    eyebrow: 'Our Units',
+    heading: 'Find your *ideal* space',
+    paragraph: 'Filter by size — every unit across the portfolio, including the ones already let.',
+  },
   gallery: {
     heading: 'Explore Our Properties',
     eyebrow: 'Curated Portfolio',
@@ -787,6 +794,10 @@ export function ContentProvider({ children }) {
       ready: content !== null && (!isAdmin || (properties !== null && news !== null)),
       error,
       properties: properties ?? [],
+      // The property list loads separately from `/content` and may arrive
+      // after the page has mounted. A page that redirects when a slug isn't
+      // found has to wait for this, or it bounces every deep link.
+      propertiesLoaded: properties !== null,
       // One entry per development — see collapsePhases. For anything that
       // lists properties as cards, pins or options; `properties` stays the
       // full set of records for anything that looks one up by slug.
@@ -838,6 +849,7 @@ export const sectionDefaults = (section) => DEFAULTS[section] ?? {}
 
 export const useSection = (section) => useContentContext().getSection(section)
 export const useProperties = () => useContentContext().properties
+export const usePropertiesLoaded = () => useContentContext().propertiesLoaded
 export const useListings = () => useContentContext().listings
 export const useCategories = () => useContentContext().categories
 export const useProperty = (slug) => useContentContext().getProperty(slug)

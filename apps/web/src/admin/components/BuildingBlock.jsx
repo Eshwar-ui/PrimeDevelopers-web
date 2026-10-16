@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react'
-import { TextField, TextAreaField, SelectField, CheckboxField } from './Field'
+import { TextField, TextAreaField, CheckboxField } from './Field'
 import ImageUploader from './ImageUploader'
 import RepeatableList from './RepeatableList'
 import FloorPlanPositionPicker from './FloorPlanPositionPicker'
 import ModelManager from './ModelManager'
-import { UNIT_STATUSES } from '../../lib/unitStatus'
-import { getUnits, makeUnit, meshUnitLabel, reconcile, unitFormId } from '../../lib/units'
+import UnitFields from './UnitFields'
+import { applyUnitChange, getUnits, makeUnit, reconcile, unitFormId } from '../../lib/units'
 import { FIGURES, makeInvestment, hasInvestmentData } from '../../lib/investment'
 
 // One building's full editor.
@@ -46,41 +46,8 @@ export default function BuildingBlock({ building, onChange, folder }) {
 
   const setUnits = (unitList) => onChange({ ...building, unitList })
 
-  /**
-   * Renaming a unit would otherwise break its link to the model: matching is
-   * by label, so `301` → `301A` leaves whatever shape was linked to `301`
-   * matching nothing.
-   *
-   * Two cases, both handled: a shape named `unit-301` was linked by *name*
-   * (nothing stored — the match was implicit), or some other shape had been
-   * *manually* bound to `301` from the reconciliation panel (an explicit
-   * `bindings` entry, because its name didn't match). Either way, whatever
-   * mesh currently resolves to the old label is re-pointed at the new one, so
-   * the link survives the rename instead of silently going stale.
-   */
-  const setUnitAt = (index, next) => {
-    const previous = units[index]
-    const unitList = units.map((unit, i) => (i === index ? next : unit))
-
-    const wasLabel = String(previous?.label ?? '').trim().toLowerCase()
-    const nowLabel = String(next?.label ?? '').trim()
-    if (!hasModel || !wasLabel || !nowLabel || wasLabel === nowLabel.toLowerCase()) {
-      onChange({ ...building, unitList })
-      return
-    }
-
-    const bindings = model.bindings ?? {}
-    const explicitMatch = Object.entries(bindings).find(([, label]) => String(label ?? '').trim().toLowerCase() === wasLabel)
-    const meshName =
-      explicitMatch?.[0] ??
-      (model.meshNames ?? []).find((name) => (meshUnitLabel(name) ?? '').toLowerCase() === wasLabel)
-
-    onChange({
-      ...building,
-      unitList,
-      model: meshName ? { ...model, bindings: { ...bindings, [meshName]: nowLabel } } : model,
-    })
-  }
+  // A rename keeps the unit's 3D link — see applyUnitChange in lib/units.
+  const setUnitAt = (index, next) => onChange(applyUnitChange(building, index, next))
 
   const handlePlace = (x, y) => {
     if (placingUnitIndex === null) return
@@ -128,95 +95,7 @@ export default function BuildingBlock({ building, onChange, folder }) {
                 // Addressable so tap-to-tag in the model panel above can scroll
                 // a just-created unit into view and focus its Label field.
                 <div id={unitFormId(folder, i)} className="flex flex-col gap-3">
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <TextField label="Label" placeholder="Unit 101" value={unit.label} onChange={(label) => set({ ...unit, label })} />
-                    <SelectField label="Status" value={unit.status} onChange={(status) => set({ ...unit, status })} options={UNIT_STATUSES} />
-                    <TextField
-                      label="Tenant / use (if any)"
-                      placeholder="Kalyan Jewellers"
-                      value={unit.tenant}
-                      onChange={(tenant) => set({ ...unit, tenant })}
-                    />
-                    <TextField label="Size (sq ft)" value={unit.size} onChange={(size) => set({ ...unit, size })} />
-                    <TextField label="Floor / level" placeholder="Ground" value={unit.floor} onChange={(floor) => set({ ...unit, floor })} />
-                    <TextField
-                      label="Lease rate / price"
-                      placeholder="$28 / SF / yr"
-                      value={unit.rate}
-                      onChange={(rate) => set({ ...unit, rate })}
-                    />
-                    <TextField
-                      label="Frontage"
-                      placeholder="32 ft on Leora Ln"
-                      value={unit.frontage}
-                      onChange={(frontage) => set({ ...unit, frontage })}
-                    />
-                  </div>
-                  {/* Everything below is what a prospect actually reads when
-                      they tap the unit — each field is optional and simply
-                      omitted from the card when left blank. */}
-
-                  {/* Only asked for once there is a tenant to describe. On an
-                      empty unit these two would be two more blank boxes in an
-                      already long form, and neither has anywhere to appear. */}
-                  {String(unit.tenant ?? '').trim() && (
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <TextField
-                        label="Tenant website"
-                        placeholder="https://…"
-                        value={unit.tenantUrl}
-                        onChange={(tenantUrl) => set({ ...unit, tenantUrl })}
-                      />
-                      <TextField
-                        label="Tenant category"
-                        placeholder="Coffee · Dental · Fitness"
-                        value={unit.tenantCategory}
-                        onChange={(tenantCategory) => set({ ...unit, tenantCategory })}
-                      />
-                    </div>
-                  )}
-
-                  <ImageUploader
-                    label="Tenant logo"
-                    value={unit.logo}
-                    onChange={(logo) => set({ ...unit, logo })}
-                    folder={`${folder}/unit-logos`}
-                  />
-                  <p className="-mt-2 text-xs text-bone-3">
-                    Shown on this unit in the 3D model instead of its number — for a unit that is
-                    leased or sold and you want the tenant's mark on the plan.
-                  </p>
-
-                  {/* Its own repeater rather than a multi-file uploader: the
-                      order is what picks the thumbnail, and a list the admin
-                      can remove a row from is the only way to control it. */}
-                  <div>
-                    <span className="text-xs font-bold uppercase tracking-wide text-bone-3">
-                      Unit photographs
-                    </span>
-                    <p className="mb-3 mt-1 text-xs leading-relaxed text-bone-3">
-                      Photographs of this space specifically, not of the property. The first one is
-                      used as the unit's card image on the homepage; the rest appear on the detail
-                      card when a visitor taps the unit. Worth filling in for leased and sold units
-                      too — that is what makes them worth showing.
-                    </p>
-                    <RepeatableList
-                      items={unit.images ?? []}
-                      onChange={(images) => set({ ...unit, images })}
-                      makeItem={() => ''}
-                      addLabel="Add photograph"
-                      renderItem={(url, setUrl) => (
-                        <ImageUploader value={url} onChange={setUrl} folder={`${folder}/unit-photos`} />
-                      )}
-                    />
-                  </div>
-                  <TextAreaField
-                    label="Unit description"
-                    rows={3}
-                    placeholder="Corner suite with dock access and 18ft clear height…"
-                    value={unit.description}
-                    onChange={(description) => set({ ...unit, description })}
-                  />
+                  <UnitFields unit={unit} onChange={set} folder={folder} />
 
                   {/* One placement indicator, not two. With a model uploaded,
                       where the unit sits is the model's business and pins are

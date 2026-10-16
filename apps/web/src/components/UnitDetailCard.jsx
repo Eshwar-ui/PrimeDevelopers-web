@@ -1,22 +1,11 @@
 import { Fragment, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { ArrowSquareOut, CaretLeft, CaretRight } from '@phosphor-icons/react'
-import { unitStatusMeta } from '../lib/unitStatus'
+import { STATUS_COPY, TENANTED, unitStatusMeta } from '../lib/unitStatus'
 import { formatArea, formatUnitLabel, getUnitImages, unitLabelParts } from '../lib/units'
 import { sized } from '../lib/images'
 
-const STATUS_COPY = {
-  available: 'Available for lease. Contact our team for pricing and tour availability.',
-  leased: 'Currently leased.',
-  'coming-soon': 'Coming soon — leasing details available shortly.',
-  sold: 'This unit has been sold.',
-}
 
-// A unit nobody can lease today still has to be worth reading. These two
-// statuses put the tenant at the top of the card rather than treating them as
-// a footnote to an availability that no longer exists — for a retail plaza the
-// tenant mix *is* the pitch, and a wall of "Currently leased." says nothing
-// about the place a prospect is deciding to join.
-const TENANTED = new Set(['leased', 'sold'])
 
 /**
  * A tenant's website as a safe absolute URL, or null.
@@ -53,7 +42,7 @@ function externalHref(value) {
 // long description from pushing the enquiry button past the bottom of the
 // plan beside it. Unset — stacked under the plan on narrow screens — the card
 // simply grows to its content like any other.
-export default function UnitDetailCard({ unit, units = [], aspect = null, onEnquire, maxHeight = '', emptyHint = '' }) {
+export default function UnitDetailCard({ unit, units = [], aspect = null, onEnquire, maxHeight = '', emptyHint = '', detailsHref = null }) {
   if (!unit) return <EmptyPanel units={units} maxHeight={maxHeight} hint={emptyHint} />
 
   const meta = unitStatusMeta(unit.status)
@@ -120,6 +109,18 @@ export default function UnitDetailCard({ unit, units = [], aspect = null, onEnqu
             ))}
           </dl>
         )}
+
+        {/* The card is a summary squeezed beside the plan; the unit's own page
+            has the full gallery, the plan and the rest of the building. */}
+        {detailsHref && (
+          <Link
+            to={detailsHref}
+            className="mt-7 inline-flex min-h-11 items-center gap-2 font-body text-[14px] font-bold text-accent underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          >
+            Full unit details
+            <span aria-hidden>→</span>
+          </Link>
+        )}
       </div>
       {canEnquire && (
         <div className="mt-auto px-7 pb-7 lg:px-8 lg:pb-8">
@@ -147,7 +148,7 @@ export default function UnitDetailCard({ unit, units = [], aspect = null, onEnqu
  * label grows. A plain "605" keeps the display size it always had — the step
  * only bites on the long combined labels that actually need it.
  */
-function UnitLabel({ label }) {
+export function UnitLabel({ label }) {
   const parts = unitLabelParts(label)
   const text = parts.join('+')
   if (!text) return <span className="font-display text-[clamp(3rem,4vw,4.25rem)] font-bold leading-none tracking-[-0.055em] text-content">Unit</span>
@@ -189,7 +190,7 @@ function UnitLabel({ label }) {
  * illegible smudges. The dots carry the count, which is the only thing a
  * second photograph needs to announce before someone asks for it.
  */
-function UnitGallery({ images, label }) {
+export function UnitGallery({ images, label }) {
   const [index, setIndex] = useState(0)
 
   // Selecting a different unit reuses this component rather than remounting
@@ -272,7 +273,7 @@ function GalleryArrow({ side, onClick }) {
  * a tenant name buried as the sixth row of a definition list reads as
  * metadata about a vacancy.
  */
-function TenantBlock({ name, logo, url, category, status }) {
+export function TenantBlock({ name, logo, url, category, status }) {
   const href = externalHref(url)
   const Wrapper = href ? 'a' : 'div'
   const linkProps = href ? { href, target: '_blank', rel: 'noopener noreferrer' } : {}

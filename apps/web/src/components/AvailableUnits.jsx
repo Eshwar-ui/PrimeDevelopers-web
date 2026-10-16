@@ -4,8 +4,9 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import { Buildings, Camera, MapPin, Ruler, Stack, Tag } from '@phosphor-icons/react'
-import { useProperties } from '../context/ContentContext'
-import { getBuildings, getUnits, formatArea, formatUnitLabel, getUnitImages } from '../lib/units'
+import { useProperties, useSection } from '../context/ContentContext'
+import { getBuildings, getUnits, formatArea, formatUnitLabel, getUnitImages, unitPath } from '../lib/units'
+import { renderEmphasis } from '../lib/emphasis'
 import { unitStatusMeta } from '../lib/unitStatus'
 import { hasInfoPage } from '../lib/infoSets'
 import { sized } from '../lib/images'
@@ -139,6 +140,8 @@ function PhotoChip({ children, className = '', ...props }) {
 
 export default function AvailableUnits() {
   const properties = useProperties()
+  // Eyebrow, heading and intro — Site content → "Find your ideal space".
+  const copy = useSection('units_home')
   const navigate = useNavigate()
   const scope = useRef(null)
   const [tier, setTier] = useState('all')
@@ -204,7 +207,6 @@ export default function AvailableUnits() {
       dependencies: [
         shown.map((s) => `${s.property.slug}:${s.building?.building}:${s.unit.index}`).join(','),
         tier,
-        status,
       ],
       revertOnUpdate: true,
     }
@@ -225,7 +227,7 @@ export default function AvailableUnits() {
         <div className="mx-auto max-w-2xl text-center">
           <p className="flex items-center justify-center gap-3 font-body text-[11px] font-bold uppercase tracking-[0.28em] text-accent">
             <span aria-hidden className="h-px w-8 bg-accent/45" />
-            Our Units
+            {copy.eyebrow}
             <span aria-hidden className="h-px w-8 bg-accent/45" />
           </p>
           <h2
@@ -233,10 +235,10 @@ export default function AvailableUnits() {
             className="mt-4 text-balance font-display font-bold leading-[1.1] tracking-[-0.02em] text-content"
             style={{ fontSize: 'clamp(1.7rem, 3vw, 2.5rem)' }}
           >
-            Find your <span className="text-accent">ideal</span> space
+            {renderEmphasis(copy.heading, 'text-accent')}
           </h2>
           <p className="mt-3 font-body text-[15px] leading-relaxed text-content/70">
-            Filter by size — every unit across the portfolio, including the ones already let.
+            {copy.paragraph}
           </p>
         </div>
 
@@ -337,10 +339,7 @@ export default function AvailableUnits() {
               // both parameters, focuses the building, selects the unit and
               // scrolls itself into view — and falls back to the 2D plan, or
               // to the unit's details alone, for a property with no model.
-              const href = `/properties/${property.slug}?${new URLSearchParams({
-                building: building?.building ?? '',
-                unit: unit.label ?? '',
-              })}`
+              const href = unitPath(property.slug, building?.building, unit.label)
               // The media set still hangs off the bare slug.
               const propertyHref = `/properties/${property.slug}`
               const open = (e) => {

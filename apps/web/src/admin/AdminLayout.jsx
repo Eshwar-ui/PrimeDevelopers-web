@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react'
-import { ArrowSquareOut, Buildings, CurrencyCircleDollar, Images, Newspaper, SignOut, SquaresFour, Storefront, TextAa, Tray } from '@phosphor-icons/react'
+import { ArrowSquareOut, Buildings, CurrencyCircleDollar, Images, Megaphone, Newspaper, SignOut, SquaresFour, Storefront, TextAa, Tray } from '@phosphor-icons/react'
 import { useAuth } from '../context/AuthContext'
 import { LeadsProvider, useLeads } from './LeadsContext'
 
@@ -11,6 +11,7 @@ const NAV = [
   { to: '/admin/units', label: 'Units', icon: Storefront },
   { to: '/admin/covers', label: 'Cover images', icon: Images },
   { to: '/admin/cap', label: 'CAP / NNN', icon: CurrencyCircleDollar },
+  { to: '/admin/featured', label: 'Featured', icon: Megaphone },
   { to: '/admin/news', label: 'News', icon: Newspaper },
   { to: '/admin/content', label: 'Site content', icon: TextAa },
   { to: '/admin/leads', label: 'Leads', icon: Tray, badge: 'newLeads' },

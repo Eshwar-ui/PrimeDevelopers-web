@@ -76,4 +76,4 @@ export const SECTION_PATHS = {
 }
 
 /** The most-edited sections, for the dashboard's shortcuts. */
-export const QUICK_EDITS = ['hero', 'featured_home', 'marquee', 'testimonials', 'navbar', 'footer', 'contact_page']
+export const QUICK_EDITS = ['hero', 'marquee', 'testimonials', 'navbar', 'footer', 'contact_page']

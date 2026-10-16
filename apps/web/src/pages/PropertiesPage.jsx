@@ -11,7 +11,7 @@ import { rise, stagger, inViewOnce } from '../lib/motion'
 import PrimePill from '../components/PrimePill'
 import PropertiesHero from '../components/PropertiesHero'
 import ArrowRight from '../components/ArrowRight'
-import { useCapProperties, CapPropertyGrid } from '../components/CapProperties'
+import { useCapListings, CapListingGrid } from '../components/CapListings'
 // import Marquee from '../components/Marquee'
 import Services from '../components/Services'
 
@@ -245,8 +245,10 @@ export default function PropertiesPage() {
   // collapsePhases — and its phases are reached from the switch on its page.
   const properties = useListings()
   const categories = useCategories()
-  // Curated on the invest page, shown here as a teaser — see CapProperties.jsx.
-  const capProperties = useCapProperties()
+  // The CAP / NNN deals (admin → CAP / NNN), open ones first in the teaser —
+  // a sold deal is track record, not something to lead with on a listings page.
+  const capListings = useCapListings()
+  const capTeaser = [...capListings.filter((l) => l.status === 'listed'), ...capListings.filter((l) => l.status !== 'listed')]
   const navigate = useNavigate()
 
   const [filter, setFilter] = useState('All')
@@ -495,7 +497,7 @@ export default function PropertiesPage() {
               Renders nothing at all when the curated list is empty. The invest
               page has an empty state because that section is the whole point of
               the page it is on; here it would be a heading over a hole. */}
-          {capProperties.length > 0 && (
+          {capTeaser.length > 0 && (
             <div className="mt-20 border-t border-line pt-16 md:mt-24 md:pt-20">
               <RevealGroup className="grid gap-8 md:grid-cols-[1.1fr_1fr] md:items-end">
                 <div>
@@ -521,14 +523,12 @@ export default function PropertiesPage() {
                 </motion.p>
               </RevealGroup>
 
-              <CapPropertyGrid items={capProperties} limit={3} className="mt-12" />
+              <CapListingGrid items={capTeaser} limit={3} className="mt-12" />
 
               <div className="mt-10 flex justify-center">
-                {/* A real route, not a scroll: the rest of this list only makes
-                    sense next to the track that explains it. `#property-cap`
-                    lands on that section rather than at the top of the page. */}
+                {/* Every deal, with its own page each, lives at /cap-properties. */}
                 <Link
-                  to="/enterprise/invest#property-cap"
+                  to="/cap-properties"
                   className="group inline-flex min-h-12 items-center gap-2.5 rounded-full border border-[var(--color-line)] px-7 font-body text-[14px] font-semibold uppercase tracking-[0.1em] text-content/75 transition-colors duration-300 hover:border-ember/60 hover:text-ember focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-accent"
                 >
                   Show more

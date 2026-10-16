@@ -612,40 +612,10 @@ const DEFAULTS = {
       capRateRange: 'Typical cap rates vary by asset and market; current ranges are shared directly with qualified investors.',
       leaseStructure: 'Triple-net (NNN) — tenants pay their share of property taxes, insurance, and common-area maintenance.',
       passiveIncomeNote: 'Largely passive: the lease structure keeps day-to-day operating involvement to a minimum.',
-      // `[{ propertySlug, capRate, tenancy }]`. The slug is the link to the
-      // real property record, which supplies the name, photo and category —
-      // only the two figures a property record cannot know are entered here.
-      //
-      // Rendered by components/CapProperties.jsx on this page and, as a
-      // three-card teaser, under the grid on /properties.
-      //
-      // Seeded with the portfolio's stabilized, income-producing assets so the
-      // section has something real in it — a slug that does not resolve is
-      // dropped rather than rendered, so curating this list in the CMS can only
-      // change what shows, never break the page.
-      //
-      // `capRate` is deliberately blank on every one. A cap rate is a specific
-      // financial claim about a specific property and only the business can
-      // make it; until one is entered, the card reads "Cap rate on request",
-      // which is exactly what `capRateRange` above already promises. Fill them
-      // in from Content -> Invest page -> CAP / NNN properties.
-      properties: [
-        {
-          propertySlug: 'pow-lewisville-phase-ii',
-          capRate: '',
-          tenancy: 'Fully leased flex space on a triple-net structure.',
-        },
-        {
-          propertySlug: 'centro-plaza',
-          capRate: '',
-          tenancy: 'Stabilized retail centre with established anchor tenancy.',
-        },
-        {
-          propertySlug: 'cap-rate-projects',
-          capRate: '',
-          tenancy: 'Office assets structured specifically for CAP-rate entry.',
-        },
-      ],
+      // The deals themselves are no longer listed here: each CAP / NNN deal
+      // is its own record in the `cap_listings` section (admin → CAP / NNN),
+      // shipped from data/capListings.js. A stored `properties` array from
+      // before that change is left in the row and simply no longer read.
     },
   },
   // Empty for the same reason as the other two — add real quotes from

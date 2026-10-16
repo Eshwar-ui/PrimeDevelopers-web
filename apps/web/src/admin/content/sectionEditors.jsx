@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { Section, TextField, TextAreaField, SelectField, CheckboxField } from '../components/Field'
 import ImageUploader from '../components/ImageUploader'
 import RepeatableList from '../components/RepeatableList'
@@ -1131,23 +1132,11 @@ export const SECTIONS = [
           <TextField label="Lease structure" value={value.propertyCap?.leaseStructure} onChange={(leaseStructure) => onChange({ propertyCap: { ...value.propertyCap, leaseStructure } })} />
           <TextField label="Passive-income note" value={value.propertyCap?.passiveIncomeNote} onChange={(passiveIncomeNote) => onChange({ propertyCap: { ...value.propertyCap, passiveIncomeNote } })} />
         </Section>
-        <Section title="CAP / NNN properties" description="Point this at properties already structured for stabilized-property investment, by slug. Each one's name, photo and category come from the property record — only the cap rate and tenancy note are entered here. These same listings appear as “Top CAP properties” under the grid on /properties, three at a time.">
-          <RepeatableList
-            items={value.propertyCap?.properties ?? []}
-            onChange={(properties) => onChange({ propertyCap: { ...value.propertyCap, properties } })}
-            makeItem={() => ({ propertySlug: '', capRate: '', tenancy: '' })}
-            addLabel="Add property"
-            renderItem={(item, set) => (
-              <div className="flex flex-col gap-3">
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <TextField label="Property slug" value={item.propertySlug} onChange={(propertySlug) => set({ ...item, propertySlug })} />
-                  <TextField label="Cap rate" value={item.capRate} onChange={(capRate) => set({ ...item, capRate })} />
-                </div>
-                <TextField label="Tenancy note" value={item.tenancy} onChange={(tenancy) => set({ ...item, tenancy })} />
-              </div>
-            )}
-          />
-          <p className="-mt-3 text-xs text-bone-3">Cap rate is printed on the card as e.g. &ldquo;6.5% cap&rdquo; — enter it as &ldquo;6.5%&rdquo;. Leave it blank and the card reads &ldquo;Cap rate on request&rdquo;, matching the range note above.</p>
+        <Section title="CAP / NNN deals" description="The deals shown on this page, on /properties and at /cap-properties.">
+          <p className="text-sm text-bone-2">
+            Each deal is its own listing now — photo, unit, size, price, cap rate, lease term, rent and NNN figures — edited
+            from <Link to="/admin/cap" className="text-accent-soft underline underline-offset-4 hover:text-accent-hi">CAP / NNN</Link> in the sidebar.
+          </p>
         </Section>
       </>
     ),

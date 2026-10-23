@@ -12,16 +12,41 @@ import { UNIT_STATUSES } from '../../lib/unitStatus'
  * to the building's plan or model, which the Units section doesn't show.
  */
 export default function UnitFields({ unit, onChange, folder }) {
+  // A unit the Prime Tracker sync has claimed (docs/tracker-sync-and-aws-plan.md).
+  // Its label and status are the tracker's, and so is the tenant unless the
+  // unit is sold — editing them here would only be undone by the next sync,
+  // which reads to an editor as the site losing their work.
+  const synced = (unit.trackerUnitIds ?? []).length > 0
+  const tenantSynced = synced && unit.status !== 'sold'
   return (
     <>
+      {synced && (
+        <p className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs leading-relaxed text-bone-3">
+          Synced from Prime Tracker. {tenantSynced ? 'Label, status and tenant' : 'Label and status'} update
+          automatically — change them in the tracker. A size set there replaces the one here.
+        </p>
+      )}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <TextField label="Label" placeholder="Unit 101" value={unit.label} onChange={(label) => onChange({ ...unit, label })} />
-        <SelectField label="Status" value={unit.status} onChange={(status) => onChange({ ...unit, status })} options={UNIT_STATUSES} />
+        <TextField
+          label="Label"
+          placeholder="Unit 101"
+          value={unit.label}
+          onChange={(label) => onChange({ ...unit, label })}
+          disabled={synced}
+        />
+        <SelectField
+          label="Status"
+          value={unit.status}
+          onChange={(status) => onChange({ ...unit, status })}
+          options={UNIT_STATUSES}
+          disabled={synced}
+        />
         <TextField
           label="Tenant / use (if any)"
           placeholder="Kalyan Jewellers"
           value={unit.tenant}
           onChange={(tenant) => onChange({ ...unit, tenant })}
+          disabled={tenantSynced}
         />
         <TextField label="Size (sq ft)" value={unit.size} onChange={(size) => onChange({ ...unit, size })} />
         <TextField label="Floor / level" placeholder="Ground" value={unit.floor} onChange={(floor) => onChange({ ...unit, floor })} />

@@ -78,6 +78,13 @@ services:
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
 
+      # Shared with Prime Tracker's WEBSITE_SYNC_SECRET — the same value on
+      # both. Signs the unit snapshots the tracker pushes to
+      # /api/integrations/tracker/snapshot. `openssl rand -hex 32`. Unset, that
+      # route answers 503 and the rest of the API is unaffected.
+      - key: TRACKER_SYNC_SECRET
+        sync: false
+
       # ── Non-secret ────────────────────────────────────────────────────
       - key: JWT_ACCESS_EXPIRY
         value: 15m

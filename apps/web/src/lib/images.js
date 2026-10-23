@@ -13,6 +13,30 @@
 const OBJECT_PATH = '/storage/v1/object/public/'
 const RENDER_PATH = '/storage/v1/render/image/public/'
 
+// The same thing on AWS. Originals live at <site>/media/images/..., and the
+// website API resizes them at <site>/api/img/images/... with the same width,
+// quality and never-enlarge contract (apps/api/src/modules/media). Matched only
+// on the site's own origin, so an external URL that happens to contain
+// /media/images/ is left alone rather than pointed at a resizer it doesn't have.
+const AWS_ORIGIN = (() => {
+  try {
+    return new URL(import.meta.env.VITE_API_BASE_URL).origin
+  } catch {
+    return null
+  }
+})()
+const AWS_MEDIA = AWS_ORIGIN && `${AWS_ORIGIN}/media/images/`
+const AWS_RESIZER = AWS_ORIGIN && `${AWS_ORIGIN}/api/img/images/`
+const isAws = (src) => Boolean(AWS_ORIGIN) && (src.startsWith(AWS_MEDIA) || src.startsWith(AWS_RESIZER))
+
+/**
+ * Where images the code itself names are stored — the public root that
+ * `images/...` paths hang off. Supabase Storage until the move to AWS; the AWS
+ * build sets VITE_MEDIA_BASE to <site>/media.
+ */
+export const MEDIA_BASE =
+  import.meta.env.VITE_MEDIA_BASE || 'https://nrtqntqutquapydsnjbm.supabase.co/storage/v1/object/public'
+
 // Wide enough for a full-bleed hero on a 2x laptop display without being so
 // large that a phone downloads desktop pixels. Individual call sites pass a
 // smaller width where the image is known to render small — a card thumbnail has
@@ -76,13 +100,15 @@ export function imageUrl(src, { width = DEFAULT_WIDTH, quality = DEFAULT_QUALITY
 
   const isObject = src.includes(OBJECT_PATH)
   const isRendered = src.includes(RENDER_PATH)
-  if (!isObject && !isRendered) return src
+  const onAws = isAws(src)
+  if (!isObject && !isRendered && !onAws) return src
 
   // `.glb` models live in a bucket of their own and must never be handed to an
   // image transformer, which would reject them and break the 3D viewer.
   if (/\.glb(\?|$)/i.test(src)) return src
 
   const [base] = src.split('?')
+  if (onAws) return `${base.replace(AWS_MEDIA, AWS_RESIZER)}?width=${width}&quality=${quality}`
   return `${base.replace(OBJECT_PATH, RENDER_PATH)}?width=${width}&quality=${quality}&resize=${RESIZE}`
 }
 
@@ -123,7 +149,7 @@ export function withTransformedImages(value, options) {
  */
 const isTransformable = (src) =>
   typeof src === 'string' &&
-  (src.includes(OBJECT_PATH) || src.includes(RENDER_PATH)) &&
+  (src.includes(OBJECT_PATH) || src.includes(RENDER_PATH) || isAws(src)) &&
   !/\.glb(\?|$)/i.test(src)
 
 /**

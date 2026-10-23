@@ -2,8 +2,14 @@
 # Deploy apps/web/dist to the AWS website bucket and purge CloudFront.
 #
 #   aws sso login --profile prime-client
-#   pnpm run build:web
 #   scripts/deploy-web-aws.sh
+#
+# Builds in Vite's `aws` mode itself: the API is this site's own /api (CloudFront
+# routes it to the website API on the tracker's EC2 host), and media is its own
+# /media. A `pnpm run build:web` bundle points at Render and Supabase instead.
+#
+# media/ in the bucket holds uploads (scripts/aws/03-copy-content.sh and the API's
+# STORAGE_DRIVER=s3), not build output. Both syncs below leave it alone.
 #
 # The bucket and distribution come from prime-tracker-main/infra/terraform/website.tf
 # (enable_website = true). Cache-Control mirrors firebase.json: content-hashed
@@ -28,9 +34,13 @@ if [ "$actual" != "$ACCOUNT" ]; then
   exit 1
 fi
 
-[ -f "$DIST/index.html" ] || { echo "No build at $DIST — run pnpm run build:web first." >&2; exit 1; }
-if grep -rqE "localhost:(3001|5173|5174)" "$DIST/assets"; then
-  echo "The build points at localhost — check apps/web/.env.production." >&2
+SITE="https://dtw8rs0oq8bpp.cloudfront.net"
+VITE_API_BASE_URL="$SITE" VITE_MEDIA_BASE="$SITE/media" \
+  pnpm --filter @prime-developers/web exec vite build --mode aws
+
+# Either of these in the bundle means it would talk to the old stack, not AWS.
+if grep -rqE "localhost:(3001|5173|5174)|onrender\.com|nrtqntqutquapydsnjbm" "$DIST/assets"; then
+  echo "The build still points at localhost, Render or Supabase — not deploying." >&2
   exit 1
 fi
 
@@ -42,7 +52,7 @@ aws s3 sync "$DIST" "$BUCKET" --profile "$PROFILE" --only-show-errors \
 # prefixes above, which are excluded here: a visitor midway through a session
 # may still need the previous build's chunks.
 aws s3 sync "$DIST" "$BUCKET" --profile "$PROFILE" --only-show-errors --delete \
-  --exclude "assets/*" --exclude "draco/*" --exclude "fonts/*" \
+  --exclude "assets/*" --exclude "draco/*" --exclude "fonts/*" --exclude "media/*" \
   --exclude "test-model.glb" --exclude ".*" --exclude "*/.*" \
   --cache-control "public, max-age=0, s-maxage=600"
 

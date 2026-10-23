@@ -17,10 +17,11 @@
  */
 
 import { INFO_SLUGS } from '../lib/infoSets'
+import { MEDIA_BASE } from '../lib/images'
 
 const BUCKET = 'https://storage.googleapis.com/bitly-image-upload/'
 // The property's own photography, filed by building in the gallery.
-const BUILDINGS = 'https://nrtqntqutquapydsnjbm.supabase.co/storage/v1/object/public/images/projects/centro-plaza/drive/buildings/'
+const BUILDINGS = `${MEDIA_BASE}/images/projects/centro-plaza/drive/buildings/`
 
 const building = (n, photo, plan, planAlt) => ({
   label: `Building ${n}`,

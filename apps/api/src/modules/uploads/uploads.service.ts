@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { randomUUID } from 'node:crypto';
+import { MediaStorage } from '../media/media-storage';
 
 const IMAGES_BUCKET = 'images';
 const MODELS_BUCKET = 'models';
@@ -41,6 +42,8 @@ export class UploadsService {
   private readonly logger = new Logger(UploadsService.name);
   private client: SupabaseClient | null = null;
 
+  constructor(private media: MediaStorage) {}
+
   /**
    * Built lazily rather than in the constructor so the API still boots without
    * storage credentials. Everything else — content, properties, news, leads,
@@ -76,6 +79,17 @@ export class UploadsService {
       document: () => this.plainDocument(file, safeFolder),
     }[kind];
     const { bucket, path, contentType, cacheControl } = prepare();
+
+    // On AWS (STORAGE_DRIVER=s3) the same bucket/path lands under the website
+    // bucket's media/ prefix. Supabase stays the default until the cutover.
+    if (this.media.enabled) {
+      try {
+        return { url: await this.media.put(bucket, path, file.buffer, contentType, `public, max-age=${cacheControl}`) };
+      } catch (err) {
+        this.logger.error(`Upload to s3 ${bucket}/${path} failed: ${(err as Error).message}`);
+        throw new InternalServerErrorException('Upload failed. Please try again.');
+      }
+    }
 
     const { error } = await this.supabase.storage.from(bucket).upload(path, file.buffer, {
       contentType,

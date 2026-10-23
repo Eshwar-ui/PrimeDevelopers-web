@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api'
-import { withTransformedImages } from '../lib/images'
+import { MEDIA_BASE, withTransformedImages } from '../lib/images'
 import { collapsePhases } from '../lib/phases'
 import { useAuth } from './AuthContext'
 import LogoLoader from '../components/LogoLoader'
@@ -230,8 +230,7 @@ const DEFAULTS = {
       "Whether you're looking for a luxury residence or a strategic investment opportunity, our team is here to guide you every step of the way.",
     ctaLabel: 'Get Started',
     ctaHref: '/contact',
-    image:
-      'https://nrtqntqutquapydsnjbm.supabase.co/storage/v1/object/public/images/site/property-1.png',
+    image: `${MEDIA_BASE}/images/site/property-1.png`,
   },
   footer: {
     email: '',

@@ -62,7 +62,7 @@ cut -f2- "$STAGE/objects.tsv" | awk -F'\t' '{n=split($1,p,"."); print tolower(p[
 COPYFILE_DISABLE=1 tar --no-xattrs -czf "$STAGE/website-content.tgz" -C "$DATA" .
 aws s3 cp "$STAGE/website-content.tgz" "s3://$STAGE_BUCKET/migration/website-content.tgz" --quiet --sse AES256
 
-ssm_script "website: load public content into RDS" "$(cat <<REMOTE
+ssm_script "website: load public content into RDS" <<REMOTE
 #!/bin/bash
 set -euo pipefail
 WORK=\$(mktemp -d)
@@ -101,6 +101,5 @@ select 'rows still naming supabase.co',
   + (select count(*) from news where coalesce(cover_image,'') || body like '%supabase.co%');
 SQL
 REMOTE
-)"
 aws s3 rm "s3://$STAGE_BUCKET/migration/website-content.tgz" --quiet
 echo "export removed from S3 and from this machine"

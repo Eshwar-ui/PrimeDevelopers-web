@@ -22,7 +22,7 @@ tar -tzf "$STAGE/website-api.tgz" >/dev/null
 aws s3 cp "$STAGE/website-api.tgz" "s3://$STAGE_BUCKET/deploy/website-api.tgz" --quiet
 echo "uploaded $(du -h "$STAGE/website-api.tgz" | cut -f1) artifact"
 
-ssm_script "website: deploy API" "$(cat <<REMOTE
+ssm_script "website: deploy API" <<REMOTE
 #!/bin/bash
 set -euo pipefail
 export HOME=/home/ubuntu NVM_DIR=/home/ubuntu/.nvm CI=true
@@ -147,4 +147,3 @@ echo "API did not become healthy" >&2
 sudo -u ubuntu HOME=/home/ubuntu pm2 logs prime-website-api --lines 30 --nostream
 exit 1
 REMOTE
-)"

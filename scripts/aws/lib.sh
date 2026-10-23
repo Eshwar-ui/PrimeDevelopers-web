@@ -35,8 +35,13 @@ fi
 # Runs a bash script on the EC2 host as root through SSM, printing its output and
 # failing when it fails. The script travels through the private staging bucket rather
 # than the command line, so nothing it contains lands in SSM's command history.
+#
+# The script arrives on stdin (`ssm_script "what" <<REMOTE ... REMOTE`), never as
+# "$(cat <<REMOTE ...)": macOS's bash 3.2 mis-parses quotes inside a heredoc that sits
+# in a command substitution, and one apostrophe in a comment is enough to break it.
 ssm_script() {
-  local comment="$1" body="$2" key cmd status
+  local comment="$1" body key cmd status
+  body="$(cat)"
   key="deploy/website-run-$$-${RANDOM}.sh"
   printf '%s\n' "$body" | aws s3 cp - "s3://$STAGE_BUCKET/$key" --quiet
   cmd=$(aws ssm send-command --instance-ids "$INSTANCE" --document-name AWS-RunShellScript \

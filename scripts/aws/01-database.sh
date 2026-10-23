@@ -11,7 +11,7 @@ ensure_secret DB_PASSWORD 24
 ensure_secret JWT_ACCESS_SECRET 64
 ensure_secret TRACKER_SYNC_SECRET 32
 
-ssm_script "website: create prime_website database" "$(cat <<'REMOTE'
+ssm_script "website: create prime_website database" <<'REMOTE'
 #!/bin/bash
 set -euo pipefail
 # The tracker's own connection string is the RDS master login; it is used here only
@@ -51,4 +51,3 @@ HOST=$(echo "$MASTER" | sed -E 's#^[a-z]+://[^@]+@([^:/?]+).*#\1#')
 psql "postgresql://prime_website:${PGPASSWORD_WEB}@${HOST}:5432/prime_website?sslmode=require" -XAtc \
   "select 'connected as ' || current_user || ' to ' || current_database() || ', postgres ' || current_setting('server_version')"
 REMOTE
-)"

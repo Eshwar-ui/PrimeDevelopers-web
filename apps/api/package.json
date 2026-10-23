@@ -9,6 +9,7 @@
     "start": "node dist/main",
     "start:prod": "node dist/main",
     "lint": "echo \"(no linter configured for api yet)\"",
+    "test": "TS_NODE_TRANSPILE_ONLY=1 node --test --require ts-node/register test/*.test.ts",
     "prisma": "prisma",
     "db:pull": "prisma db pull && prisma generate",
     "db:migrate": "prisma migrate dev"

@@ -90,9 +90,32 @@ model Property {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
 
+  /// Prime Tracker's cuid for the project this property mirrors (migration 14).
+  trackerProjectId String?   @unique @map("tracker_project_id")
+  trackerSyncedAt  DateTime? @map("tracker_synced_at") @db.Timestamptz(6)
+
   leadAttributions WebsiteLeadUnitAttribution[]
+  trackerSyncs     WebsiteTrackerSync[]
 
   @@map("properties")
+}
+
+/// One applied Prime Tracker sync, with what the property held just before it.
+/// Writing `previousFloorPlans` and `previousTotals` back undoes the sync.
+model WebsiteTrackerSync {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  propertyId         String   @map("property_id") @db.Uuid
+  trackerProjectId   String   @map("tracker_project_id")
+  report             Json
+  previousFloorPlans Json?    @map("previous_floor_plans")
+  previousTotals     Json     @map("previous_totals")
+  forced             Boolean  @default(false)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId, createdAt(sort: Desc)], map: "website_tracker_syncs_property_idx")
+  @@map("website_tracker_syncs")
 }
 
 /// Company news/articles.

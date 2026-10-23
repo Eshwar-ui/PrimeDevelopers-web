@@ -7,7 +7,9 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // `rawBody` keeps the request bytes beside the parsed body. The Prime Tracker
+  // integration verifies its HMAC over those bytes; nothing else reads them.
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
   const config = app.get(ConfigService);
 
   // Render injects PORT; fall back to 3001 so it doesn't collide with Vite on 5173.

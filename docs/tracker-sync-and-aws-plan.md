@@ -167,11 +167,16 @@ default.
 4. **API.** Run the website API on the EC2 host behind nginx, deployed by the same
    SSM pipeline as the tracker. Ends Render's cold starts and the Singapore → Ohio
    round trip.
-5. **Front end.** S3 + CloudFront for `theprimedeveloper.com` and `www`
-   (`website.tf`). Set `enable_website = true`, upload a build to the bucket, check
-   it on the `website_cloudfront_domain` output, and only then let the apex records
-   take over from Firebase. Still to add: a GitHub Actions deploy role for this
-   repository (the tracker's OIDC role trusts only `kalyan1421/prime-tracker`).
+5. **Front end — preview live since 23 Oct 2026.** `website.tf` was applied with
+   `enable_website = true` (6 resources, nothing existing touched): bucket
+   `prime-tracker-website-056836825737`, CloudFront `E25N0DCCIGFVRS` at
+   **https://dtw8rs0oq8bpp.cloudfront.net**. Deploy with
+   `pnpm run build:web && scripts/deploy-web-aws.sh`. The site loads its content
+   only once that origin is in the Render API's `CORS_ORIGINS`.
+   `theprimedeveloper.com` still serves the client's 2023 PHP site, and its DNS
+   zone is not in this AWS account — moving the apex is the client's go-live call.
+   Still to add: a GitHub Actions deploy role for this repository (the tracker's
+   OIDC role trusts only `kalyan1421/prime-tracker`).
 6. **Email.** Lead notifications through SES, already provisioned.
 7. **Cutover.** Switch DNS; keep Supabase, Firebase and Render read-only for two
    weeks, then shut them down.

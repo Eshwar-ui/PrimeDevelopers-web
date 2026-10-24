@@ -12,19 +12,24 @@ export class CreateNewsDto {
   @MaxLength(300)
   slug!: string;
 
+  // Bounds well above the longest article today (~7,000 characters) — a ceiling on
+  // what one save can add to a list every visitor downloads, not an editorial rule.
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @MaxLength(1000)
   excerpt?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @MaxLength(200_000)
   body?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @MaxLength(2048)
   coverImage?: string;
 
   @ApiPropertyOptional()

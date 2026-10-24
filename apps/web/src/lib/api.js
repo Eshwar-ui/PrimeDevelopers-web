@@ -74,11 +74,34 @@ export const hasSession = () => Boolean(accessToken || refreshToken)
 // admin out mid-session. They share one in-flight promise instead.
 let refreshInFlight = null
 
+/** The newest refresh token any tab has stored — another tab may have rotated it. */
+function storedRefreshToken() {
+  try {
+    return localStorage.getItem(REFRESH_KEY)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * One refresh at a time across every open tab, where the browser supports it.
+ *
+ * The API treats a rotated-away token presented again as stolen and ends every
+ * session for that admin. Two tabs refreshing in the same instant with the same
+ * token would look exactly like that, so they queue on a shared lock, and each
+ * re-reads the token inside it rather than trusting the copy it loaded at startup.
+ */
+function withRefreshLock(work) {
+  return navigator.locks?.request ? navigator.locks.request('pd.admin.refresh', work) : work()
+}
+
 async function refreshSession() {
-  if (!refreshToken) return false
+  if (!refreshToken && !storedRefreshToken()) return false
   if (!refreshInFlight) {
-    refreshInFlight = (async () => {
+    refreshInFlight = withRefreshLock(async () => {
       try {
+        refreshToken = storedRefreshToken() ?? refreshToken
+        if (!refreshToken) throw new Error('no session')
         const res = await fetch(`${BASE}/api/auth/refresh`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -94,7 +117,7 @@ async function refreshSession() {
       } finally {
         refreshInFlight = null
       }
-    })()
+    })
   }
   return refreshInFlight
 }

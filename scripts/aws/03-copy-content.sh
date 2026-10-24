@@ -21,7 +21,7 @@ SUPA_PUBLIC="https://nrtqntqutquapydsnjbm.supabase.co/storage/v1/object/public"
 DATA="$STAGE/content"
 MEDIA="$STAGE/media"
 rm -rf "$DATA" && mkdir -p "$DATA" "$MEDIA"
-trap 'rm -rf "$DATA" "$STAGE/website-content.tgz"' EXIT
+trap 'rm -rf "$DATA" "$STAGE/website-content.tgz"; purge_s3_key migration/website-content.tgz 2>/dev/null || true' EXIT
 
 TABLES=(content properties news)
 for t in "${TABLES[@]}"; do
@@ -101,5 +101,4 @@ select 'rows still naming supabase.co',
   + (select count(*) from news where coalesce(cover_image,'') || body like '%supabase.co%');
 SQL
 REMOTE
-aws s3 rm "s3://$STAGE_BUCKET/migration/website-content.tgz" --quiet
 echo "export removed from S3 and from this machine"

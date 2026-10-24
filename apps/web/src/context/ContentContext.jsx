@@ -763,7 +763,9 @@ export function ContentProvider({ children }) {
         : list.map((p) => ({ ...p, name: publicName(p.name), fullName: p.name }))
 
     return Promise.all([
-      request(api.get('/content'), setContent),
+      // Content has drafts too (unpublished CAP/NNN listings), so it follows the
+      // same public/admin split as properties and news.
+      request(api.get(`${prefix}/content`), setContent),
       request(api.get(`${prefix}/properties`), (list) => setProperties(publicProperties(list)), !isAdmin),
       request(api.get(`${prefix}/news`), setNews, !isAdmin),
     ])

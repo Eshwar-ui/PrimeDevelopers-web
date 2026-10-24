@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { randomUUID } from 'node:crypto';
+import sharp from 'sharp';
 import { MediaStorage } from '../media/media-storage';
 
 const IMAGES_BUCKET = 'images';
@@ -36,6 +37,45 @@ const MODEL_MAX_BYTES = 8 * 1024 * 1024;
 const DOCUMENT_MAX_BYTES = 10 * 1024 * 1024;
 
 export type UploadKind = 'image' | 'model' | 'document';
+
+// What sharp reports for each accepted image type.
+const SHARP_FORMATS: Record<string, string[]> = {
+  'image/jpeg': ['jpeg'],
+  'image/png': ['png'],
+  'image/webp': ['webp'],
+  'image/avif': ['heif'], // libvips reads AVIF through its HEIF loader
+};
+
+/**
+ * Checks the bytes, not the label. The type and extension above come from the
+ * browser, which reports whatever the file is named — so an HTML page renamed
+ * `photo.png` passed every check and was stored under an image content type.
+ * Images must actually decode as the type claimed, models must carry the glTF
+ * binary magic, PDFs the PDF header.
+ */
+export async function assertContentMatches(kind: UploadKind, buffer: Buffer, contentType: string): Promise<void> {
+  if (kind === 'model') {
+    if (buffer.subarray(0, 4).toString('latin1') !== 'glTF') {
+      throw new BadRequestException('This file is not a glTF-binary (.glb) model.');
+    }
+    return;
+  }
+  if (kind === 'document') {
+    if (buffer.subarray(0, 5).toString('latin1') !== '%PDF-') {
+      throw new BadRequestException('This file is not a PDF.');
+    }
+    return;
+  }
+  let format: string | undefined;
+  try {
+    format = (await sharp(buffer, { failOn: 'error' }).metadata()).format;
+  } catch {
+    format = undefined;
+  }
+  if (!format || !(SHARP_FORMATS[contentType] ?? []).includes(format)) {
+    throw new BadRequestException(`This file is not a ${contentType.replace('image/', '').toUpperCase()} image.`);
+  }
+}
 
 @Injectable()
 export class UploadsService {
@@ -79,6 +119,7 @@ export class UploadsService {
       document: () => this.plainDocument(file, safeFolder),
     }[kind];
     const { bucket, path, contentType, cacheControl } = prepare();
+    await assertContentMatches(kind, file.buffer, contentType);
 
     // On AWS (STORAGE_DRIVER=s3) the same bucket/path lands under the website
     // bucket's media/ prefix. Supabase stays the default until the cutover.

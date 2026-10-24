@@ -56,8 +56,26 @@ ssm_script() {
     --query StandardOutputContent --output text
   aws ssm get-command-invocation --command-id "$cmd" --instance-id "$INSTANCE" \
     --query StandardErrorContent --output text >&2
-  aws s3 rm "s3://$STAGE_BUCKET/$key" --quiet || true
+  purge_s3_key "$key" || true
   [ "$status" = "Success" ] || { echo "SSM step '$comment' ended $status" >&2; exit 1; }
+}
+
+# Deletes an object from the staging bucket for good. The bucket is versioned, so a
+# plain `aws s3 rm` only adds a delete marker and every earlier copy stays readable —
+# which is how exports holding password hashes outlived their "deletion". This removes
+# every version and every marker under the key.
+purge_s3_key() {
+  local key="$1"
+  aws s3api list-object-versions --bucket "$STAGE_BUCKET" --prefix "$key" --output json \
+    --query '{v: Versions[?Key==`'"$key"'`].[Key,VersionId], m: DeleteMarkers[?Key==`'"$key"'`].[Key,VersionId]}' |
+    python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+for key, vid in (d.get("v") or []) + (d.get("m") or []):
+    print(vid)' |
+    while read -r vid; do
+      aws s3api delete-object --bucket "$STAGE_BUCKET" --key "$key" --version-id "$vid" >/dev/null
+    done
 }
 
 # Creates a SecureString parameter once and never overwrites it: rotating a secret

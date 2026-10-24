@@ -1,4 +1,6 @@
 import {
+  ArrayMaxSize,
+  IsArray,
   IsBoolean,
   IsInt,
   IsObject,
@@ -7,6 +9,11 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
+
+// Room to spare over what is stored today (135 photos, URLs under 150 characters),
+// and a ceiling on what one save can put into a row every visitor downloads.
+const URL_MAX = 2048;
+const GALLERY_MAX = 500;
 import { ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 
 export class CreatePropertyDto {
@@ -53,12 +60,17 @@ export class CreatePropertyDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @MaxLength(URL_MAX)
   image?: string;
 
   /** Array of image URLs. Stored as jsonb. */
   @ApiPropertyOptional({ type: [String] })
   @IsOptional()
-  gallery?: unknown[];
+  @IsArray()
+  @ArrayMaxSize(GALLERY_MAX)
+  @IsString({ each: true })
+  @MaxLength(URL_MAX, { each: true })
+  gallery?: string[];
 
   /**
    * The rich nested payload — buildings, units, floor plans, reference links.

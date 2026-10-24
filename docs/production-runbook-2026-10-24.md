@@ -22,7 +22,7 @@ in order — later steps depend on earlier ones.
 | 3. `terraform apply` | none (RDS changes wait for Monday) | prime-tracker `fix/audit-infra` |
 | 4. Deploy the website API | ~5 s, website API only | PrimeDevelopers-web `fix/audit-website` |
 | 5. Deploy the website front end | none | PrimeDevelopers-web `fix/audit-website` |
-| 6. Deploy the tracker API | ~10 s; **everyone signs in again** | prime-tracker (merged audit branches) |
+| 6. Deploy the tracker API | ~10 s; **everyone signs in again** | prime-tracker `fix/audit-combined`, merged |
 | 7. Tracker off the master DB login | ~10 s | prime-tracker |
 | 8. Monday 08:00–09:00 UTC | **5–10 min, both products** | automatic |
 | 9. Clean-up | none | — |
@@ -32,6 +32,10 @@ in order — later steps depend on earlier ones.
 ## 1. Move Terraform state off the laptop
 
 The state holds every production secret and has lived only in files on this Mac.
+
+Steps 1 and 3 run in `prime-tracker-main` on `fix/audit-infra`, because the local state
+files and `client.tfvars` are there and nowhere else. Its `infra/` is identical to
+`fix/audit-combined`'s.
 
 ```bash
 cd ~/Client-project/prime-tracker-main
@@ -153,8 +157,9 @@ from `Content-Security-Policy-Report-Only` to `Content-Security-Policy` and appl
 
 ## 6. Deploy the tracker API
 
-Merge the tracker audit branches first (see the tracker PR), then from the merged,
-pushed commit:
+The four tracker audit branches (infra, auth, authz, hardening) are merged as
+`fix/audit-combined`, on top of `feat/website-sync`. Merge that PR first, then deploy
+from the merged, pushed commit:
 
 ```bash
 cd ~/Client-project/prime-tracker-main
@@ -175,6 +180,32 @@ Runs the auth and hardening migrations.
   every route, and a draw can only move along its normal steps.
 - Update-board links must be http, https, mailto or tel. Any other link already
   stored shows as plain text.
+- Uploads must be a photo, PDF, Office or CSV/text file, a DWG/DXF drawing, a ZIP, an
+  email (EML/MSG) or an MP4/MOV clip. HTML, SVG, scripts, macro-enabled Office files
+  and files with no extension are refused.
+- Only photos and PDFs open in the browser. Word, Excel, CSV, text, HEIC and TIFF
+  files download instead, including ones uploaded before today.
+- Deleting an active lease or a closed sale puts its unit back to AVAILABLE. A
+  building-level closed sale is the exception: deleting it releases no units, because
+  someone has to decide which ones go back on the market.
+- **The first 08:00 UTC stale-units run sends one alert for every unit that has been
+  vacant 90 days or more.** The old job alerted only on the exact day a unit crossed
+  90/120/180/365 days, so most of these were never sent. After that, a unit alerts
+  once when it crosses the next threshold. Tell the sales team to expect it.
+
+The migrations (all forward-only, applied by `deploy.sh`):
+- `20261024000000_auth_hardening`: hashed refresh tokens and the login lockout. It
+  deletes every refresh token, which is why everyone signs in again.
+- `20261024000000_task_attachment_storage_path`: task attachments move to S3. Old
+  attachments are still read from the instance's disk.
+- `20261024010000_notification_pending_dedupe_unique`: at most one unread copy of each
+  recurring alert per person. Duplicates already there keep their rows; the older
+  copies stop counting as the pending one.
+- `20261024020000_audit_notification_sale_payment_indexes`: three indexes.
+- `20261024030000_unit_vacancy_alerts`: what the stale-units job has already alerted.
+
+Audit history older than two years is now deleted nightly, in small batches. Document
+purges, historical deletions and the retention job's own records are kept.
 
 The website sync signs with the new format, which step 4 already accepts.
 

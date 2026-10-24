@@ -103,3 +103,30 @@ test('uploads are checked by their bytes, not the name the browser gave them', a
   await assertContentMatches('document', Buffer.from('%PDF-1.7\n'), 'application/pdf');
   await assert.rejects(assertContentMatches('document', Buffer.from('<html>'), 'application/pdf'), /not a PDF/);
 });
+
+test('refresh cookie: read from the header, set HttpOnly/Secure/Strict on /api/auth', async () => {
+  const { readRefreshCookie, setRefreshCookie, cookieModeEnabled } = await import('../src/modules/auth/refresh-cookie');
+  assert.equal(readRefreshCookie({ headers: { cookie: 'a=1; pd_refresh=abc%3D; b=2' } } as any), 'abc=');
+  assert.equal(readRefreshCookie({ headers: {} } as any), undefined);
+  assert.equal(cookieModeEnabled('true'), true);
+  assert.equal(cookieModeEnabled(undefined), false);
+  let set: any;
+  setRefreshCookie({ cookie: (...args: any[]) => (set = args) } as any, 'tok', '7d');
+  assert.equal(set[0], 'pd_refresh');
+  assert.deepEqual(
+    { httpOnly: set[2].httpOnly, secure: set[2].secure, sameSite: set[2].sameSite, path: set[2].path, maxAge: set[2].maxAge },
+    { httpOnly: true, secure: true, sameSite: 'strict', path: '/api/auth', maxAge: 7 * 24 * 60 * 60 * 1000 },
+  );
+});
+
+test('in cookie mode the refresh token never appears in a response body', async () => {
+  const { AuthController } = await import('../src/modules/auth/auth.controller');
+  const auth: any = { login: async () => ({ accessToken: 'A', refreshToken: 'R' }) };
+  const cookies: any[] = [];
+  const res: any = { cookie: (...a: any[]) => cookies.push(a) };
+  const on = new AuthController(auth, { get: (k: string, d?: string) => (k === 'REFRESH_COOKIE' ? 'true' : d) } as any);
+  assert.deepEqual(await on.login({ email: 'a@b.c', password: 'x'.repeat(8) } as any, res), { accessToken: 'A' });
+  assert.equal(cookies[0][1], 'R');
+  const off = new AuthController(auth, { get: (_k: string, d?: string) => d } as any);
+  assert.deepEqual(await off.login({ email: 'a@b.c', password: 'x'.repeat(8) } as any, res), { accessToken: 'A', refreshToken: 'R' });
+});

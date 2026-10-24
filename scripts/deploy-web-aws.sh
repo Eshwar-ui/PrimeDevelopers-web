@@ -35,7 +35,9 @@ if [ "$actual" != "$ACCOUNT" ]; then
 fi
 
 SITE="https://dtw8rs0oq8bpp.cloudfront.net"
-VITE_API_BASE_URL="$SITE" VITE_MEDIA_BASE="$SITE/media" \
+# VITE_REFRESH_COOKIE: the API keeps the admin refresh token in an HttpOnly cookie
+# on AWS (REFRESH_COOKIE=true in 02-deploy-api.sh) — the two must match.
+VITE_API_BASE_URL="$SITE" VITE_MEDIA_BASE="$SITE/media" VITE_REFRESH_COOKIE=true \
   pnpm --filter @prime-developers/web exec vite build --mode aws
 
 # Either of these in the bundle means it would talk to the old stack, not AWS.

@@ -46,6 +46,18 @@ if grep -rqE "localhost:(3001|5173|5174)|onrender\.com|nrtqntqutquapydsnjbm" "$D
   exit 1
 fi
 
+# The site's CSP allows inline scripts by hash (website_inline_script_hashes in
+# prime-tracker-main/infra/terraform/website.tf). While the policy is report-only a
+# build the header doesn't know still works, but every page view reports a
+# violation until the list there catches up — so say so now, not in the logs later.
+live_csp="$(curl -sI "$SITE/" | tr -d '\r' | grep -i '^content-security-policy' || true)"
+for hash in $(node "$(dirname "$0")/csp-hashes.mjs" "$DIST/index.html"); do
+  case "$live_csp" in
+    *"$hash"*) ;;
+    *) echo "warning: the live CSP lacks $hash — add it to website_inline_script_hashes in website.tf and apply." >&2 ;;
+  esac
+done
+
 aws s3 sync "$DIST" "$BUCKET" --profile "$PROFILE" --only-show-errors \
   --exclude "*" --include "assets/*" --include "draco/*" --include "fonts/*" \
   --cache-control "public, max-age=31536000, immutable"

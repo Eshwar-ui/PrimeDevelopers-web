@@ -130,3 +130,70 @@ test('in cookie mode the refresh token never appears in a response body', async 
   const off = new AuthController(auth, { get: (_k: string, d?: string) => d } as any);
   assert.deepEqual(await off.login({ email: 'a@b.c', password: 'x'.repeat(8) } as any, res), { accessToken: 'A', refreshToken: 'R' });
 });
+
+test('CSP reports: both browser formats reduce to clipped, query-free lines', async () => {
+  const { parseCspReports } = await import('../src/modules/csp/csp-report');
+  const legacy = JSON.stringify({
+    'csp-report': {
+      'document-uri': 'https://site.test/properties/centro?ref=mail',
+      'violated-directive': 'script-src-elem',
+      'effective-directive': 'script-src-elem',
+      'blocked-uri': 'https://evil.test/x.js?token=1',
+      'line-number': 12,
+      'script-sample': 'x'.repeat(500),
+    },
+  });
+  const [one] = parseCspReports(legacy);
+  assert.equal(one.directive, 'script-src-elem');
+  assert.equal(one.blocked, 'https://evil.test/x.js');
+  assert.equal(one.document, 'https://site.test/properties/centro');
+  assert.equal(one.line, 12);
+  assert.equal(one.sample?.length, 200);
+
+  const modern = Array.from({ length: 50 }, () => ({
+    type: 'csp-violation',
+    body: { effectiveDirective: 'img-src', blockedURL: 'data', documentURL: 'https://site.test/' },
+  }));
+  modern.unshift({ type: 'deprecation', body: {} } as any);
+  const many = parseCspReports(JSON.stringify(modern));
+  assert.equal(many.length, 10);
+  assert.deepEqual(many[0], { directive: 'img-src', blocked: 'data', document: 'https://site.test/', source: undefined, line: undefined, sample: undefined });
+
+  assert.deepEqual(parseCspReports('not json'), []);
+  assert.deepEqual(parseCspReports(JSON.stringify({ unrelated: true })), []);
+});
+
+test('the CSP text parser leaves ordinary JSON bodies parsed', async () => {
+  const { NestFactory } = await import('@nestjs/core');
+  const { Body, Controller, Module, Post } = await import('@nestjs/common');
+  const { CspController } = await import('../src/modules/csp/csp.controller');
+
+  @Controller('echo')
+  class EchoController {
+    @Post()
+    echo(@Body() body: unknown) {
+      return { body };
+    }
+  }
+  @Module({ controllers: [EchoController, CspController] })
+  class TestModule {}
+
+  const app = await NestFactory.create<any>(TestModule, { rawBody: true, logger: false });
+  app.useBodyParser('text', { type: ['application/csp-report', 'application/reports+json'], limit: '16kb' });
+  await app.listen(0);
+  try {
+    const base = await app.getUrl();
+    const echo = await fetch(`${base}/echo`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"a":1}' });
+    assert.deepEqual(await echo.json(), { body: { a: 1 } });
+    const report = await fetch(`${base}/csp-report`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/csp-report' },
+      body: JSON.stringify({ 'csp-report': { 'violated-directive': 'img-src' } }),
+    });
+    assert.equal(report.status, 204);
+    const tooBig = await fetch(`${base}/csp-report`, { method: 'POST', headers: { 'Content-Type': 'application/csp-report' }, body: 'x'.repeat(20_000) });
+    assert.equal(tooBig.status, 413);
+  } finally {
+    await app.close();
+  }
+});

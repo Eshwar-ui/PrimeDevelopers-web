@@ -25,6 +25,17 @@ async function bootstrap() {
 
   app.use(helmet());
 
+  // CSP violation reports (modules/csp) arrive as application/csp-report or
+  // application/reports+json, which the default JSON parser ignores. A text parser,
+  // not a second JSON one: Nest skips registering its own JSON parser when it finds
+  // one already in place, and every ordinary JSON body would then go unparsed.
+  app.useBodyParser('text', { type: ['application/csp-report', 'application/reports+json'], limit: '16kb' });
+
+  // pm2 restarts with SIGINT. Without this the process ends without running
+  // onModuleDestroy, so Prisma's pooled connections are dropped rather than
+  // closed, and Postgres logs an unexpected EOF for each one on every deploy.
+  app.enableShutdownHooks();
+
   // An origin is compared byte for byte with the browser's Origin header, which
   // never carries a space or a trailing slash. Both are easy to paste into the
   // Render dashboard, and either one silently made that origin fail CORS.

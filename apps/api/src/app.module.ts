@@ -14,6 +14,7 @@ import { MailModule } from './modules/mail/mail.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
 import { TrackerSyncModule } from './modules/tracker-sync/tracker-sync.module';
 import { MediaModule } from './modules/media/media.module';
+import { CspModule } from './modules/csp/csp.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { MediaModule } from './modules/media/media.module';
     UploadsModule,
     TrackerSyncModule,
     MediaModule,
+    CspModule,
   ],
   providers: [
     // Order matters: throttle before authenticating, so a flood of bad

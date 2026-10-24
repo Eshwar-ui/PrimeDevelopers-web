@@ -67,7 +67,8 @@ terraform apply audit.tfplan && rm audit.tfplan
 
 Read the plan before applying. Expected, and nothing else:
 
-- **Created:** WAF web ACL, CloudFront function `website-spa`, website IAM role + its SSM
+- **Created:** WAF web ACL, CloudFront function `website-spa`, response headers policy
+  `website-site` (the report-only CSP), website IAM role + its SSM
   parameter, RDS parameter group, monitoring role and log group, host log groups,
   5xx metric filter and alarm, website health check and alarm, bucket versioning and
   lifecycle rules, `terraform_data.account_guard`.
@@ -131,6 +132,24 @@ more: a refresh token saved in the browser before today is no longer sent.
 - Edit and save a CAP/NNN draft, and confirm it is still there after reload.
 - Confirm the public CAP page does not list it.
 - Sign out, reload: you are signed out, and the cookie is gone.
+- The deploy printed no `warning: the live CSP lacks …` line. If it did, the inline
+  scripts changed: add the printed hash to `website_inline_script_hashes` in
+  `website.tf` and apply.
+
+**Then, for a week:** the site sends a report-only Content-Security-Policy. Nothing is
+blocked; each violation lands as a `[CSP]` line in the `/prime-tracker/app/website-api`
+log group. Check it with:
+
+```bash
+aws logs filter-log-events --log-group-name /prime-tracker/app/website-api \
+  --filter-pattern '"[CSP]"' --start-time $(( ($(date +%s) - 7*86400) * 1000 )) \
+  --query 'events[].message' --output text | sort | uniq -c | sort -rn | head -30
+```
+
+Browser extensions cause some reports (`chrome-extension:`, `moz-extension:`); ignore
+those. Anything from the site's own pages means a source is missing from
+`website_csp`. When only extension noise remains, rename the header in `website.tf`
+from `Content-Security-Policy-Report-Only` to `Content-Security-Policy` and apply.
 
 ## 6. Deploy the tracker API
 
@@ -148,6 +167,14 @@ Runs the auth and hardening migrations.
 - Everyone is signed out once, because refresh tokens are now stored hashed.
 - After 10 wrong passwords an account locks for 15 minutes; an admin password reset unlocks it.
 - Google sign-in requires a verified email that matches the linked account.
+- Project Managers, Construction, Sales and Marketing users see only their own
+  projects on every list, report and dashboard. Before, leaving out the project
+  filter showed them every project. Someone who also holds a leadership or finance
+  role is now scoped on dashboards and cash flow too.
+- Approving, funding or rejecting a draw needs the `draw:approve` permission on
+  every route, and a draw can only move along its normal steps.
+- Update-board links must be http, https, mailto or tel. Any other link already
+  stored shows as plain text.
 
 The website sync signs with the new format, which step 4 already accepts.
 

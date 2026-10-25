@@ -1,9 +1,14 @@
 # Production runbook — audit fixes of 24 Oct 2026
 
 Applies the fixes from [`system-audit-2026-10-24.md`](system-audit-2026-10-24.md) to
-production. **Render, Firebase and Supabase are out of scope for now** (as asked):
-nothing here touches them, and the Supabase-only fix (migration 15) is parked at the
-end.
+production. **Render and Supabase are out of scope for now** (as asked): nothing here
+touches them, and the Supabase-only fix (migration 15) is parked at the end. Firebase
+Hosting was retired on 25 Oct 2026; the website is on AWS only.
+
+All of it is merged: the website's audit PRs into PrimeDevelopers-web `main`, and the
+tracker's (#31, #32) into prime-tracker `main`, on 25 Oct. **The tracker's CI deploy is
+paused** (repo variable `DEPLOY_ENABLED=false`) so the merge did not deploy; step 6
+deploys it, and turns it back on.
 
 Every command runs on Kalyan's machine with the production login:
 
@@ -17,12 +22,12 @@ in order — later steps depend on earlier ones.
 
 | Step | Downtime | Repo / branch |
 |---|---|---|
-| 1. Move Terraform state off the laptop | none | prime-tracker `fix/audit-infra` |
-| 2. Origin secret | none | PrimeDevelopers-web `fix/audit-website` |
-| 3. `terraform apply` | none (RDS changes wait for Monday) | prime-tracker `fix/audit-infra` |
-| 4. Deploy the website API | ~5 s, website API only | PrimeDevelopers-web `fix/audit-website` |
-| 5. Deploy the website front end | none | PrimeDevelopers-web `fix/audit-website` |
-| 6. Deploy the tracker API | ~10 s; **everyone signs in again** | prime-tracker `fix/audit-combined`, merged |
+| 1. Move Terraform state off the laptop | none | prime-tracker `main` |
+| 2. Origin secret | none | PrimeDevelopers-web `main` |
+| 3. `terraform apply` | none (RDS changes wait for Monday) | prime-tracker `main` |
+| 4. Deploy the website API | ~5 s, website API only | PrimeDevelopers-web `main` |
+| 5. Deploy the website front end | none | PrimeDevelopers-web `main` |
+| 6. Deploy the tracker API | ~10 s; **everyone signs in again** | prime-tracker `main` |
 | 7. Tracker off the master DB login | ~10 s | prime-tracker |
 | 8. Monday 08:00–09:00 UTC | **5–10 min, both products** | automatic |
 | 9. Clean-up | none | — |
@@ -33,13 +38,12 @@ in order — later steps depend on earlier ones.
 
 The state holds every production secret and has lived only in files on this Mac.
 
-Steps 1 and 3 run in `prime-tracker-main` on `fix/audit-infra`, because the local state
-files and `client.tfvars` are there and nowhere else. Its `infra/` is identical to
-`fix/audit-combined`'s.
+Steps 1 and 3 run in `prime-tracker-main`, because the local state files and
+`client.tfvars` are there and nowhere else.
 
 ```bash
 cd ~/Client-project/prime-tracker-main
-git switch fix/audit-infra
+git switch main && git pull --ff-only
 infra/scripts/bootstrap-state-backend.sh
 ```
 
@@ -53,7 +57,7 @@ script prints.
 
 ```bash
 cd ~/Client-project/PrimeDevelopers-web
-git switch fix/audit-website
+git switch main && git pull --ff-only
 scripts/aws/01-database.sh
 ```
 
@@ -157,13 +161,14 @@ from `Content-Security-Policy-Report-Only` to `Content-Security-Policy` and appl
 
 ## 6. Deploy the tracker API
 
-The four tracker audit branches (infra, auth, authz, hardening) are merged as
-`fix/audit-combined`, on top of `feat/website-sync`. Merge that PR first, then deploy
-from the merged, pushed commit:
+The four tracker audit branches (infra, auth, authz, hardening) are merged into `main`.
+Deploy from it, then turn CI deploys back on so later merges deploy as before:
 
 ```bash
 cd ~/Client-project/prime-tracker-main
+git switch main && git pull --ff-only
 infra/scripts/deploy.sh api
+gh variable set DEPLOY_ENABLED --body true --repo kalyan1421/prime-tracker
 ```
 
 Runs the auth and hardening migrations.
@@ -242,7 +247,7 @@ shows `MultiAZ: true`.
 - **Instance role permissions:** remove the instance role's `WebsiteMedia` statements in `iam.tf` (the
   website now has its own role) and apply.
 
-## Parked: Render, Firebase, Supabase
+## Parked: Render, Supabase
 
 - `supabase/migrations/00000000000015_retire_supabase_auth_policies.sql` — drops the
   Supabase-Auth admin policies. Apply with the Supabase SQL editor when Render work

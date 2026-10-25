@@ -6,7 +6,7 @@
     "dev": "pnpm --parallel -r dev",
     "build": "pnpm -r build",
     "build:web": "pnpm --filter @prime-developers/web build",
-    "deploy:web": "pnpm run build:web && firebase deploy --only hosting",
+    "deploy:web": "bash scripts/deploy-web-aws.sh",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
     "seed": "node --env-file=.env.seed scripts/seed.js",

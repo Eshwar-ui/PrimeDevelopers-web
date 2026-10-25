@@ -10,14 +10,6 @@
     />
     <meta name="theme-color" content="#0b1216" />
 
-    <!-- The two remaining third-party origins. Each costs a DNS lookup, TCP
-         handshake and TLS negotiation before its first request can be sent;
-         warming them here overlaps that setup with the HTML parse instead of
-         paying it serially further down. Fonts used to need two more of these
-         and are now served from this origin. -->
-    <link rel="preconnect" href="%VITE_API_BASE_URL%" crossorigin />
-    <link rel="preconnect" href="%VITE_SUPABASE_URL%" />
-
     <!-- Fonts are discovered inside the CSS, which the browser has to download
          and parse first — so without these the text has to wait two round
          trips. Only the two faces the first screen actually paints in are

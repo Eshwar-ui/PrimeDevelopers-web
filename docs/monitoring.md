@@ -1,5 +1,12 @@
 # Uptime monitoring
 
+> **25 Oct 2026: the website is on AWS only.** Firebase Hosting is retired (all three
+> sites disabled), and the monitors below now check the AWS site and its API through
+> CloudFront (https://dtw8rs0oq8bpp.cloudfront.net). Re-run `node scripts/uptimerobot.mjs --apply` to move the
+> existing monitors over. The Render and Firebase triage notes further down are
+> history: on AWS, look at the `/prime-tracker/app/website-api` log group and the
+> CloudWatch alarms instead.
+
 The API is the whole site. Every page fetches its content from
 `prime-developers-api.onrender.com` on mount, so when the API stops answering
 the public site renders empty — no error page, no 500, just blank sections.
@@ -65,7 +72,7 @@ deploy, a crash loop.
 |---|---|
 | Type | **Keyword** |
 | Friendly name | `Prime API — liveness` |
-| URL | `https://prime-developers-api.onrender.com/api/health` |
+| URL | `https://dtw8rs0oq8bpp.cloudfront.net/api/health` |
 | Keyword | `"status":"ok"` |
 | Keyword type | **Does not exist** (alert when the keyword is *absent*) |
 | Interval | 5 minutes |
@@ -97,7 +104,7 @@ never updated in Render, the pooler URL swapped for the direct one.
 |---|---|
 | Type | **Keyword** |
 | Friendly name | `Prime API — database` |
-| URL | `https://prime-developers-api.onrender.com/api/health/ready` |
+| URL | `https://dtw8rs0oq8bpp.cloudfront.net/api/health/ready` |
 | Keyword | `"status":"ok"` |
 | Keyword type | **Does not exist** |
 | Interval | 5 minutes |
@@ -118,7 +125,7 @@ difference between "wait for Supabase" and "go look at Render".
 |---|---|
 | Type | **Keyword** |
 | Friendly name | `Prime Developers — site` |
-| URL | `https://theprimedeveloper.web.app/` |
+| URL | `https://dtw8rs0oq8bpp.cloudfront.net/` |
 | Keyword | `Prime Developers` |
 | Keyword type | **Does not exist** |
 | Interval | 5 minutes |

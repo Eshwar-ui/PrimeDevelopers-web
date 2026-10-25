@@ -50,41 +50,41 @@ const CONTACT_ACTIVE = 2
  */
 const MONITORS = [
   {
-    // Catches the process being down, a failed deploy, a crash loop, and
-    // Render suspending a free service (which does not recover on its own).
+    // Catches the process being down, a failed deploy and a crash loop. Checked
+    // through CloudFront, as visitors reach it, so a broken origin route counts.
     friendly_name: 'Prime API — liveness',
-    url: 'https://prime-developers-api.onrender.com/api/health',
+    url: 'https://dtw8rs0oq8bpp.cloudfront.net/api/health',
     keyword_value: '"status":"ok"',
   },
   {
-    // Keyword, not HTTP(s), and this is the one that matters: /ready returns
-    // **200 with `"status":"degraded"`** when the database is unreachable, so a
-    // status-code check sits green through a Supabase outage. Matching on
+    // Keyword, not HTTP(s): /ready used to return **200 with
+    // `"status":"degraded"`** when the database was unreachable (it is a 503 now),
+    // and a status-code check sat green through a database outage. Matching on
     // `"status":"ok"` also fails on an empty body, an edge error page and a
     // timeout; matching on `degraded` would catch only the failure the endpoint
     // is well enough to describe.
     friendly_name: 'Prime API — database',
-    url: 'https://prime-developers-api.onrender.com/api/health/ready',
+    url: 'https://dtw8rs0oq8bpp.cloudfront.net/api/health/ready',
     keyword_value: '"status":"ok"',
   },
   {
     // The SPA shell only. It cannot catch empty sections caused by a dead API —
     // the two above are what cover that — but having the site on the same page
-    // distinguishes "Firebase is fine, the API is dead" at a glance.
+    // distinguishes "S3 and CloudFront are fine, the API is dead" at a glance.
     // The keyword is in the served index.html <title>, not injected by JS: a
     // keyword that appears only after hydration fails every check.
     friendly_name: 'Prime Developers — site',
-    url: 'https://theprimedeveloper.web.app/',
+    url: 'https://dtw8rs0oq8bpp.cloudfront.net/',
     keyword_value: 'Prime Developers',
   },
 ].map((m) => ({
   ...m,
   type: TYPE_KEYWORD,
   keyword_type: KEYWORD_ABSENT,
-  interval: 300, // 5 min — the free plan's floor, and enough to keep a free Render service awake
-  // Not the 5s default. On 10 Sep 2026 Render's edge held connections open for
-  // 420s before a 503; a timeout well under the interval is what turns a hang
-  // into an alert instead of a monitor that sits waiting.
+  interval: 300, // 5 min — the free plan's floor
+  // Not the 5s default, which a cold resize can exceed; and well under the
+  // interval, so a hang becomes an alert instead of a monitor that sits waiting
+  // (on 10 Sep 2026 Render's edge held connections open for 420s before a 503).
   timeout: 30,
 }))
 

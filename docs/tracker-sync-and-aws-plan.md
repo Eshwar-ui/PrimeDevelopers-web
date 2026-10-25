@@ -168,6 +168,11 @@ default.
 4. **API.** Run the website API on the EC2 host behind nginx, deployed by the same
    SSM pipeline as the tracker. Ends Render's cold starts and the Singapore → Ohio
    round trip.
+**Status 25 Oct 2026: Firebase Hosting is retired.** Its three sites
+(`dev-theprimedevelopers`, `theprimedeveloper`, `theprime-construction`) are disabled,
+and the website is served only from AWS, at https://dtw8rs0oq8bpp.cloudfront.net until the domain moves.
+The Render API still auto-deploys from `main` but no site calls it any more.
+
 **Status 23 Oct 2026: steps 2–5 are live on the preview address.** The website
 API runs on the tracker's EC2 host (PM2 `prime-website-api`, `:3002`) against
 `prime_website` on RDS, reached as `<site>/api` through CloudFront; uploads and

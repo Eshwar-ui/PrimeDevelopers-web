@@ -6,15 +6,16 @@
 #
 # Builds in Vite's `aws` mode itself: the API is this site's own /api (CloudFront
 # routes it to the website API on the tracker's EC2 host), and media is its own
-# /media. A `pnpm run build:web` bundle points at Render and Supabase instead.
+# /media. This is the site's only deployment: Firebase Hosting was retired on
+# 25 Oct 2026, and `pnpm run deploy:web` runs this script.
 #
 # media/ in the bucket holds uploads (scripts/aws/03-copy-content.sh and the API's
 # STORAGE_DRIVER=s3), not build output. Both syncs below leave it alone.
 #
 # The bucket and distribution come from prime-tracker-main/infra/terraform/website.tf
-# (enable_website = true). Cache-Control mirrors firebase.json: content-hashed
-# assets, the Draco decoder and fonts are immutable; everything else — the HTML
-# above all — revalidates on every navigation and keeps a 10-minute edge copy.
+# (enable_website = true). Cache-Control: content-hashed assets, the Draco decoder
+# and fonts are immutable; everything else — the HTML above all — revalidates on
+# every navigation (so a deploy shows at once) and keeps a 10-minute edge copy.
 #
 # Order matters: immutable files first, HTML last, so no visitor is ever served an
 # index.html that names a bundle not yet uploaded.

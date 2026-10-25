@@ -1,5 +1,12 @@
 # Deployment Plan — Frontend on Firebase, Backend on Render
 
+> ### ⛔ Superseded (25 Oct 2026): the website is on AWS only
+> Firebase Hosting is retired: all three sites are disabled and `firebase.json` is
+> gone. The site deploys with `scripts/deploy-web-aws.sh` (`pnpm run deploy:web`), and
+> its API runs on AWS beside Prime Tracker. A `firebase deploy` from this document
+> would bring an old copy of the site back online. See
+> [`tracker-sync-and-aws-plan.md`](tracker-sync-and-aws-plan.md).
+
 **Written:** 30 Jul 2026 · branch `chore/monorepo-restructure`
 
 > ### 🔄 The database in this document no longer exists (2 Sep 2026)

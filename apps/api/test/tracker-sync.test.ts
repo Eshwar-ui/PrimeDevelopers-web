@@ -212,20 +212,22 @@ test('a snapshot that changes nothing reports no change', () => {
 // If either side changes how it signs, one of the two suites fails.
 test('signature matches the vector shared with Prime Tracker', () => {
   assert.equal(
-    sign('test-secret', '1761213600000', '{"version":1}'),
-    'sha256=70ee07dfaff5ffbde8b592f27b0a965f7f5966bf583395b5004b82ba29da78c3',
+    sign('test-secret', '1761213600000', '/api/integrations/tracker/snapshot?force=true', '{"version":1}'),
+    'sha256=d802ec60fc1d55f09dc2028a1bfddbf8a9417d69d2d069c843e7b154501f7f1e',
   );
 });
 
-test('signature: accepts a fresh match, rejects stale, tampered and missing', () => {
+test('signature: accepts a fresh match, rejects stale, tampered, re-targeted and missing', () => {
   const now = 1761213600000;
   const ts = String(now);
   const body = '{"version":1}';
-  const good = sign('s', ts, body);
-  assert.equal(verify('s', ts, good, body, now + 1000), null);
-  assert.equal(verify('s', ts, good, body, now + 6 * 60 * 1000), 'stale');
-  assert.equal(verify('s', ts, good, '{"version":2}', now), 'mismatch');
-  assert.equal(verify('other', ts, good, body, now), 'mismatch');
-  assert.equal(verify('s', ts, 'sha256=short', body, now), 'mismatch');
-  assert.equal(verify('s', undefined, good, body, now), 'missing');
+  const path = '/api/integrations/tracker/snapshot';
+  const good = sign('s', ts, path, body);
+  assert.equal(verify('s', ts, good, path, body, now + 1000), null);
+  assert.equal(verify('s', ts, good, path, body, now + 6 * 60 * 1000), 'stale');
+  assert.equal(verify('s', ts, good, path, '{"version":2}', now), 'mismatch');
+  assert.equal(verify('s', ts, good, `${path}?force=true`, body, now), 'mismatch');
+  assert.equal(verify('other', ts, good, path, body, now), 'mismatch');
+  assert.equal(verify('s', ts, 'sha256=short', path, body, now), 'mismatch');
+  assert.equal(verify('s', undefined, good, path, body, now), 'missing');
 });

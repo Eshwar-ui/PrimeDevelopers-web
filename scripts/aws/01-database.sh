@@ -10,6 +10,9 @@ source "$(dirname "$0")/lib.sh"
 ensure_secret DB_PASSWORD 24
 ensure_secret JWT_ACCESS_SECRET 64
 ensure_secret TRACKER_SYNC_SECRET 32
+# Sent by CloudFront on every request to the website API (website.tf) and required by
+# nginx (02-deploy-api.sh), so the API answers CloudFront and nothing else.
+ensure_secret ORIGIN_SECRET 32
 
 ssm_script "website: create prime_website database" <<'REMOTE'
 #!/bin/bash

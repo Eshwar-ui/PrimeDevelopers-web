@@ -38,16 +38,33 @@ function messageFrom(body, status) {
 
 // ── Tokens ────────────────────────────────────────────────────────────────
 // The access token is short-lived and kept in memory only; a page reload
-// re-derives one from the refresh token. The refresh token is the thing worth
-// persisting, and localStorage is the honest choice here: this is a static SPA
-// with no server to set an httpOnly cookie, so pretending otherwise would just
-// be theatre. Its blast radius is bounded by rotation — a stolen token works
-// once, and using it locks out the legitimate holder, which surfaces the theft.
+// re-derives one from the refresh token.
+//
+// Where the refresh token lives depends on the deployment:
+//
+// - Cookie mode (VITE_REFRESH_COOKIE=true — AWS, where the site and the API
+//   share an origin): the API sets it as an HttpOnly, SameSite=Strict cookie
+//   scoped to /api/auth and never puts it in a response body. This code never
+//   sees it, so no injected script can steal it. All that is stored here is a
+//   marker meaning "a session exists, try to restore it".
+// - Otherwise (Render, cross-origin to the Firebase site, where a strict cookie
+//   cannot be sent): the token itself, in localStorage, bounded by rotation — a
+//   stolen token works once, and its use ends every session of that admin.
 
+const COOKIE_MODE = import.meta.env.VITE_REFRESH_COOKIE === 'true'
+const COOKIE_MARKER = 'cookie'
 const REFRESH_KEY = 'pd.admin.refresh'
 
+function readStored() {
+  try {
+    return localStorage.getItem(REFRESH_KEY)
+  } catch {
+    return null
+  }
+}
+
 let accessToken = null
-let refreshToken = localStorage.getItem(REFRESH_KEY)
+let refreshToken = readStored()
 let onAuthLost = null
 
 /** AuthContext registers here so an expired session updates the UI. */
@@ -57,9 +74,18 @@ export function setAuthLostHandler(fn) {
 
 export function setTokens(tokens) {
   accessToken = tokens?.accessToken ?? null
-  refreshToken = tokens?.refreshToken ?? null
-  if (refreshToken) localStorage.setItem(REFRESH_KEY, refreshToken)
-  else localStorage.removeItem(REFRESH_KEY)
+  refreshToken = COOKIE_MODE ? (accessToken ? COOKIE_MARKER : null) : (tokens?.refreshToken ?? null)
+  try {
+    if (refreshToken) localStorage.setItem(REFRESH_KEY, refreshToken)
+    else localStorage.removeItem(REFRESH_KEY)
+  } catch {
+    /* storage unavailable: the session simply does not survive a reload */
+  }
+}
+
+/** The body /auth/refresh and /auth/logout expect: empty in cookie mode. */
+export function refreshBody(token = refreshToken) {
+  return COOKIE_MODE ? {} : { refreshToken: token }
 }
 
 export function clearTokens() {
@@ -74,15 +100,34 @@ export const hasSession = () => Boolean(accessToken || refreshToken)
 // admin out mid-session. They share one in-flight promise instead.
 let refreshInFlight = null
 
+/** The newest refresh token any tab has stored — another tab may have rotated it. */
+const storedRefreshToken = readStored
+
+/**
+ * One refresh at a time across every open tab, where the browser supports it.
+ *
+ * The API treats a rotated-away token presented again as stolen and ends every
+ * session for that admin. Two tabs refreshing in the same instant with the same
+ * token would look exactly like that, so they queue on a shared lock, and each
+ * re-reads the token inside it rather than trusting the copy it loaded at startup.
+ */
+function withRefreshLock(work) {
+  return navigator.locks?.request ? navigator.locks.request('pd.admin.refresh', work) : work()
+}
+
 async function refreshSession() {
-  if (!refreshToken) return false
+  if (!refreshToken && !storedRefreshToken()) return false
   if (!refreshInFlight) {
-    refreshInFlight = (async () => {
+    refreshInFlight = withRefreshLock(async () => {
       try {
+        refreshToken = storedRefreshToken() ?? refreshToken
+        if (!refreshToken) throw new Error('no session')
         const res = await fetch(`${BASE}/api/auth/refresh`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refreshToken }),
+          // Same-origin in cookie mode, so the browser attaches the cookie itself.
+          credentials: 'same-origin',
+          body: JSON.stringify(refreshBody()),
         })
         if (!res.ok) throw new Error('refresh rejected')
         setTokens(await res.json())
@@ -94,7 +139,7 @@ async function refreshSession() {
       } finally {
         refreshInFlight = null
       }
-    })()
+    })
   }
   return refreshInFlight
 }

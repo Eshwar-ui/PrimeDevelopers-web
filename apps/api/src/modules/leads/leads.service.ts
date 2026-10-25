@@ -4,6 +4,37 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { BrochureRequestDto, CreateLeadDto } from './dto/lead.dto';
 import { MailService } from '../mail/mail.service';
 
+// How a brochure request reads in the leads list — also how one is recognised when
+// counting recent requests to the same address.
+const BROCHURE_MESSAGE_PREFIX = 'Brochure requested for';
+export const BROCHURE_EMAILS_PER_ADDRESS_PER_DAY = 3;
+const BROCHURE_MAX_BYTES = 8 * 1024 * 1024;
+
+/**
+ * The response body, or null once it passes `max` bytes — checked as it streams,
+ * so an oversized flyer is abandoned at the limit instead of downloaded in full
+ * and only then measured.
+ */
+export async function readCapped(res: Response, max: number): Promise<Buffer | null> {
+  const declared = Number(res.headers.get('content-length'));
+  if (Number.isFinite(declared) && declared > max) return null;
+  if (!res.body) return Buffer.alloc(0);
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  const reader = res.body.getReader();
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > max) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks);
+}
+
 @Injectable()
 export class LeadsService {
   private readonly logger = new Logger(LeadsService.name);
@@ -49,18 +80,38 @@ export class LeadsService {
   async requestBrochure(dto: BrochureRequestDto) {
     const property = await this.prisma.property.findUnique({
       where: { id: dto.propertyId },
-      select: { id: true, name: true, slug: true, address: true, detail: true },
+      select: { id: true, name: true, slug: true, address: true, detail: true, published: true },
     });
-    if (!property) throw new NotFoundException(`No property with id "${dto.propertyId}"`);
+    // An unpublished property answers exactly like a missing one: the endpoint must
+    // not confirm a draft exists, let alone mail out its brochure.
+    if (!property || !property.published) throw new NotFoundException(`No property with id "${dto.propertyId}"`);
+
+    // Counted before this request's own row is written.
+    const recentToSameAddress = await this.prisma.websiteLead.count({
+      where: {
+        email: { equals: dto.email, mode: 'insensitive' },
+        message: { startsWith: BROCHURE_MESSAGE_PREFIX },
+        createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      },
+    });
 
     const lead = await this.prisma.websiteLead.create({
       data: {
         name: dto.name,
         email: dto.email,
         phone: dto.phone,
-        message: `Brochure requested for ${property.name}.`,
+        message: `${BROCHURE_MESSAGE_PREFIX} ${property.name}.`,
       },
     });
+
+    // This endpoint sends mail from the company's own address to any address it is
+    // given, with a visitor-supplied name in the body. The per-IP limit stops one
+    // sender; this stops anyone using it to flood one recipient. The enquiry is
+    // still recorded — only the email is withheld.
+    if (recentToSameAddress >= BROCHURE_EMAILS_PER_ADDRESS_PER_DAY) {
+      this.logger.warn(`Brochure email withheld for ${property.slug}: daily limit reached for one address.`);
+      return { id: lead.id, emailed: false, hasBrochure: Boolean(this.flyerUrlFor(property.detail)) };
+    }
 
     const flyerUrl = this.flyerUrlFor(property.detail);
     let emailed = false;
@@ -91,14 +142,13 @@ export class LeadsService {
       // enormous file would otherwise hold the request open and push a
       // multi-megabyte buffer through the mail path. SES caps a message at
       // 40 MB; well under that is the only sane budget for a brochure.
-      const MAX_BYTES = 8 * 1024 * 1024;
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 10_000);
       try {
         const res = await fetch(flyerUrl, { signal: controller.signal });
         if (res.ok) {
-          const buf = Buffer.from(await res.arrayBuffer());
-          if (buf.byteLength <= MAX_BYTES) {
+          const buf = await readCapped(res, BROCHURE_MAX_BYTES);
+          if (buf) {
             const name = decodeURIComponent(new URL(flyerUrl).pathname.split('/').pop() || 'brochure.pdf');
             attachment = {
               filename: /\.[a-z0-9]+$/i.test(name) ? name : `${name}.pdf`,
@@ -106,7 +156,7 @@ export class LeadsService {
               content: buf,
             };
           } else {
-            this.logger.warn(`Brochure for ${property.name} is ${buf.byteLength} bytes — too large to attach.`);
+            this.logger.warn(`Brochure for ${property.name} is over ${BROCHURE_MAX_BYTES} bytes — too large to attach.`);
           }
         } else {
           this.logger.warn(`Brochure fetch for ${property.name} returned ${res.status}.`);

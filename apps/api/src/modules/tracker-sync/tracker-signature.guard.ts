@@ -37,6 +37,10 @@ export class TrackerSignatureGuard implements CanActivate {
       secret,
       req.header(TIMESTAMP_HEADER),
       req.header(SIGNATURE_HEADER),
+      // Path and query as this server received them — after CloudFront's origin
+      // path and nginx's /website-api/ prefix have both been taken off again, so it
+      // is the same /api/… the tracker signed.
+      req.originalUrl,
       req.rawBody ?? Buffer.alloc(0),
     );
     if (failure) {

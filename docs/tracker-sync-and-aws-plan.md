@@ -47,7 +47,8 @@ Prime Tracker API (EC2)                         Website API
 ### Signing
 
 `X-Prime-Timestamp: <unix ms>` and
-`X-Prime-Signature: sha256=<hex HMAC-SHA256(secret, "<timestamp>.<raw body>")>`.
+`X-Prime-Signature: sha256=<hex HMAC-SHA256(secret, "<timestamp>.<path and query>.<raw body>")>`.
+The path and query are signed so a captured push cannot be replayed with `?force=true` added.
 The website rejects a timestamp more than 5 minutes from its own clock. Both sides
 read the secret from `TRACKER_SYNC_SECRET` (website) / `WEBSITE_SYNC_SECRET`
 (tracker) — the same value, generated with `openssl rand -hex 32`.

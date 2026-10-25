@@ -14,9 +14,9 @@ export class ContentController {
   @Public()
   @Cacheable()
   @Get()
-  @ApiOperation({ summary: 'All site content, keyed by section' })
+  @ApiOperation({ summary: 'All site content, keyed by section, without drafts' })
   findAll() {
-    return this.content.findAll();
+    return this.content.findAll(false);
   }
 
   @ApiBearerAuth()

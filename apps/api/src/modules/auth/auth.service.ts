@@ -48,15 +48,32 @@ export class AuthService {
       where: { tokenHash },
       include: { user: true },
     });
+    const now = new Date();
 
-    if (!row || row.revokedAt || row.expiresAt < new Date()) {
+    if (!row) throw new UnauthorizedException('Invalid or expired refresh token');
+
+    // A token that was already rotated away is being presented again. Either the
+    // holder kept a stale copy, or someone else has it — and the two cannot be told
+    // apart, so the safe answer is the same for both: end every session that admin
+    // has. The browser reads the newest token from storage before refreshing
+    // (apps/web/src/lib/api.js), so a legitimate second tab does not trip this.
+    if (row.revokedAt) {
+      await this.prisma.websiteAdminRefreshToken.updateMany({
+        where: { userId: row.userId, revokedAt: null },
+        data: { revokedAt: now },
+      });
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
+    if (row.expiresAt < now) throw new UnauthorizedException('Invalid or expired refresh token');
 
-    await this.prisma.websiteAdminRefreshToken.update({
-      where: { tokenHash },
-      data: { revokedAt: new Date() },
+    // Revoke-if-still-live in one statement. Two concurrent refreshes with the same
+    // token used to both pass the check above and both get new tokens; now only
+    // the one that flips the row wins.
+    const { count } = await this.prisma.websiteAdminRefreshToken.updateMany({
+      where: { tokenHash, revokedAt: null },
+      data: { revokedAt: now },
     });
+    if (count !== 1) throw new UnauthorizedException('Invalid or expired refresh token');
 
     return this.issue(row.user.id, row.user.email);
   }
@@ -95,6 +112,14 @@ export class AuthService {
         userId,
         expiresAt: new Date(Date.now() + ttlMs),
       },
+    });
+
+    // Rows were never deleted, so every sign-in and every refresh left one behind
+    // for good. Pruned here, per user, a day after they stop mattering — late
+    // enough that a just-revoked token is still recognised as reused (above).
+    const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    await this.prisma.websiteAdminRefreshToken.deleteMany({
+      where: { userId, OR: [{ expiresAt: { lt: dayAgo } }, { revokedAt: { lt: dayAgo } }] },
     });
 
     return { accessToken, refreshToken };

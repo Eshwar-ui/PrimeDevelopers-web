@@ -1,13 +1,13 @@
 import {
   IsEmail,
   IsIn,
-  IsObject,
   IsOptional,
   IsString,
   IsUUID,
   MaxLength,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsFlatContext } from '../../../common/validators/flat-context';
 
 // `read` is what the admin's mark-read toggle writes; the rest are for a sales
 // pipeline the CMS doesn't expose yet. Omitting `read` would have made that
@@ -54,8 +54,8 @@ export class CreateLeadDto {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- shape varies by `source`; Prisma's Json input type needs `any` here, not `unknown`.
   @ApiPropertyOptional({ description: 'Structured detail specific to `source` — an interior option slug, a desired property, an investment track.' })
   @IsOptional()
-  @IsObject()
-  context?: Record<string, any>;
+  @IsFlatContext()
+  context?: Record<string, string | number | boolean>;
 
   // ── Unit attribution ────────────────────────────────────────────────────
   // Optional, but propertyId and unitLabel are all-or-nothing: an attribution

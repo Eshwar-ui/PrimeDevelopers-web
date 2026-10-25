@@ -23,7 +23,8 @@ export function useSaveSection(key) {
   const refetch = useContentRefetch()
   return useCallback(
     async (mutate) => {
-      const all = await api.get(`/content?fresh=${Date.now()}`)
+      // The admin read: drafts included and never cached (see capStore).
+      const all = await api.get('/admin/content')
       const current = { ...sectionDefaults(key), ...(all?.[key] ?? {}) }
       const next = mutate(current)
       await api.put(`/content/${key}`, { data: next })

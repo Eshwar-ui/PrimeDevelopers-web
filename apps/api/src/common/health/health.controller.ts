@@ -1,4 +1,4 @@
-import { Controller, Get, HttpStatus, HttpCode } from '@nestjs/common';
+import { Controller, Get, HttpStatus, HttpCode, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -8,7 +8,7 @@ import { Public } from '../decorators/public.decorator';
  * Health check endpoint for Render, uptime monitors, and CI smoke tests.
  *
  * - GET /api/health        — liveness (always 200 if the process is up)
- * - GET /api/health/ready  — readiness (reports whether the DB is reachable)
+ * - GET /api/health/ready  — readiness (200 when the DB is reachable, 503 when not)
  *
  * No auth required. Returns minimal info on purpose — don't leak deployment internals.
  *
@@ -22,6 +22,8 @@ import { Public } from '../decorators/public.decorator';
 @SkipThrottle()
 @Controller('health')
 export class HealthController {
+  private readonly logger = new Logger(HealthController.name);
+
   constructor(private prisma: PrismaService) {}
 
   @Get()
@@ -31,28 +33,34 @@ export class HealthController {
     return { status: 'ok', timestamp: new Date().toISOString() };
   }
 
+  /**
+   * 503 when anything it depends on is down, so a load balancer or uptime check can
+   * act on the status code alone — it used to answer 200 "degraded", which every
+   * health checker reads as healthy.
+   *
+   * The failure reason goes to the log, not the response: this route is public, and
+   * a database error message names hosts, users and sometimes the query.
+   */
   @Get('ready')
   @ApiOperation({ summary: 'Readiness probe — can the API serve traffic?' })
   async readiness() {
-    const checks: Record<string, { ok: boolean; latencyMs?: number; error?: string }> = {};
+    const checks: Record<string, { ok: boolean; latencyMs?: number }> = {};
 
     const dbStart = Date.now();
     try {
       await this.prisma.$queryRaw`SELECT 1`;
       checks.database = { ok: true, latencyMs: Date.now() - dbStart };
     } catch (err) {
-      checks.database = {
-        ok: false,
-        latencyMs: Date.now() - dbStart,
-        error: (err as Error).message,
-      };
+      this.logger.error(`Readiness: database check failed: ${(err as Error).message}`);
+      checks.database = { ok: false, latencyMs: Date.now() - dbStart };
     }
 
-    const allOk = Object.values(checks).every((c) => c.ok);
-    return {
-      status: allOk ? 'ok' : 'degraded',
+    const body = {
+      status: Object.values(checks).every((c) => c.ok) ? 'ok' : 'degraded',
       timestamp: new Date().toISOString(),
       checks,
     };
+    if (body.status !== 'ok') throw new ServiceUnavailableException(body);
+    return body;
   }
 }

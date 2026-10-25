@@ -35,9 +35,11 @@ export function useCapSectionStored() {
  * one row. Saving the copy this page loaded would overwrite anything another
  * tab (or the same editor, on another listing) saved since — so each save
  * fetches the row fresh, applies its one change to that, and writes the
- * result. The query string is there to step past any shared cache: the
- * endpoint is cacheable for a minute, which is right for visitors and wrong
- * for a read that is about to be written back.
+ * result.
+ *
+ * It reads /admin/content, not /content. The public endpoint is cached for a
+ * minute and — since drafts stopped being served to visitors — leaves out every
+ * unpublished listing, so writing back what it returned would delete them.
  *
  * `mutate` receives the current section and returns the next one.
  */
@@ -45,7 +47,7 @@ export function useSaveCapSection() {
   const refetch = useContentRefetch()
   return useCallback(
     async (mutate) => {
-      const all = await api.get(`/content?fresh=${Date.now()}`)
+      const all = await api.get('/admin/content')
       const current = { ...CAP_LISTINGS_DEFAULTS, ...(all?.[SECTION] ?? {}) }
       const next = mutate(current)
       await api.put(`/content/${SECTION}`, { data: next })

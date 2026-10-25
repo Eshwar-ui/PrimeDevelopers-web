@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
-import { api, clearTokens, getRefreshToken, setAuthLostHandler, setTokens } from '../lib/api'
+import { api, clearTokens, getRefreshToken, refreshBody, setAuthLostHandler, setTokens } from '../lib/api'
 
 const AuthContext = createContext(null)
 
@@ -55,7 +55,7 @@ export function AuthProvider({ children }) {
     setSession(null)
     if (token) {
       try {
-        await api.post('/auth/logout', { refreshToken: token })
+        await api.post('/auth/logout', refreshBody(token))
       } catch {
         // Already revoked, or unreachable. The token is gone from this browser
         // regardless, and logout is idempotent server-side.

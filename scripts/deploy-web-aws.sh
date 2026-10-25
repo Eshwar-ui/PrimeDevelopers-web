@@ -35,7 +35,9 @@ if [ "$actual" != "$ACCOUNT" ]; then
 fi
 
 SITE="https://dtw8rs0oq8bpp.cloudfront.net"
-VITE_API_BASE_URL="$SITE" VITE_MEDIA_BASE="$SITE/media" \
+# VITE_REFRESH_COOKIE: the API keeps the admin refresh token in an HttpOnly cookie
+# on AWS (REFRESH_COOKIE=true in 02-deploy-api.sh) — the two must match.
+VITE_API_BASE_URL="$SITE" VITE_MEDIA_BASE="$SITE/media" VITE_REFRESH_COOKIE=true \
   pnpm --filter @prime-developers/web exec vite build --mode aws
 
 # Either of these in the bundle means it would talk to the old stack, not AWS.
@@ -43,6 +45,18 @@ if grep -rqE "localhost:(3001|5173|5174)|onrender\.com|nrtqntqutquapydsnjbm" "$D
   echo "The build still points at localhost, Render or Supabase — not deploying." >&2
   exit 1
 fi
+
+# The site's CSP allows inline scripts by hash (website_inline_script_hashes in
+# prime-tracker-main/infra/terraform/website.tf). While the policy is report-only a
+# build the header doesn't know still works, but every page view reports a
+# violation until the list there catches up — so say so now, not in the logs later.
+live_csp="$(curl -sI "$SITE/" | tr -d '\r' | grep -i '^content-security-policy' || true)"
+for hash in $(node "$(dirname "$0")/csp-hashes.mjs" "$DIST/index.html"); do
+  case "$live_csp" in
+    *"$hash"*) ;;
+    *) echo "warning: the live CSP lacks $hash — add it to website_inline_script_hashes in website.tf and apply." >&2 ;;
+  esac
+done
 
 aws s3 sync "$DIST" "$BUCKET" --profile "$PROFILE" --only-show-errors \
   --exclude "*" --include "assets/*" --include "draco/*" --include "fonts/*" \

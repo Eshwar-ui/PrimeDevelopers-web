@@ -17,7 +17,10 @@ function Hint({ children }) {
   return <span className="text-xs leading-relaxed text-bone-3">{children}</span>
 }
 
-export function TextField({ label, value, onChange, type = 'text', placeholder, required, hint, list }) {
+// A field another system owns (see UnitFields): readable, visibly not editable.
+const disabledClass = 'disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-white/15'
+
+export function TextField({ label, value, onChange, type = 'text', placeholder, required, hint, list, disabled }) {
   return (
     <label className="flex flex-col gap-1.5">
       {label && <span className={labelClass}>{label}</span>}
@@ -28,7 +31,8 @@ export function TextField({ label, value, onChange, type = 'text', placeholder, 
         placeholder={placeholder}
         required={required}
         list={list}
-        className={inputClass}
+        disabled={disabled}
+        className={`${inputClass} ${disabledClass}`}
       />
       <Hint>{hint}</Hint>
     </label>
@@ -90,12 +94,17 @@ export function TextAreaField({ label, value, onChange, rows = 3, placeholder, h
   )
 }
 
-export function SelectField({ label, value, onChange, options, hint }) {
+export function SelectField({ label, value, onChange, options, hint, disabled }) {
   const normalized = options.map((o) => (typeof o === 'string' ? { value: o, label: o } : o))
   return (
     <label className="flex flex-col gap-1.5">
       {label && <span className={labelClass}>{label}</span>}
-      <select value={value ?? ''} onChange={(e) => onChange(e.target.value)} className={`${inputClass} cursor-pointer`}>
+      <select
+        value={value ?? ''}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        className={`${inputClass} ${disabledClass} cursor-pointer`}
+      >
         {normalized.map((o) => (
           <option key={o.value} value={o.value} className="bg-carbon">
             {o.label}

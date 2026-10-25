@@ -78,6 +78,13 @@ services:
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
 
+      # Shared with Prime Tracker's WEBSITE_SYNC_SECRET — the same value on
+      # both. Signs the unit snapshots the tracker pushes to
+      # /api/integrations/tracker/snapshot. `openssl rand -hex 32`. Unset, that
+      # route answers 503 and the rest of the API is unaffected.
+      - key: TRACKER_SYNC_SECRET
+        sync: false
+
       # ── Non-secret ────────────────────────────────────────────────────
       - key: JWT_ACCESS_EXPIRY
         value: 15m
@@ -98,5 +105,9 @@ services:
       # deleted, and dropping it from this list would break that copy
       # immediately rather than letting it retire quietly. Remove the second
       # pair once the site is gone.
+      #
+      # dtw8rs0oq8bpp.cloudfront.net is the AWS copy of the site (website.tf in
+      # prime-tracker-main), live since 23 Oct 2026 as a preview while
+      # theprimedeveloper.com still serves the 2023 site.
       - key: CORS_ORIGINS
-        value: https://theprimedeveloper.web.app,https://theprimedeveloper.firebaseapp.com,https://theprime-construction.web.app,https://theprime-construction.firebaseapp.com
+        value: https://theprimedeveloper.web.app,https://theprimedeveloper.firebaseapp.com,https://theprime-construction.web.app,https://theprime-construction.firebaseapp.com,https://dtw8rs0oq8bpp.cloudfront.net

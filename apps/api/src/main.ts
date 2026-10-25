@@ -18,13 +18,23 @@ async function bootstrap() {
 
   // Behind Render's proxy, trust the first hop so req.ip is the real client
   // rather than the proxy — without this, ThrottlerGuard buckets every request
-  // under one IP and per-IP rate limiting silently does nothing.
-  app.set('trust proxy', 1);
+  // under one IP and per-IP rate limiting silently does nothing. On AWS there
+  // are two hops (CloudFront, then nginx), so TRUST_PROXY_HOPS=2 there; trusting
+  // only one would make every visitor look like a CloudFront edge.
+  app.set('trust proxy', Number(config.get('TRUST_PROXY_HOPS', 1)));
 
   app.use(helmet());
 
+  // An origin is compared byte for byte with the browser's Origin header, which
+  // never carries a space or a trailing slash. Both are easy to paste into the
+  // Render dashboard, and either one silently made that origin fail CORS.
+  const corsOrigins = String(config.get('CORS_ORIGINS', frontendUrl))
+    .split(',')
+    .map((origin) => origin.trim().replace(/\/+$/, ''))
+    .filter(Boolean);
+
   app.enableCors({
-    origin: config.get('CORS_ORIGINS', frontendUrl).split(','),
+    origin: corsOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],

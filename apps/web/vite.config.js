@@ -54,8 +54,11 @@ export default defineConfig(({ command, mode }) => {
    * .env.production is the reason that shouldn't happen. This is the reason it
    * can't: fail the build rather than deploy a broken bundle. A local override
    * — .env.production.local — will trip this too, which is the point.
+   *
+   * `aws` is the same guard for the AWS build (scripts/deploy-web-aws.sh), which
+   * passes its own VITE_API_BASE_URL and VITE_MEDIA_BASE.
    */
-  if (command === 'build' && mode === 'production') {
+  if (command === 'build' && (mode === 'production' || mode === 'aws')) {
     if (!VITE_API_BASE_URL) {
       throw new Error('VITE_API_BASE_URL is unset — check apps/web/.env.production.')
     }

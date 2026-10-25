@@ -79,3 +79,6 @@ test-model.glb
 
 # Stray archives dropped into the repo root.
 *.zip
+
+# Staging for scripts/aws/*.sh — build artifacts and data exports, never committed.
+.aws-stage/

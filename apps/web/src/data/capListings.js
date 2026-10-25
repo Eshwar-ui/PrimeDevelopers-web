@@ -15,7 +15,9 @@
  * one from the admin is the way to sharpen it.
  */
 
-const IMG = 'https://nrtqntqutquapydsnjbm.supabase.co/storage/v1/object/public/images/cap/'
+import { MEDIA_BASE } from '../lib/images'
+
+const IMG = `${MEDIA_BASE}/images/cap/`
 const photo = (key) => `${IMG}${key}/photo.jpg`
 const logo = (key) => `${IMG}${key}/logo.png`
 

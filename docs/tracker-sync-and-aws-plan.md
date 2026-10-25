@@ -167,6 +167,15 @@ default.
 4. **API.** Run the website API on the EC2 host behind nginx, deployed by the same
    SSM pipeline as the tracker. Ends Render's cold starts and the Singapore → Ohio
    round trip.
+**Status 23 Oct 2026: steps 2–5 are live on the preview address.** The website
+API runs on the tracker's EC2 host (PM2 `prime-website-api`, `:3002`) against
+`prime_website` on RDS, reached as `<site>/api` through CloudFront; uploads and
+originals are in the website bucket's `media/`; `/api/img/...` replaces Supabase's
+resizer. Scripts: `scripts/aws/01-database.sh`, `02-deploy-api.sh`,
+`03-copy-content.sh` (content, properties, news and public files — re-run at
+cutover), then `scripts/deploy-web-aws.sh`. **Not moved:** admin accounts and
+leads (so the CMS cannot be signed in to on AWS yet), SES, and the domain.
+
 5. **Front end — preview live since 23 Oct 2026.** `website.tf` was applied with
    `enable_website = true` (6 resources, nothing existing touched): bucket
    `prime-tracker-website-056836825737`, CloudFront `E25N0DCCIGFVRS` at

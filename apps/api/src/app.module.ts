@@ -13,6 +13,7 @@ import { LeadsModule } from './modules/leads/leads.module';
 import { MailModule } from './modules/mail/mail.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
 import { TrackerSyncModule } from './modules/tracker-sync/tracker-sync.module';
+import { MediaModule } from './modules/media/media.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { TrackerSyncModule } from './modules/tracker-sync/tracker-sync.module';
     MailModule,
     UploadsModule,
     TrackerSyncModule,
+    MediaModule,
   ],
   providers: [
     // Order matters: throttle before authenticating, so a flood of bad

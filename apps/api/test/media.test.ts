@@ -5,6 +5,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import sharp from 'sharp';
 import {
+  BusyResizing,
+  Gate,
   ImageController,
   WIDTH_LADDER,
   canonicalQuality,
@@ -17,7 +19,7 @@ const png = (width: number, height: number) =>
     .toBuffer();
 
 function harness(object: Buffer | null, enabled = true) {
-  const media: any = { enabled, get: async () => object };
+  const media: any = { enabled, reads: 0, get: async () => (media.reads++, object) };
   const controller = new ImageController(media);
   const sent: { status?: number; headers?: Record<string, string>; body?: Buffer; redirect?: [number, string] } = {};
   const res: any = {
@@ -27,8 +29,10 @@ function harness(object: Buffer | null, enabled = true) {
     redirect(code: number, url: string) { sent.redirect = [code, url]; },
   };
   const req: any = { originalUrl: '/api/img/images/site/hero.png?width=1000' };
-  return { controller, req, res, sent };
+  return { controller, req, res, sent, media };
 }
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 test('scales proportionally to a ladder width and returns WebP', async () => {
   const { controller, req, res, sent } = harness(await png(2700, 1800));
@@ -77,4 +81,56 @@ test('refuses other buckets, path traversal, missing objects and a disabled driv
 test('a file that is not an image is a 422, not a server error', async () => {
   const h = harness(Buffer.from('not an image'));
   await assert.rejects(h.controller.resize('images', 'x.png', '200', '75', h.req, h.res), /Cannot resize/);
+});
+
+test('a cold page worth of resizes at once all succeed — none turned away', async () => {
+  // The partner wall alone is 20 logos; the first gate's line of 8 broke the rest.
+  const image = await png(300, 120);
+  const results = await Promise.all(
+    Array.from({ length: 30 }, async () => {
+      const h = harness(image);
+      await h.controller.resize('images', 'logos/a.png', '200', '75', h.req, h.res);
+      return h.sent.status;
+    }),
+  );
+  assert.deepEqual(new Set(results), new Set([200]));
+});
+
+test('the gate never runs more than its limit, even as slots pass between jobs', async () => {
+  const gate = new Gate({ active: 2, waiting: 100, waitMs: 5_000 });
+  let running = 0;
+  let peak = 0;
+  await Promise.all(
+    Array.from({ length: 25 }, (_, i) =>
+      gate.run(async () => {
+        peak = Math.max(peak, ++running);
+        await sleep(i % 3);
+        running--;
+      }),
+    ),
+  );
+  assert.equal(peak, 2);
+  assert.deepEqual(gate.load, { active: 0, waiting: 0 });
+});
+
+test('a full line, or a wait past the deadline, is refused as busy and frees its place', async () => {
+  const gate = new Gate({ active: 1, waiting: 1, waitMs: 40 });
+  let release!: () => void;
+  const holder = gate.run(() => new Promise<void>((r) => (release = r)));
+  const waiter = gate.run(async () => 'late');
+  await assert.rejects(gate.run(async () => 'no room'), BusyResizing);
+  await assert.rejects(waiter, BusyResizing); // timed out in line
+  assert.deepEqual(gate.load, { active: 1, waiting: 0 });
+  release();
+  await holder;
+  assert.deepEqual(gate.load, { active: 0, waiting: 0 });
+  assert.equal(await gate.run(async () => 'next'), 'next');
+});
+
+test('when busy: 503 with Retry-After, not cached, and the original is never fetched', async () => {
+  const h = harness(await png(10, 10));
+  (h.controller as any).gate = new Gate({ active: 0, waiting: 0, waitMs: 1 });
+  await assert.rejects(h.controller.resize('images', 'site/hero.png', '1200', '75', h.req, h.res), BusyResizing);
+  assert.deepEqual(h.sent.headers, { 'Retry-After': '5', 'Cache-Control': 'no-store' });
+  assert.equal(h.media.reads, 0);
 });

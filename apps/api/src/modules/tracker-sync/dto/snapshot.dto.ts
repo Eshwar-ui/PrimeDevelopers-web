@@ -61,6 +61,10 @@ export class SnapshotUnitDto {
   @IsOptional() @IsString() @MaxLength(200)
   unitType?: string | null;
 
+  // Accepted so a version 2 push validates, then dropped by the merge: the
+  // public property GET serves `detail` as stored, so asking figures are held
+  // until the client approves publishing them. Phase 2 adds public-read
+  // filtering of `tracker` data.
   @IsOptional() @IsNumber({ allowNaN: false, allowInfinity: false }) @Min(0)
   askingRent?: number | null;
 

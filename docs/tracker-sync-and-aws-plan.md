@@ -61,7 +61,10 @@ The website accepts version 1 and version 2; version 2 only adds fields.
 
 **Deploy order: the website first, then the tracker.** The website rejects any
 field it does not know, so a tracker sending version 2 to a website that only
-knows version 1 gets HTTP 400 on every push.
+knows version 1 gets HTTP 400 on every push. Don't mix versions either: a
+version 1 push after a version 2 one blanks the version 2 values under
+`row.tracker` and `building.tracker`, and the next version 2 push puts them back,
+so alternating rewrites the property on every push.
 
 Version 1:
 
@@ -95,10 +98,10 @@ Version 2 adds, all optional to the website:
 
 | Field | What it is |
 |---|---|
-| `unit.dealUnitIds` | Every unit in the building in a deal with this one, itself included, whatever their statuses (any live sale's `combinedDealRef`, or the active lease's). `dealRef` still decides the grouping. |
+| `unit.dealUnitIds` | Every unit in the building in a deal with this one, itself included, whatever their statuses (any live sale's `combinedDealRef`, or the active lease's). `dealRef` still decides the grouping. Accepted, but the website does not match on it: deal partners are different units, and matching on them swapped photographs between partners renumbered together. |
 | `unit.mergedFromIds` | The units combined into this one, two combines deep. Combining mints a new unit id, so this is how the website knows what it continues. |
 | `unit.unitType` | The tracker's unit type key, e.g. `RETAIL`. |
-| `unit.askingRent`, `unit.askingPrice` | List figures, sent **only while the unit is AVAILABLE or UNDER_CONSTRUCTION**, so neither can be read as what a tenant or buyer agreed. |
+| `unit.askingRent`, `unit.askingPrice` | List figures, sent **only while the unit is AVAILABLE or UNDER_CONSTRUCTION**, so neither can be read as what a tenant or buyer agreed. **Accepted and dropped by the website for now:** `detail` is public as stored, so they are held until the client approves publishing them. Phase 2 adds public-read filtering of `tracker` data. |
 | `unit.availableSince` | ISO date, when the unit last became available. |
 | `building.totalSqft`, `building.stories` | From the tracker's building. |
 
@@ -111,8 +114,8 @@ details.
 |---|---|
 | `label`, `status`, `trackerUnitIds` | Tracker |
 | `size` | Tracker when it has a sqft; otherwise the website's value stays |
-| `tenant` | Tracker for leased units; cleared when a unit becomes available, and when every unit of the row is LEASE_PENDING (the sitting tenant is leaving); **left alone on sold units** |
-| `tracker` (sub-object) | Tracker only: `ids`, `unitNumber`, `status` (the tracker's own), `sqft`, `unitType`, `askingRent`, `askingPrice`, `availableSince`, `syncedAt`. Nothing reads it yet; the top-level fields above are still written exactly as before, so the public site and the CMS are unaffected. `syncedAt` is when these values last changed, not the last push. |
+| `tenant` | Tracker for leased units; cleared when a unit becomes available. When every unit of the row is LEASE_PENDING (the sitting tenant is leaving), cleared only if it is the name the sync last sent (`tracker.occupant`) — a tenant typed in the CMS stays. **Left alone on sold units** |
+| `tracker` (sub-object) | Tracker only: `ids`, `unitNumber`, `status` (the tracker's own), `sqft`, `unitType`, `availableSince`, `occupant` (what the sync sent as the tenant), `syncedAt`. Nothing reads it yet; the top-level fields above are still written exactly as before, so the public site and the CMS are unaffected. `syncedAt` is when these values last changed, not the last push. |
 | `images`, `description`, `x`/`y`, `logo`, `rate`, `floor`, `frontage`, `tenantUrl`, `tenantCategory`, `facingRoad` | Website |
 
 On each matched building the sync writes `trackerBuildingId` (the mapping, see
@@ -122,8 +125,8 @@ snapshot per tracker status. Relabels and moves also re-point
 `detail.siteModel.unitBindings` and the building's own `model.bindings`.
 
 **Note:** `detail` is returned whole by the public `GET /api/properties/:slug`, so
-`row.tracker` — including the asking rent of an available unit — is readable in
-the public JSON, though nothing renders it.
+`row.tracker` and `trackerCounts` are readable in the public JSON, though nothing
+renders them. That is why asking figures are not stored yet.
 
 ### Headline totals
 
@@ -161,21 +164,28 @@ is one the website knows, but it is counted in the totals as not available.
   building has matched, it matches by that id and nothing else, whatever either
   side is renamed. Name, then trailing number, is only the first-time fallback for
   a building never linked. A linked building whose tracker building has gone (or
-  that was duplicated in the CMS, link and all) is listed under `staleLinks`, left
-  as it is, and still counted.
+  that was duplicated in the CMS, link and all) is listed under `staleLinks` and
+  left as it is. One whose tracker building has gone is still counted; a duplicate
+  is not, since its tracker building's units are already counted once.
 - **Rows.** By tracker id first, across buildings, so a unit moved to another
-  building keeps its photographs. Then by the ids a combined unit was made from.
+  building keeps its photographs and description. Its 2D pin is cleared — it was a
+  point on the old building's plan — and the move entry says so (`pinCleared`).
+  Then by the ids a combined unit was made from.
   Then, only for rows not linked to a unit the snapshot still has, by label, by the
   same unit numbers, and by any unit number in common. Labels are normalised:
   trimmed, a leading "Unit", "Suite" or "#" stripped, leading zeros dropped, and
   no spaces around "+" — "Unit 905", "0906" and "203 + 204" are 905, 906 and
   203+204.
 - **Splits and combines.** A new or renamed row takes photographs, description and
-  pin from every earlier row it overlaps by id or unit number, into what it lacks.
+  pin from every earlier row that held its own units or the units it was combined
+  from (or, before rows carry ids, shares a unit number), into what it lacks.
   So `402+404` splitting into 402 and 404 leaves the photographs on both, and 701
   and 702 combining keeps both sets. A row that carries on unchanged never gives
-  or takes media — Building 2's 201 stays apart from `201+202+203+204`. A row
-  absorbed into one other row has its 3D shapes re-pointed at it.
+  or takes media — Building 2's 201 stays apart from `201+202+203+204` — and deal
+  partners never trade media. A row absorbed into one other row has its 3D shapes
+  re-pointed at it; its other website fields the combined row lacks (a logo, a
+  link, a second pin) are not merged, and its `absorbed` entry lists them under
+  `dropped`.
 - **3D bindings.** A relabel or a move re-points `siteModel.unitBindings` and the
   building's `model.bindings` (including a `unit-605` shape linked by name), keyed
   as `apps/web/src/lib/siteModel.js` and `units.js` key them. A removed row's
@@ -215,8 +225,9 @@ not.
   them.
 - **The tracker logs a warning** with those counts whenever a push it sent comes
   back 200 with anything removed, unmatched, unknown or refused — including every
-  dry run. Website buildings the tracker simply lacks (Centro's Building 10) are
-  not warned about, or every hourly push would warn.
+  dry run. Website buildings the tracker simply lacks (Centro's Building 10), and
+  tracker buildings with no units, are not warned about, or every hourly push
+  would warn.
 - Website buildings the tracker does not list are left exactly as they are, and
   tracker buildings with no website building are reported, not created — a
   building needs its plan artwork before it can be shown.

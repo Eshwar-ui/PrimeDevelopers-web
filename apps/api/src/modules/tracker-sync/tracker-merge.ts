@@ -67,12 +67,22 @@ export interface SnapshotUnit {
 
   // Version 2. All optional, so a version 1 snapshot is merged exactly as before.
 
-  /** Every unit in the same deal, this one included, whatever each one's status. */
+  /**
+   * Every unit in the same deal, this one included, whatever each one's status.
+   * Accepted but not matched on: deal partners are different units, and taking
+   * media from a partner renumbered at the same time swapped their photographs.
+   */
   dealUnitIds?: string[];
   /** Units combined into this one. Combining mints a new tracker id; these say what it continues. */
   mergedFromIds?: string[];
   unitType?: string | null;
-  /** Per sq ft per month. The tracker sends it for units on the market only. */
+  /**
+   * Per sq ft per month, and the asking price: sent for units on the market
+   * only. Accepted and dropped. `detail` is served by the public property GET
+   * as stored, and publishing asking figures waits for the client's approval;
+   * phase 2 adds public-read filtering of `tracker` data, and only then are
+   * they written.
+   */
   askingRent?: number | null;
   askingPrice?: number | null;
   availableSince?: string | null;
@@ -107,9 +117,12 @@ export interface RowTrackerFields {
   status: string;
   sqft: number | null;
   unitType: string | null;
-  askingRent: number | null;
-  askingPrice: number | null;
   availableSince: string | null;
+  /**
+   * The tenant name the sync sent. A tenant equal to it is the sync's to clear;
+   * any other was typed in the CMS and stays.
+   */
+  occupant: string | null;
   /**
    * The snapshot that last changed the values above. Not every push: the
    * hourly push must compare equal to what is stored, or it would be a write.
@@ -181,9 +194,15 @@ export interface BuildingReport {
   matchedBy: 'id' | 'name' | 'number';
   added: string[];
   removed: RemovedRow[];
-  /** Rows whose units now sit in another row: one side of a split or a combine. Their media went with them. */
-  absorbed: { label: string; into: string[] }[];
-  movedIn: { label: string; from: string }[];
+  /**
+   * Rows whose units now sit in another row: one side of a split or a combine.
+   * Photographs, description and pin go with them; `dropped` lists the website
+   * fields the rows they went into do not have — a logo, a link, a second pin —
+   * so the loss is visible.
+   */
+  absorbed: { label: string; into: string[]; dropped: string[] }[];
+  /** `pinCleared`: its 2D pin was a point on the old building's plan, so it was cleared. */
+  movedIn: { label: string; from: string; pinCleared: boolean }[];
   movedOut: { label: string; to: string }[];
   relabelled: { from: string; to: string }[];
   statusChanged: { label: string; from: string; to: string }[];
@@ -356,8 +375,6 @@ export interface TrackerRow {
   ids: string[];
   /** Units combined into this row's units (version 2). */
   mergedFromIds: string[];
-  /** Every unit in a deal with this row's units, whatever their status (version 2). */
-  dealUnitIds: string[];
   label: string;
   /** Null when a unit's status is one this file does not know. */
   status: WebsiteUnitStatus | null;
@@ -406,7 +423,6 @@ export function toRows(units: SnapshotUnit[]): TrackerRow[] {
       return {
         ids,
         mergedFromIds: unique(ordered.flatMap((m) => m.mergedFromIds ?? [])).filter((id) => !ids.includes(id)),
-        dealUnitIds: unique(ordered.flatMap((m) => m.dealUnitIds ?? [])),
         label: ordered.map((m) => normaliseLabel(m.unitNumber)).join('+'),
         status: statuses.includes(null) ? null : statuses[0],
         // A partial sum would understate the space, so an unknown member makes
@@ -447,6 +463,7 @@ function pairBuildings(websiteBuildings: WebsiteBuilding[], trackerBuildings: Sn
   const pairs = new Map<number, { tracker: SnapshotBuilding; matchedBy: BuildingReport['matchedBy'] }>();
   const claimed = new Set<string>();
   const staleLinks: StaleLink[] = [];
+  const duplicates = new Set<number>();
 
   websiteBuildings.forEach((website, index) => {
     const id = website.trackerBuildingId;
@@ -456,6 +473,7 @@ function pairBuildings(websiteBuildings: WebsiteBuilding[], trackerBuildings: Sn
       // Claimed twice is a building duplicated in the CMS, link and all.
       const reason = tracker ? 'claimed-by-another-building' : 'not-in-snapshot';
       staleLinks.push({ building: buildingLabel(website, index), trackerBuildingId: id, reason });
+      if (tracker) duplicates.add(index);
       return;
     }
     pairs.set(index, { tracker, matchedBy: 'id' });
@@ -483,7 +501,7 @@ function pairBuildings(websiteBuildings: WebsiteBuilding[], trackerBuildings: Sn
   pass('name', (w) => nameKey(w.building), (t) => nameKey(t.name));
   pass('number', (w) => numberKey(w.number) ?? numberKey(w.building), (t) => numberKey(t.name));
 
-  return { pairs, unmatched: trackerBuildings.filter((t) => !claimed.has(t.id)), staleLinks };
+  return { pairs, unmatched: trackerBuildings.filter((t) => !claimed.has(t.id)), staleLinks, duplicates };
 }
 
 interface Prior {
@@ -522,11 +540,13 @@ const continuesUnchanged = (prior: Prior, slot: Slot) =>
  * a unit taking a renumbered neighbour's old number would take its
  * photographs too.
  *
- * Then the donors: rows a new or renamed row takes media from. A row that
- * continues one prior row unchanged takes nothing, which is what keeps
- * Building 2's 201 apart from its neighbour "201+202+203+204"; and a donor
- * must itself be gone or renamed, so a row that carries on as it was never
- * gives its photographs away.
+ * Then the donors: rows a new or renamed row takes media from — rows that
+ * held its own units, or the units it was combined from. A row that continues
+ * one prior row unchanged takes nothing, which is what keeps Building 2's 201
+ * apart from its neighbour "201+202+203+204"; and a donor must itself be gone
+ * or renamed, so a row that carries on as it was never gives its photographs
+ * away. Deal partners are not donors: they are other units, and two partners
+ * renumbered at once would otherwise swap photographs.
  */
 function pairRows(
   websiteBuildings: WebsiteBuilding[],
@@ -577,8 +597,7 @@ function pairRows(
       const next = continuedBy.get(p);
       if (next && continuesUnchanged(p, next)) return false;
       if (shares(idsOf(p), identity)) return true;
-      if (p.b !== slot.b) return false;
-      return shares(idsOf(p), slot.row.dealUnitIds) || (free(p) && overlaps(p.unit.label, slot.row.label));
+      return p.b === slot.b && free(p) && overlaps(p.unit.label, slot.row.label);
     });
     if (donors.length) donorsOf.set(slot, donors);
   }
@@ -593,16 +612,22 @@ const photoCount = (unit: WebsiteUnit) => imagesOf(unit).length;
 
 const hasPin = (unit: WebsiteUnit) => Number.isFinite(unit.x) && Number.isFinite(unit.y);
 
+export interface Donor {
+  unit: WebsiteUnit;
+  sameBuilding: boolean;
+}
+
 /**
  * Photographs, description and pin from the rows this one continues under a
  * new identity — the other half of a split, the rest of a combine. Only into
- * what the row lacks: its own are never replaced or reordered.
+ * what the row lacks: its own are never replaced or reordered. A pin only from
+ * the same building: it is a point on that building's plan.
  */
-function carryMedia(next: WebsiteUnit, donors: WebsiteUnit[]): boolean {
+function carryMedia(next: WebsiteUnit, donors: Donor[]): boolean {
   const own = imagesOf(next);
   const added: string[] = [];
   let carried = false;
-  for (const donor of donors) {
+  for (const { unit: donor, sameBuilding } of donors) {
     for (const url of imagesOf(donor)) {
       if (!own.includes(url) && !added.includes(url)) added.push(url);
     }
@@ -610,7 +635,7 @@ function carryMedia(next: WebsiteUnit, donors: WebsiteUnit[]): boolean {
       next.description = donor.description;
       carried = true;
     }
-    if (!hasPin(next) && hasPin(donor)) {
+    if (sameBuilding && !hasPin(next) && hasPin(donor)) {
       next.x = donor.x;
       next.y = donor.y;
       carried = true;
@@ -627,27 +652,25 @@ const agreed = <T>(values: (T | null | undefined)[]): T | null => {
 };
 
 const trackerKeyOf = (t: Partial<RowTrackerFields> | undefined) =>
-  JSON.stringify([t?.ids, t?.unitNumber, t?.status, t?.sqft, t?.unitType, t?.askingRent, t?.askingPrice, t?.availableSince]);
+  JSON.stringify([t?.ids, t?.unitNumber, t?.status, t?.sqft, t?.unitType, t?.availableSince, t?.occupant]);
 
 function trackerFields(row: TrackerRow, previous: RowTrackerFields | undefined, syncedAt: string): RowTrackerFields {
-  // Asking figures only while the row is on the market: on a let or sold unit
-  // they read as what was paid. The tracker sends them only then as well.
-  const onMarket = row.status === 'available' || row.status === 'coming-soon';
+  // No asking rent or price: held until the client approves publishing them —
+  // see SnapshotUnit.askingRent.
   const fields = {
     ids: row.ids,
     unitNumber: row.units.map((u) => String(u.unitNumber).trim()).join('+'),
     status: unique(row.units.map((u) => u.status)).join('+'),
     sqft: row.sqft,
     unitType: agreed(row.units.map((u) => u.unitType)),
-    askingRent: onMarket ? agreed(row.units.map((u) => u.askingRent)) : null,
-    askingPrice: onMarket ? agreed(row.units.map((u) => u.askingPrice)) : null,
     availableSince: agreed(row.units.map((u) => u.availableSince)),
+    occupant: row.occupant,
   };
   const unchanged = previous?.syncedAt && trackerKeyOf(previous) === trackerKeyOf(fields);
   return { ...fields, syncedAt: unchanged ? previous.syncedAt : syncedAt };
 }
 
-function mergeRow(prior: WebsiteUnit | undefined, row: TrackerRow, donors: WebsiteUnit[], syncedAt: string) {
+function mergeRow(prior: WebsiteUnit | undefined, row: TrackerRow, donors: Donor[], syncedAt: string) {
   const next: WebsiteUnit = {
     ...(prior ?? blankUnit(row.label)),
     label: row.label,
@@ -666,13 +689,32 @@ function mergeRow(prior: WebsiteUnit | undefined, row: TrackerRow, donors: Websi
   // which is never published, and an owner-occupier's trading name is the
   // website's to write. A row whose units are all LEASE_PENDING has no lease
   // in place: the tracker moves LEASED → LEASE_PENDING when a successor signs
-  // while the sitting tenant leaves, so the name the sync wrote goes too.
+  // while the sitting tenant leaves, so the name the sync wrote goes too — but
+  // only that name. One typed in the CMS, which the sync never sent, stays.
   const pendingOnly = row.units.every((u) => u.status === 'LEASE_PENDING');
-  if (row.status === 'leased') next.tenant = row.occupant ?? (pendingOnly ? '' : prior?.tenant ?? '');
-  else if (row.status === 'available' || row.status === 'coming-soon') next.tenant = '';
+  const lastSent = prior?.tracker?.occupant ?? null;
+  const syncWrote = lastSent !== null && prior?.tenant === lastSent;
+  if (row.status === 'leased') {
+    if (row.occupant) next.tenant = row.occupant;
+    else if (pendingOnly && syncWrote) next.tenant = '';
+    else next.tenant = prior?.tenant ?? '';
+  } else if (row.status === 'available' || row.status === 'coming-soon') next.tenant = '';
 
   next.tracker = trackerFields(row, prior?.tracker, syncedAt);
   return { next, carried };
+}
+
+/** Website-owned text fields of a row, as `makeUnit()` in apps/web/src/lib/units.js names them. */
+const WEBSITE_FIELDS = ['description', 'logo', 'rate', 'floor', 'frontage', 'tenantUrl', 'tenantCategory', 'facingRoad'];
+
+/** The website fields of an absorbed row that none of the rows it went into kept. */
+function droppedFields(absorbed: WebsiteUnit, into: WebsiteUnit[]): string[] {
+  const text = (value: unknown) => String(value ?? '').trim();
+  const dropped = WEBSITE_FIELDS.filter(
+    (field) => text(absorbed[field]) && !into.some((unit) => text(unit[field]) === text(absorbed[field])),
+  );
+  if (hasPin(absorbed) && !into.some((unit) => unit.x === absorbed.x && unit.y === absorbed.y)) dropped.push('pin');
+  return dropped;
 }
 
 const MESH_PREFIX = 'unit-';
@@ -794,7 +836,7 @@ export function mergeSnapshot(
   options: MergeOptions = {},
 ): MergeResult {
   const websiteBuildings: WebsiteBuilding[] = Array.isArray(floorPlans?.buildings) ? floorPlans!.buildings : [];
-  const { pairs, unmatched, staleLinks } = pairBuildings(websiteBuildings, snapshot.buildings);
+  const { pairs, unmatched, staleLinks, duplicates } = pairBuildings(websiteBuildings, snapshot.buildings);
   const syncedAt = snapshot.generatedAt;
 
   const rowsByBuilding = new Map<number, TrackerRow[]>();
@@ -806,6 +848,7 @@ export function mergeSnapshot(
   );
 
   const reports = new Map<number, BuildingReport>();
+  const merged = new Map<Slot, WebsiteUnit>();
   const untouched: string[] = [];
   const rekeys: Rekey[] = [];
   let totalUnits = 0;
@@ -822,8 +865,12 @@ export function mergeSnapshot(
     const pair = pairs.get(b);
     if (!pair) {
       untouched.push(buildingLabel(building, b));
-      totalUnits += Number(building.units) || (building.unitList ?? []).length;
-      totalAvailable += Number(building.available) || 0;
+      // A copy of a matched building, link and all, is left as it is but not
+      // counted: its tracker building's units are counted once, there.
+      if (!duplicates.has(b)) {
+        totalUnits += Number(building.units) || (building.unitList ?? []).length;
+        totalAvailable += Number(building.available) || 0;
+      }
       return building;
     }
 
@@ -865,10 +912,16 @@ export function mergeSnapshot(
         if (!prior) continue;
       }
 
+      let base = prior;
       if (!primary || !prior) report.added.push(row.label);
       else {
         if (primary.b !== b) {
-          report.movedIn.push({ label: row.label, from: buildingLabel(websiteBuildings[primary.b], primary.b) });
+          // Photographs and description travel with a moved unit; its pin is a
+          // point on the old building's plan, so it does not.
+          const pinCleared = hasPin(prior);
+          if (pinCleared) base = { ...prior, x: null, y: null };
+          const from = buildingLabel(websiteBuildings[primary.b], primary.b);
+          report.movedIn.push({ label: row.label, from, pinCleared });
         }
         const was = String(prior.label ?? '');
         if (was !== row.label) report.relabelled.push({ from: was, to: row.label });
@@ -881,7 +934,13 @@ export function mergeSnapshot(
       }
 
       const donors = donorsOf.get(slot) ?? [];
-      const { next, carried } = mergeRow(prior, row, donors.map((d) => d.unit), syncedAt);
+      const { next, carried } = mergeRow(
+        base,
+        row,
+        donors.map((d) => ({ unit: d.unit, sameBuilding: d.b === b })),
+        syncedAt,
+      );
+      merged.set(slot, next);
       if (carried) report.carried.push({ label: row.label, from: donors.map((d) => String(d.unit.label ?? '')) });
       if (next.status === 'available') report.available += row.ids.length;
       unitList.push(next);
@@ -920,7 +979,11 @@ export function mergeSnapshot(
     }
     const into = absorbedInto.get(prior);
     if (into) {
-      report.absorbed.push({ label, into: into.map((s) => s.row.label) });
+      report.absorbed.push({
+        label,
+        into: into.map((s) => s.row.label),
+        dropped: droppedFields(prior.unit, into.map((s) => merged.get(s)).filter((u): u is WebsiteUnit => !!u)),
+      });
       // Into one row, its shapes follow (both halves of a combine light up);
       // into several, there is no one row to point at, so they are left.
       if (into.length === 1 && label !== into[0].row.label) {

@@ -567,14 +567,121 @@ test('a combine keeps both rows\' photographs and lights both shapes, using the 
   assert.deepEqual(only[0].images, ['a.jpg', 'b.jpg']);
   assert.equal(only[0].description, 'Drive-through');
   assert.deepEqual([only[0].x, only[0].y], [1, 2]);
-  assert.deepEqual(report.buildings[0].absorbed, [{ label: '702', into: ['701-702'] }]);
+  assert.deepEqual(report.buildings[0].absorbed, [{ label: '702', into: ['701-702'], dropped: [] }]);
   assert.deepEqual(Object.values(nextSite!.unitBindings!).map((b) => b.unitLabel), ['701-702', '701-702']);
 });
 
-test('a unit moved between buildings keeps its photographs and its shape', () => {
+test('a combine lists what the absorbed row loses: its logo, its link, a second pin', () => {
   const floorPlans = {
     buildings: [
-      { building: 'Building 8', trackerBuildingId: 'b8', unitList: [{ label: '801', status: 'sold', trackerUnitIds: ['u801'], images: ['p.jpg'] }, { label: '802', status: 'sold', trackerUnitIds: ['u802'] }] },
+      {
+        building: 'Building 7',
+        trackerBuildingId: 'b7',
+        unitList: [
+          { label: '701', status: 'leased', trackerUnitIds: ['u701'], logo: 'cafe.png', x: 1, y: 1 },
+          { label: '702', status: 'leased', trackerUnitIds: ['u702'], logo: 'deli.png', tenantUrl: 'https://deli.example', x: 2, y: 2 },
+        ],
+      },
+    ],
+  };
+  const { floorPlans: next, report } = mergeSnapshot(
+    floorPlans,
+    ZERO,
+    snapshot([{ id: 'b7', name: 'Building 7', units: [unit('uNew', '701+702', 'AVAILABLE', { mergedFromIds: ['u701', 'u702'] })] }], 2),
+  );
+  assert.deepEqual(report.buildings[0].absorbed, [{ label: '702', into: ['701+702'], dropped: ['logo', 'tenantUrl', 'pin'] }]);
+  assert.equal(report.refused, null);
+  assert.deepEqual([row(next, 0, '701+702').logo, row(next, 0, '701+702').x], ['cafe.png', 1]);
+});
+
+test('deal partners renumbered together keep their own photographs and pins', () => {
+  const floorPlans = {
+    buildings: [
+      {
+        building: 'Building 4',
+        trackerBuildingId: 'b4',
+        unitList: [
+          { label: '402', status: 'sold', trackerUnitIds: ['a'], images: ['402.jpg'], description: 'Corner', x: 1, y: 1 },
+          { label: '404', status: 'sold', trackerUnitIds: ['b'], images: ['404.jpg'], description: '', x: null, y: null },
+        ],
+      },
+    ],
+  };
+  // Two sales of one deal, so each unit names the other in dealUnitIds.
+  const { floorPlans: next } = mergeSnapshot(
+    floorPlans,
+    ZERO,
+    snapshot(
+      [
+        {
+          id: 'b4',
+          name: 'Building 4',
+          units: [
+            unit('a', '502', 'SOLD', { dealUnitIds: ['a', 'b'] }),
+            unit('b', '504', 'UNDER_CONTRACT', { dealUnitIds: ['a', 'b'] }),
+          ],
+        },
+      ],
+      2,
+    ),
+  );
+  assert.deepEqual(row(next, 0, '502').images, ['402.jpg']);
+  assert.deepEqual(row(next, 0, '504').images, ['404.jpg']);
+  assert.deepEqual([row(next, 0, '504').description, row(next, 0, '504').x, row(next, 0, '504').y], ['', null, null]);
+  assert.deepEqual([row(next, 0, '502').x, row(next, 0, '502').y], [1, 1]);
+});
+
+test('a SOLD/UNDER_CONTRACT swap inside a deal does not give one unit another\'s photographs', () => {
+  const floorPlans = {
+    buildings: [
+      {
+        building: 'Building 4',
+        trackerBuildingId: 'b4',
+        unitList: [
+          { label: '401+402', status: 'sold', trackerUnitIds: ['u401', 'u402'], images: ['pair.jpg'] },
+          { label: '403', status: 'sold', trackerUnitIds: ['u403'], images: ['403.jpg'] },
+        ],
+      },
+    ],
+  };
+  // 402 falls back to UNDER_CONTRACT and leaves the sold group; 403 joins it.
+  const deal = ['u401', 'u402', 'u403'];
+  const { floorPlans: next, report } = mergeSnapshot(
+    floorPlans,
+    ZERO,
+    snapshot(
+      [
+        {
+          id: 'b4',
+          name: 'Building 4',
+          units: [
+            unit('u401', '401', 'SOLD', { dealRef: 'SALE:X', dealUnitIds: deal }),
+            unit('u402', '402', 'UNDER_CONTRACT', { dealUnitIds: deal }),
+            unit('u403', '403', 'SOLD', { dealRef: 'SALE:X', dealUnitIds: deal }),
+          ],
+        },
+      ],
+      2,
+    ),
+  );
+  assert.equal(report.refused, null);
+  assert.deepEqual(labels(next), ['401+403', '402']);
+  assert.equal(row(next, 0, '402').images.includes('403.jpg'), false);
+  assert.deepEqual(row(next, 0, '402').images, ['pair.jpg']);
+  assert.deepEqual(row(next, 0, '401+403').images, ['pair.jpg', '403.jpg']);
+});
+
+test('a unit moved between buildings keeps its photographs and its shape, but not its 2D pin', () => {
+  const floorPlans = {
+    buildings: [
+      {
+        building: 'Building 8',
+        trackerBuildingId: 'b8',
+        unitList: [
+          { label: '801', status: 'sold', trackerUnitIds: ['u801'], images: ['p.jpg'], description: 'End cap', x: 0.1, y: 0.9 },
+          { label: '802', status: 'sold', trackerUnitIds: ['u802'] },
+        ],
+      },
       { building: 'Building 9', trackerBuildingId: 'b9', unitList: [{ label: '901', status: 'sold', trackerUnitIds: ['u901'] }] },
     ],
   };
@@ -591,8 +698,13 @@ test('a unit moved between buildings keeps its photographs and its shape', () =>
   assert.equal(report.refused, null);
   assert.equal(report.removedRows, 0);
   assert.deepEqual(row(next, 1, '801').images, ['p.jpg']);
+  assert.equal(row(next, 1, '801').description, 'End cap');
+  // The pin was a point on Building 8's plan.
+  assert.deepEqual([row(next, 1, '801').x, row(next, 1, '801').y], [null, null]);
   assert.deepEqual(report.buildings[0].movedOut, [{ label: '801', to: 'Building 9' }]);
-  assert.deepEqual(report.buildings[1].movedIn, [{ label: '801', from: 'Building 8' }]);
+  assert.deepEqual(report.buildings[1].movedIn, [{ label: '801', from: 'Building 8', pinCleared: true }]);
+  // The input is never mutated.
+  assert.equal(floorPlans.buildings[0].unitList[0].x, 0.1);
   assert.deepEqual(nextSite!.unitBindings!.m, { buildingLabel: 'Building 9', unitLabel: '801' });
 });
 
@@ -738,18 +850,18 @@ test('a linked building is matched by its stored id, never again by name', () =>
   assert.deepEqual(next.buildings[0], floorPlans.buildings[0]);
 });
 
-test('a building duplicated in the CMS, link and all, is reported', () => {
-  const { report } = mergeSnapshot(
+test('a building duplicated in the CMS, link and all, is reported and counted once', () => {
+  const copy = { building: 'Building 4 copy', trackerBuildingId: 'b4', units: 2, available: 1, unitList: [{ label: '401', status: 'available' }, { label: '402', status: 'sold' }] };
+  const { floorPlans: next, totals, report } = mergeSnapshot(
     {
-      buildings: [
-        { building: 'Building 4', trackerBuildingId: 'b4', unitList: [] },
-        { building: 'Building 4 copy', trackerBuildingId: 'b4', unitList: [] },
-      ],
+      buildings: [{ building: 'Building 4', trackerBuildingId: 'b4', unitList: [] }, copy],
     },
     ZERO,
-    snapshot([{ id: 'b4', name: 'Building 4', units: [] }]),
+    snapshot([{ id: 'b4', name: 'Building 4', units: [unit('u401', '401', 'AVAILABLE'), unit('u402', '402', 'SOLD')] }]),
   );
   assert.deepEqual(report.staleLinks, [{ building: 'Building 4 copy', trackerBuildingId: 'b4', reason: 'claimed-by-another-building' }]);
+  assert.deepEqual(next.buildings[1], copy);
+  assert.deepEqual(totals, { buildings: 2, sold: 1, available: 1 });
 });
 
 // ── 7. Unknown statuses and the sync-owned tenant ──────────────────────────
@@ -783,13 +895,14 @@ test('an unknown status keeps the row\'s previous status, is reported, and never
   assert.deepEqual(report.buildings[0].added, ['705']);
 });
 
-test('LEASED → LEASE_PENDING or AVAILABLE clears the tenant; a sold row keeps the website\'s', () => {
+test('LEASED → LEASE_PENDING or AVAILABLE clears the tenant the sync wrote; a sold row keeps the website\'s', () => {
   const floorPlans = {
     buildings: [
       {
         building: 'Building 6',
         unitList: [
-          { label: '605', status: 'leased', tenant: 'JRays Corner' },
+          // Written by an earlier push: the tracker sent this occupant.
+          { label: '605', status: 'leased', tenant: 'JRays Corner', tracker: { occupant: 'JRays Corner' } },
           { label: '606', status: 'leased', tenant: 'Sri Vanguard' },
           { label: '607', status: 'sold', tenant: 'Owner Dental' },
           { label: '608', status: 'leased', tenant: 'Typed in the CMS' },
@@ -820,6 +933,31 @@ test('LEASED → LEASE_PENDING or AVAILABLE clears the tenant; a sold row keeps 
     ['607', 'sold', 'Owner Dental'],
     ['608', 'leased', 'Typed in the CMS'],
   ]);
+});
+
+test('a tenant typed in the CMS survives LEASE_PENDING across pushes; one the sync wrote does not', () => {
+  const floorPlans = {
+    buildings: [
+      {
+        building: 'Building 6',
+        unitList: [
+          { label: '605', status: 'leased', tenant: 'Opening soon: Chipotle' },
+          { label: '606', status: 'leased', tenant: '' },
+        ],
+      },
+    ],
+  };
+  const push = (fp: any, units: SnapshotUnit[]) => mergeSnapshot(fp, ZERO, snapshot([{ id: 'b6', name: 'Building 6', units }])).floorPlans;
+  const tenants = (fp: any) => fp.buildings[0].unitList.map((u: any) => u.tenant);
+
+  // Push 1: 605 pending with a CMS tenant; 606 leased, so the sync writes its name.
+  const first = push(floorPlans, [unit('a', '605', 'LEASE_PENDING'), unit('b', '606', 'LEASED', { occupant: 'JRays Corner' })]);
+  assert.deepEqual(tenants(first), ['Opening soon: Chipotle', 'JRays Corner']);
+  assert.equal(first.buildings[0].unitList[1].tracker.occupant, 'JRays Corner');
+
+  // Push 2: both pending. The CMS text stays; the name the sync wrote goes.
+  const second = push(jsonbRoundTrip(first), [unit('a', '605', 'LEASE_PENDING'), unit('b', '606', 'LEASE_PENDING')]);
+  assert.deepEqual(tenants(second), ['Opening soon: Chipotle', '']);
 });
 
 // ── 8. Snapshot v2 ─────────────────────────────────────────────────────────
@@ -919,23 +1057,22 @@ test('v2 values go under row.tracker; the fields the site reads are written exac
     status: 'AVAILABLE',
     sqft: 1510,
     unitType: 'RETAIL',
-    askingRent: 24.5,
-    askingPrice: 650000,
     availableSince: '2026-09-16T00:00:00.000Z',
+    occupant: null,
     syncedAt: '2026-10-23T10:00:00.000Z',
   });
-  assert.deepEqual(v1.floorPlans.buildings[0].unitList[0].tracker.askingRent, null);
   assert.deepEqual(v2.floorPlans.buildings[0].tracker, { id: 'b2', name: 'Building 2', totalSqft: 9500, stories: 1 });
   assert.equal(v2.report.version, 2);
 });
 
-test('asking figures are kept only while a unit is on the market', () => {
-  const { floorPlans: next } = mergeSnapshot(
+test('asking rent and price are accepted but never stored — detail is public as stored', () => {
+  const { floorPlans: next, report } = mergeSnapshot(
     { buildings: [{ building: 'Building 2', unitList: [] }] },
     ZERO,
-    snapshot([{ id: 'b2', name: 'Building 2', units: [unit('u', '202', 'LEASED', { askingRent: 30, askingPrice: 500000 })] }], 2),
+    snapshot([{ id: 'b2', name: 'Building 2', units: [unit('u', '202', 'AVAILABLE', { askingRent: 30, askingPrice: 500000 })] }], 2),
   );
-  assert.deepEqual([next.buildings[0].unitList[0].tracker.askingRent, next.buildings[0].unitList[0].tracker.askingPrice], [null, null]);
+  const json = JSON.stringify({ next, report });
+  for (const leaked of ['askingRent', 'askingPrice', '500000']) assert.equal(json.includes(leaked), false, leaked);
 });
 
 test('row.tracker.syncedAt moves only when a tracker value changes', () => {

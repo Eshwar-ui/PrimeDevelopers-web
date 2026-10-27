@@ -2,7 +2,7 @@ import { Suspense, lazy, useMemo, useRef, useState } from 'react'
 import { uploadModel } from '../../lib/uploads'
 import { imageWarning, inspectGlb, triangleWarning, validateModelFile } from '../../lib/glbInspect'
 import { ConfirmButton } from './ui'
-import { formatBytes, getUnits, makeUnit, nextUnitLabel } from '../../lib/units'
+import { formatBytes, getUnits, makeUnit, nextUnitLabel, siteUnitKey } from '../../lib/units'
 import {
   bindSiteMeshes,
   diffSiteModel,
@@ -57,7 +57,15 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
 
   const report = useMemo(() => reconcileSite(meshNames, buildings, model), [meshNames, buildings, model])
   const entries = useMemo(() => toViewerEntries(report), [report])
-  const flagged = useMemo(() => (showUnbound ? new Set(report.unbound) : new Set()), [showUnbound, report])
+  // Orange = untagged (when the toggle is on) and whatever shape the editor has just picked.
+  const flagged = useMemo(
+    () => new Set([...(showUnbound ? report.unbound : []), ...pendingMeshNames]),
+    [showUnbound, report, pendingMeshNames],
+  )
+  const taggedUnits = useMemo(
+    () => new Set(Object.values(model?.unitBindings ?? {}).map((b) => siteUnitKey(b.buildingLabel, b.unitLabel))),
+    [model],
+  )
 
   const armedBuilding = findBuildingByLabel(buildings, armedBuildingLabel)
   const armedBuildingUnits = armedBuilding ? getUnits(armedBuilding) : []
@@ -153,11 +161,40 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
     const target = armedTarget()
     if (target) {
       bindNames(names, target)
+      // Tagging a whole building unit by unit: move on to the next untagged
+      // one so the editor just keeps clicking shapes.
+      if (target.kind === 'unit') {
+        const done = new Set(taggedUnits).add(siteUnitKey(target.buildingLabel, target.unitLabel))
+        const next = armedBuildingUnits.find(
+          (u) => u.label && u.label !== target.unitLabel && !done.has(siteUnitKey(target.buildingLabel, u.label)),
+        )
+        setArmedUnitLabel(next?.label ?? '')
+      }
       return
     }
     if (tab === 'units' && tagUnitMode && armedBuilding) {
       createUnitFromTap(names)
+      return
     }
+    // Nothing armed: the click just picks the shape, and the panel below
+    // offers every building, unit and road to tag it as.
+    setPendingMeshNames(names)
+  }
+
+  /** What a shape is tagged as right now, in words. */
+  const describeMesh = (name) => {
+    const unit = model?.unitBindings?.[name]
+    if (unit) return `Unit ${unit.unitLabel} · ${unit.buildingLabel}`
+    const road = model?.roadBindings?.[name]
+    if (road) return `Road: ${road}`
+    const building = model?.buildingBindings?.[name]
+    if (building) return `Building ${building}`
+    return 'Not tagged yet'
+  }
+
+  const tagPicked = (target) => {
+    bindNames(pendingMeshNames, target)
+    setPendingMeshNames([])
   }
 
   const commitPendingSelection = () => {
@@ -368,6 +405,7 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
                         armedUnitLabel === u.label ? 'border-ember bg-ember text-void' : 'border-white/20 text-bone/70 hover:border-ember hover:text-ember'
                       }`}
                     >
+                      {taggedUnits.has(siteUnitKey(armedBuildingLabel, u.label)) ? '✓ ' : ''}
                       {u.label || '(unlabelled)'}
                     </button>
                   ))}
@@ -493,7 +531,7 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
                     }`
                 : tab === 'units' && tagUnitMode
                   ? 'Tap a shape to create a new unit for it'
-                  : `Arm a ${tab === 'buildings' ? 'building' : tab === 'units' ? 'unit' : 'road'} above, then click its shape in the model`}
+                  : `Click any shape to tag it — or arm a ${tab === 'buildings' ? 'building' : tab === 'units' ? 'unit' : 'road'} above first and click its shape`}
             </div>
             <Suspense
               fallback={
@@ -512,12 +550,113 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
                 statusFilter={null}
                 flaggedMeshes={flagged}
                 onMeshClick={onMeshClick}
-                height="h-64 md:h-80"
+                height="h-96 md:h-[34rem]"
               />
             </Suspense>
+            {pendingMeshNames.length > 0 && (
+              <PickPanel
+                names={pendingMeshNames}
+                current={describeMesh(pendingMeshNames[0])}
+                buildings={buildings}
+                roads={roads}
+                taggedUnits={taggedUnits}
+                onTag={tagPicked}
+                onClear={() => setPendingMeshNames([])}
+              />
+            )}
             <p className="mt-2 text-xs text-bone-3">This is exactly what a visitor sees. Untagged shapes are highlighted in orange when the toggle above is on.</p>
           </div>
         </>
+      )}
+    </div>
+  )
+}
+
+// Shown after a shape is clicked with nothing armed: one tap on a building,
+// unit or road tags it. Untagged units come first, since those are what is
+// left to do; a ✓ marks a unit that already owns a shape (tagging it again
+// moves it to this one).
+function PickPanel({ names, current, buildings, roads, taggedUnits, onTag, onClear }) {
+  const chip =
+    'rounded-full border border-white/20 px-3 py-1 text-xs font-bold uppercase tracking-wide text-bone/80 hover:border-ember hover:text-ember'
+  return (
+    <div role="region" aria-label="Tag the selected shape" className="mt-3 rounded-lg border border-ember/50 bg-ember/5 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-bone/80">
+          <strong className="font-bold uppercase tracking-wide text-ember">
+            {names.length} shape{names.length === 1 ? '' : 's'} picked
+          </strong>{' '}
+          — now tagged as: {current}. Choose what it is:
+        </p>
+        <span className="flex gap-2">
+          {current !== 'Not tagged yet' && (
+            <button type="button" onClick={() => onTag(null)} className="text-xs text-red-300 hover:text-red-200">
+              Remove tag
+            </button>
+          )}
+          <button type="button" onClick={onClear} className="text-xs text-bone-3 hover:text-ember">
+            Cancel
+          </button>
+        </span>
+      </div>
+
+      {buildings.filter((b) => b.building).length > 0 && (
+        <div className="mt-3">
+          <span className="text-[11px] font-bold uppercase tracking-wide text-bone-3">Whole building</span>
+          <div className="mt-1 flex flex-wrap gap-2">
+            {buildings
+              .filter((b) => b.building)
+              .map((b) => (
+                <button key={b.building} type="button" className={chip} onClick={() => onTag({ kind: 'building', buildingLabel: b.building })}>
+                  {b.building}
+                </button>
+              ))}
+          </div>
+        </div>
+      )}
+
+      {buildings
+        .filter((b) => b.building && (b.unitList ?? []).some((u) => u.label))
+        .map((b) => {
+          const units = (b.unitList ?? []).filter((u) => u.label)
+          const sorted = [...units].sort(
+            (x, y) =>
+              Number(taggedUnits.has(siteUnitKey(b.building, x.label))) -
+              Number(taggedUnits.has(siteUnitKey(b.building, y.label))),
+          )
+          return (
+            <div key={b.building} className="mt-3">
+              <span className="text-[11px] font-bold uppercase tracking-wide text-bone-3">{b.building} · units</span>
+              <div className="mt-1 flex flex-wrap gap-2">
+                {sorted.map((u) => {
+                  const tagged = taggedUnits.has(siteUnitKey(b.building, u.label))
+                  return (
+                    <button
+                      key={u.label}
+                      type="button"
+                      className={`${chip} ${tagged ? 'opacity-60' : ''}`}
+                      onClick={() => onTag({ kind: 'unit', buildingLabel: b.building, unitLabel: u.label })}
+                    >
+                      {tagged ? '✓ ' : ''}Unit {u.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })}
+
+      {roads.length > 0 && (
+        <div className="mt-3">
+          <span className="text-[11px] font-bold uppercase tracking-wide text-bone-3">Road</span>
+          <div className="mt-1 flex flex-wrap gap-2">
+            {roads.map((r) => (
+              <button key={r.name} type="button" className={chip} onClick={() => onTag({ kind: 'road', roadName: r.name })}>
+                {r.name}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   )

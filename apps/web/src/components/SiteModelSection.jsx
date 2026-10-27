@@ -1,19 +1,17 @@
-import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import ErrorBoundary from './ErrorBoundary'
 import FloorPlanInteractive from './FloorPlanInteractive'
 import UnitDetailCard from './UnitDetailCard'
 import UnitList from './UnitList'
+import ViewerFallback, { ViewerNotice } from './floorplan/ViewerFallback'
 import ViewerLaunch from './floorplan/ViewerLaunch'
+import { loadViewer, useViewerState } from './floorplan/useViewerState'
 import { formatUnitLabel, getBuildings, getUnits, unitPath } from '../lib/units'
 import { unitStatusMeta } from '../lib/unitStatus'
 import { getSiteModel, hasSiteModel, reconcileSite, toViewerEntries } from '../lib/siteModel'
-import { hasWebGL } from '../lib/webgl'
+import { sized } from '../lib/images'
 import { scrollToElement } from '../lib/scrollToElement'
-
-// Named so the launch button can start the chunk on hover — see the same
-// pair in FloorPlanSection.
-const loadViewer = () => import('./floorplan/ModelViewer')
-const ModelViewer = lazy(loadViewer)
 
 // Matches FloorPlanSection's own PLAN_HEIGHT, and for the same reason: the
 // detail panel now takes a column out of this row from `lg` up, so the model
@@ -49,12 +47,6 @@ export default function SiteModelSection({ property }) {
   const [focusedLabel, setFocusedLabel] = useState(null)
   const [selectedLabel, setSelectedLabel] = useState(null)
   const [isolate, setIsolate] = useState(false)
-  // The model waits for "View 3D model" rather than mounting with the page.
-  // Selection is held as labels, not mesh indexes, so everything chosen
-  // before the press — from the rails, the panel or a deep link — is simply
-  // what the camera frames once it arrives.
-  const [activated, setActivated] = useState(false)
-  const [viewerFailed, setViewerFailed] = useState(false)
   // Bumped on the way back out to the site, to re-frame the whole plot.
   const [resetToken, setResetToken] = useState(0)
   const rootRef = useRef(null)
@@ -253,7 +245,17 @@ export default function SiteModelSection({ property }) {
 
   const modelUrl = siteModel?.url ?? null
   const isLocalhostUrl = modelUrl ? /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/.test(modelUrl) : false
-  const canShow3D = Boolean(modelUrl) && !isLocalhostUrl && !viewerFailed && hasWebGL()
+  // The model waits for "View 3D model" rather than mounting with the page.
+  // Selection is held as labels, not mesh indexes, so everything chosen
+  // before the press — from the rails, the panel or a deep link — is simply
+  // what the camera frames once it arrives.
+  //
+  // WebGL is checked on that press, not here. This line runs on every render,
+  // and the probe it used to make created a fresh context each time.
+  const viewer = useViewerState(modelUrl)
+  const { Viewer } = viewer
+  const canShow3D = Boolean(modelUrl) && !isLocalhostUrl && !viewer.failure
+  const unavailableReason = viewer.failure?.reason ?? (isLocalhostUrl ? 'unavailable' : null)
 
   // Tier 2 for a site model: the focused building's own plan image, if it has
   // one. There is no site-wide pin plan to fall back to — the site model *is*
@@ -407,46 +409,68 @@ export default function SiteModelSection({ property }) {
           model some width and buys back the whole surface. */}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(19rem,1fr)] lg:items-start">
         <div className="relative min-w-0">
-          {canShow3D && !activated ? (
+          {canShow3D && !viewer.activated ? (
             <ViewerLaunch
               poster={siteModel?.poster}
               height={PLAN_HEIGHT}
-              onLaunch={() => setActivated(true)}
+              onLaunch={viewer.activate}
               onPrefetch={loadViewer}
             />
           ) : canShow3D ? (
-            <Suspense fallback={<ViewerSkeleton poster={siteModel?.poster} />}>
-              <ModelViewer
-                url={modelUrl}
-                siteEntries={entries}
-                selection={selection}
-                onSelect={onSelect}
-                focusMeshes={focusMeshes}
-                isolateFocus={isolate}
-                // Building names across the site, unit numbers once inside one.
-                labelKinds={focusedBuilding ? ['unit', 'road'] : ['building', 'road']}
-                resetToken={resetToken}
-                groundless
-                orientation={Number.isFinite(siteModel?.orientation) ? siteModel.orientation : null}
-                onError={() => setViewerFailed(true)}
-                // Straight into 3D: the button said "3D model".
-                defaultMode="3d"
-                height={PLAN_HEIGHT}
-              />
-            </Suspense>
+            // The boundary catches the viewer's own chunk failing to arrive,
+            // which would otherwise unmount the page around it. Failures
+            // inside the canvas (the model, the GPU) come through onError.
+            <ErrorBoundary key={viewer.attempt} onError={(error) => viewer.fail(error, 'chunk')}>
+              <Suspense fallback={<ViewerSkeleton poster={siteModel?.poster} />}>
+                <Viewer
+                  url={modelUrl}
+                  siteEntries={entries}
+                  selection={selection}
+                  onSelect={onSelect}
+                  focusMeshes={focusMeshes}
+                  isolateFocus={isolate}
+                  // Building names across the site, unit numbers once inside one.
+                  labelKinds={focusedBuilding ? ['unit', 'road'] : ['building', 'road']}
+                  resetToken={resetToken}
+                  groundless
+                  orientation={Number.isFinite(siteModel?.orientation) ? siteModel.orientation : null}
+                  onError={viewer.fail}
+                  poster={siteModel?.poster}
+                  fileSize={siteModel?.fileSize}
+                  // Straight into 3D: the button said "3D model".
+                  defaultMode="3d"
+                  height={PLAN_HEIGHT}
+                />
+              </Suspense>
+            </ErrorBoundary>
           ) : planImage ? (
-            /* Tier 2 — the focused building's pin plan. */
-            <FloorPlanInteractive
-              image={planImage}
-              units={focusedUnits}
-              selection={selectedUnit ? [selectedUnit.index] : []}
-              onSelect={selectByUnitIndex}
-            />
+            /* Tier 2 — the focused building's pin plan, with a line saying
+               why it is standing in for the model and a way back to 3D. */
+            <>
+              <FloorPlanInteractive
+                image={planImage}
+                units={focusedUnits}
+                selection={selectedUnit ? [selectedUnit.index] : []}
+                onSelect={selectByUnitIndex}
+              />
+              <ViewerNotice reason={unavailableReason} onRetry={viewer.retry} />
+            </>
           ) : (
-            /* Tier 3 — no model and no plan image. The panel beside this and
-               the list below still carry every unit in full, which is the
-               whole point of holding selection as labels. */
-            <ViewerSkeleton poster={siteModel?.poster} />
+            /* Tier 3 — no model to show and no plan image. The panel beside
+               this and the list below still carry every unit in full, which
+               is the whole point of holding selection as labels; the
+               fallback says so and offers a retry where one can help. */
+            <ViewerFallback
+              reason={unavailableReason}
+              hint={
+                focusedBuilding
+                  ? 'Every unit in this building is listed below.'
+                  : 'Choose a building above to see its units.'
+              }
+              poster={siteModel?.poster}
+              height={PLAN_HEIGHT}
+              onRetry={viewer.retry}
+            />
           )}
         </div>
 
@@ -478,7 +502,9 @@ export default function SiteModelSection({ property }) {
           FloorPlanSection has always paid. */}
       {focusedBuilding && (
         <UnitList
-          key={focusedBuilding.label}
+          // Keyed on the tier as well, as FloorPlanSection's is, so a viewer
+          // that fails opens the list: it is now the way in.
+          key={`${focusedBuilding.label}:${canShow3D ? 'plan' : 'flat'}`}
           units={focusedUnits}
           selection={selectedUnit ? [selectedUnit.index] : []}
           onSelect={selectByUnitIndex}
@@ -509,10 +535,12 @@ function Chip({ active, onClick, disabled, tone, children }) {
   )
 }
 
+// Only while the viewer's code downloads. A failure no longer lands here —
+// it gets ViewerFallback, which says what happened.
 function ViewerSkeleton({ poster }) {
   return (
     <div className={`relative overflow-hidden rounded-2xl border border-[var(--color-line)] bg-surface-alt ${PLAN_HEIGHT}`}>
-      {poster && <img src={poster} alt="" className="h-full w-full object-cover opacity-25" />}
+      {poster && <img src={sized(poster, 'card')} alt="" className="h-full w-full object-cover opacity-25" />}
       <div className="absolute inset-0 flex items-center justify-center">
         <span className="eyebrow text-content/70">Loading site model…</span>
       </div>

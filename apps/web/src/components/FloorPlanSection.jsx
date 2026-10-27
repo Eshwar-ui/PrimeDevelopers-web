@@ -1,20 +1,20 @@
-import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import ErrorBoundary from './ErrorBoundary'
 import FloorPlanInteractive from './FloorPlanInteractive'
 import UnitComparePanel from './UnitComparePanel'
 import UnitDetailCard from './UnitDetailCard'
 import UnitList from './UnitList'
+import ViewerFallback, { ViewerNotice } from './floorplan/ViewerFallback'
 import ViewerLaunch from './floorplan/ViewerLaunch'
+import { loadViewer, useViewerState } from './floorplan/useViewerState'
 import { UNIT_STATUSES } from '../lib/unitStatus'
 import { bearingLabel, countByStatus, findUnitByLabel, getModel, getUnits, unitPath } from '../lib/units'
-import { hasWebGL } from '../lib/webgl'
+import { sized } from '../lib/images'
 
-// Lazy so three/fiber/drei never enter the main bundle. A visitor who does not
-// open the 3D view pays nothing for it. The loader is kept by name so the
-// launch button can start it on hover; the module cache makes the second call
-// free.
-const loadViewer = () => import('./floorplan/ModelViewer')
-const ModelViewer = lazy(loadViewer)
+// The viewer is lazy so three/fiber/drei never enter the main bundle: a
+// visitor who does not open the 3D view pays nothing for it. useViewerState
+// owns the lazy component, so Retry can replace one whose chunk failed.
 
 // One source of truth for the height of the plan column, so the 3D viewer, its
 // poster, its skeleton and the detail panel beside it all agree. If these drift
@@ -70,8 +70,6 @@ export default function FloorPlanSection({ building, propertyId }) {
   // needs no mode, for anyone on a desktop who already expects it.
   const [compareMode, setCompareMode] = useState(false)
   const [statusFilter, setStatusFilter] = useState(null)
-  const [activated, setActivated] = useState(false)
-  const [viewerFailed, setViewerFailed] = useState(false)
   // Unit index -> compass bearing, measured off the geometry once the model is
   // in. Absent until then, and absent entirely when the admin has not set an
   // orientation — aspect is a claim about the real world, so it is only made
@@ -87,7 +85,9 @@ export default function FloorPlanSection({ building, propertyId }) {
   // fail with a CORS/ERR_FAILED error and can crash the WebGL context.
   const modelUrl = model?.url ?? null
   const isLocalhostUrl = modelUrl ? /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/.test(modelUrl) : false
-  const canShow3D = Boolean(modelUrl) && !isLocalhostUrl && !viewerFailed
+  const viewer = useViewerState(modelUrl)
+  const { Viewer } = viewer
+  const canShow3D = Boolean(modelUrl) && !isLocalhostUrl && !viewer.failure
   const poster = model?.poster || building?.planImage || null
 
   // Deep link in. An unknown unit is not an error — the viewer simply opens in
@@ -146,14 +146,6 @@ export default function FloorPlanSection({ building, propertyId }) {
   )
 
   const clearSelection = useCallback(() => applySelection([]), [applySelection])
-
-  const activate = useCallback(() => {
-    if (!hasWebGL()) {
-      setViewerFailed(true)
-      return
-    }
-    setActivated(true)
-  }, [])
 
   // No observer mounting the viewer as it scrolls into reach any more: the
   // model waits for the visitor to press "View 3D model". See ViewerLaunch.
@@ -235,36 +227,58 @@ export default function FloorPlanSection({ building, propertyId }) {
               presses for it, so WebGL is never spun up for one who doesn't.
               It opens in 3D rather than the viewer's usual plan view: the
               button said "3D model", and the plan is one tap back. */}
-          {canShow3D && activated && (
-            <Suspense fallback={<ViewerSkeleton poster={poster} />}>
-              <ModelViewer
-                url={modelUrl}
-                units={units}
-                bindings={bindings}
-                selection={selection}
-                onSelect={select}
-                statusFilter={statusFilter}
-                orientation={Number.isFinite(model?.orientation) ? model.orientation : null}
-                onFacings={setFacings}
-                onError={() => setViewerFailed(true)}
-                defaultMode="3d"
-                height={PLAN_HEIGHT}
-              />
-            </Suspense>
+          {canShow3D && viewer.activated && (
+            // The boundary catches the viewer's chunk failing to arrive;
+            // failures inside the canvas come through onError. Both land on
+            // the fallbacks below with a Retry — see useViewerState.
+            <ErrorBoundary key={viewer.attempt} onError={(error) => viewer.fail(error, 'chunk')}>
+              <Suspense fallback={<ViewerSkeleton poster={poster} />}>
+                <Viewer
+                  url={modelUrl}
+                  units={units}
+                  bindings={bindings}
+                  selection={selection}
+                  onSelect={select}
+                  statusFilter={statusFilter}
+                  orientation={Number.isFinite(model?.orientation) ? model.orientation : null}
+                  onFacings={setFacings}
+                  onError={viewer.fail}
+                  poster={poster}
+                  fileSize={model?.fileSize}
+                  defaultMode="3d"
+                  height={PLAN_HEIGHT}
+                />
+              </Suspense>
+            </ErrorBoundary>
           )}
 
-          {canShow3D && !activated && (
-            <ViewerLaunch poster={poster} height={PLAN_HEIGHT} onLaunch={activate} onPrefetch={loadViewer} />
+          {canShow3D && !viewer.activated && (
+            <ViewerLaunch poster={poster} height={PLAN_HEIGHT} onLaunch={viewer.activate} onPrefetch={loadViewer} />
           )}
 
           {/* Tier 2 — the original pin plan, retained rather than replaced. */}
           {!canShow3D && building?.planImage && (
-            <FloorPlanInteractive
-              image={building.planImage}
-              units={units}
-              selection={selection}
-              onSelect={select}
-              statusFilter={statusFilter}
+            <>
+              <FloorPlanInteractive
+                image={building.planImage}
+                units={units}
+                selection={selection}
+                onSelect={select}
+                statusFilter={statusFilter}
+              />
+              {viewer.failure && <ViewerNotice reason={viewer.failure.reason} onRetry={viewer.retry} />}
+            </>
+          )}
+
+          {/* A model that failed with no plan image to stand in for it: say
+              so, rather than leave the column empty, and point at the list. */}
+          {viewer.failure && !building?.planImage && (
+            <ViewerFallback
+              reason={viewer.failure.reason}
+              hint="Every unit is listed below."
+              poster={poster}
+              height={PLAN_HEIGHT}
+              onRetry={viewer.retry}
             />
           )}
         </div>
@@ -322,7 +336,7 @@ function ViewerSkeleton({ poster }) {
   // lands. Matches the ground ModelViewer's own container paints.
   return (
     <div className={`relative overflow-hidden rounded-2xl border border-[var(--color-line)] bg-surface-alt ${PLAN_HEIGHT}`}>
-      {poster && <img src={poster} alt="" className="h-full w-full object-cover opacity-25" />}
+      {poster && <img src={sized(poster, 'card')} alt="" className="h-full w-full object-cover opacity-25" />}
       <div className="absolute inset-0 flex items-center justify-center">
         {/* "3D model", because the viewer now opens in 3D — it only loads
             once someone has pressed a button that says so. */}

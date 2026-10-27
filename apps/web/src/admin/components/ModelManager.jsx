@@ -1,6 +1,6 @@
 import { Suspense, lazy, useCallback, useMemo, useRef, useState } from 'react'
 import { uploadImage, uploadModel } from '../../lib/uploads'
-import { inspectGlb, triangleWarning, validateModelFile } from '../../lib/glbInspect'
+import { imageWarning, inspectGlb, triangleWarning, validateModelFile } from '../../lib/glbInspect'
 import { ConfirmButton } from './ui'
 import {
   diffModels,
@@ -290,6 +290,7 @@ export default function ModelManager({ building, onChange, folder }) {
           {triangleWarning(pending.triangles) && (
             <p className="mt-2 text-xs leading-relaxed text-ember">{triangleWarning(pending.triangles)}</p>
           )}
+          {imageWarning(pending) && <p className="mt-2 text-xs leading-relaxed text-ember">{imageWarning(pending)}</p>}
           <div className="mt-3 flex gap-2">
             <button
               type="button"

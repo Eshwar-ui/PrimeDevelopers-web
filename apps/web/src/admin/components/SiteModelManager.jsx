@@ -1,6 +1,6 @@
 import { Suspense, lazy, useMemo, useRef, useState } from 'react'
 import { uploadModel } from '../../lib/uploads'
-import { inspectGlb, triangleWarning, validateModelFile } from '../../lib/glbInspect'
+import { imageWarning, inspectGlb, triangleWarning, validateModelFile } from '../../lib/glbInspect'
 import { ConfirmButton } from './ui'
 import { formatBytes, getUnits, makeUnit, nextUnitLabel } from '../../lib/units'
 import {
@@ -252,6 +252,7 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
           {triangleWarning(pending.triangles) && (
             <p className="mt-2 text-xs leading-relaxed text-ember">{triangleWarning(pending.triangles)}</p>
           )}
+          {imageWarning(pending) && <p className="mt-2 text-xs leading-relaxed text-ember">{imageWarning(pending)}</p>}
           <div className="mt-3 flex gap-2">
             <button
               type="button"
@@ -470,10 +471,14 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
             <span>{report.unmodelledUnits.length} unit{report.unmodelledUnits.length === 1 ? '' : 's'} not yet tagged</span>
             <span>{report.unmodelledRoads.length} road{report.unmodelledRoads.length === 1 ? '' : 's'} not yet tagged</span>
           </div>
+          {/* A shape whose unit has gone still shows as part of its building
+              (see reconcileSite), so this is a to-do, not a breakage: re-tag
+              it, or leave it for the unit to come back. */}
           {report.staleBindings.length > 0 && (
             <p className="mt-2 text-xs leading-relaxed text-ember">
-              {report.staleBindings.length} shape{report.staleBindings.length === 1 ? ' points' : 's point'} at a
-              building/unit/road that no longer exists — will be dropped on the next upload.
+              {report.staleBindings.length} shape{report.staleBindings.length === 1 ? ' is' : 's are'} tagged to a
+              unit or road that no longer exists. A shape whose unit has gone still shows as part of its building —
+              tag it again to link a unit.
             </p>
           )}
 

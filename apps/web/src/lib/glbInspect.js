@@ -23,6 +23,14 @@ export async function inspectGlb(file) {
   const meshNames = []
   let triangles = 0
 
+  // Embedded images, read from the file's own index rather than from the
+  // parsed textures, so the count is exact whatever the materials did with
+  // them. Their bytes are the buffer views they point at; an image linked by
+  // URI instead would 404 on upload anyway, and is counted without a size.
+  const json = gltf.parser?.json ?? {}
+  const images = json.images ?? []
+  const imageBytes = images.reduce((sum, image) => sum + (json.bufferViews?.[image.bufferView]?.byteLength ?? 0), 0)
+
   gltf.scene.traverse((object) => {
     if (!object.isMesh) return
     meshNames.push(object.name)
@@ -31,7 +39,7 @@ export async function inspectGlb(file) {
     triangles += Math.floor(count / 3)
   })
 
-  return { meshNames, triangles, fileSize: file.size }
+  return { meshNames, triangles, fileSize: file.size, images: images.length, imageBytes }
 }
 
 // Rejections name the actual number, the limit, and the specific remedy.
@@ -49,6 +57,18 @@ export function validateModelFile(file) {
   }
 
   return null
+}
+
+/**
+ * A warning when the model carries pictures. The viewer replaces every
+ * material with flat status colour, so textures are never shown — but every
+ * visitor still downloads them, and the browser still decodes them into
+ * memory. On Centro's site model they were 62% of the file.
+ */
+export function imageWarning({ images, imageBytes, fileSize } = {}) {
+  if (!images) return null
+  const share = imageBytes && fileSize ? ` — ${formatBytes(imageBytes)} of its ${formatBytes(fileSize)}` : ''
+  return `This model has ${images} embedded image${images === 1 ? '' : 's'}${share}. The 3D view colours every shape itself, so these pictures are never shown, but every visitor still downloads them. It will still work; ask your modeller to re-export it without textures to make it load faster.`
 }
 
 export function triangleWarning(triangles) {

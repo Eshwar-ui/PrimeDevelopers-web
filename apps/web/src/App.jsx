@@ -20,6 +20,7 @@ import LatestUpdates from './components/LatestUpdates'
 // `cta_home` copy are both kept — the footer panel reads the same section, and
 // deleting the file would take the photographic treatment with it.
 import Footer from './components/Footer'
+import ErrorBoundary, { PageError } from './components/ErrorBoundary'
 import SectionRevealController from './components/SectionRevealController'
 import LandingParallaxChapter from './components/LandingParallaxChapter'
 
@@ -95,6 +96,19 @@ import RequireAuth from './admin/RequireAuth'
 // dressed for a dark ground it is no longer standing on.
 function RouteFallback() {
   return <div data-band="light" className="min-h-[100dvh] bg-base" />
+}
+
+// The Suspense every route tree sits in, with an error boundary around it.
+// Without one, a lazy chunk that never arrives — a flaky phone connection, or
+// a deploy that replaced the file mid-visit — unmounts the whole app and
+// leaves a blank document. `resetKey` clears the error when it changes, so on
+// the public site following any link out of a failed page recovers.
+function RouteBoundary({ name, resetKey, children }) {
+  return (
+    <ErrorBoundary name={name} resetKey={resetKey} fallback={<PageError />}>
+      <Suspense fallback={<RouteFallback />}>{children}</Suspense>
+    </ErrorBoundary>
+  )
 }
 
 function Home() {
@@ -266,7 +280,7 @@ function PublicSite() {
             `sync` show two different pages at all — read from context instead,
             both instances would resolve to the new URL and render the same
             page twice. */}
-        <Suspense fallback={<RouteFallback />}>
+        <RouteBoundary name="route" resetKey={location.pathname}>
           <AnimatePresence mode={sharedPropertyTransition ? 'sync' : 'wait'} initial={false}>
             <motion.div
               key={location.pathname}
@@ -331,7 +345,7 @@ function PublicSite() {
               </Routes>
             </motion.div>
           </AnimatePresence>
-        </Suspense>
+        </RouteBoundary>
       </main>
       <Footer />
     </>
@@ -342,8 +356,10 @@ function App() {
   return (
     // The admin routes are all lazy, so they need a boundary above them. The
     // public site carries its own inside <main>, and reaching PublicSite means
-    // this one never renders for a visitor.
-    <Suspense fallback={<RouteFallback />}>
+    // this one never renders for a visitor. It catches too: anything that
+    // escapes the public site's own boundary — the navbar, the footer — or an
+    // admin page gets a reload prompt rather than a blank document.
+    <RouteBoundary name="app">
       <Routes>
         <Route path="/admin/login" element={<LoginPage />} />
         <Route
@@ -380,7 +396,7 @@ function App() {
         </Route>
         <Route path="/*" element={<PublicSite />} />
       </Routes>
-    </Suspense>
+    </RouteBoundary>
   )
 }
 

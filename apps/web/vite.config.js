@@ -31,6 +31,27 @@ function selfHostedDraco() {
   }
 }
 
+/**
+ * Keeps the first load to a handful of files.
+ *
+ * Rolldown decides by itself which modules shared between the entry and the
+ * lazy routes stay in the entry chunk, and the decision is fragile: when the
+ * 404 page stopped importing three/drei, it began splitting the entry into a
+ * dozen small shared chunks (9 preloaded files became 24) for the same bytes.
+ * Naming the two groups the first paint always needs makes that stable.
+ *
+ * Neither group may reach three, fiber or drei — those stay in the viewer's
+ * lazy chunk, which is the whole point of it being lazy.
+ */
+const VENDOR = /[\\/]node_modules[\\/](react|react-dom|scheduler|react-router|react-router-dom|motion|motion-dom|motion-utils|framer-motion)[\\/]/
+const SHARED = /[\\/]src[\\/](context[\\/]|lib[\\/](api|images|covers|units|featured|expertise|emphasis)\.|components[\\/]ActionButton\.)/
+
+function manualChunks(id) {
+  if (VENDOR.test(id)) return 'vendor'
+  if (SHARED.test(id)) return 'shared'
+  return undefined
+}
+
 // https://vite.dev/config/
 export default defineConfig(({ command, mode }) => {
   /**
@@ -73,6 +94,7 @@ export default defineConfig(({ command, mode }) => {
 
   return {
     plugins: [react(), tailwindcss(), selfHostedDraco()],
+    build: { rolldownOptions: { output: { manualChunks } } },
     server: DEV_API_TARGET
       ? { proxy: { '/api': { target: DEV_API_TARGET, changeOrigin: true } } }
       : {},

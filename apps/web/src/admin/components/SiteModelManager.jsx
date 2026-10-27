@@ -2,6 +2,9 @@ import { Suspense, lazy, useMemo, useRef, useState } from 'react'
 import { uploadModel } from '../../lib/uploads'
 import { imageWarning, inspectGlb, triangleWarning, validateModelFile } from '../../lib/glbInspect'
 import { ConfirmButton } from './ui'
+import UnitFields from './UnitFields'
+import { STATUS_WORDS } from '../completeness'
+import { resolveNext } from '../adminUtils'
 import { formatBytes, getUnits, makeUnit, nextUnitLabel, siteUnitKey } from '../../lib/units'
 import {
   bindSiteMeshes,
@@ -48,6 +51,9 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
   const [showUnbound, setShowUnbound] = useState(false)
 
   const model = siteModel ?? null
+  // A photo upload lands seconds after it starts; edit from the latest list, not the render's copy.
+  const buildingsRef = useRef(buildings)
+  buildingsRef.current = buildings
   // Memoised rather than `model?.meshNames ?? []`: a fresh array identity
   // every render (whenever there is no model yet) would recompute `report`
   // and `entries` continuously, which ModelViewer's own memoisation keys on —
@@ -181,9 +187,50 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
       createUnitFromTap(names)
       return
     }
+    // Units tab, nothing armed: a click on a tagged unit's shape selects that unit for editing.
+    const hit = model?.unitBindings?.[names[0]]
+    if (tab === 'units' && hit) {
+      setArmedBuildingLabel(hit.buildingLabel)
+      setArmedUnitLabel(hit.unitLabel)
+      return
+    }
     // Nothing armed: the click just picks the shape, and the panel below
     // offers every building, unit and road to tag it as.
     setPendingMeshNames(names)
+  }
+
+  /** Takes every shape off a unit. */
+  const untagUnit = (buildingLabel, unitLabel) => {
+    const key = siteUnitKey(buildingLabel, unitLabel)
+    const names = Object.entries(model?.unitBindings ?? {})
+      .filter(([, b]) => siteUnitKey(b.buildingLabel, b.unitLabel) === key)
+      .map(([name]) => name)
+    if (names.length) bindNames(names, null)
+  }
+
+  /** Edits one unit of the armed building from the side panel. */
+  const changeUnit = (index, next) => {
+    const current = buildingsRef.current
+    const bi = current.findIndex((b) => b.building === armedBuildingLabel)
+    if (bi < 0) return
+    const before = current[bi].unitList?.[index]
+    if (!before) return
+    const after = resolveNext(next, before)
+    if (after.label !== before.label && armedUnitLabel === before.label) setArmedUnitLabel(after.label)
+    onBuildingsChange(
+      current.map((b, i) =>
+        i === bi ? { ...b, unitList: b.unitList.map((u, j) => (j === index ? after : u)) } : b,
+      ),
+    )
+  }
+
+  const addUnitFromPanel = () => {
+    if (!armedBuilding) return
+    const label = nextUnitLabel(armedBuilding.unitList ?? [])
+    onBuildingsChange(
+      buildingsRef.current.map((b) => (b === armedBuilding ? { ...b, unitList: [...(b.unitList ?? []), makeUnit(label)] } : b)),
+    )
+    setArmedUnitLabel(label)
   }
 
   /** Whether a shape already carries exactly this tag. */
@@ -258,6 +305,8 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
     setModel({ ...model, roads: roads.filter((_, i) => i !== index), roadBindings })
     if (armedRoadName === road?.name) setArmedRoadName('')
   }
+
+  const sidePanel = tab === 'units' && Boolean(armedBuilding)
 
   const pendingReport = pending ? reconcileSite(pending.meshNames, buildings, model) : null
 
@@ -549,7 +598,21 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
           )}
 
           {/* ── viewer ───────────────────────────────────────────── */}
-          <div className="relative mt-4">
+          <div className={`mt-4 ${sidePanel ? 'grid gap-4 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]' : ''}`}>
+          {sidePanel && (
+            <UnitSidePanel
+              building={armedBuilding}
+              units={armedBuildingUnits}
+              taggedUnits={taggedUnits}
+              armedUnitLabel={armedUnitLabel}
+              onArm={(label) => setArmedUnitLabel(armedUnitLabel === label ? '' : label)}
+              onUntag={(label) => untagUnit(armedBuildingLabel, label)}
+              onChangeUnit={changeUnit}
+              onAdd={addUnitFromPanel}
+              folder={`${folder}/unit-images`}
+            />
+          )}
+          <div className="relative">
             <div className="pointer-events-none absolute inset-x-0 top-0 z-20 bg-ember px-3 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-void">
               {armedTarget()
                 ? multiSelect
@@ -594,6 +657,7 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
               />
             )}
             <p className="mt-2 text-xs text-bone-3">This is exactly what a visitor sees. Untagged shapes are highlighted in orange when the toggle above is on.</p>
+          </div>
           </div>
         </>
       )}
@@ -689,5 +753,76 @@ function PickPanel({ names, current, buildings, roads, taggedUnits, onTag, onNew
         </div>
       </div>
     </div>
+  )
+}
+
+// Beside the 3D view on the Units tab: pick a unit, click its shape, fill it in.
+// Selecting a unit arms it, so the next click in the model tags it; a tagged
+// unit has an Untag button. The form is the same UnitFields the rest of the
+// admin uses, photographs included.
+function UnitSidePanel({ building, units, taggedUnits, armedUnitLabel, onArm, onUntag, onChangeUnit, onAdd, folder }) {
+  const tagged = units.filter((u) => taggedUnits.has(siteUnitKey(building.building, u.label))).length
+  const selected = units.find((u) => u.label && u.label === armedUnitLabel)
+  return (
+    <aside aria-label={`${building.building} units`} className="flex flex-col gap-3 rounded-lg border border-white/10 bg-black/15 p-3 lg:max-h-[40rem] lg:overflow-y-auto">
+      <div>
+        <p className="text-sm font-medium text-bone">{building.building}</p>
+        <p className="text-xs tabular-nums text-bone-3">
+          {tagged} of {units.length} units tagged · 1. pick a unit, 2. click its shape in the model
+        </p>
+      </div>
+      <ul className="flex flex-col gap-1.5">
+        {units.map((u) => {
+          const isTagged = taggedUnits.has(siteUnitKey(building.building, u.label))
+          const active = Boolean(u.label) && u.label === armedUnitLabel
+          return (
+            <li key={u.index} className="flex items-stretch gap-1.5">
+              <button
+                type="button"
+                onClick={() => onArm(u.label)}
+                disabled={!u.label}
+                aria-pressed={active}
+                className={`flex min-h-11 flex-1 cursor-pointer items-center justify-between gap-2 rounded-xl border px-3 text-left text-sm disabled:opacity-40 ${
+                  active ? 'border-ember bg-ember/10 text-bone' : 'border-white/15 text-bone-2 hover:border-white/30'
+                }`}
+              >
+                <span className="font-medium">Unit {u.label || '(no label)'}</span>
+                <span className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wide">
+                  <span className="text-bone-3">{(STATUS_WORDS[u.status] ?? STATUS_WORDS.available).short}</span>
+                  <span className={isTagged ? 'text-accent-soft' : 'text-ember'}>{isTagged ? '✓ Tagged' : 'Not tagged'}</span>
+                </span>
+              </button>
+              {isTagged && (
+                <button
+                  type="button"
+                  onClick={() => onUntag(u.label)}
+                  aria-label={`Untag unit ${u.label}`}
+                  className="min-h-11 cursor-pointer rounded-xl border border-red-400/40 px-3 text-xs font-bold uppercase tracking-wide text-red-300 hover:bg-red-400/10"
+                >
+                  Untag
+                </button>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+      <button
+        type="button"
+        onClick={onAdd}
+        className="min-h-11 cursor-pointer rounded-xl border border-dashed border-white/25 px-3 text-xs font-bold uppercase tracking-wide text-bone-2 hover:border-ember hover:text-ember"
+      >
+        + Add unit
+      </button>
+      {selected ? (
+        <div className="flex flex-col gap-3 border-t border-white/10 pt-3">
+          <p className="text-xs font-bold uppercase tracking-wide text-ember">Editing unit {selected.label}</p>
+          <UnitFields unit={selected} onChange={(next) => onChangeUnit(selected.index, next)} folder={folder} />
+        </div>
+      ) : (
+        <p className="border-t border-white/10 pt-3 text-xs text-bone-3">
+          Pick a unit above, or click a tagged shape in the model, to edit its name, details and photographs here.
+        </p>
+      )}
+    </aside>
   )
 }

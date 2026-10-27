@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useSearchParams } from 'react-router-dom'
 import { ArrowSquareOut, EnvelopeSimple, MagnifyingGlass, Phone, Trash, Tray } from '@phosphor-icons/react'
 import { useProperties } from '../context/ContentContext'
-import { LEAD_STATUSES, useLeads } from './LeadsContext'
+import { LEAD_STATUSES, useFilteredLeads, useLeads } from './LeadsContext'
 import { Alert, Badge, Button, Card, ConfirmButton, EmptyState, PageHeader, SearchInput, Skeleton, focusRing } from './components/ui'
 import { timeAgo, useAdminTitle } from './adminUtils'
 
@@ -19,7 +19,16 @@ const matches = (lead, q) =>
 // context — three requests became one.
 export default function LeadsPage() {
   useAdminTitle('Leads')
-  const { leads, error, reload, setStatus, remove } = useLeads()
+  const inbox = useLeads()
+  const { summary } = inbox
+  // "Show filtered" swaps the inbox for the submissions the spam checks caught
+  // — kept, not dropped, so a person who tripped one by mistake can be found
+  // here and moved back.
+  const [showFiltered, setShowFiltered] = useState(false)
+  const filteredList = useFilteredLeads(showFiltered)
+  const { leads, error, reload, setStatus, remove, moveToInbox, hasMore, loadMore, loadingMore } = showFiltered
+    ? filteredList
+    : inbox
   const properties = useProperties()
   const [params, setParams] = useSearchParams()
   const { hash } = useLocation()
@@ -40,11 +49,14 @@ export default function LeadsPage() {
 
   const slugsByProperty = useMemo(() => Object.fromEntries(properties.map((p) => [p.id, p.slug])), [properties])
 
+  // The inbox's chips count every lead on the server; the list holds only the
+  // pages loaded so far. The filtered view counts what it has loaded.
   const counts = useMemo(() => {
+    if (!showFiltered && summary?.byStatus) return { all: summary.total, ...summary.byStatus }
     const c = { all: leads?.length ?? 0 }
     for (const l of leads ?? []) c[l.status] = (c[l.status] ?? 0) + 1
     return c
-  }, [leads])
+  }, [leads, showFiltered, summary])
 
   const q = query.trim().toLowerCase()
   const shown = (leads ?? []).filter((l) => (filter === 'all' || l.status === filter) && (!q || matches(l, q)))
@@ -81,8 +93,31 @@ export default function LeadsPage() {
             )
           })}
         </div>
-        <SearchInput value={query} onChange={setQuery} placeholder="Search name, email, unit…" label="Search leads" icon={MagnifyingGlass} />
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            aria-pressed={showFiltered}
+            onClick={() => setShowFiltered((on) => !on)}
+            className={`inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-full border px-3.5 text-xs font-medium transition-colors ${focusRing} ${
+              showFiltered ? 'border-ember bg-ember/15 text-bone' : 'border-white/15 text-bone-2 hover:border-white/30 hover:text-bone'
+            }`}
+          >
+            Show filtered
+            {summary?.filtered != null && (
+              <span className={`tabular-nums ${showFiltered ? 'text-bone' : 'text-bone-3'}`}>{summary.filtered}</span>
+            )}
+          </button>
+          <SearchInput value={query} onChange={setQuery} placeholder="Search name, email, unit…" label="Search leads" icon={MagnifyingGlass} />
+        </div>
       </div>
+
+      {showFiltered && (
+        <p className="mt-4 text-sm leading-relaxed text-bone-3">
+          Submissions the spam checks caught: a hidden field a person never sees was filled in, or the form was sent
+          faster than anyone could type it. Nobody was emailed about these. If one is a real enquiry, move it to the
+          inbox.
+        </p>
+      )}
 
       {error && (
         <div className="mt-6">
@@ -93,11 +128,16 @@ export default function LeadsPage() {
       <div className="mt-6 flex flex-col gap-3">
         {!leads && !error && Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-36" />)}
 
-        {leads?.length === 0 && (
-          <EmptyState icon={Tray} title="No enquiries yet">
-            Submissions from the contact, brochure and floor-plan forms land here.
-          </EmptyState>
-        )}
+        {leads?.length === 0 &&
+          (showFiltered ? (
+            <EmptyState icon={Tray} title="Nothing filtered">
+              Nothing has tripped the spam checks.
+            </EmptyState>
+          ) : (
+            <EmptyState icon={Tray} title="No enquiries yet">
+              Submissions from the contact, brochure and floor-plan forms land here.
+            </EmptyState>
+          ))}
 
         {leads?.length > 0 && shown.length === 0 && (
           <EmptyState icon={MagnifyingGlass} title="No leads match" action={<Button size="sm" onClick={() => { setQuery(''); setFilter('all') }}>Clear filters</Button>}>
@@ -120,7 +160,8 @@ export default function LeadsPage() {
               <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
                 <div className="min-w-0">
                   <div className="mb-2 flex flex-wrap items-center gap-2">
-                    {isNew && <Badge tone="ember">New</Badge>}
+                    {l.spam && <Badge tone="danger">Filtered{l.spamReason ? `: ${l.spamReason}` : ''}</Badge>}
+                    {isNew && !l.spam && <Badge tone="ember">New</Badge>}
                     {/* Every lead has a source now — `contact` is the default
                         for rows written before this column existed, so it
                         doubles as "plain enquiry, nothing to distinguish". */}
@@ -167,6 +208,11 @@ export default function LeadsPage() {
                       ))}
                     </select>
                   </label>
+                  {l.spam && (
+                    <Button size="sm" icon={Tray} onClick={() => moveToInbox(l.id)}>
+                      Move to inbox
+                    </Button>
+                  )}
                   <ConfirmButton icon={Trash} prompt="Delete this lead?" onConfirm={() => remove(l.id)} />
                 </div>
               </div>
@@ -200,6 +246,17 @@ export default function LeadsPage() {
             </Card>
           )
         })}
+
+        {/* The list arrives a page at a time, newest first. The chips count
+            every lead on the server; search covers what has been loaded. */}
+        {hasMore && (
+          <div className="flex flex-col items-center gap-2 py-4">
+            <Button size="sm" onClick={loadMore} disabled={loadingMore}>
+              {loadingMore ? 'Loading…' : 'Load older leads'}
+            </Button>
+            <span className="text-xs text-bone-3">Showing the newest {leads.length}. Search covers these only.</span>
+          </div>
+        )}
       </div>
     </div>
   )

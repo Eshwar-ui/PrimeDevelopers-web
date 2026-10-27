@@ -29,7 +29,7 @@ export default function DashboardPage() {
   const { session } = useAuth()
   const properties = useProperties()
   const posts = useNews()
-  const { leads, newCount, error: leadsError, reload } = useLeads()
+  const { leads, newCount, summary, error: leadsError, reload } = useLeads()
   const newProperty = useCreateProperty()
   const newPost = useCreatePost()
 
@@ -41,7 +41,8 @@ export default function DashboardPage() {
     {
       label: 'New leads',
       value: leads ? newCount : null,
-      sub: leads ? `${leads.length} enquiries in total` : 'Loading…',
+      // The server's count: the list holds only the newest page.
+      sub: leads ? `${summary?.total ?? leads.length} enquiries in total` : 'Loading…',
       to: '/admin/leads?status=new',
       icon: Tray,
       attention: newCount > 0,

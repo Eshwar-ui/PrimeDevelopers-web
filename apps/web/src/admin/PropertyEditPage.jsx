@@ -5,7 +5,9 @@ import { useCategories, useContentRefetch, useProperties } from '../context/Cont
 import { api } from '../lib/api'
 import { slugify } from '../lib/slugify'
 import { CheckboxField, Section, TextField, TextAreaField } from './components/Field'
-import { stable, useAdminTitle } from './adminUtils'
+import { mergeFields, resolveNext, stable, useAdminTitle } from './adminUtils'
+import { propertyPayload } from './propertyPayload'
+import { unitLabelProblems } from './unitChecks'
 import { EditorBar, LeaveGuard } from './components/EditorChrome'
 import { Alert, Button, EmptyState, focusRing } from './components/ui'
 import ImageUploader from './components/ImageUploader'
@@ -168,42 +170,64 @@ export default function PropertyEditPage() {
       }),
   })
 
-  const patch = (partial) => setForm((f) => ({ ...f, ...partial }))
+  // Every value handed to these may be an updater of that field (resolveNext
+  // in adminUtils) — the lists below all send one, so an upload finishing late
+  // applies to the form as it is then, not as it was when the file was picked.
+  const patch = (partial) => setForm((f) => mergeFields(f, partial))
   const patchDetail = (section, partial) =>
-    setForm((f) => ({ ...f, detail: { ...f.detail, [section]: { ...f.detail[section], ...partial } } }))
+    setForm((f) => ({ ...f, detail: { ...f.detail, [section]: mergeFields(f.detail[section], partial) } }))
+  const setDetailKey = (key) => (value) =>
+    setForm((f) => ({ ...f, detail: { ...f.detail, [key]: resolveNext(value, f.detail[key]) } }))
 
-  /** Resolves true when the save landed — LeaveGuard's "Save and leave" relies on it. */
   /**
    * Resolves true when the save landed — LeaveGuard's "Save and leave" relies on it.
    *
    * This form sends the whole property, `detail` and all, so saving a copy
    * loaded before someone else's change would quietly undo it — a unit edited
-   * in the Units section, or this property open in a second tab. So it checks
-   * first: if the stored property is newer than the one this form opened, it
-   * stops and asks, rather than overwriting. `force` is the "Save anyway".
+   * in the Units section, this property open in a second tab, or a Prime
+   * Tracker sync. So the save carries the `updatedAt` this form started from,
+   * and the API refuses it with 409 if the stored property has moved on since
+   * — checked under a row lock, so two saves can't both slip through. The form
+   * then stops and asks rather than overwriting.
+   *
+   * `force` is "Save anyway": a deliberate overwrite of what is stored *now*.
+   * It reads the current version and sends that as the one it replaces, so a
+   * third change landing while the editor decided is still caught.
+   *
+   * Only the fields the API accepts are sent — see propertyPayload.js for why
+   * that is a whitelist and not the record minus a few keys.
    */
   const save = async ({ force = false } = {}) => {
+    // An empty or duplicated unit label makes a unit that can't be opened or
+    // linked in 3D. BuildingBlock shows each next to its building.
+    // Only what the editor can fix blocks: a clash between rows Prime Tracker
+    // owns is locked here, so it warns unless this edit introduced it.
+    const { errors: labelErrors } = unitLabelProblems(
+      form.detail.floorPlans?.buildings,
+      baseline.detail?.floorPlans?.buildings ?? [],
+    )
+    if (labelErrors.length) {
+      setError(
+        `${labelErrors[0].text}${labelErrors.length > 1 ? ` And ${labelErrors.length - 1} more.` : ''} Every unit needs a label of its own — see Floor plans & 3D.`,
+      )
+      return false
+    }
     setSaving(true)
     setError(null)
     setConflict(false)
     const snapshot = form
-    const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, _slugTouched, ...payload } = form
-    payload.detail = { ...payload.detail, specs: payload.detail.specs.map((v) => v.trim()).filter(Boolean) }
-    payload.gallery = (payload.gallery ?? []).filter(Boolean)
     let saved
     try {
-      if (!force && baseline.updatedAt) {
-        const fresh = await api.get(`/admin/properties/${encodeURIComponent(original.slug)}`)
-        if (fresh?.updatedAt && fresh.updatedAt !== baseline.updatedAt) {
-          setSaving(false)
-          setConflict(true)
-          return false
-        }
+      let expectedUpdatedAt = baseline.updatedAt
+      if (force) {
+        const fresh = await api.get(`/admin/properties/${encodeURIComponent(baseline.slug)}`)
+        expectedUpdatedAt = fresh?.updatedAt
       }
-      saved = await api.patch(`/admin/properties/${id}`, payload)
+      saved = await api.patch(`/admin/properties/${id}`, propertyPayload(snapshot, { expectedUpdatedAt }))
     } catch (err) {
       setSaving(false)
-      setError(err.message)
+      if (err?.status === 409) setConflict(true)
+      else setError(err.message)
       return false
     }
     // Carry the server's timestamp forward, so the next save compares
@@ -222,8 +246,10 @@ export default function PropertyEditPage() {
   // retyping the slug field doesn't make the shipped set vanish mid-edit.
   const storedInfo = form.detail.info
   const shippedInfo = DEFAULT_INFO[original.slug]
-  const info = storedInfo ? { ...emptyInfo(), ...storedInfo } : shippedInfo ? { ...emptyInfo(), ...shippedInfo } : null
-  const setInfo = (next) => setForm((f) => ({ ...f, detail: { ...f.detail, info: next } }))
+  const infoOf = (detail) =>
+    detail.info ? { ...emptyInfo(), ...detail.info } : shippedInfo ? { ...emptyInfo(), ...shippedInfo } : null
+  const info = infoOf(form.detail)
+  const setInfo = (next) => setForm((f) => ({ ...f, detail: { ...f.detail, info: resolveNext(next, infoOf(f.detail)) } }))
 
   const setSpec = (i, value) =>
     setForm((f) => ({ ...f, detail: { ...f.detail, specs: f.detail.specs.map((v, idx) => (idx === i ? value : v)) } }))
@@ -289,8 +315,9 @@ export default function PropertyEditPage() {
               </span>
             }
           >
-            This property was changed somewhere else after you opened it — perhaps a unit in Units, or another tab. Saving
-            now would undo that. Reload to start from the latest (your changes here will be lost), or save anyway.
+            This property was changed somewhere else after you opened it — perhaps a unit in Units, another tab, or the
+            Prime Tracker sync. Saving now would undo that. Reload to start from the latest (your changes here will be
+            lost), or save anyway.
           </Alert>
         </div>
       )}
@@ -332,13 +359,24 @@ export default function PropertyEditPage() {
                   <option key={c} value={c} />
                 ))}
             </datalist>
+            {/* The columns are named buildings / sold / available, but they
+                count units — and "sold" is every unit that is no longer
+                available, leased ones included. Labelled for what they hold,
+                and worded the way the public pages show them. */}
             <TextField
-              label="Buildings"
+              label="Units in total"
               type="number"
               value={form.buildings}
               onChange={(buildings) => patch({ buildings })}
+              hint="Every unit on the property, available or not."
             />
-            <TextField label="Sold" type="number" value={form.sold} onChange={(sold) => patch({ sold })} />
+            <TextField
+              label="Reserved (leased or sold)"
+              type="number"
+              value={form.sold}
+              onChange={(sold) => patch({ sold })}
+              hint="Units no longer available. Shown as “reserved”."
+            />
             <TextField
               label="Available"
               type="number"
@@ -357,7 +395,7 @@ export default function PropertyEditPage() {
             <span className="text-xs font-bold uppercase tracking-wide text-bone-3">Listing card figures</span>
             <p className="mt-1 text-xs leading-relaxed text-bone-3">
               The three short facts under the name on the Properties page — e.g. &quot;2.5 Acres&quot;, &quot;Ready&quot;,
-              &quot;12 retail slots&quot;. Leave all three empty to show the building, sold and available counts instead.
+              &quot;12 retail slots&quot;. Leave all three empty to show the unit, reserved and available counts instead.
             </p>
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
               {form.detail.specs.map((value, i) => (
@@ -365,7 +403,7 @@ export default function PropertyEditPage() {
                   key={i}
                   value={value}
                   onChange={(v) => setSpec(i, v)}
-                  placeholder={[`${form.buildings} buildings`, `${form.sold} sold`, `${form.available} available`][i]}
+                  placeholder={[`${form.buildings} units`, `${form.sold} reserved`, `${form.available} available`][i]}
                 />
               ))}
             </div>
@@ -410,7 +448,7 @@ export default function PropertyEditPage() {
           <TextField
             label="Tagline"
             value={form.detail.tagline}
-            onChange={(tagline) => setForm((f) => ({ ...f, detail: { ...f.detail, tagline } }))}
+            onChange={setDetailKey('tagline')}
           />
         </Section>
 
@@ -418,7 +456,7 @@ export default function PropertyEditPage() {
           <TextField
             label="Offer message (leave blank to hide)"
             value={form.detail.offer}
-            onChange={(offer) => setForm((f) => ({ ...f, detail: { ...f.detail, offer } }))}
+            onChange={setDetailKey('offer')}
           />
         </Section>
         <Section {...section('overview')} title="Overview">
@@ -448,7 +486,7 @@ export default function PropertyEditPage() {
         <Section {...section('tenants')} title="Tenant logos">
           <RepeatableList
             items={form.detail.tenants}
-            onChange={(tenants) => setForm((f) => ({ ...f, detail: { ...f.detail, tenants } }))}
+            onChange={setDetailKey('tenants')}
             makeItem={() => ''}
             addLabel="Add tenant logo"
             renderItem={(url, set) => <ImageUploader value={url} onChange={set} folder={`projects/${form.slug}/tenants`} />}
@@ -519,8 +557,21 @@ export default function PropertyEditPage() {
                   facingRoad: '',
                 })}
                 addLabel="Add building"
+                // One click used to take a building, every unit in it and their
+                // photos off the form — easy to miss before pressing Save.
+                itemLabel={(b) => String(b.building ?? '').trim()}
+                confirmRemove={(b) => {
+                  const count = (b.unitList ?? []).length
+                  const name = String(b.building ?? '').trim() || 'this building'
+                  return count ? `Remove ${name} and its ${count} unit${count === 1 ? '' : 's'}?` : `Remove ${name}?`
+                }}
                 renderItem={(item, set, i) => (
-                  <BuildingBlock building={item} onChange={set} folder={`projects/${form.slug}/building-${i}`} />
+                  <BuildingBlock
+                    building={item}
+                    onChange={set}
+                    folder={`projects/${form.slug}/building-${i}`}
+                    siteModel={form.detail.siteModel?.url ? form.detail.siteModel : null}
+                  />
                 )}
               />
             </div>
@@ -541,7 +592,7 @@ export default function PropertyEditPage() {
             buildings={form.detail.floorPlans.buildings}
             onBuildingsChange={(buildingsList) => patchDetail('floorPlans', { buildings: buildingsList })}
             siteModel={form.detail.siteModel}
-            onSiteModelChange={(siteModel) => patch({ detail: { ...form.detail, siteModel } })}
+            onSiteModelChange={setDetailKey('siteModel')}
             folder={`properties/${form.slug}/site-model`}
           />
         </Section>
@@ -601,7 +652,7 @@ export default function PropertyEditPage() {
         >
           <RepeatableList
             items={form.detail.videos}
-            onChange={(videos) => setForm((f) => ({ ...f, detail: { ...f.detail, videos } }))}
+            onChange={setDetailKey('videos')}
             makeItem={() => ({ url: '' })}
             addLabel="Add video"
             renderItem={(item, set) => (
@@ -617,7 +668,7 @@ export default function PropertyEditPage() {
         >
           <RepeatableList
             items={form.detail.extFacade}
-            onChange={(extFacade) => setForm((f) => ({ ...f, detail: { ...f.detail, extFacade } }))}
+            onChange={setDetailKey('extFacade')}
             makeItem={() => ''}
             addLabel="Add photo"
             renderItem={(url, set) => (
@@ -633,12 +684,12 @@ export default function PropertyEditPage() {
         >
           <RepeatableList
             items={form.detail.resourceLinks}
-            onChange={(resourceLinks) => setForm((f) => ({ ...f, detail: { ...f.detail, resourceLinks } }))}
+            onChange={setDetailKey('resourceLinks')}
             makeItem={() => ({ label: '', url: '', thumbnail: '' })}
             addLabel="Add link"
             renderItem={(item, set) => (
               <div className="flex flex-col gap-3">
-                <ImageUploader label="Thumbnail (optional)" value={item.thumbnail} onChange={(thumbnail) => set({ ...item, thumbnail })} folder={`projects/${form.slug}/links`} />
+                <ImageUploader label="Thumbnail (optional)" value={item.thumbnail} onChange={(thumbnail) => set((it) => ({ ...it, thumbnail }))} folder={`projects/${form.slug}/links`} />
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <TextField label="Label" value={item.label} onChange={(label) => set({ ...item, label })} />
                   <TextField label="URL" value={item.url} onChange={(url) => set({ ...item, url })} />
@@ -655,7 +706,7 @@ export default function PropertyEditPage() {
         >
           <RepeatableList
             items={form.detail.socials}
-            onChange={(socials) => setForm((f) => ({ ...f, detail: { ...f.detail, socials } }))}
+            onChange={setDetailKey('socials')}
             makeItem={() => ({ platform: 'instagram', url: '' })}
             addLabel="Add social"
             renderItem={(item, set) => (

@@ -121,7 +121,9 @@ export default function Navbar() {
     ? linksWithHome
     : [...linksWithHome, { label: 'Learn', to: '/learn' }]
   const navLinks = linksWithAcademy.filter((link) => link.to !== '/contact')
-  const phoneHref = contact.phone ? `tel:${contact.phone.replace(/[^d+]/g, '')}` : null
+  // `\d`, not `d`: without the backslash every digit was stripped and the
+  // header's Call link dialled "tel:+".
+  const phoneHref = contact.phone ? `tel:${contact.phone.replace(/[^\d+]/g, '')}` : null
   const whatsapp = contact.socials?.find((item) => item.label?.trim().toLowerCase() === 'whatsapp')
   const whatsappChatHref = whatsapp?.href && whatsapp.href !== '#' ? whatsapp.href : null
   const whatsappJoinHref = whatsappChatHref

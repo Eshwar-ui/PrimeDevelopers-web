@@ -4,6 +4,7 @@ import ImageUploader from '../components/ImageUploader'
 import RepeatableList from '../components/RepeatableList'
 import { PLATFORM_KEYS } from '../../lib/platforms'
 import { TIERS } from '../../lib/interiors'
+import { resolveNext } from '../adminUtils'
 
 // Shared hint for the *word* → italic accent-color convention used across
 // headings, so admins get the same visual flourish as the original hardcoded copy.
@@ -51,10 +52,10 @@ export const SECTIONS = [
             addLabel="Add slide"
             renderItem={(item, set) => (
               <div className="flex flex-col gap-3">
-                <ImageUploader value={item.image} onChange={(image) => set({ ...item, image })} folder="site/hero" />
+                <ImageUploader value={item.image} onChange={(image) => set((it) => ({ ...it, image }))} folder="site/hero" />
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <TextField label="Place" value={item.place} onChange={(place) => set({ ...item, place })} />
-                  <TextField label="Type" value={item.kind} onChange={(kind) => set({ ...item, kind })} />
+                  <TextField label="Place" value={item.place} onChange={(place) => set((it) => ({ ...it, place }))} />
+                  <TextField label="Type" value={item.kind} onChange={(kind) => set((it) => ({ ...it, kind }))} />
                 </div>
               </div>
             )}
@@ -80,12 +81,12 @@ export const SECTIONS = [
           addLabel="Add logo"
           renderItem={(item, set) => (
             <div className="flex flex-col gap-3">
-              <ImageUploader value={item.image} onChange={(image) => set({ ...item, image })} folder="site/logos" />
-              <TextField label="Alt text" value={item.alt} onChange={(alt) => set({ ...item, alt })} />
+              <ImageUploader value={item.image} onChange={(image) => set((it) => ({ ...it, image }))} folder="site/logos" />
+              <TextField label="Alt text" value={item.alt} onChange={(alt) => set((it) => ({ ...it, alt }))} />
               <CheckboxField
                 label="Light logo — put it on a dark panel"
                 value={item.darkPanel}
-                onChange={(darkPanel) => set({ ...item, darkPanel })}
+                onChange={(darkPanel) => set((it) => ({ ...it, darkPanel }))}
                 hint="For a mark drawn in white or a very pale colour, which would disappear on the white panel. Almost every logo is dark artwork and should leave this unticked. If the file also has a dark background baked into it rather than being transparent, ask the brand for a transparent version — otherwise its box may not match the panel exactly."
               />
             </div>
@@ -184,10 +185,10 @@ export const SECTIONS = [
             addLabel="Add card"
             renderItem={(item, set) => (
               <div className="flex flex-col gap-3">
-                <ImageUploader value={item.image} onChange={(image) => set({ ...item, image })} folder="site/services" />
+                <ImageUploader value={item.image} onChange={(image) => set((it) => ({ ...it, image }))} folder="site/services" />
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <TextField label="Title" value={item.title} onChange={(title) => set({ ...item, title })} />
-                  <TextField label="Link" value={item.href} onChange={(href) => set({ ...item, href })} />
+                  <TextField label="Title" value={item.title} onChange={(title) => set((it) => ({ ...it, title }))} />
+                  <TextField label="Link" value={item.href} onChange={(href) => set((it) => ({ ...it, href }))} />
                 </div>
                 <p className="-mt-3 text-xs text-bone-3">Leave the link empty and the card is shown but not clickable.</p>
               </div>
@@ -221,18 +222,18 @@ export const SECTIONS = [
             renderItem={(item, set) => (
               <div className="flex flex-col gap-3">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <TextField label="Term" value={item.term} onChange={(term) => set({ ...item, term })} />
-                  <TextField label="URL slug" value={item.slug} onChange={(slug) => set({ ...item, slug })} />
+                  <TextField label="Term" value={item.term} onChange={(term) => set((it) => ({ ...it, term }))} />
+                  <TextField label="URL slug" value={item.slug} onChange={(slug) => set((it) => ({ ...it, slug }))} />
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <TextField label="Category" value={item.category} onChange={(category) => set({ ...item, category })} />
-                  <TextField label="YouTube link" value={item.videoUrl} onChange={(videoUrl) => set({ ...item, videoUrl })} />
+                  <TextField label="Category" value={item.category} onChange={(category) => set((it) => ({ ...it, category }))} />
+                  <TextField label="YouTube link" value={item.videoUrl} onChange={(videoUrl) => set((it) => ({ ...it, videoUrl }))} />
                 </div>
-                <TextAreaField label="Short definition" rows={2} value={item.shortDefinition} onChange={(shortDefinition) => set({ ...item, shortDefinition })} />
-                <TextAreaField label="Full explanation" rows={5} value={item.explanation} onChange={(explanation) => set({ ...item, explanation })} />
-                <TextAreaField label="Practical example" rows={3} value={item.example} onChange={(example) => set({ ...item, example })} />
-                <TextAreaField label="Why it matters" rows={3} value={item.whyItMatters} onChange={(whyItMatters) => set({ ...item, whyItMatters })} />
-                <TextField label="Related term slugs" value={item.related} onChange={(related) => set({ ...item, related })} />
+                <TextAreaField label="Short definition" rows={2} value={item.shortDefinition} onChange={(shortDefinition) => set((it) => ({ ...it, shortDefinition }))} />
+                <TextAreaField label="Full explanation" rows={5} value={item.explanation} onChange={(explanation) => set((it) => ({ ...it, explanation }))} />
+                <TextAreaField label="Practical example" rows={3} value={item.example} onChange={(example) => set((it) => ({ ...it, example }))} />
+                <TextAreaField label="Why it matters" rows={3} value={item.whyItMatters} onChange={(whyItMatters) => set((it) => ({ ...it, whyItMatters }))} />
+                <TextField label="Related term slugs" value={item.related} onChange={(related) => set((it) => ({ ...it, related }))} />
               </div>
             )}
           />
@@ -284,13 +285,13 @@ export const SECTIONS = [
             addLabel="Add testimonial"
             renderItem={(item, set) => (
               <div className="flex flex-col gap-3">
-                <TextAreaField label="Quote" value={item.quote} onChange={(quote) => set({ ...item, quote })} />
+                <TextAreaField label="Quote" value={item.quote} onChange={(quote) => set((it) => ({ ...it, quote }))} />
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <TextField label="Name" value={item.name} onChange={(name) => set({ ...item, name })} />
-                  <TextField label="Role" value={item.role} onChange={(role) => set({ ...item, role })} />
+                  <TextField label="Name" value={item.name} onChange={(name) => set((it) => ({ ...it, name }))} />
+                  <TextField label="Role" value={item.role} onChange={(role) => set((it) => ({ ...it, role }))} />
                 </div>
-                <TextField label="Rating (0–5)" type="number" value={item.rating ?? 5} onChange={(rating) => set({ ...item, rating })} />
-                <ImageUploader label="Portrait" value={item.avatar} onChange={(avatar) => set({ ...item, avatar })} folder="site/testimonials" />
+                <TextField label="Rating (0–5)" type="number" value={item.rating ?? 5} onChange={(rating) => set((it) => ({ ...it, rating }))} />
+                <ImageUploader label="Portrait" value={item.avatar} onChange={(avatar) => set((it) => ({ ...it, avatar }))} folder="site/testimonials" />
                 <p className="-mt-3 text-xs text-bone-3">Optional — initials are shown when no portrait is uploaded.</p>
               </div>
             )}
@@ -318,13 +319,13 @@ export const SECTIONS = [
             addLabel="Add testimonial"
             renderItem={(item, set) => (
               <div className="flex flex-col gap-3">
-                <TextAreaField label="Quote" value={item.quote} onChange={(quote) => set({ ...item, quote })} />
+                <TextAreaField label="Quote" value={item.quote} onChange={(quote) => set((it) => ({ ...it, quote }))} />
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <TextField label="Name" value={item.name} onChange={(name) => set({ ...item, name })} />
-                  <TextField label="Role" value={item.role} onChange={(role) => set({ ...item, role })} />
+                  <TextField label="Name" value={item.name} onChange={(name) => set((it) => ({ ...it, name }))} />
+                  <TextField label="Role" value={item.role} onChange={(role) => set((it) => ({ ...it, role }))} />
                 </div>
-                <TextField label="Rating (0–5)" type="number" value={item.rating ?? 5} onChange={(rating) => set({ ...item, rating })} />
-                <ImageUploader label="Portrait" value={item.avatar} onChange={(avatar) => set({ ...item, avatar })} folder="site/testimonials" />
+                <TextField label="Rating (0–5)" type="number" value={item.rating ?? 5} onChange={(rating) => set((it) => ({ ...it, rating }))} />
+                <ImageUploader label="Portrait" value={item.avatar} onChange={(avatar) => set((it) => ({ ...it, avatar }))} folder="site/testimonials" />
                 <p className="-mt-3 text-xs text-bone-3">Optional — initials are shown when no portrait is uploaded.</p>
               </div>
             )}
@@ -352,13 +353,13 @@ export const SECTIONS = [
             addLabel="Add testimonial"
             renderItem={(item, set) => (
               <div className="flex flex-col gap-3">
-                <TextAreaField label="Quote" value={item.quote} onChange={(quote) => set({ ...item, quote })} />
+                <TextAreaField label="Quote" value={item.quote} onChange={(quote) => set((it) => ({ ...it, quote }))} />
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <TextField label="Name" value={item.name} onChange={(name) => set({ ...item, name })} />
-                  <TextField label="Role" value={item.role} onChange={(role) => set({ ...item, role })} />
+                  <TextField label="Name" value={item.name} onChange={(name) => set((it) => ({ ...it, name }))} />
+                  <TextField label="Role" value={item.role} onChange={(role) => set((it) => ({ ...it, role }))} />
                 </div>
-                <TextField label="Rating (0–5)" type="number" value={item.rating ?? 5} onChange={(rating) => set({ ...item, rating })} />
-                <ImageUploader label="Portrait" value={item.avatar} onChange={(avatar) => set({ ...item, avatar })} folder="site/testimonials" />
+                <TextField label="Rating (0–5)" type="number" value={item.rating ?? 5} onChange={(rating) => set((it) => ({ ...it, rating }))} />
+                <ImageUploader label="Portrait" value={item.avatar} onChange={(avatar) => set((it) => ({ ...it, avatar }))} folder="site/testimonials" />
                 <p className="-mt-3 text-xs text-bone-3">Optional — initials are shown when no portrait is uploaded.</p>
               </div>
             )}
@@ -386,13 +387,13 @@ export const SECTIONS = [
             addLabel="Add testimonial"
             renderItem={(item, set) => (
               <div className="flex flex-col gap-3">
-                <TextAreaField label="Quote" value={item.quote} onChange={(quote) => set({ ...item, quote })} />
+                <TextAreaField label="Quote" value={item.quote} onChange={(quote) => set((it) => ({ ...it, quote }))} />
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <TextField label="Name" value={item.name} onChange={(name) => set({ ...item, name })} />
-                  <TextField label="Role" value={item.role} onChange={(role) => set({ ...item, role })} />
+                  <TextField label="Name" value={item.name} onChange={(name) => set((it) => ({ ...it, name }))} />
+                  <TextField label="Role" value={item.role} onChange={(role) => set((it) => ({ ...it, role }))} />
                 </div>
-                <TextField label="Rating (0–5)" type="number" value={item.rating ?? 5} onChange={(rating) => set({ ...item, rating })} />
-                <ImageUploader label="Portrait" value={item.avatar} onChange={(avatar) => set({ ...item, avatar })} folder="site/testimonials" />
+                <TextField label="Rating (0–5)" type="number" value={item.rating ?? 5} onChange={(rating) => set((it) => ({ ...it, rating }))} />
+                <ImageUploader label="Portrait" value={item.avatar} onChange={(avatar) => set((it) => ({ ...it, avatar }))} folder="site/testimonials" />
                 <p className="-mt-3 text-xs text-bone-3">Optional — initials are shown when no portrait is uploaded.</p>
               </div>
             )}
@@ -431,24 +432,24 @@ export const SECTIONS = [
             addLabel="Add post"
             renderItem={(item, set) => (
               <div className="flex flex-col gap-3">
-                <ImageUploader value={item.image} onChange={(image) => set({ ...item, image })} folder="site/updates" />
+                <ImageUploader value={item.image} onChange={(image) => set((it) => ({ ...it, image }))} folder="site/updates" />
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <SelectField
                     label="Platform"
                     value={item.platform}
-                    onChange={(platform) => set({ ...item, platform })}
+                    onChange={(platform) => set((it) => ({ ...it, platform }))}
                     options={PLATFORM_KEYS}
                   />
                   <TextField
                     label="Date posted"
                     type="date"
                     value={item.postedAt}
-                    onChange={(postedAt) => set({ ...item, postedAt })}
+                    onChange={(postedAt) => set((it) => ({ ...it, postedAt }))}
                   />
                 </div>
-                <TextField label="Title" value={item.title} onChange={(title) => set({ ...item, title })} />
-                <TextAreaField label="Caption" rows={2} value={item.caption} onChange={(caption) => set({ ...item, caption })} />
-                <TextField label="Link to the post" value={item.href} onChange={(href) => set({ ...item, href })} />
+                <TextField label="Title" value={item.title} onChange={(title) => set((it) => ({ ...it, title }))} />
+                <TextAreaField label="Caption" rows={2} value={item.caption} onChange={(caption) => set((it) => ({ ...it, caption }))} />
+                <TextField label="Link to the post" value={item.href} onChange={(href) => set((it) => ({ ...it, href }))} />
                 <p className="-mt-3 text-xs text-bone-3">
                   Paste the post&apos;s own URL — the card opens it in a new tab. Leave the date empty and the post falls to the end of the stream.
                 </p>
@@ -494,8 +495,8 @@ export const SECTIONS = [
             addLabel="Add link"
             renderItem={(item, set) => (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <TextField label="Label" value={item.label} onChange={(label) => set({ ...item, label })} />
-                <TextField label="Route" value={item.to} onChange={(to) => set({ ...item, to })} />
+                <TextField label="Label" value={item.label} onChange={(label) => set((it) => ({ ...it, label }))} />
+                <TextField label="Route" value={item.to} onChange={(to) => set((it) => ({ ...it, to }))} />
               </div>
             )}
           />
@@ -582,8 +583,8 @@ export const SECTIONS = [
             addLabel="Add link"
             renderItem={(item, set) => (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <TextField label="Label" value={item.label} onChange={(label) => set({ ...item, label })} />
-                <TextField label="Link" value={item.href} onChange={(href) => set({ ...item, href })} />
+                <TextField label="Label" value={item.label} onChange={(label) => set((it) => ({ ...it, label }))} />
+                <TextField label="Link" value={item.href} onChange={(href) => set((it) => ({ ...it, href }))} />
               </div>
             )}
           />
@@ -603,17 +604,17 @@ export const SECTIONS = [
           </div>
           <TextField label="Link label" value={value.viewAllLabel} onChange={(viewAllLabel) => onChange({ viewAllLabel })} />
         </Section>
-        <Section title="Social links" description="Every row here is rendered. A row still on the placeholder “#” shows as a link that goes nowhere, so put the real profile URLs in — they are also what search engines read as this business's verified profiles.">
+        <Section title="Social links" description="A row with no URL (or the old placeholder “#”) is hidden on the site. The URLs are also what search engines read as this business's verified profiles.">
           <TextField label="Column heading" value={value.socialHeading} onChange={(socialHeading) => onChange({ socialHeading })} />
           <RepeatableList
             items={value.socials}
             onChange={(socials) => onChange({ socials })}
-            makeItem={() => ({ label: '', href: '#' })}
+            makeItem={() => ({ label: '', href: '' })}
             addLabel="Add social"
             renderItem={(item, set) => (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <TextField label="Label" value={item.label} onChange={(label) => set({ ...item, label })} />
-                <TextField label="Link" value={item.href} onChange={(href) => set({ ...item, href })} />
+                <TextField label="Label" value={item.label} onChange={(label) => set((it) => ({ ...it, label }))} />
+                <TextField label="Link" value={item.href} onChange={(href) => set((it) => ({ ...it, href }))} />
               </div>
             )}
           />
@@ -631,8 +632,8 @@ export const SECTIONS = [
             addLabel="Add legal link"
             renderItem={(item, set) => (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <TextField label="Label" value={item.label} onChange={(label) => set({ ...item, label })} />
-                <TextField label="Link" value={item.href} onChange={(href) => set({ ...item, href })} />
+                <TextField label="Label" value={item.label} onChange={(label) => set((it) => ({ ...it, label }))} />
+                <TextField label="Link" value={item.href} onChange={(href) => set((it) => ({ ...it, href }))} />
               </div>
             )}
           />
@@ -654,9 +655,9 @@ export const SECTIONS = [
           addLabel="Add city"
           renderItem={(item, set) => (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <TextField label="City" value={item.name} onChange={(name) => set({ ...item, name })} />
-              <TextField label="Latitude" type="number" value={item.lat} onChange={(lat) => set({ ...item, lat })} />
-              <TextField label="Longitude" type="number" value={item.lon} onChange={(lon) => set({ ...item, lon })} />
+              <TextField label="City" value={item.name} onChange={(name) => set((it) => ({ ...it, name }))} />
+              <TextField label="Latitude" type="number" value={item.lat} onChange={(lat) => set((it) => ({ ...it, lat }))} />
+              <TextField label="Longitude" type="number" value={item.lon} onChange={(lon) => set((it) => ({ ...it, lon }))} />
             </div>
           )}
         />
@@ -691,8 +692,8 @@ export const SECTIONS = [
             addLabel="Add stat"
             renderItem={(item, set) => (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <TextField label="Value" type="number" value={item.value} onChange={(v) => set({ ...item, value: v })} />
-                <TextField label="Label" value={item.label} onChange={(label) => set({ ...item, label })} />
+                <TextField label="Value" type="number" value={item.value} onChange={(v) => set((it) => ({ ...it, value: v }))} />
+                <TextField label="Label" value={item.label} onChange={(label) => set((it) => ({ ...it, label }))} />
               </div>
             )}
           />
@@ -705,8 +706,8 @@ export const SECTIONS = [
             addLabel="Add principle"
             renderItem={(item, set) => (
               <div className="flex flex-col gap-3">
-                <TextField label="Title" value={item.title} onChange={(title) => set({ ...item, title })} />
-                <TextAreaField label="Body" value={item.body} onChange={(body) => set({ ...item, body })} />
+                <TextField label="Title" value={item.title} onChange={(title) => set((it) => ({ ...it, title }))} />
+                <TextAreaField label="Body" value={item.body} onChange={(body) => set((it) => ({ ...it, body }))} />
               </div>
             )}
           />
@@ -719,10 +720,10 @@ export const SECTIONS = [
             addLabel="Add founder"
             renderItem={(item, set) => (
               <div className="flex flex-col gap-3">
-                <ImageUploader value={item.image} onChange={(image) => set({ ...item, image })} folder="site/founders" />
+                <ImageUploader value={item.image} onChange={(image) => set((it) => ({ ...it, image }))} folder="site/founders" />
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <TextField label="Name" value={item.name} onChange={(name) => set({ ...item, name })} />
-                  <TextField label="Role" value={item.role} onChange={(role) => set({ ...item, role })} />
+                  <TextField label="Name" value={item.name} onChange={(name) => set((it) => ({ ...it, name }))} />
+                  <TextField label="Role" value={item.role} onChange={(role) => set((it) => ({ ...it, role }))} />
                 </div>
               </div>
             )}
@@ -758,16 +759,16 @@ export const SECTIONS = [
           </div>
           <TextField label="Location" value={value.location} onChange={(location) => onChange({ location })} />
         </Section>
-        <Section title="Social links" description="Shown as a row of icons on the contact page.">
+        <Section title="Social links" description="Shown as a row of icons on the contact page. A row with no URL (or “#”) is hidden.">
           <RepeatableList
             items={value.socials}
             onChange={(socials) => onChange({ socials })}
-            makeItem={() => ({ label: '', href: '#' })}
+            makeItem={() => ({ label: '', href: '' })}
             addLabel="Add social"
             renderItem={(item, set) => (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <TextField label="Label" value={item.label} onChange={(label) => set({ ...item, label })} />
-                <TextField label="Link" value={item.href} onChange={(href) => set({ ...item, href })} />
+                <TextField label="Label" value={item.label} onChange={(label) => set((it) => ({ ...it, label }))} />
+                <TextField label="Link" value={item.href} onChange={(href) => set((it) => ({ ...it, href }))} />
               </div>
             )}
           />
@@ -820,10 +821,10 @@ export const SECTIONS = [
             addLabel="Add capability"
             renderItem={(item, set) => (
               <div className="flex flex-col gap-3">
-                <TextField label="Title" value={item.title} onChange={(title) => set({ ...item, title })} />
-                <TextAreaField label="Body" value={item.body} onChange={(body) => set({ ...item, body })} />
-                <ImageUploader label="Service image" value={item.image} onChange={(image) => set({ ...item, image })} folder="site/enterprise/services" />
-                <TextField label="Service link" value={item.href} onChange={(href) => set({ ...item, href })} />
+                <TextField label="Title" value={item.title} onChange={(title) => set((it) => ({ ...it, title }))} />
+                <TextAreaField label="Body" value={item.body} onChange={(body) => set((it) => ({ ...it, body }))} />
+                <ImageUploader label="Service image" value={item.image} onChange={(image) => set((it) => ({ ...it, image }))} folder="site/enterprise/services" />
+                <TextField label="Service link" value={item.href} onChange={(href) => set((it) => ({ ...it, href }))} />
               </div>
             )}
           />
@@ -836,8 +837,8 @@ export const SECTIONS = [
             addLabel="Add stat"
             renderItem={(item, set) => (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <TextField label="Value" value={item.value} onChange={(v) => set({ ...item, value: v })} />
-                <TextField label="Label" value={item.label} onChange={(label) => set({ ...item, label })} />
+                <TextField label="Value" value={item.value} onChange={(v) => set((it) => ({ ...it, value: v }))} />
+                <TextField label="Label" value={item.label} onChange={(label) => set((it) => ({ ...it, label }))} />
               </div>
             )}
           />
@@ -875,37 +876,37 @@ export const SECTIONS = [
             renderItem={(item, set) => (
               <div className="flex flex-col gap-3">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <TextField label="Name" value={item.name} onChange={(name) => set({ ...item, name })} />
-                  <TextField label="URL slug" value={item.slug} onChange={(slug) => set({ ...item, slug })} />
+                  <TextField label="Name" value={item.name} onChange={(name) => set((it) => ({ ...it, name }))} />
+                  <TextField label="URL slug" value={item.slug} onChange={(slug) => set((it) => ({ ...it, slug }))} />
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  <SelectField label="Tier" value={item.tier} onChange={(tier) => set({ ...item, tier })} options={TIERS} />
-                  <TextField label="Category" value={item.category} onChange={(category) => set({ ...item, category })} />
-                  <TextField label="Price per sqft" value={item.pricePerSqft} onChange={(pricePerSqft) => set({ ...item, pricePerSqft })} />
+                  <SelectField label="Tier" value={item.tier} onChange={(tier) => set((it) => ({ ...it, tier }))} options={TIERS} />
+                  <TextField label="Category" value={item.category} onChange={(category) => set((it) => ({ ...it, category }))} />
+                  <TextField label="Price per sqft" value={item.pricePerSqft} onChange={(pricePerSqft) => set((it) => ({ ...it, pricePerSqft }))} />
                 </div>
-                <ImageUploader label="Thumbnail (grid card)" value={item.thumbnail} onChange={(thumbnail) => set({ ...item, thumbnail })} folder="site/interiors" />
-                <ImageUploader label="Before image (comparison)" value={item.beforeImage} onChange={(beforeImage) => set({ ...item, beforeImage })} folder="site/interiors" />
-                <ImageUploader label="After image (detail hero)" value={item.heroImage} onChange={(heroImage) => set({ ...item, heroImage })} folder="site/interiors" />
+                <ImageUploader label="Thumbnail (grid card)" value={item.thumbnail} onChange={(thumbnail) => set((it) => ({ ...it, thumbnail }))} folder="site/interiors" />
+                <ImageUploader label="Before image (comparison)" value={item.beforeImage} onChange={(beforeImage) => set((it) => ({ ...it, beforeImage }))} folder="site/interiors" />
+                <ImageUploader label="After image (detail hero)" value={item.heroImage} onChange={(heroImage) => set((it) => ({ ...it, heroImage }))} folder="site/interiors" />
                 <div>
                   <span className="text-xs font-bold uppercase tracking-wide text-bone-3">Image set</span>
                   <div className="mt-2">
                     <RepeatableList
                       items={item.images ?? []}
-                      onChange={(images) => set({ ...item, images })}
+                      onChange={(images) => set((it) => ({ ...it, images: resolveNext(images, it.images ?? []) }))}
                       makeItem={() => ''}
                       addLabel="Add image"
                       renderItem={(url, setUrl) => <ImageUploader value={url} onChange={setUrl} folder="site/interiors" />}
                     />
                   </div>
                 </div>
-                <TextAreaField label="Description" rows={4} value={item.description} onChange={(description) => set({ ...item, description })} />
-                <TextField label="YouTube link" value={item.videoUrl} onChange={(videoUrl) => set({ ...item, videoUrl })} />
+                <TextAreaField label="Description" rows={4} value={item.description} onChange={(description) => set((it) => ({ ...it, description }))} />
+                <TextField label="YouTube link" value={item.videoUrl} onChange={(videoUrl) => set((it) => ({ ...it, videoUrl }))} />
                 <div>
                   <span className="text-xs font-bold uppercase tracking-wide text-bone-3">Specifications</span>
                   <div className="mt-2">
                     <RepeatableList
                       items={item.specs ?? []}
-                      onChange={(specs) => set({ ...item, specs })}
+                      onChange={(specs) => set((it) => ({ ...it, specs: resolveNext(specs, it.specs ?? []) }))}
                       makeItem={() => ({ label: '', value: '' })}
                       addLabel="Add spec"
                       renderItem={(spec, setSpec) => (
@@ -942,20 +943,20 @@ export const SECTIONS = [
             renderItem={(item, set) => (
               <div className="flex flex-col gap-3">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <TextField label="URL slug" value={item.slug} onChange={(slug) => set({ ...item, slug })} />
-                  <SelectField label="Tier" value={item.tier} onChange={(tier) => set({ ...item, tier })} options={TIERS} />
+                  <TextField label="URL slug" value={item.slug} onChange={(slug) => set((it) => ({ ...it, slug }))} />
+                  <SelectField label="Tier" value={item.tier} onChange={(tier) => set((it) => ({ ...it, tier }))} options={TIERS} />
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <TextField label="Property slug" value={item.propertySlug} onChange={(propertySlug) => set({ ...item, propertySlug })} />
-                  <TextField label="Unit label" value={item.unitLabel} onChange={(unitLabel) => set({ ...item, unitLabel })} />
+                  <TextField label="Property slug" value={item.propertySlug} onChange={(propertySlug) => set((it) => ({ ...it, propertySlug }))} />
+                  <TextField label="Unit label" value={item.unitLabel} onChange={(unitLabel) => set((it) => ({ ...it, unitLabel }))} />
                 </div>
-                <TextField label="Option slugs used" value={item.optionSlugs} onChange={(optionSlugs) => set({ ...item, optionSlugs })} />
+                <TextField label="Option slugs used" value={item.optionSlugs} onChange={(optionSlugs) => set((it) => ({ ...it, optionSlugs }))} />
                 <div>
                   <span className="text-xs font-bold uppercase tracking-wide text-bone-3">Photos</span>
                   <div className="mt-2">
                     <RepeatableList
                       items={item.photos ?? []}
-                      onChange={(photos) => set({ ...item, photos })}
+                      onChange={(photos) => set((it) => ({ ...it, photos: resolveNext(photos, it.photos ?? []) }))}
                       makeItem={() => ''}
                       addLabel="Add photo"
                       renderItem={(url, setUrl) => <ImageUploader value={url} onChange={setUrl} folder="site/interiors-gallery" />}
@@ -989,13 +990,13 @@ export const SECTIONS = [
             addLabel="Add franchisee"
             renderItem={(item, set) => (
               <div className="flex flex-col gap-3">
-                <ImageUploader label="Storefront photo" value={item.image} onChange={(image) => set({ ...item, image })} folder="site/franchise" />
-                <ImageUploader label="Logo" value={item.logo} onChange={(logo) => set({ ...item, logo })} folder="site/franchise" />
+                <ImageUploader label="Storefront photo" value={item.image} onChange={(image) => set((it) => ({ ...it, image }))} folder="site/franchise" />
+                <ImageUploader label="Logo" value={item.logo} onChange={(logo) => set((it) => ({ ...it, logo }))} folder="site/franchise" />
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <TextField label="Brand name" value={item.brandName} onChange={(brandName) => set({ ...item, brandName })} />
-                  <TextField label="Property slug" value={item.propertySlug} onChange={(propertySlug) => set({ ...item, propertySlug })} />
+                  <TextField label="Brand name" value={item.brandName} onChange={(brandName) => set((it) => ({ ...it, brandName }))} />
+                  <TextField label="Property slug" value={item.propertySlug} onChange={(propertySlug) => set((it) => ({ ...it, propertySlug }))} />
                 </div>
-                <TextAreaField label="Blurb" value={item.blurb} onChange={(blurb) => set({ ...item, blurb })} />
+                <TextAreaField label="Blurb" value={item.blurb} onChange={(blurb) => set((it) => ({ ...it, blurb }))} />
               </div>
             )}
           />
@@ -1008,7 +1009,7 @@ export const SECTIONS = [
             <div className="mt-2">
               <RepeatableList
                 items={value.openToNew?.whyPartner ?? []}
-                onChange={(whyPartner) => onChange({ openToNew: { ...value.openToNew, whyPartner } })}
+                onChange={(whyPartner) => onChange({ openToNew: (o) => ({ ...o, whyPartner: resolveNext(whyPartner, o?.whyPartner ?? []) }) })}
                 makeItem={() => ''}
                 addLabel="Add point"
                 renderItem={(item, set) => <TextField value={item} onChange={set} />}
@@ -1039,13 +1040,13 @@ export const SECTIONS = [
             addLabel="Add partnership"
             renderItem={(item, set) => (
               <div className="flex flex-col gap-3">
-                <ImageUploader label="Photo" value={item.image} onChange={(image) => set({ ...item, image })} folder="site/collab" />
+                <ImageUploader label="Photo" value={item.image} onChange={(image) => set((it) => ({ ...it, image }))} folder="site/collab" />
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <TextField label="Partner name" value={item.partnerName} onChange={(partnerName) => set({ ...item, partnerName })} />
-                  <TextField label="Concept" value={item.concept} onChange={(concept) => set({ ...item, concept })} />
+                  <TextField label="Partner name" value={item.partnerName} onChange={(partnerName) => set((it) => ({ ...it, partnerName }))} />
+                  <TextField label="Concept" value={item.concept} onChange={(concept) => set((it) => ({ ...it, concept }))} />
                 </div>
-                <TextField label="Property slug" value={item.propertySlug} onChange={(propertySlug) => set({ ...item, propertySlug })} />
-                <TextAreaField label="Summary" value={item.summary} onChange={(summary) => set({ ...item, summary })} />
+                <TextField label="Property slug" value={item.propertySlug} onChange={(propertySlug) => set((it) => ({ ...it, propertySlug }))} />
+                <TextAreaField label="Summary" value={item.summary} onChange={(summary) => set((it) => ({ ...it, summary }))} />
               </div>
             )}
           />

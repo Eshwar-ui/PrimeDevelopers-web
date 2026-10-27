@@ -2,6 +2,8 @@ import { SelectField, TextAreaField, TextField } from './Field'
 import ImageUploader from './ImageUploader'
 import RepeatableList from './RepeatableList'
 import { UNIT_STATUSES } from '../../lib/unitStatus'
+import { resolveNext } from '../adminUtils'
+import { TRACKER_MANAGED, isTrackerUnit } from '../unitChecks'
 
 /**
  * Everything about one unit that a visitor reads — shared by the property
@@ -10,20 +12,25 @@ import { UNIT_STATUSES } from '../../lib/unitStatus'
  *
  * Placement (the 2D pin or the 3D link) is not here: it only makes sense next
  * to the building's plan or model, which the Units section doesn't show.
+ *
+ * Every change goes up as an updater — `(unit) => ({ ...unit, field })` — not
+ * as a copy of `unit`. A photo upload finishes seconds after it starts, and a
+ * copy taken then would put back every field as it was, wiping anything typed
+ * in the meantime. `onChange` must accept one (resolveNext in adminUtils).
  */
 export default function UnitFields({ unit, onChange, folder }) {
-  // A unit the Prime Tracker sync has claimed (docs/tracker-sync-and-aws-plan.md).
-  // Its label and status are the tracker's, and so is the tenant unless the
-  // unit is sold — editing them here would only be undone by the next sync,
-  // which reads to an editor as the site losing their work.
-  const synced = (unit.trackerUnitIds ?? []).length > 0
+  // Its label, status and size are the tracker's, and so is the tenant unless
+  // the unit is sold — editing them here would only be undone by the next
+  // sync, which reads to an editor as the site losing their work.
+  const synced = isTrackerUnit(unit)
   const tenantSynced = synced && unit.status !== 'sold'
+  const set = (key) => (value) => onChange((u) => ({ ...u, [key]: value }))
   return (
     <>
       {synced && (
         <p className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs leading-relaxed text-bone-3">
-          Synced from Prime Tracker. {tenantSynced ? 'Label, status and tenant' : 'Label and status'} update
-          automatically — change them in the tracker. A size set there replaces the one here.
+          Synced from Prime Tracker. {tenantSynced ? 'Label, status, tenant and size' : 'Label, status and size'} update
+          automatically — change them in the tracker. Photographs, description and the rest are edited here.
         </p>
       )}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -31,37 +38,36 @@ export default function UnitFields({ unit, onChange, folder }) {
           label="Label"
           placeholder="Unit 101"
           value={unit.label}
-          onChange={(label) => onChange({ ...unit, label })}
+          onChange={set('label')}
           disabled={synced}
+          hint={synced ? TRACKER_MANAGED : undefined}
         />
         <SelectField
           label="Status"
           value={unit.status}
-          onChange={(status) => onChange({ ...unit, status })}
+          onChange={set('status')}
           options={UNIT_STATUSES}
           disabled={synced}
+          hint={synced ? TRACKER_MANAGED : undefined}
         />
         <TextField
           label="Tenant / use (if any)"
           placeholder="Kalyan Jewellers"
           value={unit.tenant}
-          onChange={(tenant) => onChange({ ...unit, tenant })}
+          onChange={set('tenant')}
           disabled={tenantSynced}
-        />
-        <TextField label="Size (sq ft)" value={unit.size} onChange={(size) => onChange({ ...unit, size })} />
-        <TextField label="Floor / level" placeholder="Ground" value={unit.floor} onChange={(floor) => onChange({ ...unit, floor })} />
-        <TextField
-          label="Lease rate / price"
-          placeholder="$28 / SF / yr"
-          value={unit.rate}
-          onChange={(rate) => onChange({ ...unit, rate })}
+          hint={tenantSynced ? TRACKER_MANAGED : undefined}
         />
         <TextField
-          label="Frontage"
-          placeholder="32 ft on Leora Ln"
-          value={unit.frontage}
-          onChange={(frontage) => onChange({ ...unit, frontage })}
+          label="Size (sq ft)"
+          value={unit.size}
+          onChange={set('size')}
+          disabled={synced}
+          hint={synced ? TRACKER_MANAGED : undefined}
         />
+        <TextField label="Floor / level" placeholder="Ground" value={unit.floor} onChange={set('floor')} />
+        <TextField label="Lease rate / price" placeholder="$28 / SF / yr" value={unit.rate} onChange={set('rate')} />
+        <TextField label="Frontage" placeholder="32 ft on Leora Ln" value={unit.frontage} onChange={set('frontage')} />
       </div>
       {/* Everything below is what a prospect actually reads when
           they tap the unit — each field is optional and simply
@@ -72,27 +78,17 @@ export default function UnitFields({ unit, onChange, folder }) {
           already long form, and neither has anywhere to appear. */}
       {String(unit.tenant ?? '').trim() && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <TextField
-            label="Tenant website"
-            placeholder="https://…"
-            value={unit.tenantUrl}
-            onChange={(tenantUrl) => onChange({ ...unit, tenantUrl })}
-          />
+          <TextField label="Tenant website" placeholder="https://…" value={unit.tenantUrl} onChange={set('tenantUrl')} />
           <TextField
             label="Tenant category"
             placeholder="Coffee · Dental · Fitness"
             value={unit.tenantCategory}
-            onChange={(tenantCategory) => onChange({ ...unit, tenantCategory })}
+            onChange={set('tenantCategory')}
           />
         </div>
       )}
 
-      <ImageUploader
-        label="Tenant logo"
-        value={unit.logo}
-        onChange={(logo) => onChange({ ...unit, logo })}
-        folder={`${folder}/unit-logos`}
-      />
+      <ImageUploader label="Tenant logo" value={unit.logo} onChange={set('logo')} folder={`${folder}/unit-logos`} />
       <p className="-mt-2 text-xs text-bone-3">
         Shown on this unit in the 3D model instead of its number — for a unit that is
         leased or sold and you want the tenant's mark on the plan.
@@ -113,7 +109,7 @@ export default function UnitFields({ unit, onChange, folder }) {
         </p>
         <RepeatableList
           items={unit.images ?? []}
-          onChange={(images) => onChange({ ...unit, images })}
+          onChange={(images) => onChange((u) => ({ ...u, images: resolveNext(images, u.images ?? []) }))}
           makeItem={() => ''}
           addLabel="Add photograph"
           renderItem={(url, setUrl) => (
@@ -126,7 +122,7 @@ export default function UnitFields({ unit, onChange, folder }) {
         rows={3}
         placeholder="Corner suite with dock access and 18ft clear height…"
         value={unit.description}
-        onChange={(description) => onChange({ ...unit, description })}
+        onChange={set('description')}
       />
     </>
   )

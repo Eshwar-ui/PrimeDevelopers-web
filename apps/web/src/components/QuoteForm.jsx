@@ -1,5 +1,8 @@
 import { useState } from 'react'
 import ArrowRight from './ArrowRight'
+import Honeypot from './Honeypot'
+import { useFormClock } from '../hooks/useFormClock'
+import { spamSignals } from '../lib/spamSignals'
 import CustomSelect from './CustomSelect'
 import { api } from '../lib/api'
 
@@ -101,6 +104,7 @@ export default function QuoteForm({
   // hidden input, which is never validated, so this form is the only thing that
   // can enforce it. See the note in CustomSelect.jsx.
   const [missing, setMissing] = useState([])
+  const clock = useFormClock()
 
   const onSubmit = async (event) => {
     event.preventDefault()
@@ -143,6 +147,8 @@ export default function QuoteForm({
         phone: data.get('phone') || undefined,
         message: data.get('message'),
         source,
+        // Spam signals — see lib/spamSignals.js.
+        ...spamSignals(data, clock.elapsed()),
         ...(Object.keys(fullContext).length > 0 && { context: fullContext }),
         ...(unitContext?.unitLabel &&
           unitContext?.propertyId && {
@@ -181,14 +187,18 @@ export default function QuoteForm({
             </p>
             <button
               type="button"
-              onClick={() => setStatus('idle')}
+              onClick={() => {
+                clock.restart()
+                setStatus('idle')
+              }}
               className="mt-7 rounded-full bg-invert px-7 py-3 font-body font-medium text-invert-fg"
             >
               Send another
             </button>
           </div>
         ) : (
-          <form onSubmit={onSubmit}>
+          <form onSubmit={onSubmit} className="relative">
+            <Honeypot />
             {unitContext?.unitLabel && (
               <div className="mb-6 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3">
                 <span className="font-body text-[11px] font-bold uppercase tracking-[0.15em] text-accent">Enquiring about</span>

@@ -227,6 +227,13 @@ export function ConfirmButton({
   busyLabel = 'Deleting…',
   icon,
   size = 'sm',
+  // Locked rather than hidden, with `title` saying why — a missing Delete
+  // reads as a bug, a greyed one with a reason reads as a rule.
+  disabled = false,
+  title,
+  // The trigger's accessible name when its visible label is generic — a list
+  // of "Remove" buttons needs to say which row each one removes.
+  ariaLabel,
 }) {
   const [armed, setArmed] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -255,7 +262,17 @@ export function ConfirmButton({
 
   if (!armed) {
     return (
-      <Button ref={triggerRef} variant="danger-ghost" size={size} icon={icon} onClick={() => setArmed(true)}>
+      <Button
+        ref={triggerRef}
+        variant="danger-ghost"
+        size={size}
+        icon={icon}
+        onClick={() => setArmed(true)}
+        disabled={disabled}
+        title={title}
+        aria-label={ariaLabel}
+        className="disabled:cursor-not-allowed disabled:opacity-40"
+      >
         {label}
       </Button>
     )
@@ -269,7 +286,7 @@ export function ConfirmButton({
       }}
     >
       <span className="text-xs text-bone-2">{prompt}</span>
-      <Button ref={confirmRef} variant="danger" size={size} onClick={confirm} disabled={busy}>
+      <Button ref={confirmRef} variant="danger" size={size} onClick={confirm} disabled={busy || disabled}>
         {busy ? busyLabel : confirmLabel}
       </Button>
       <Button variant="ghost" size={size} onClick={() => setArmed(false)} disabled={busy}>

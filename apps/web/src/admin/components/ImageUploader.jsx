@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ImageSquare, UploadSimple, X } from '@phosphor-icons/react'
 import { uploadImage, assertImageOk, IMAGE_ACCEPT, IMAGE_TYPES, IMAGE_MAX_BYTES, formatBytes } from '../../lib/uploads'
 import { Button } from './ui'
+import { useReportBusy } from './uploadBusy'
 
 /**
  * Pick an image, see it immediately, then upload it.
@@ -25,6 +26,18 @@ export default function ImageUploader({ value, onChange, folder, label, hint = t
   const [preview, setPreview] = useState(null)
 
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview) }, [preview])
+
+  // The upload resolves seconds after the file was picked. Calling the
+  // `onChange` from that render handed the parent a callback built around the
+  // form as it was then — typing done during the upload, or a second upload
+  // finishing first, was written over. The latest one is read at the end
+  // instead; the editors' updaters (resolveNext in adminUtils) cover the rest.
+  const onChangeRef = useRef(onChange)
+  useEffect(() => {
+    onChangeRef.current = onChange
+  })
+  // Holds the enclosing lists' rows in place until the URL lands.
+  useReportBusy(busy)
 
   const pick = () => inputRef.current?.click()
 
@@ -51,7 +64,7 @@ export default function ImageUploader({ value, onChange, folder, label, hint = t
     setBusy(true)
     try {
       const url = await uploadImage(file, folder)
-      onChange(url)
+      onChangeRef.current(url)
     } catch (err) {
       setError(err.message)
       // The upload failed, so the frame must go back to what is actually

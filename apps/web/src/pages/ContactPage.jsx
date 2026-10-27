@@ -33,6 +33,9 @@ function ContactIcon({ type }) {
 
 export default function ContactPage() {
   const c = useSection('contact_page')
+  // Rows with no URL, or the old seed's `#`, are left out rather than shown
+  // as buttons that go nowhere.
+  const socials = (c.socials ?? []).filter((s) => s?.href && s.href.trim() !== '#')
   const homeHero = useSection('hero')
   const [searchParams] = useSearchParams()
 
@@ -139,9 +142,9 @@ export default function ContactPage() {
             })}
           </div>
 
-          {c.socials.length > 0 && (
+          {socials.length > 0 && (
             <ul className="mt-6 flex flex-wrap items-center gap-2.5">
-              {c.socials.map((s) => (
+              {socials.map((s) => (
                 <li key={`${s.href}|${s.label}`}>
                   <a
                     href={s.href}

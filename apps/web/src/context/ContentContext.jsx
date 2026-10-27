@@ -232,9 +232,14 @@ const DEFAULTS = {
     ctaHref: '/contact',
     image: `${MEDIA_BASE}/images/site/property-1.png`,
   },
+  // The real contact details, the same ones the client's previous site carried,
+  // so the footer is right even when `/content` fails and these are all there
+  // is. The stored row wins whenever it has the key.
   footer: {
-    email: '',
-    phone: '',
+    email: 'sales@theprimedeveloper.com',
+    phone: '+1 512-761-8025',
+    // TODO(client): the office address. The previous site gives only "Texas",
+    // and a street we would have to guess at is worse than none.
     studio: '',
     // Structured postal parts, alongside `studio` rather than instead of it.
     // `studio` is the display line and an editor may reasonably want it short
@@ -255,7 +260,13 @@ const DEFAULTS = {
     licenseLabel: '',
     licenseNumber: '',
     quickLinks: [],
-    socials: [],
+    // The profiles linked from the client's previous site (theprimedeveloper.com).
+    socials: [
+      { label: 'Instagram', href: 'https://www.instagram.com/theprimedeveloper_official/' },
+      { label: 'LinkedIn', href: 'https://www.linkedin.com/company/the-prime-developers/' },
+      { label: 'Facebook', href: 'https://www.facebook.com/profile.php?id=61557388995595' },
+      { label: 'YouTube', href: 'https://www.youtube.com/@theprimedeveloper6986' },
+    ],
     // Rendered in the copyright bar, not as a fourth directory column: three
     // link columns beside the identity block is already the width budget, and
     // legal links are footnotes rather than navigation.
@@ -341,10 +352,15 @@ const DEFAULTS = {
     heroParagraph:
       'Have a property question, investment opportunity, or project in mind? Our team is ready to help you find the right path forward.',
     heroSubheading: 'Start a Conversation',
-    email: '',
-    phone: '',
-    location: '',
-    socials: [],
+    email: 'sales@theprimedeveloper.com',
+    phone: '+1 512-761-8025',
+    location: 'Texas, United States',
+    socials: [
+      { label: 'WhatsApp', href: 'https://wa.me/15127618025' },
+      { label: 'LinkedIn', href: 'https://www.linkedin.com/company/the-prime-developers/' },
+      { label: 'Instagram', href: 'https://www.instagram.com/theprimedeveloper_official/' },
+      { label: 'Facebook', href: 'https://www.facebook.com/profile.php?id=61557388995595' },
+    ],
     formEyebrow: 'Send us a message',
     formHeading: "Tell Us What You're Looking For",
     formParagraph:
@@ -696,34 +712,29 @@ export function ContentProvider({ children }) {
   const [news, setNews] = useState(null)
   const [error, setError] = useState(null)
 
-  // Two timers, both governing the splash and neither faking progress.
+  // The splash is a wait for `/content`, never a floor on it. It used to stay
+  // up for at least 1.2s however fast the API answered, so every visitor paid
+  // that on every first load. Now the page mounts the moment the content lands.
   //
-  // `minimumElapsed` is a floor, not a delay: on a warm API the content lands in
-  // a few hundred milliseconds, and a splash that appears and vanishes inside
-  // that reads as a flicker rather than as an entrance. 1.2s is long enough for
-  // the mark to resolve once.
+  // `showSplash` is the one timer left, and it delays rather than extends: the
+  // mark only appears if the wait passes 300ms. A warm API answers inside that,
+  // and the visitor goes from the blank pre-paint straight to the page — no
+  // logo flashing up and away, which was the flicker the old floor existed to
+  // hide. A slower answer gets the splash, for as long as it takes and no longer.
   //
-  // `slowStart` is the ceiling nobody can control. The API sleeps when idle, so
-  // the first visit after a quiet spell waits on a cold start that can run past
-  // half a minute. At six seconds the screen says what it is waiting for.
+  // The page itself never mounts from DEFAULTS while the request is in flight:
+  // doing so painted placeholder copy and an empty hero, then swapped the real
+  // content in underneath the visitor once `/content` landed. It does mount
+  // from them when the request fails — see `load` below.
   //
-  // The page itself never mounts from DEFAULTS: doing so painted placeholder
-  // copy and an empty hero, then swapped the real content in underneath the
-  // visitor once `/content` landed.
-  //
-  // Timers rather than rAF, deliberately: rAF does not fire in a tab that is not
-  // rendering, which would leave a backgrounded first visit stuck on the splash
-  // until it was focused (DESIGN.md §9).
-  const [minimumElapsed, setMinimumElapsed] = useState(false)
-  const [slowStart, setSlowStart] = useState(false)
+  // A timer rather than rAF, deliberately: rAF does not fire in a tab that is
+  // not rendering, which would leave a backgrounded first visit without its
+  // splash until it was focused (DESIGN.md §9).
+  const [showSplash, setShowSplash] = useState(false)
 
   useEffect(() => {
-    const floor = setTimeout(() => setMinimumElapsed(true), 1200)
-    const slow = setTimeout(() => setSlowStart(true), 6000)
-    return () => {
-      clearTimeout(floor)
-      clearTimeout(slow)
-    }
+    const delay = setTimeout(() => setShowSplash(true), 300)
+    return () => clearTimeout(delay)
   }, [])
 
   // Signed-in admins read the admin endpoints, which include unpublished
@@ -765,7 +776,18 @@ export function ContentProvider({ children }) {
     return Promise.all([
       // Content has drafts too (unpublished CAP/NNN listings), so it follows the
       // same public/admin split as properties and news.
-      request(api.get(`${prefix}/content`), setContent),
+      //
+      // When it fails, a visitor gets the site built from DEFAULTS — every
+      // section has them — rather than a dead end reading "Couldn't load the
+      // site" over a raw error message. The failure goes to the console.
+      // Admins still get the error (below): the CMS editors are seeded from
+      // this data, and editing the defaults as though they were the stored
+      // content would save them over it.
+      request(api.get(`${prefix}/content`), setContent).catch((err) => {
+        if (isAdmin) throw err
+        console.error('Site content failed to load — showing the built-in defaults.', err)
+        setContent({})
+      }),
       request(api.get(`${prefix}/properties`), (list) => setProperties(publicProperties(list)), !isAdmin),
       request(api.get(`${prefix}/news`), setNews, !isAdmin),
     ])
@@ -812,25 +834,38 @@ export function ContentProvider({ children }) {
     }
   }, [content, properties, news, error, load, isAdmin])
 
+  // Only ever an admin here: a visitor's failed load falls back to DEFAULTS in
+  // `load`. The editors need the real data, so this stops short of them and
+  // says why, with the error itself — the admin is who can act on it.
   if (error) {
     return (
-      <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-3 bg-void px-6 text-center text-bone">
-        <p className="font-display text-xl">Couldn&apos;t load the site.</p>
-        <p className="max-w-md font-body text-sm text-bone/60">{error.message}</p>
+      <div className="flex min-h-[100dvh] items-center justify-center bg-void px-6 text-bone">
+        <div role="alert" className="w-full max-w-md rounded-xl border border-red-400/40 bg-red-400/10 px-5 py-4">
+          <p className="font-display text-lg">Couldn&apos;t load the site&apos;s content.</p>
+          <p className="mt-1 break-words font-body text-sm text-bone/70">{error.message}</p>
+          <p className="mt-3 font-body text-xs leading-relaxed text-bone/55">
+            Editing is paused until it loads, so nothing is saved over the real content. Visitors get the built-in
+            defaults if their copy fails too.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setError(null)
+              load().catch((err) => setError(err))
+            }}
+            className="mt-4 min-h-10 cursor-pointer rounded-full border border-white/25 px-4 font-body text-sm text-bone hover:border-white/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          >
+            Try again
+          </button>
+        </div>
       </div>
     )
   }
 
-  if (!value.ready || !minimumElapsed) {
-    return (
-      <LogoLoader
-        hint={
-          slowStart
-            ? 'Waking the server — the first visit after a quiet spell takes a moment.'
-            : null
-        }
-      />
-    )
+  if (!value.ready) {
+    // An empty frame on the page's own background until the splash is due —
+    // the same thing the pre-paint script shows, so nothing changes on screen.
+    return showSplash ? <LogoLoader /> : <div className="min-h-[100dvh] bg-void" aria-busy="true" />
   }
 
   return <ContentContext.Provider value={value}>{children}</ContentContext.Provider>

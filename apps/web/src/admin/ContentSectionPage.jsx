@@ -6,7 +6,7 @@ import { api } from '../lib/api'
 import { SECTIONS } from './content/sectionEditors'
 import { SECTION_PATHS } from './content/sectionMeta'
 import { EditorBar, LeaveGuard } from './components/EditorChrome'
-import { stable, useAdminTitle } from './adminUtils'
+import { mergeFields, stable, useAdminTitle } from './adminUtils'
 import { Alert, Button, EmptyState } from './components/ui'
 
 export default function ContentSectionPage() {
@@ -49,7 +49,9 @@ export default function ContentSectionPage() {
     )
   }
 
-  const patch = (partial) => setValue((v) => ({ ...v, ...partial }))
+  // A value may be an updater of its field — every list editor sends one (see
+  // resolveNext in adminUtils).
+  const patch = (partial) => setValue((v) => mergeFields(v, partial))
 
   /** Resolves true when the save landed — LeaveGuard's "Save and leave" relies on it. */
   const save = async () => {

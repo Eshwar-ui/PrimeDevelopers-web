@@ -160,6 +160,11 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
 
     const target = armedTarget()
     if (target) {
+      // Clicking a shape that already carries the armed tag takes it off again.
+      if (names.every((n) => isBoundTo(n, target))) {
+        bindNames(names, null)
+        return
+      }
       bindNames(names, target)
       // Tagging a whole building unit by unit: move on to the next untagged
       // one so the editor just keeps clicking shapes.
@@ -181,6 +186,22 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
     setPendingMeshNames(names)
   }
 
+  /** Whether a shape already carries exactly this tag. */
+  const isBoundTo = (name, target) => {
+    if (target.kind === 'unit') {
+      const b = model?.unitBindings?.[name]
+      return Boolean(b) && siteUnitKey(b.buildingLabel, b.unitLabel) === siteUnitKey(target.buildingLabel, target.unitLabel)
+    }
+    if (target.kind === 'road') return model?.roadBindings?.[name] === target.roadName
+    return model?.buildingBindings?.[name] === target.buildingLabel && !model?.unitBindings?.[name]
+  }
+
+  /** What the picked shapes are tagged as, in words — every distinct tag, not just the first shape's. */
+  const describeMeshes = (names) => {
+    const tags = Array.from(new Set(names.map(describeMesh)))
+    return tags.length === 1 ? tags[0] : `mixed (${tags.join(', ')})`
+  }
+
   /** What a shape is tagged as right now, in words. */
   const describeMesh = (name) => {
     const unit = model?.unitBindings?.[name]
@@ -190,6 +211,13 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
     const building = model?.buildingBindings?.[name]
     if (building) return `Building ${building}`
     return 'Not tagged yet'
+  }
+
+  /** Creates a road and tags the picked shapes as it, for when none exists yet. */
+  const tagPickedAsNewRoad = () => {
+    const name = `Road ${roads.length + 1}`
+    setModel(bindSiteMeshes({ ...model, roads: [...roads, makeRoad(name)] }, pendingMeshNames, { kind: 'road', roadName: name }))
+    setPendingMeshNames([])
   }
 
   const tagPicked = (target) => {
@@ -531,7 +559,7 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
                     }`
                 : tab === 'units' && tagUnitMode
                   ? 'Tap a shape to create a new unit for it'
-                  : `Click any shape to tag it — or arm a ${tab === 'buildings' ? 'building' : tab === 'units' ? 'unit' : 'road'} above first and click its shape`}
+                  : `Click any shape to tag it (click a tagged shape again while its tag is armed to untag) — or arm a ${tab === 'buildings' ? 'building' : tab === 'units' ? 'unit' : 'road'} above first and click its shape`}
             </div>
             <Suspense
               fallback={
@@ -556,7 +584,8 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
             {pendingMeshNames.length > 0 && (
               <PickPanel
                 names={pendingMeshNames}
-                current={describeMesh(pendingMeshNames[0])}
+                current={describeMeshes(pendingMeshNames)}
+                onNewRoad={tagPickedAsNewRoad}
                 buildings={buildings}
                 roads={roads}
                 taggedUnits={taggedUnits}
@@ -576,7 +605,7 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
 // unit or road tags it. Untagged units come first, since those are what is
 // left to do; a ✓ marks a unit that already owns a shape (tagging it again
 // moves it to this one).
-function PickPanel({ names, current, buildings, roads, taggedUnits, onTag, onClear }) {
+function PickPanel({ names, current, buildings, roads, taggedUnits, onTag, onNewRoad, onClear }) {
   const chip =
     'rounded-full border border-white/20 px-3 py-1 text-xs font-bold uppercase tracking-wide text-bone/80 hover:border-ember hover:text-ember'
   return (
@@ -589,7 +618,7 @@ function PickPanel({ names, current, buildings, roads, taggedUnits, onTag, onCle
           — now tagged as: {current}. Choose what it is:
         </p>
         <span className="flex gap-2">
-          {current !== 'Not tagged yet' && (
+          {!/^Not tagged yet$/.test(current) && (
             <button type="button" onClick={() => onTag(null)} className="text-xs text-red-300 hover:text-red-200">
               Remove tag
             </button>
@@ -646,18 +675,19 @@ function PickPanel({ names, current, buildings, roads, taggedUnits, onTag, onCle
           )
         })}
 
-      {roads.length > 0 && (
-        <div className="mt-3">
-          <span className="text-[11px] font-bold uppercase tracking-wide text-bone-3">Road</span>
-          <div className="mt-1 flex flex-wrap gap-2">
-            {roads.map((r) => (
-              <button key={r.name} type="button" className={chip} onClick={() => onTag({ kind: 'road', roadName: r.name })}>
-                {r.name}
-              </button>
-            ))}
-          </div>
+      <div className="mt-3">
+        <span className="text-[11px] font-bold uppercase tracking-wide text-bone-3">Road</span>
+        <div className="mt-1 flex flex-wrap gap-2">
+          {roads.map((r) => (
+            <button key={r.name} type="button" className={chip} onClick={() => onTag({ kind: 'road', roadName: r.name })}>
+              {r.name}
+            </button>
+          ))}
+          <button type="button" className={`${chip} border-dashed`} onClick={onNewRoad}>
+            + New road
+          </button>
         </div>
-      )}
+      </div>
     </div>
   )
 }

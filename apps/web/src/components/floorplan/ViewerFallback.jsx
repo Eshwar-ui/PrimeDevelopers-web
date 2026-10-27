@@ -48,7 +48,8 @@ export default function ViewerFallback({ reason, hint, poster, height, onRetry }
         {canRetry(reason) && onRetry && (
           <ActionButton as="button" type="button" tone="ghost" onClick={onRetry} className="mt-1 max-w-max">
             <ArrowClockwise aria-hidden weight="bold" className="size-4 shrink-0" />
-            Try again
+            {/* Says what it will do: after a chunk failure Retry reloads. */}
+            {reason === 'chunk' ? 'Reload page' : 'Try again'}
           </ActionButton>
         )}
       </div>
@@ -75,7 +76,7 @@ export function ViewerNotice({ reason, onRetry }) {
           className="inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 font-body text-[12px] font-bold text-accent transition-colors duration-200 hover:bg-accent/10"
         >
           <ArrowClockwise aria-hidden weight="bold" className="size-3.5" />
-          Try 3D again
+          {reason === 'chunk' ? 'Reload page' : 'Try 3D again'}
         </button>
       )}
     </div>

@@ -21,7 +21,8 @@ export const loadViewer = () => import('./ModelViewer')
  *   'chunk'   — the viewer's own code failed to arrive
  *
  * Retry clears drei's cached failure for the URL and makes a fresh lazy
- * component, because React.lazy keeps a rejected import forever.
+ * component, because React.lazy keeps a rejected import forever. After a
+ * 'chunk' failure it reloads the page instead — see retry().
  */
 export function useViewerState(url) {
   const [Viewer, setViewer] = useState(() => lazy(loadViewer))
@@ -52,17 +53,25 @@ export function useViewerState(url) {
   }, [fail])
 
   const retry = useCallback(async () => {
+    // A chunk that failed to arrive cannot be fetched again from this page:
+    // the browser keeps the failed module import and re-throws it, whatever
+    // lazy() wrapper asks. Only a reload requests the file afresh.
+    if (failure?.reason === 'chunk') {
+      window.location.reload()
+      return
+    }
     try {
       const { clearModelCache } = await import('./modelCache')
       clearModelCache(url)
     } catch {
-      // The chunk itself is what failed; the fresh lazy below retries it.
+      // The cache helper's own chunk did not arrive. Remounting still
+      // retries; at worst it re-throws the cached failure.
     }
     setViewer(() => lazy(loadViewer))
     setFailure(null)
     setActivated(true)
     setAttempt((n) => n + 1)
-  }, [url])
+  }, [url, failure])
 
   return { Viewer, activated, activate, failure, fail, retry, attempt }
 }

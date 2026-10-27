@@ -361,15 +361,10 @@ export const findUnitBySlugs = (property, buildingSlugValue, unitSlugValue) =>
  */
 export const siteUnitKey = (buildingLabel, unitLabel) => `${norm(buildingLabel)}::${norm(unitLabel)}`
 
-// How many units in a list carry this label. A rename may only carry bindings
-// with it when the old label was the unit's alone and the new one is not
-// already someone else's — see the guard in applyUnitChange().
-const labelCount = (units, label) => (units ?? []).filter((unit) => norm(unit?.label) === norm(label)).length
-
 /**
- * Re-points a whole-site model's bindings after a unit or building changes
+ * Re-points a whole-site model's bindings after units or buildings change
  * identity. Pure: returns a new siteModel, or the one it was given when
- * nothing pointed at the old identity.
+ * nothing pointed at an old identity.
  *
  * The data it edits, all in `detail.siteModel`, keyed by mesh name:
  *   unitBindings[mesh]     = { buildingLabel, unitLabel }
@@ -377,69 +372,77 @@ const labelCount = (units, label) => (units ?? []).filter((unit) => norm(unit?.l
  * Labels match trimmed and case-insensitively (see siteUnitKey); written
  * labels are the new ones exactly as given.
  *
- * `change` is one of:
+ * `changes` is one change or a list of them:
  *   { type: 'renameUnit', building, from, to }
- *       every unit binding on (building, from) now points at (building, to).
+ *       unit bindings on (building, from) now point at `to`.
  *   { type: 'removeUnit', building, unit }
- *       every unit binding on (building, unit) is dropped, and its mesh is
- *       bound to `building` instead (unless it already has a building
- *       binding), so the shape stays part of its building rather than
- *       turning into grey scenery.
+ *       unit bindings on (building, unit) are dropped, and each mesh is bound
+ *       to its building instead (unless it already has a building binding),
+ *       so the shape stays part of the building rather than going dead.
  *   { type: 'renameBuilding', from, to }
- *       every unit binding on building `from` and every building binding to
- *       `from` now name `to`.
+ *       unit and building bindings on building `from` now name `to`.
  *
- * Callers guard collisions; this does not. Re-keying "605" onto a label
- * another unit already holds would merge two units' shapes, so only apply a
- * rename when the old label was unique and the new one is free — which is
- * what applyUnitChangeToDetail() and renameBuildingInDetail() do. The API
- * side (the tracker merge) should mirror this function, guard included, so a
- * relabel from either end keeps the shape.
+ * Every `building` and `from` names an identity as the bindings hold it now —
+ * before any change in the list — and the whole list is applied in one pass.
+ * That is what makes a swap work: 605→606 with 606→605 exchanges the two
+ * units' shapes, where applying them one after the other would merge them.
+ *
+ * Callers guard collisions: renaming onto a label another unit keeps would
+ * merge two units' shapes. rekeyForSave() below does; the API side (the
+ * tracker merge) should mirror this function and that guard, so a relabel
+ * from either end keeps the shape.
  */
-export function rekeySiteBindings(siteModel, change) {
-  if (!siteModel || !change) return siteModel
+export function rekeySiteBindings(siteModel, changes) {
+  const list = (Array.isArray(changes) ? changes : [changes]).filter(Boolean)
+  if (!siteModel || !list.length) return siteModel
+
+  const unitRenames = new Map() // siteUnitKey(building, from) -> to
+  const unitRemovals = new Set() // siteUnitKey(building, unit)
+  const buildingRenames = new Map() // norm(from) -> to
+  for (const change of list) {
+    const to = String(change.to ?? '').trim()
+    if (change.type === 'renameUnit' && to && norm(change.from) !== norm(to)) {
+      unitRenames.set(siteUnitKey(change.building, change.from), to)
+    } else if (change.type === 'removeUnit') {
+      unitRemovals.add(siteUnitKey(change.building, change.unit))
+    } else if (change.type === 'renameBuilding' && to && norm(change.from) !== norm(to)) {
+      buildingRenames.set(norm(change.from), to)
+    }
+  }
+
   const unitBindings = siteModel.unitBindings ?? {}
   const buildingBindings = siteModel.buildingBindings ?? {}
   const nextUnits = { ...unitBindings }
   const nextBuildings = { ...buildingBindings }
+  const renameBuilding = (label) => buildingRenames.get(norm(label)) ?? label
   let changed = false
 
-  if (change.type === 'renameUnit') {
-    if (!norm(change.to) || siteUnitKey(change.building, change.from) === siteUnitKey(change.building, change.to)) return siteModel
-    const key = siteUnitKey(change.building, change.from)
-    for (const [mesh, bind] of Object.entries(unitBindings)) {
-      if (siteUnitKey(bind?.buildingLabel, bind?.unitLabel) !== key) continue
-      nextUnits[mesh] = { ...bind, unitLabel: change.to }
-      changed = true
-    }
-  } else if (change.type === 'removeUnit') {
-    const key = siteUnitKey(change.building, change.unit)
-    for (const [mesh, bind] of Object.entries(unitBindings)) {
-      if (siteUnitKey(bind?.buildingLabel, bind?.unitLabel) !== key) continue
+  for (const [mesh, label] of Object.entries(buildingBindings)) {
+    const next = renameBuilding(label)
+    if (next === label) continue
+    nextBuildings[mesh] = next
+    changed = true
+  }
+  for (const [mesh, bind] of Object.entries(unitBindings)) {
+    const key = siteUnitKey(bind?.buildingLabel, bind?.unitLabel)
+    const buildingLabel = renameBuilding(bind?.buildingLabel)
+    if (unitRemovals.has(key)) {
       delete nextUnits[mesh]
-      if (!norm(nextBuildings[mesh])) nextBuildings[mesh] = bind.buildingLabel
+      if (!norm(nextBuildings[mesh])) nextBuildings[mesh] = buildingLabel
       changed = true
+      continue
     }
-  } else if (change.type === 'renameBuilding') {
-    if (!norm(change.to) || norm(change.from) === norm(change.to)) return siteModel
-    for (const [mesh, bind] of Object.entries(unitBindings)) {
-      if (norm(bind?.buildingLabel) !== norm(change.from)) continue
-      nextUnits[mesh] = { ...bind, buildingLabel: change.to }
-      changed = true
-    }
-    for (const [mesh, label] of Object.entries(buildingBindings)) {
-      if (norm(label) !== norm(change.from)) continue
-      nextBuildings[mesh] = change.to
-      changed = true
-    }
+    const unitLabel = unitRenames.get(key) ?? bind?.unitLabel
+    if (unitLabel === bind?.unitLabel && buildingLabel === bind?.buildingLabel) continue
+    nextUnits[mesh] = { ...bind, buildingLabel, unitLabel }
+    changed = true
   }
 
   return changed ? { ...siteModel, unitBindings: nextUnits, buildingBindings: nextBuildings } : siteModel
 }
 
 /**
- * The building after changing one of its units — or removing it, when `next`
- * is null.
+ * The building after changing one of its units.
  *
  * Matching to the 3D model is by label, so renaming a unit would otherwise
  * break its link: `301` → `301A` leaves whatever shape was linked to `301`
@@ -447,125 +450,162 @@ export function rekeySiteBindings(siteModel, change) {
  * linked by *name* (nothing stored — the match was implicit), or some other
  * shape had been *manually* bound to `301` (an explicit `bindings` entry).
  * Either way, whatever mesh resolves to the old label is re-pointed at the
- * new one. A removed unit's explicit bindings go with it. Shared by the
- * property editor and the Units section, so a rename from either keeps the
- * link.
+ * new one. Shared by the property editor and the Units section, so a rename
+ * from either keeps the link.
  *
- * This only reaches the building's own model. A property on a whole-site
- * model keeps its bindings in `detail.siteModel`, which a building cannot
- * see — use applyUnitChangeToDetail() there, which calls this and re-keys
- * the site model too.
- *
- * Labels are edited a keystroke at a time, so a rename can pass through a
- * label another unit already holds ("1002" on the way from "100" to "1002A").
- * Bindings only move when the old label was this unit's alone and the new one
- * is free; otherwise they stay put and the duplicate-label warning in the
- * editor says why.
+ * This runs on every keystroke, so it re-points as the label is typed. A form
+ * that re-keys once at save instead (markOriginalLabels/rekeyForSave below)
+ * passes `{ rebind: false }`, so the bindings it hands rekeyForSave are still
+ * the ones the form loaded with.
  */
-export function applyUnitChange(building, index, next) {
+export function applyUnitChange(building, index, next, { rebind = true } = {}) {
   const units = building.unitList ?? []
   const previous = units[index]
-  const removed = next == null
-  const unitList = removed ? units.filter((_, i) => i !== index) : units.map((unit, i) => (i === index ? next : unit))
+  const unitList = units.map((unit, i) => (i === index ? next : unit))
   const model = building.model ?? null
 
-  const wasLabel = norm(previous?.label)
-  const nowLabel = removed ? '' : String(next?.label ?? '').trim()
-  const unique = wasLabel && labelCount(units, wasLabel) === 1
-  if (!model?.url || !unique) return { ...building, unitList }
-
-  const bindings = model.bindings ?? {}
-  if (removed) {
-    const kept = Object.fromEntries(Object.entries(bindings).filter(([, label]) => norm(label) !== wasLabel))
-    return { ...building, unitList, model: { ...model, bindings: kept } }
-  }
-
-  if (!nowLabel || wasLabel === norm(nowLabel) || labelCount(units, nowLabel) > 0) {
+  const wasLabel = String(previous?.label ?? '').trim().toLowerCase()
+  const nowLabel = String(next?.label ?? '').trim()
+  if (!rebind || !model?.url || !wasLabel || !nowLabel || wasLabel === nowLabel.toLowerCase()) {
     return { ...building, unitList }
   }
 
-  // Every explicit binding, not just the first: a unit bound by block owns a
-  // dozen wall panels, and re-pointing one of them left the rest on the old
-  // label — a shop that lit up as a single sliver of wall.
-  const nextBindings = { ...bindings }
-  let moved = false
-  for (const [mesh, label] of Object.entries(bindings)) {
-    if (norm(label) !== wasLabel) continue
-    nextBindings[mesh] = nowLabel
-    moved = true
-  }
-  if (!moved) {
-    const named = (model.meshNames ?? []).find((name) => norm(meshUnitLabel(name)) === wasLabel)
-    if (named) {
-      nextBindings[named] = nowLabel
-      moved = true
-    }
-  }
+  const bindings = model.bindings ?? {}
+  const explicitMatch = Object.entries(bindings).find(([, label]) => String(label ?? '').trim().toLowerCase() === wasLabel)
+  const meshName =
+    explicitMatch?.[0] ?? (model.meshNames ?? []).find((name) => (meshUnitLabel(name) ?? '').toLowerCase() === wasLabel)
 
-  return { ...building, unitList, model: moved ? { ...model, bindings: nextBindings } : model }
+  return {
+    ...building,
+    unitList,
+    model: meshName ? { ...model, bindings: { ...bindings, [meshName]: nowLabel } } : model,
+  }
 }
+
+/* ── re-keying at save ─────────────────────────────────────────────────
+ *
+ * Labels are edited a keystroke at a time, so re-keying bindings as they are
+ * typed walks through every intermediate label: "1001" → "100" → "1002"
+ * lands on another unit's label on the way, and "Building 10" → "Building 1"
+ * on another building's. Any rule applied per keystroke either merges two
+ * units' shapes there or strands them. Re-keying once, from each row's label
+ * when the form loaded to its label at save, has no intermediate states.
+ *
+ * Wiring, for the property editor (PropertyEditPage), the building editor
+ * inside it (BuildingBlock) and the Units page (unitsStore):
+ *   - when the record loads into the form:  detail = markOriginalLabels(detail)
+ *   - unit edits:  applyUnitChange(building, i, next, { rebind: false })
+ *   - when saving:  send rekeyForSave(detail), never the marked detail —
+ *     rekeyForSave strips the markers, which must not be persisted.
+ * Not wired yet: those three files are being changed in a parallel PR.
+ */
+
+const ORIGINAL_NAME = '_originalName'
+const ORIGINAL_LABELS = '_originalLabels'
+const ORIGINAL_LABEL = '_originalLabel'
 
 const withBuildings = (detail, buildings) => ({
   ...detail,
   floorPlans: { ...(detail?.floorPlans ?? {}), buildings },
 })
 
+const countOf = (values, value) => values.filter((v) => norm(v) === norm(value)).length
+
 /**
- * applyUnitChange() at the level of a property's whole `detail`, so a rename
- * or removal also re-keys `detail.siteModel` — the bindings a whole-site
- * model (Centro Plaza) actually uses. `next` null removes the unit.
- *
- * Same collision guard as applyUnitChange(): bindings only follow a rename
- * whose old label was unique in the building and whose new one is free.
+ * Stamps every building and unit with the label it had when the form loaded,
+ * so rekeyForSave() can tell a rename from a new row. The markers ride along
+ * through edits — rows are spread, not rebuilt — and a row added in the form
+ * simply has none.
  */
-export function applyUnitChangeToDetail(detail, buildingIndex, unitIndex, next) {
-  const buildings = detail?.floorPlans?.buildings ?? []
-  const building = buildings[buildingIndex]
-  if (!building) return detail
-  const units = building.unitList ?? []
-  const previous = units[unitIndex]
+export function markOriginalLabels(detail) {
+  const buildings = detail?.floorPlans?.buildings
+  if (!Array.isArray(buildings)) return detail
+  return withBuildings(
+    detail,
+    buildings.map((building) => ({
+      ...building,
+      [ORIGINAL_NAME]: building.building ?? '',
+      [ORIGINAL_LABELS]: (building.unitList ?? []).map((unit) => unit?.label ?? ''),
+      ...(building.unitList
+        ? { unitList: building.unitList.map((unit) => ({ ...unit, [ORIGINAL_LABEL]: unit?.label ?? '' })) }
+        : {}),
+    })),
+  )
+}
 
-  const nextBuildings = buildings.map((b, i) => (i === buildingIndex ? applyUnitChange(b, unitIndex, next) : b))
-  let siteModel = detail?.siteModel ?? null
-
-  const wasLabel = String(previous?.label ?? '').trim()
-  if (siteModel && wasLabel && labelCount(units, wasLabel) === 1) {
-    if (next == null) {
-      siteModel = rekeySiteBindings(siteModel, { type: 'removeUnit', building: building.building, unit: wasLabel })
-    } else if (labelCount(units, next.label) === 0) {
-      siteModel = rekeySiteBindings(siteModel, {
-        type: 'renameUnit',
-        building: building.building,
-        from: wasLabel,
-        to: String(next.label ?? '').trim(),
-      })
-    }
+// One pass over a per-building model's bindings, from the labels the form
+// loaded with to the ones it saves. A shape matched by name (`unit-605`) gets
+// an explicit binding, since its name no longer says which unit it is.
+function rekeyModelBindings(model, renames) {
+  const target = new Map(renames.map(({ from, to }) => [norm(from), to]))
+  const bindings = model.bindings ?? {}
+  const next = {}
+  for (const [mesh, label] of Object.entries(bindings)) next[mesh] = target.get(norm(label)) ?? label
+  const explicit = new Set(Object.keys(bindings).map(norm))
+  for (const mesh of model.meshNames ?? []) {
+    const claimed = meshUnitLabel(mesh)
+    if (claimed === null || explicit.has(norm(mesh)) || !target.has(norm(claimed))) continue
+    next[mesh] = target.get(norm(claimed))
   }
-
-  const out = withBuildings(detail, nextBuildings)
-  return siteModel === (detail?.siteModel ?? null) ? out : { ...out, siteModel }
+  return next
 }
 
 /**
- * Renames one building and re-keys the whole-site model's bindings with it.
+ * The detail to save: every binding re-keyed from the labels the form loaded
+ * with (see markOriginalLabels) to the labels being saved, in one pass, and
+ * the markers stripped. Covers `detail.siteModel` (unit and building
+ * bindings) and each building's own `model.bindings`.
  *
- * Guarded like a unit rename: nothing moves when another building already
- * carries the new label (typing "Building 1" on the way to "Building 10"
- * would otherwise fold Building 10's shapes into Building 1's), or when the
- * old label was shared.
+ * Swaps work: 605↔606 exchanges the two units' shapes. Collisions move
+ * nothing: a rename whose old label was shared, or whose new label another
+ * row holds, leaves the bindings as they were — two rows sharing a label is
+ * already flagged in the editor, and only one of them could hold a shape. A
+ * row with no marker is new and has nothing to re-key. A removed row's
+ * bindings are left alone: reconcileSite() shows those shapes as their
+ * building, and restoring the unit re-links them.
  */
-export function renameBuildingInDetail(detail, buildingIndex, label) {
-  const buildings = detail?.floorPlans?.buildings ?? []
-  const building = buildings[buildingIndex]
-  if (!building) return detail
-  const from = String(building.building ?? '').trim()
-  const nextBuildings = buildings.map((b, i) => (i === buildingIndex ? { ...b, building: label } : b))
-  const out = withBuildings(detail, nextBuildings)
+export function rekeyForSave(detail) {
+  const buildings = detail?.floorPlans?.buildings
+  if (!Array.isArray(buildings)) return detail
 
-  const siteModel = detail?.siteModel ?? null
-  const holders = (value) => buildings.filter((b) => norm(b.building) === norm(value)).length
-  if (!siteModel || !from || holders(from) !== 1 || holders(label) > 0) return out
+  const originalNames = buildings.filter((b) => ORIGINAL_NAME in b).map((b) => b[ORIGINAL_NAME])
+  const finalNames = buildings.map((b) => b.building)
+  const siteChanges = []
 
-  const rekeyed = rekeySiteBindings(siteModel, { type: 'renameBuilding', from, to: String(label ?? '').trim() })
-  return rekeyed === siteModel ? out : { ...out, siteModel: rekeyed }
+  const saved = buildings.map((building) => {
+    const { [ORIGINAL_NAME]: originalName, [ORIGINAL_LABELS]: originalLabels = [], ...rest } = building
+    const marked = originalName !== undefined
+    const name = String(building.building ?? '').trim()
+
+    if (
+      marked &&
+      norm(originalName) &&
+      name &&
+      norm(originalName) !== norm(name) &&
+      countOf(originalNames, originalName) === 1 &&
+      countOf(finalNames, name) === 1
+    ) {
+      siteChanges.push({ type: 'renameBuilding', from: originalName, to: name })
+    }
+
+    const finalLabels = (building.unitList ?? []).map((unit) => unit?.label)
+    const renames = []
+    for (const unit of building.unitList ?? []) {
+      const from = unit?.[ORIGINAL_LABEL]
+      const to = String(unit?.label ?? '').trim()
+      if (from === undefined || !norm(from) || !to || norm(from) === norm(to)) continue
+      if (countOf(originalLabels, from) !== 1 || countOf(finalLabels, to) !== 1) continue
+      renames.push({ from, to })
+      if (marked) siteChanges.push({ type: 'renameUnit', building: originalName, from, to })
+    }
+
+    const out = { ...rest }
+    if (rest.unitList) out.unitList = rest.unitList.map(({ [ORIGINAL_LABEL]: _marker, ...unit }) => unit)
+    if (renames.length && rest.model?.url) out.model = { ...rest.model, bindings: rekeyModelBindings(rest.model, renames) }
+    return out
+  })
+
+  const out = withBuildings(detail, saved)
+  if (!detail.siteModel || !siteChanges.length) return out
+  return { ...out, siteModel: rekeySiteBindings(detail.siteModel, siteChanges) }
 }

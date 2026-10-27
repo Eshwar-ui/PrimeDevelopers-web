@@ -33,6 +33,11 @@ const FOCUS_DIM_HEX = '#37424b'
 // that does not pass a selection at all, which is the admin.
 const NO_SELECTION = []
 
+// How far a press may travel and still count as a tap that engages the
+// viewer, in CSS pixels — under a finger's natural wobble, well short of a
+// deliberate swipe.
+const TAP_SLOP = 10
+
 // Decoders for compressed models, both served from this origin — the CSP
 // allows no third-party script or WASM host, and drei's defaults reach for
 // one (gstatic) for Draco. Meshopt is three's own build, with its WASM inlined
@@ -1050,7 +1055,7 @@ function fitDistance(radius, camera, size) {
   return radius / Math.sin(Math.min(vFov, hFov) / 2)
 }
 
-function CameraRig({ bounds, focus, mode, navMode, resetSignal, onDragStart, onDragEnd }) {
+function CameraRig({ bounds, focus, mode, navMode, resetSignal, engaged, onDragStart, onDragEnd }) {
   const controls = useRef(null)
   const camera = useThree((state) => state.camera)
   const size = useThree((state) => state.size)
@@ -1387,6 +1392,17 @@ function CameraRig({ bounds, focus, mode, navMode, resetSignal, onDragStart, onD
   // primary drag bound to it makes the one obvious gesture do nothing at all.
   const panFirst = navMode === 'pan' || mode === '2d'
 
+  // three-stdlib's OrbitControls writes `touch-action: none` onto the element
+  // it listens on (R3F's event layer, inside the viewer) every time it
+  // connects, which overrides anything set on the container: a phone could
+  // not scroll the page past the viewer at all. Re-applied after every render
+  // rather than once, because the controls reconnect when they remount on a
+  // mode switch, and child effects (the connect) run before this one.
+  useEffect(() => {
+    const element = controls.current?.domElement
+    if (element) element.style.touchAction = engaged ? 'none' : 'pan-y'
+  })
+
   // Damping keeps the camera gliding after the hand has stopped. That drift
   // is motion the visitor did not make, which is what reduced motion asks us
   // not to add — so with it set, the camera stops where the gesture stops.
@@ -1556,7 +1572,24 @@ export default function ModelViewer({
   // the start trapped the scroll, and on a phone the viewer is most of the
   // screen, so the page simply stopped moving under the visitor's thumb.
   // A tap engages it; a tap anywhere else lets go.
+  //
+  // A tap, not a press: a swipe that starts on the viewer to scroll past it
+  // begins with a pointerdown too, and engaging on that would trap the very
+  // scroll it started. So it takes a pointerup close to where the press began,
+  // and a press the browser cancelled — because it became a scroll — is not
+  // one.
   const [engaged, setEngaged] = useState(false)
+  const press = useRef(null)
+  const onPressStart = (event) => {
+    press.current = { id: event.pointerId, x: event.clientX, y: event.clientY }
+  }
+  const onPressEnd = (event) => {
+    const start = press.current
+    press.current = null
+    if (start?.id === event.pointerId && Math.hypot(event.clientX - start.x, event.clientY - start.y) < TAP_SLOP) {
+      setEngaged(true)
+    }
+  }
   useEffect(() => {
     if (!engaged) return undefined
     const release = (event) => {
@@ -1712,10 +1745,16 @@ export default function ModelViewer({
       data-lenis-prevent
       onPointerEnter={wake}
       onPointerLeave={sleepSoon}
-      onPointerDown={() => setEngaged(true)}
+      onPointerDown={onPressStart}
+      onPointerUp={onPressEnd}
+      onPointerCancel={() => {
+        press.current = null
+      }}
       // Once engaged, `touch-action: none` stops a touch drag from panning the
       // page. Before that, `pan-y` hands vertical drags to the page so it
-      // scrolls past; sideways drags and pinches still reach the model.
+      // scrolls past; sideways drags and pinches still reach the model. Set
+      // here and, where it actually counts, on the controls' own element —
+      // see CameraRig.
       // `overscroll-contain` stops a wheel that reaches the end of the model's
       // zoom range from chaining out to the document.
       style={{ touchAction: engaged || isFullscreen ? 'none' : 'pan-y', overscrollBehavior: 'contain' }}
@@ -1814,6 +1853,7 @@ export default function ModelViewer({
           mode={mode}
           navMode={navMode}
           resetSignal={resetSignal}
+          engaged={engaged || isFullscreen}
           onDragStart={startDrag}
           onDragEnd={endDrag}
         />

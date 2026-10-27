@@ -3,10 +3,12 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import {
   applyUnitChange,
-  applyUnitChangeToDetail,
   formatArea,
+  getUnits,
+  markOriginalLabels,
+  reconcile,
+  rekeyForSave,
   rekeySiteBindings,
-  renameBuildingInDetail,
 } from '../src/lib/units.js'
 import { reconcileSite } from '../src/lib/siteModel.js'
 
@@ -57,6 +59,17 @@ test('renameUnit re-points every shape of that unit, and only that unit', () => 
   assert.equal(next.unitBindings.d.unitLabel, '605')
 })
 
+test('a list of changes is applied in one pass, so a swap exchanges shapes', () => {
+  const next = rekeySiteBindings(site(), [
+    { type: 'renameUnit', building: 'Building 6', from: '605', to: '606' },
+    { type: 'renameUnit', building: 'Building 6', from: '606', to: '605' },
+  ])
+  assert.deepEqual(
+    ['a', 'b', 'c'].map((mesh) => next.unitBindings[mesh].unitLabel),
+    ['606', '606', '605'],
+  )
+})
+
 test('removeUnit drops the unit binding and keeps the shape in its building', () => {
   const next = rekeySiteBindings(site(), { type: 'removeUnit', building: 'Building 6', unit: '605' })
   assert.equal(next.unitBindings.a, undefined)
@@ -81,96 +94,165 @@ test('a change that touches nothing returns the same object', () => {
   assert.equal(rekeySiteBindings(model, { type: 'renameUnit', building: 'Building 9', from: '901', to: '901A' }), model)
   assert.equal(rekeySiteBindings(model, { type: 'renameUnit', building: 'Building 6', from: '605', to: '605' }), model)
   assert.equal(rekeySiteBindings(model, { type: 'renameBuilding', from: 'Building 6', to: '' }), model)
+  assert.equal(rekeySiteBindings(model, []), model)
   assert.equal(rekeySiteBindings(null, { type: 'removeUnit', building: 'B', unit: '1' }), null)
 })
 
-/* ── applyUnitChangeToDetail / renameBuildingInDetail, on Centro ───── */
+/* ── typing, a keystroke at a time ─────────────────────────────────── */
+
+// What the editors do on each keystroke: UnitFields hands the whole row back
+// with the new label, BuildingBlock passes it through applyUnitChange.
+const typeUnit = (detail, buildingIndex, unitIndex, labels, options) =>
+  labels.reduce((current, label) => {
+    const buildings = current.floorPlans.buildings.map((building, i) =>
+      i === buildingIndex
+        ? applyUnitChange(building, unitIndex, { ...building.unitList[unitIndex], label }, options)
+        : building,
+    )
+    return { ...current, floorPlans: { ...current.floorPlans, buildings } }
+  }, detail)
+
+const typeBuilding = (detail, buildingIndex, names) =>
+  names.reduce((current, name) => {
+    const buildings = current.floorPlans.buildings.map((building, i) =>
+      i === buildingIndex ? { ...building, building: name } : building,
+    )
+    return { ...current, floorPlans: { ...current.floorPlans, buildings } }
+  }, detail)
+
+const perBuilding = (unitLabels, bindings, meshNames) => ({
+  floorPlans: {
+    buildings: [
+      {
+        building: 'B-10',
+        unitList: unitLabels.map((label) => ({ label })),
+        model: { url: 'b.glb', meshNames, bindings },
+      },
+    ],
+  },
+})
+
+const modelOf = (detail) => detail.floorPlans.buildings[0].model
+
+test('per keystroke, a per-building model keeps main’s behaviour (1001 → 100 → 1002 → 1002A)', () => {
+  const detail = perBuilding(['1001', '1002'], {}, ['unit-1001', 'unit-1002'])
+  const typed = typeUnit(detail, 0, 0, ['100', '1002', '1002A'])
+  assert.deepEqual(modelOf(typed).bindings, { 'unit-1001': '1002A' })
+})
+
+test('re-keyed at save, the same typing gives the same result', () => {
+  const detail = markOriginalLabels(perBuilding(['1001', '1002'], {}, ['unit-1001', 'unit-1002']))
+  const typed = typeUnit(detail, 0, 0, ['100', '1002', '1002A'], { rebind: false })
+  // Nothing moved while typing…
+  assert.deepEqual(modelOf(typed).bindings, {})
+  // …and everything moves once, at save.
+  const saved = rekeyForSave(typed)
+  assert.deepEqual(modelOf(saved).bindings, { 'unit-1001': '1002A' })
+  const report = reconcile(modelOf(saved).meshNames, getUnits(saved.floorPlans.buildings[0]), modelOf(saved).bindings)
+  assert.deepEqual(
+    report.matched.map(({ meshName, unit }) => [meshName, unit.label]),
+    [['unit-1001', '1002A'], ['unit-1002', '1002']],
+  )
+})
+
+test('a per-building swap (605 ↔ 606) exchanges the shapes at save', () => {
+  const detail = markOriginalLabels(perBuilding(['605', '606'], { n1: '605', n2: '606' }, ['n1', 'n2']))
+  let typed = typeUnit(detail, 0, 0, ['60', '606'], { rebind: false })
+  typed = typeUnit(typed, 0, 1, ['60', '605'], { rebind: false })
+  assert.deepEqual(modelOf(rekeyForSave(typed)).bindings, { n1: '606', n2: '605' })
+})
+
+const siteDetail = () => ({
+  floorPlans: {
+    buildings: [
+      { building: 'Building 6', unitList: [{ label: '605' }, { label: '606' }] },
+      { building: 'Building 1', unitList: [{ label: '101' }] },
+      { building: 'Building 10', unitList: [{ label: '1001' }] },
+    ],
+  },
+  siteModel: {
+    url: 'site.glb',
+    meshNames: ['a', 'b', 'c', 'd', 'e', 'f'],
+    unitBindings: {
+      a: { buildingLabel: 'Building 6', unitLabel: '605' },
+      b: { buildingLabel: 'Building 6', unitLabel: '605' },
+      c: { buildingLabel: 'Building 6', unitLabel: '606' },
+      d: { buildingLabel: 'Building 1', unitLabel: '101' },
+      e: { buildingLabel: 'Building 10', unitLabel: '1001' },
+    },
+    buildingBindings: { a: 'Building 6', b: 'Building 6', c: 'Building 6', d: 'Building 1', e: 'Building 10', f: 'Building 10' },
+  },
+})
+
+const shapesOf = (detail, building) =>
+  reconcileSite(detail.siteModel.meshNames, detail.floorPlans.buildings, detail.siteModel)
+    .resolved.filter((e) => e.building.building === building)
+    .map((e) => (e.kind === 'unit' ? `${e.meshName}:${e.unit.label}` : e.meshName))
+
+test('a site-model swap typed through a collision (605 → 60 → 606, then 606 → 60 → 605)', () => {
+  let typed = typeUnit(markOriginalLabels(siteDetail()), 0, 0, ['60', '606'], { rebind: false })
+  typed = typeUnit(typed, 0, 1, ['60', '605'], { rebind: false })
+  const saved = rekeyForSave(typed)
+  assert.deepEqual(shapesOf(saved, 'Building 6'), ['a:606', 'b:606', 'c:605'])
+})
+
+test('a building renamed through another building’s name (Building 10 → Building 1 → Building 11)', () => {
+  const typed = typeBuilding(markOriginalLabels(siteDetail()), 2, ['Building 1', 'Building 11'])
+  const saved = rekeyForSave(typed)
+  assert.deepEqual(shapesOf(saved, 'Building 11'), ['e:1001', 'f'])
+  // Building 1 keeps exactly its own shape.
+  assert.deepEqual(shapesOf(saved, 'Building 1'), ['d:101'])
+})
+
+test('a save that ends on a collision moves nothing', () => {
+  // 605 renamed to 606 while 606 stays: two rows share a label.
+  const typed = typeUnit(markOriginalLabels(siteDetail()), 0, 0, ['606'], { rebind: false })
+  const before = siteDetail().siteModel
+  assert.deepEqual(rekeyForSave(typed).siteModel, before)
+  // Building 10 left named "Building 1".
+  const named = typeBuilding(markOriginalLabels(siteDetail()), 2, ['Building 1'])
+  assert.deepEqual(rekeyForSave(named).siteModel, before)
+})
+
+test('rekeyForSave strips its markers and leaves an unmarked record as it was', () => {
+  const saved = rekeyForSave(typeUnit(markOriginalLabels(siteDetail()), 0, 0, ['605A'], { rebind: false }))
+  assert.equal(JSON.stringify(saved).includes('_original'), false)
+  assert.deepEqual(rekeyForSave(siteDetail()), siteDetail())
+})
+
+/* ── on Centro's live record ───────────────────────────────────────── */
 
 const indexOf = (detail, label) => detail.floorPlans.buildings.findIndex((b) => b.building === label)
 const unitIndexOf = (detail, bi, label) => detail.floorPlans.buildings[bi].unitList.findIndex((u) => u.label === label)
 const resolve = (detail) => reconcileSite(detail.siteModel.meshNames, detail.floorPlans.buildings, detail.siteModel)
 const unitShapes = (detail, building, unit) =>
-  resolve(detail).resolved.filter((e) => e.kind === 'unit' && e.building.building === building && e.unit.label === unit)
+  resolve(detail)
+    .resolved.filter((e) => e.kind === 'unit' && e.building.building === building && e.unit.label === unit)
+    .map((e) => e.meshName)
 
-test('renaming 605 to 605A in the CMS keeps its shape (audit: “605 → 605A kills the shape”)', () => {
-  const detail = centro.detail
+test('rekeyForSave carries a renamed unit’s shapes (605 → 605A, typed a key at a time)', () => {
+  const detail = markOriginalLabels(centro.detail)
   const bi = indexOf(detail, 'Building 6')
   const ui = unitIndexOf(detail, bi, '605')
-  const before = unitShapes(detail, 'Building 6', '605').map((e) => e.meshName)
+  const before = unitShapes(centro.detail, 'Building 6', '605')
   assert.ok(before.length > 0)
 
-  const unit = detail.floorPlans.buildings[bi].unitList[ui]
-  const next = applyUnitChangeToDetail(detail, bi, ui, { ...unit, label: '605A' })
-  assert.deepEqual(unitShapes(next, 'Building 6', '605A').map((e) => e.meshName), before)
-  // Pure: the input record is untouched.
-  assert.equal(detail.floorPlans.buildings[bi].unitList[ui].label, '605')
+  const saved = rekeyForSave(typeUnit(detail, bi, ui, ['60', '605', '605A'], { rebind: false }))
+  assert.deepEqual(unitShapes(saved, 'Building 6', '605A'), before)
+  // Pure: the loaded record is untouched.
+  assert.equal(centro.detail.floorPlans.buildings[bi].unitList[ui].label, '605')
 })
 
-test('removing a unit leaves its shape in the building', () => {
-  const detail = centro.detail
+test('a building and one of its units renamed in the same save', () => {
+  const detail = markOriginalLabels(centro.detail)
   const bi = indexOf(detail, 'Building 9')
   const ui = unitIndexOf(detail, bi, '908')
-  const shapes = unitShapes(detail, 'Building 9', '908').map((e) => e.meshName)
-  assert.ok(shapes.length > 0)
+  const count = resolve(centro.detail).resolved.filter((e) => e.building?.building === 'Building 9').length
+  const shapes908 = unitShapes(centro.detail, 'Building 9', '908')
 
-  const next = applyUnitChangeToDetail(detail, bi, ui, null)
-  assert.equal(next.floorPlans.buildings[bi].unitList.some((u) => u.label === '908'), false)
-  const report = resolve(next)
-  for (const mesh of shapes) {
-    const entry = report.resolved.find((e) => e.meshName === mesh)
-    assert.equal(entry?.kind, 'building')
-    assert.equal(entry.building.building, 'Building 9')
-    assert.equal(next.siteModel.unitBindings[mesh], undefined)
-  }
-})
-
-test('a rename onto a label another unit holds moves nothing', () => {
-  const detail = centro.detail
-  const bi = indexOf(detail, 'Building 8')
-  const ui = unitIndexOf(detail, bi, '801')
-  const unit = detail.floorPlans.buildings[bi].unitList[ui]
-  const next = applyUnitChangeToDetail(detail, bi, ui, { ...unit, label: '802' })
-  assert.equal(next.siteModel ?? null, detail.siteModel ?? null)
-  assert.equal(next.floorPlans.buildings[bi].unitList[ui].label, '802')
-})
-
-test('renaming a building carries every shape with it', () => {
-  const detail = centro.detail
-  const bi = indexOf(detail, 'Building 6')
-  const count = resolve(detail).resolved.filter((e) => e.building?.building === 'Building 6').length
-  const next = renameBuildingInDetail(detail, bi, 'Building 6A')
-  assert.equal(resolve(next).resolved.filter((e) => e.building?.building === 'Building 6A').length, count)
-})
-
-test('a building rename onto another building’s label moves nothing', () => {
-  const detail = centro.detail
-  // Backspacing "Building 10" passes through "Building 1".
-  const next = renameBuildingInDetail(detail, indexOf(detail, 'Building 10'), 'Building 1')
-  assert.equal(next.siteModel ?? null, detail.siteModel ?? null)
-})
-
-/* ── applyUnitChange, per-building model ───────────────────────────── */
-
-const building = () => ({
-  building: 'B-01',
-  unitList: [{ label: '101' }, { label: '102' }],
-  model: { url: 'b.glb', meshNames: ['Node1', 'Node2', 'unit-102'], bindings: { Node1: '101', Node2: '101' } },
-})
-
-test('a rename re-points every panel bound to the unit', () => {
-  const next = applyUnitChange(building(), 0, { label: '101A' })
-  assert.deepEqual(next.model.bindings, { Node1: '101A', Node2: '101A' })
-  // A name-matched shape gets an explicit binding to the new label.
-  assert.deepEqual(applyUnitChange(building(), 1, { label: '102A' }).model.bindings, {
-    Node1: '101',
-    Node2: '101',
-    'unit-102': '102A',
-  })
-})
-
-test('a rename onto a taken label, or a removal, is handled without merging units', () => {
-  assert.deepEqual(applyUnitChange(building(), 0, { label: '102' }).model.bindings, { Node1: '101', Node2: '101' })
-  const removed = applyUnitChange(building(), 0, null)
-  assert.deepEqual(removed.unitList, [{ label: '102' }])
-  assert.deepEqual(removed.model.bindings, {})
+  let typed = typeBuilding(detail, bi, ['Building 9A'])
+  typed = typeUnit(typed, bi, ui, ['908A'], { rebind: false })
+  const saved = rekeyForSave(typed)
+  assert.equal(resolve(saved).resolved.filter((e) => e.building?.building === 'Building 9A').length, count)
+  assert.deepEqual(unitShapes(saved, 'Building 9A', '908A'), shapes908)
 })

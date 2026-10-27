@@ -1,11 +1,15 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { TextField, TextAreaField, CheckboxField } from './Field'
 import ImageUploader from './ImageUploader'
 import RepeatableList from './RepeatableList'
+import ChipTabs from './ChipTabs'
+import { ConfirmButton, IconButton } from './ui'
+import { ArrowLeft, ArrowRight, Cube, X } from '@phosphor-icons/react'
+import { STATUS_WORDS, unitHas3D, unitMissing } from '../completeness'
 import FloorPlanPositionPicker from './FloorPlanPositionPicker'
 import ModelManager from './ModelManager'
 import UnitFields from './UnitFields'
-import { applyUnitChange, getUnits, makeUnit, reconcile, unitFormId } from '../../lib/units'
+import { applyUnitChange, getUnits, makeUnit, nextUnitLabel, reconcile, unitFormId } from '../../lib/units'
 import { FIGURES, makeInvestment, hasInvestmentData } from '../../lib/investment'
 import { mergeFields, resolveNext } from '../adminUtils'
 import { TRACKER_MANAGED, isTrackerUnit, siteLinkedUnits, unitLabelProblems, unitPlacement } from '../unitChecks'
@@ -31,6 +35,7 @@ import { TRACKER_MANAGED, isTrackerUnit, siteLinkedUnits, unitLabelProblems, uni
 // later would otherwise put back the whole buildings list as it was.
 export default function BuildingBlock({ building, onChange, folder, siteModel = null }) {
   const [placingUnitIndex, setPlacingUnitIndex] = useState(null)
+  const [selectedUnit, setSelectedUnit] = useState(0)
   const units = useMemo(() => building.unitList ?? [], [building.unitList])
   const model = building.model ?? null
   const hasModel = Boolean(model?.url)
@@ -102,16 +107,24 @@ export default function BuildingBlock({ building, onChange, folder, siteModel = 
         )}
 
         <div className="mt-4">
-          <RepeatableList
-            items={units}
-            onChange={setUnits}
-            makeItem={() => makeUnit()}
-            addLabel="Add unit"
-            // The next sync would only put a tracker unit back, so it can't be
-            // deleted here — it goes when it goes in Prime Tracker.
-            canRemove={(unit) => (isTrackerUnit(unit) ? `${TRACKER_MANAGED} — remove it there` : true)}
-            itemLabel={(unit) => (String(unit.label ?? '').trim() ? `unit ${String(unit.label).trim()}` : '')}
-            renderItem={(unit, _set, i) => {
+          <UnitsWorkspace
+            units={units}
+            siteModel={siteModel}
+            building={building}
+            selected={selectedUnit}
+            onSelect={setSelectedUnit}
+            onAdd={() => setUnits((list) => [...list, makeUnit(nextUnitLabel(list))])}
+            onMove={(i, by) =>
+              setUnits((list) => {
+                const next = [...list]
+                const j = i + by
+                if (j < 0 || j >= next.length) return list
+                ;[next[i], next[j]] = [next[j], next[i]]
+                return next
+              })
+            }
+            onRemove={(i) => setUnits((list) => list.filter((_, idx) => idx !== i))}
+            renderUnit={(unit, i) => {
               const set = (next) => setUnitAt(i, next)
               const isBound = boundLabels?.has(String(unit.label ?? '').trim().toLowerCase())
               const placement = siteLinked ? unitPlacement({ siteLinked, building, unit }) : null
@@ -301,6 +314,120 @@ function InvestmentFields({ building, onChange }) {
           onChange={(published) => set({ published })}
         />
       </div>
+    </div>
+  )
+}
+
+// One chip per unit — status, 3D link and what is still missing, readable
+// without opening it — and only the chosen unit's form below.
+function UnitsWorkspace({ units, building, siteModel, selected, onSelect, onAdd, onMove, onRemove, renderUnit }) {
+  const index = Math.min(selected, Math.max(units.length - 1, 0))
+  const unit = units[index]
+
+  // A unit added from the 3D model's tap-to-tag (or the button) is the one to edit next.
+  const previousCount = useRef(units.length)
+  useEffect(() => {
+    if (units.length > previousCount.current) onSelect(units.length - 1)
+    previousCount.current = units.length
+  }, [units.length, onSelect])
+
+  const items = units.map((u, i) => {
+    const missing = unitMissing(u)
+    const words = STATUS_WORDS[u.status] ?? STATUS_WORDS.available
+    const tags = [{ text: words.short, tone: `status-${u.status in STATUS_WORDS ? u.status : 'available'}` }]
+    tags.push(unitHas3D(building, u, siteModel) ? { text: '3D', tone: 'three-d' } : { text: 'No 3D', tone: 'no-three-d' })
+    if (missing.length) tags.push({ text: 'Need to fill details', tone: 'warn' })
+    return { title: String(u.label ?? '').trim() ? `Unit ${String(u.label).trim()}` : `Unit ${i + 1}`, tags }
+  })
+
+  const missing = unit ? unitMissing(unit) : []
+  const name = items[index]?.title ?? ''
+
+  return (
+    <div className="flex flex-col gap-3">
+      <ChipTabs
+        label="Units"
+        idPrefix="unit"
+        items={items}
+        selected={index}
+        onSelect={onSelect}
+        onAdd={onAdd}
+        addLabel="Add unit"
+      />
+      {unit ? (
+        <div
+          role="tabpanel"
+          id="unit-panel"
+          aria-labelledby={`unit-tab-${index}`}
+          className="rounded-xl border border-white/10 bg-black/15"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 py-1 pl-4 pr-1.5">
+            <span className="flex items-center gap-2 text-xs font-bold tabular-nums text-bone-3">
+              {index + 1}
+              <span className="font-normal"> of {units.length}</span>
+              {unitHas3D(building, unit, siteModel) && (
+                <span className="flex items-center gap-1 text-accent-soft">
+                  <Cube weight="bold" className="size-3.5" aria-hidden /> 3D
+                </span>
+              )}
+            </span>
+            <span className="flex flex-wrap items-center justify-end">
+              {units.length > 1 && (
+                <>
+                  <IconButton
+                    icon={ArrowLeft}
+                    label={`Move ${name} earlier`}
+                    size="sm"
+                    disabled={index === 0}
+                    onClick={() => {
+                      onMove(index, -1)
+                      onSelect(index - 1)
+                    }}
+                  />
+                  <IconButton
+                    icon={ArrowRight}
+                    label={`Move ${name} later`}
+                    size="sm"
+                    disabled={index === units.length - 1}
+                    onClick={() => {
+                      onMove(index, 1)
+                      onSelect(index + 1)
+                    }}
+                  />
+                </>
+              )}
+              {isTrackerUnit(unit) ? (
+                <IconButton
+                  icon={X}
+                  label={`Can't remove ${name}: ${TRACKER_MANAGED} — remove it there`}
+                  size="sm"
+                  disabled
+                />
+              ) : (
+                <ConfirmButton
+                  icon={X}
+                  label="Remove"
+                  ariaLabel={`Remove ${name}`}
+                  prompt={`Remove ${name}?`}
+                  confirmLabel="Yes, remove"
+                  busyLabel="Removing…"
+                  onConfirm={() => onRemove(index)}
+                />
+              )}
+            </span>
+          </div>
+          {missing.length > 0 && (
+            <p role="status" className="border-b border-white/5 bg-ember/10 px-4 py-2 text-xs text-ember">
+              <strong className="font-bold uppercase tracking-wide">Need to fill details:</strong> {missing.join(' · ')}
+            </p>
+          )}
+          <div className="p-4">{renderUnit(unit, index)}</div>
+        </div>
+      ) : (
+        <p className="rounded-xl border border-dashed border-white/15 p-6 text-sm text-bone-3">
+          No units in this building yet. Add one, or tap a shape in the 3D model to create it.
+        </p>
+      )}
     </div>
   )
 }

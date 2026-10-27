@@ -12,8 +12,8 @@ import { EditorBar, LeaveGuard } from './components/EditorChrome'
 import { Alert, Button, EmptyState, focusRing } from './components/ui'
 import ImageUploader from './components/ImageUploader'
 import RepeatableList from './components/RepeatableList'
-import BuildingBlock from './components/BuildingBlock'
 import SiteModelManager from './components/SiteModelManager'
+import BuildingsWorkspace from './components/BuildingsWorkspace'
 import InfoPageEditor from './components/InfoPageEditor'
 import { DEFAULT_INFO } from '../data/centroPlazaInfo'
 import { emptyInfo } from '../lib/propertyInfo'
@@ -538,12 +538,14 @@ export default function PropertyEditPage() {
           <TextField label="Heading" value={form.detail.floorPlans.heading} onChange={(heading) => patchDetail('floorPlans', { heading })} />
           <TextAreaField label="Body" value={form.detail.floorPlans.body} onChange={(body) => patchDetail('floorPlans', { body })} />
           <div>
-            <span className="text-xs font-bold uppercase tracking-wide text-bone-3">Buildings</span>
+            <span className="text-xs font-bold uppercase tracking-wide text-bone-3">Buildings &amp; units</span>
             <div className="mt-3">
-              <RepeatableList
-                items={form.detail.floorPlans.buildings}
+              <BuildingsWorkspace
+                buildings={form.detail.floorPlans.buildings}
                 onChange={(buildings) => patchDetail('floorPlans', { buildings })}
-                makeItem={() => ({
+                slug={form.slug}
+                siteModel={form.detail.siteModel?.url ? form.detail.siteModel : null}
+                makeBuilding={() => ({
                   building: '',
                   area: '',
                   number: '',
@@ -556,23 +558,6 @@ export default function PropertyEditPage() {
                   // Units inherit this unless they set their own facingRoad.
                   facingRoad: '',
                 })}
-                addLabel="Add building"
-                // One click used to take a building, every unit in it and their
-                // photos off the form — easy to miss before pressing Save.
-                itemLabel={(b) => String(b.building ?? '').trim()}
-                confirmRemove={(b) => {
-                  const count = (b.unitList ?? []).length
-                  const name = String(b.building ?? '').trim() || 'this building'
-                  return count ? `Remove ${name} and its ${count} unit${count === 1 ? '' : 's'}?` : `Remove ${name}?`
-                }}
-                renderItem={(item, set, i) => (
-                  <BuildingBlock
-                    building={item}
-                    onChange={set}
-                    folder={`projects/${form.slug}/building-${i}`}
-                    siteModel={form.detail.siteModel?.url ? form.detail.siteModel : null}
-                  />
-                )}
               />
             </div>
           </div>

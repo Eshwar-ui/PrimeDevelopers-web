@@ -2,8 +2,13 @@ import { SelectField, TextAreaField, TextField } from './Field'
 import ImageUploader from './ImageUploader'
 import RepeatableList from './RepeatableList'
 import { UNIT_STATUSES } from '../../lib/unitStatus'
+import { STATUS_WORDS } from '../completeness'
 import { resolveNext } from '../adminUtils'
 import { TRACKER_MANAGED, isTrackerUnit } from '../unitChecks'
+
+// The dropdown says what an editor means — unsold, in lease, sold — while the
+// stored values and the public site's wording stay as they are.
+const ADMIN_STATUSES = UNIT_STATUSES.map((s) => ({ ...s, label: STATUS_WORDS[s.value]?.long ?? s.label }))
 
 /**
  * Everything about one unit that a visitor reads — shared by the property
@@ -46,7 +51,7 @@ export default function UnitFields({ unit, onChange, folder }) {
           label="Status"
           value={unit.status}
           onChange={set('status')}
-          options={UNIT_STATUSES}
+          options={ADMIN_STATUSES}
           disabled={synced}
           hint={synced ? TRACKER_MANAGED : undefined}
         />

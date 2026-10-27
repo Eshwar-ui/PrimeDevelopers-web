@@ -194,13 +194,16 @@ export default function ModelManager({ building, onChange, folder }) {
   /** Scrolls the unit's form into view and puts the cursor in its Label field,
    *  since the auto-assigned number is the first thing worth correcting. */
   const focusUnitForm = (index) => {
-    // Deferred: the row for a just-created unit has not rendered yet.
-    requestAnimationFrame(() => {
-      const row = document.getElementById(unitFormId(folder, index))
-      if (!row) return
-      row.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      row.querySelector('input')?.focus()
-    })
+    // Deferred, and retried once: the unit chip for a just-created unit is
+    // selected by an effect, so its form mounts a frame or two later.
+    const attempt = (tries) =>
+      requestAnimationFrame(() => {
+        const row = document.getElementById(unitFormId(folder, index))
+        if (!row) return tries > 0 ? attempt(tries - 1) : undefined
+        row.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        row.querySelector('input')?.focus()
+      })
+    attempt(3)
   }
 
   const pendingReport = pending ? reconcile(pending.meshNames, units, model?.bindings ?? {}) : null

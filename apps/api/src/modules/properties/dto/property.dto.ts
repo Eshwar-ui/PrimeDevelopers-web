@@ -2,6 +2,7 @@ import {
   ArrayMaxSize,
   IsArray,
   IsBoolean,
+  IsISO8601,
   IsInt,
   IsObject,
   IsOptional,
@@ -95,4 +96,19 @@ export class CreatePropertyDto {
   published?: boolean;
 }
 
-export class UpdatePropertyDto extends PartialType(CreatePropertyDto) {}
+export class UpdatePropertyDto extends PartialType(CreatePropertyDto) {
+  /**
+   * The `updatedAt` the editor loaded. When sent, the save only lands if the
+   * row still carries exactly that timestamp — checked under a row lock, so
+   * two saves cannot both pass — and otherwise answers 409. Optional so the
+   * Units and Covers writes, and older admin bundles, keep working; the
+   * property editor always sends it, and its "Save anyway" sends the fresh
+   * value on purpose rather than skipping the check.
+   *
+   * Not a column: the service strips it before the write.
+   */
+  @ApiPropertyOptional({ description: 'Optimistic-concurrency token: the updatedAt this edit started from.' })
+  @IsOptional()
+  @IsISO8601()
+  expectedUpdatedAt?: string;
+}

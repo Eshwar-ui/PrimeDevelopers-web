@@ -8,10 +8,11 @@ import {
   Param,
   ParseUUIDPipe,
   Patch,
+  Query,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { LeadsService } from './leads.service';
-import { UpdateLeadStatusDto } from './dto/lead.dto';
+import { ListLeadsQueryDto, UpdateLeadStatusDto } from './dto/lead.dto';
 
 @ApiTags('Leads (admin)')
 @ApiBearerAuth()
@@ -20,9 +21,9 @@ export class LeadsAdminController {
   constructor(private leads: LeadsService) {}
 
   @Get()
-  @ApiOperation({ summary: 'All leads, newest first, with unit attributions' })
-  findAll() {
-    return this.leads.findAll();
+  @ApiOperation({ summary: 'Leads, newest first, with unit attributions — one page at a time' })
+  findAll(@Query() query: ListLeadsQueryDto) {
+    return this.leads.findAll(query);
   }
 
   @Patch(':id')

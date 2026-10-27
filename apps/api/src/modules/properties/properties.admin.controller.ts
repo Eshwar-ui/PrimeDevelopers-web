@@ -40,12 +40,13 @@ export class PropertiesAdminController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Update a property' })
+  @ApiOperation({ summary: 'Update a property (409 when expectedUpdatedAt is stale)' })
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdatePropertyDto,
   ) {
-    return this.properties.update(id, dto as unknown as Prisma.PropertyUpdateInput);
+    const { expectedUpdatedAt, ...data } = dto;
+    return this.properties.update(id, data as unknown as Prisma.PropertyUpdateInput, expectedUpdatedAt);
   }
 
   @Delete(':id')

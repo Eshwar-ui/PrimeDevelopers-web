@@ -1,10 +1,13 @@
 import {
   IsEmail,
   IsIn,
+  IsInt,
   IsOptional,
   IsString,
   IsUUID,
+  Max,
   MaxLength,
+  Min,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsFlatContext } from '../../../common/validators/flat-context';
@@ -19,11 +22,40 @@ export const LEAD_STATUSES = ['new', 'read', 'contacted', 'qualified', 'closed']
 export const LEAD_SOURCES = ['contact', 'interiors', 'franchise', 'collab', 'invest'] as const;
 
 /**
+ * Two cheap tells of a bot, carried by both public forms and checked in
+ * LeadsService before anything is written.
+ *
+ * - `website` is a honeypot: a field the forms hide from people (off screen,
+ *   out of the tab order, hidden from screen readers) that a form-filling bot
+ *   fills in like any other.
+ * - `fillMs` is how long the form was on screen before it was sent. A person
+ *   needs seconds to type a name and an email; a script needs none.
+ *
+ * Either one trips a silent drop: the request is answered as though it
+ * succeeded, so the bot learns nothing to adapt to. Both are optional, so a
+ * submission from a bundle older than this check still goes through.
+ */
+export class SpamSignalsDto {
+  @ApiPropertyOptional({ description: 'Honeypot. Must be empty.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  website?: string;
+
+  @ApiPropertyOptional({ description: 'Milliseconds the form was open before it was sent.' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(7 * 24 * 60 * 60 * 1000)
+  fillMs?: number;
+}
+
+/**
  * The public lead submission. This is the only unauthenticated write in the
  * API, so every field is bounded — previously the browser inserted straight
  * into Postgres and a 10 MB message was as acceptable as a 10 character one.
  */
-export class CreateLeadDto {
+export class CreateLeadDto extends SpamSignalsDto {
   @ApiProperty()
   @IsString()
   @MaxLength(200)
@@ -86,7 +118,7 @@ export class CreateLeadDto {
  * property they want — so propertyId is required here where it is optional
  * there, and there is no free-text message to bound.
  */
-export class BrochureRequestDto {
+export class BrochureRequestDto extends SpamSignalsDto {
   @ApiProperty()
   @IsString()
   @MaxLength(200)
@@ -108,6 +140,21 @@ export class BrochureRequestDto {
   propertyId!: string;
 }
 
+
+/** Paging for the admin list: newest first, `before` is the id of the last lead already shown. */
+export class ListLeadsQueryDto {
+  @ApiPropertyOptional({ default: 100, maximum: 500 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(500)
+  limit?: number;
+
+  @ApiPropertyOptional({ description: 'Return the leads after this one, in the same order.' })
+  @IsOptional()
+  @IsUUID()
+  before?: string;
+}
 
 export class UpdateLeadStatusDto {
   @ApiProperty({ enum: LEAD_STATUSES })

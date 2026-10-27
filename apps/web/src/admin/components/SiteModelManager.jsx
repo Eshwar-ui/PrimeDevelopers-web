@@ -598,7 +598,7 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
           )}
 
           {/* ── viewer ───────────────────────────────────────────── */}
-          <div className={`mt-4 ${sidePanel ? 'grid gap-4 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]' : ''}`}>
+          <div className={`mt-4 ${sidePanel ? 'grid gap-4 xl:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]' : ''}`}>
           {sidePanel && (
             <UnitSidePanel
               building={armedBuilding}
@@ -764,7 +764,7 @@ function UnitSidePanel({ building, units, taggedUnits, armedUnitLabel, onArm, on
   const tagged = units.filter((u) => taggedUnits.has(siteUnitKey(building.building, u.label))).length
   const selected = units.find((u) => u.label && u.label === armedUnitLabel)
   return (
-    <aside aria-label={`${building.building} units`} className="flex flex-col gap-3 rounded-lg border border-white/10 bg-black/15 p-3 lg:max-h-[40rem] lg:overflow-y-auto">
+    <aside aria-label={`${building.building} units`} className="flex flex-col gap-3 rounded-lg border border-white/10 bg-black/15 p-3 xl:max-h-[40rem] xl:overflow-y-auto">
       <div>
         <p className="text-sm font-medium text-bone">{building.building}</p>
         <p className="text-xs tabular-nums text-bone-3">

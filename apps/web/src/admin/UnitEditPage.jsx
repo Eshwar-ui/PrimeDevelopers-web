@@ -6,9 +6,10 @@ import { findUnitBySlugs, formatUnitLabel, getBuildings, makeUnit, unitPath } fr
 import { Section, SelectField } from './components/Field'
 import UnitFields from './components/UnitFields'
 import { EditorBar, LeaveGuard } from './components/EditorChrome'
-import { Alert, Button, ConfirmButton, EmptyState } from './components/ui'
+import { Alert, Badge, Button, ConfirmButton, EmptyState } from './components/ui'
 import { stable, useAdminTitle } from './adminUtils'
 import { unitEditPath, useSaveUnit } from './unitsStore'
+import { TRACKER_MANAGED, isTrackerUnit, unitPlacement } from './unitChecks'
 
 /**
  * One unit, edited on its own — the same fields as the property editor's
@@ -130,6 +131,10 @@ export default function UnitEditPage() {
     }
   }
 
+  // As stored, not as typed: 3D links and pins are keyed to the saved label.
+  const placement = !isNew && building ? unitPlacement({ siteModel: property?.detail?.siteModel, building, unit: found.unit }) : null
+  const trackerOwned = !isNew && isTrackerUnit(found.unit)
+
   const buildingIndex = isNew ? target.buildingIndex : found.buildingIndex
   const folder = property ? `projects/${property.slug}/building-${buildingIndex}` : 'projects/units'
   const title = isNew ? `New unit${label ? ` ${formatUnitLabel(label)}` : ''}` : `Unit ${formatUnitLabel(baseline.label) || '—'}`
@@ -200,19 +205,37 @@ export default function UnitEditPage() {
             <UnitFields unit={form} onChange={setForm} folder={folder} />
           </Section>
 
-          {property && !isNew && (
-            <p className="text-sm text-bone-3">
-              Placing the unit on the plan, or linking it to the 3D model, is done next to the plan in{' '}
-              <Link to={`/admin/properties/${property.id}`} className="text-accent-soft underline underline-offset-4">
-                {property.name} → Floor plans &amp; 3D
-              </Link>
-              .
-            </p>
+          {property && !isNew && placement && (
+            <Section title="Placement" description="Where this unit sits on the plan or in the 3D model.">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge tone={placement.linked ? 'success' : 'ember'} dot>
+                  {placement.text}
+                </Badge>
+                {placement.kind === 'site' && <span className="text-xs text-bone-3">Whole-site 3D model</span>}
+              </div>
+              <p className="text-sm text-bone-3">
+                {placement.kind === 'pin' ? 'Placing the unit on the plan' : 'Linking the unit to its shape in the 3D model'} is
+                done next to the plan in{' '}
+                <Link to={`/admin/properties/${property.id}`} className="text-accent-soft underline underline-offset-4">
+                  {property.name} → Floor plans &amp; 3D
+                </Link>
+                .
+              </p>
+            </Section>
           )}
 
           {!isNew && (
-            <div className="flex justify-end">
-              <ConfirmButton icon={Trash} label="Delete this unit" prompt="Delete this unit permanently?" onConfirm={remove} />
+            <div className="flex flex-col items-end gap-1">
+              {/* The next sync would only bring a tracker unit back. */}
+              <ConfirmButton
+                icon={Trash}
+                label="Delete this unit"
+                prompt="Delete this unit permanently?"
+                onConfirm={remove}
+                disabled={trackerOwned}
+                title={trackerOwned ? TRACKER_MANAGED : undefined}
+              />
+              {trackerOwned && <span className="text-xs text-bone-3">{TRACKER_MANAGED} — remove it there.</span>}
             </div>
           )}
         </div>

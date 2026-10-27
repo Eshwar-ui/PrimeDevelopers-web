@@ -19,7 +19,7 @@ const matches = (lead, q) =>
 // context — three requests became one.
 export default function LeadsPage() {
   useAdminTitle('Leads')
-  const { leads, error, reload, setStatus, remove } = useLeads()
+  const { leads, error, reload, setStatus, remove, hasMore, loadMore, loadingMore } = useLeads()
   const properties = useProperties()
   const [params, setParams] = useSearchParams()
   const { hash } = useLocation()
@@ -200,6 +200,19 @@ export default function LeadsPage() {
             </Card>
           )
         })}
+
+        {/* The list arrives a page at a time, newest first; the counts and the
+            search above cover what has been loaded so far. */}
+        {hasMore && (
+          <div className="flex flex-col items-center gap-2 py-4">
+            <Button size="sm" onClick={loadMore} disabled={loadingMore}>
+              {loadingMore ? 'Loading…' : 'Load older leads'}
+            </Button>
+            <span className="text-xs text-bone-3">
+              Showing the newest {leads.length}. Counts and search cover these only.
+            </span>
+          </div>
+        )}
       </div>
     </div>
   )

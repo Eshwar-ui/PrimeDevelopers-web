@@ -18,7 +18,7 @@ import ImageUploader from './components/ImageUploader'
 import RepeatableList from './components/RepeatableList'
 import { EditorBar, LeaveGuard } from './components/EditorChrome'
 import { Alert, Button, ConfirmButton, EmptyState } from './components/ui'
-import { stable, useAdminTitle } from './adminUtils'
+import { mergeFields, stable, useAdminTitle } from './adminUtils'
 
 export default function CapEditPage() {
   const { id } = useParams()
@@ -76,7 +76,9 @@ export default function CapEditPage() {
   const dirty = stable(form) !== stable(baseline)
   const patch = (partial) =>
     setForm((f) => {
-      const next = { ...f, ...partial }
+      // A value may be an updater of its field — the photo and highlight lists
+      // send one, so an upload landing late keeps what was typed meanwhile.
+      const next = mergeFields(f, partial)
       if (!next._slugTouched && ('tenant' in partial || 'units' in partial)) next.slug = capListingSlug(next)
       return next
     })

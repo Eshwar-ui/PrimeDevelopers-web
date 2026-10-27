@@ -4,7 +4,7 @@ import { Section, TextAreaField, TextField } from './components/Field'
 import RepeatableList from './components/RepeatableList'
 import { EditorBar, LeaveGuard } from './components/EditorChrome'
 import { Alert } from './components/ui'
-import { stable, useAdminTitle } from './adminUtils'
+import { mergeFields, stable, useAdminTitle } from './adminUtils'
 
 const FIELDS = ['eyebrow', 'heading', 'intro', 'contacts', 'email', 'disclaimer']
 const pick = (section) => Object.fromEntries(FIELDS.map((k) => [k, section[k]]))
@@ -31,7 +31,8 @@ export default function CapSettingsPage() {
   }, [section]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const dirty = stable(form) !== stable(baseline)
-  const patch = (partial) => setForm((f) => ({ ...f, ...partial }))
+  // A value may be an updater of its field — the contacts list sends one.
+  const patch = (partial) => setForm((f) => mergeFields(f, partial))
 
   const onSave = async () => {
     setSaving(true)

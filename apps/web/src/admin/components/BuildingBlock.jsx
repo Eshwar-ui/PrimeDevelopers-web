@@ -7,6 +7,8 @@ import ModelManager from './ModelManager'
 import UnitFields from './UnitFields'
 import { applyUnitChange, getUnits, makeUnit, reconcile, unitFormId } from '../../lib/units'
 import { FIGURES, makeInvestment, hasInvestmentData } from '../../lib/investment'
+import { mergeFields, resolveNext } from '../adminUtils'
+import { TRACKER_MANAGED, isTrackerUnit, siteLinkedUnits, unitLabelProblems, unitPlacement } from '../unitChecks'
 
 // One building's full editor.
 //
@@ -16,13 +18,25 @@ import { FIGURES, makeInvestment, hasInvestmentData } from '../../lib/investment
 // therefore demoted to a fallback for buildings that have no model — it is not
 // a second thing to keep in step.
 //
+// That model is either the building's own (`building.model`) or, on a property
+// like Centro Plaza, one model of the whole site (`siteModel`, passed in from
+// the property). Either way a unit's place is a 3D link, and the 2D pins below
+// are only for buildings with neither.
+//
 // Unit details are entered once, here, and feed the 3D view, the plan view,
 // the unit list and the detail card without being re-entered anywhere.
-export default function BuildingBlock({ building, onChange, folder }) {
+//
+// Every change goes up as an updater of the building (see resolveNext in
+// adminUtils), never as a copy of `building` — a photo upload that lands
+// later would otherwise put back the whole buildings list as it was.
+export default function BuildingBlock({ building, onChange, folder, siteModel = null }) {
   const [placingUnitIndex, setPlacingUnitIndex] = useState(null)
   const units = useMemo(() => building.unitList ?? [], [building.unitList])
   const model = building.model ?? null
   const hasModel = Boolean(model?.url)
+  const siteLinked = useMemo(() => siteLinkedUnits(siteModel), [siteModel])
+  // Pins are for buildings with no 3D geometry at all.
+  const placedIn3D = Boolean(siteLinked) || hasModel
 
   const boundLabels = useMemo(() => {
     if (!hasModel) return null
@@ -30,40 +44,33 @@ export default function BuildingBlock({ building, onChange, folder }) {
     return new Set(report.matched.map(({ unit }) => String(unit.label ?? '').trim().toLowerCase()))
   }, [hasModel, model, building])
 
-  // Two units sharing a label is silently destructive: only the first can ever
-  // bind to a shape, and the second disappears from 3D with no explanation.
-  const duplicateLabels = useMemo(() => {
-    const seen = new Set()
-    const dupes = new Set()
-    for (const unit of units) {
-      const key = String(unit.label ?? '').trim().toLowerCase()
-      if (!key) continue
-      if (seen.has(key)) dupes.add(key)
-      seen.add(key)
-    }
-    return dupes
-  }, [units])
+  // Empty and duplicated labels block the property's save (PropertyEditPage
+  // runs the same check); overlaps only warn. Shown here, next to the units.
+  const labelProblems = useMemo(() => unitLabelProblems([{ ...building, unitList: units }]), [building, units])
 
-  const setUnits = (unitList) => onChange({ ...building, unitList })
+  const setField = (key) => (value) => onChange((b) => ({ ...b, [key]: value }))
+  const setUnits = (unitList) => onChange((b) => ({ ...b, unitList: resolveNext(unitList, b.unitList ?? []) }))
 
   // A rename keeps the unit's 3D link — see applyUnitChange in lib/units.
-  const setUnitAt = (index, next) => onChange(applyUnitChange(building, index, next))
+  const setUnitAt = (index, next) =>
+    onChange((b) => applyUnitChange(b, index, resolveNext(next, (b.unitList ?? [])[index])))
 
   const handlePlace = (x, y) => {
     if (placingUnitIndex === null) return
-    setUnits(units.map((u, idx) => (idx === placingUnitIndex ? { ...u, x, y } : u)))
+    const index = placingUnitIndex
+    setUnits((list) => list.map((u, idx) => (idx === index ? { ...u, x, y } : u)))
     setPlacingUnitIndex(null)
   }
 
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <TextField label="Building" value={building.building} onChange={(v) => onChange({ ...building, building: v })} />
-        <TextField label="Area (sq ft)" value={building.area} onChange={(v) => onChange({ ...building, area: v })} />
-        <TextField label="Number" value={building.number} onChange={(v) => onChange({ ...building, number: v })} />
-        <TextField label="Units" value={building.units} onChange={(v) => onChange({ ...building, units: v })} />
-        <TextField label="Available" value={building.available} onChange={(v) => onChange({ ...building, available: v })} />
-        <TextField label="Parking" value={building.parking} onChange={(v) => onChange({ ...building, parking: v })} />
+        <TextField label="Building" value={building.building} onChange={setField('building')} />
+        <TextField label="Area (sq ft)" value={building.area} onChange={setField('area')} />
+        <TextField label="Number" value={building.number} onChange={setField('number')} />
+        <TextField label="Units" value={building.units} onChange={setField('units')} />
+        <TextField label="Available" value={building.available} onChange={setField('available')} />
+        <TextField label="Parking" value={building.parking} onChange={setField('parking')} />
       </div>
 
       {/* ── 1. Geometry: the 3D model ──────────────────────────── */}
@@ -75,11 +82,23 @@ export default function BuildingBlock({ building, onChange, folder }) {
           Units — these details drive the 3D model, the plan view, the unit list and the detail card
         </span>
 
-        {duplicateLabels.size > 0 && (
-          <p className="mt-2 text-xs leading-relaxed text-red-400">
-            Two units share the same label ({[...duplicateLabels].join(', ')}). Only the first can be linked to a shape
-            in the 3D model — give each unit a unique label.
-          </p>
+        {labelProblems.errors.length > 0 && (
+          <div role="alert" className="mt-2 text-xs leading-relaxed text-red-400">
+            {labelProblems.errors.map((problem) => (
+              <p key={problem.text}>{problem.text}</p>
+            ))}
+            <p>
+              The property can&apos;t be saved until every unit has a label of its own — a unit with none can&apos;t be
+              opened, and of two that share one only the first can be linked to a shape in 3D.
+            </p>
+          </div>
+        )}
+        {labelProblems.warnings.length > 0 && (
+          <div className="mt-2 text-xs leading-relaxed text-ember">
+            {labelProblems.warnings.map((problem) => (
+              <p key={problem.text}>{problem.text}</p>
+            ))}
+          </div>
         )}
 
         <div className="mt-4">
@@ -88,19 +107,38 @@ export default function BuildingBlock({ building, onChange, folder }) {
             onChange={setUnits}
             makeItem={() => makeUnit()}
             addLabel="Add unit"
+            // The next sync would only put a tracker unit back, so it can't be
+            // deleted here — it goes when it goes in Prime Tracker.
+            canRemove={(unit) => (isTrackerUnit(unit) ? `${TRACKER_MANAGED} — remove it there` : true)}
             renderItem={(unit, _set, i) => {
               const set = (next) => setUnitAt(i, next)
               const isBound = boundLabels?.has(String(unit.label ?? '').trim().toLowerCase())
+              const placement = siteLinked ? unitPlacement({ siteLinked, building, unit }) : null
               return (
                 // Addressable so tap-to-tag in the model panel above can scroll
                 // a just-created unit into view and focus its Label field.
                 <div id={unitFormId(folder, i)} className="flex flex-col gap-3">
                   <UnitFields unit={unit} onChange={set} folder={folder} />
 
-                  {/* One placement indicator, not two. With a model uploaded,
-                      where the unit sits is the model's business and pins are
-                      never touched. */}
-                  {hasModel ? (
+                  {/* One placement indicator, not two. With a model uploaded —
+                      the whole site's or this building's — where the unit sits
+                      is the model's business and pins are never touched. */}
+                  {placement ? (
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${
+                          placement.linked ? 'bg-[var(--color-status-available)] text-void' : 'bg-ember text-void'
+                        }`}
+                      >
+                        {placement.text}
+                      </span>
+                      {!placement.linked && (
+                        <span className="text-xs text-bone-3">
+                          Still shown in the unit list — tag its shape under Site model (3D) below.
+                        </span>
+                      )}
+                    </div>
+                  ) : hasModel ? (
                     <div className="flex items-center gap-2">
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${
@@ -143,7 +181,7 @@ export default function BuildingBlock({ building, onChange, folder }) {
           2D floor plan image — fallback only
         </span>
         <p className="mt-1 text-xs leading-relaxed text-bone-3">
-          {hasModel
+          {placedIn3D
             ? 'Not needed for this building. Visitors get the 3D model, and its plan view is generated from the same model — this image is only used if the model fails to load on an old device.'
             : 'Used when a building has no 3D model. Upload the plan, then place each unit on it.'}
         </p>
@@ -152,12 +190,12 @@ export default function BuildingBlock({ building, onChange, folder }) {
           <ImageUploader
             label="Floor plan image"
             value={building.planImage}
-            onChange={(planImage) => onChange({ ...building, planImage })}
+            onChange={setField('planImage')}
             folder={`${folder}/floor-plan`}
           />
         </div>
 
-        {!hasModel && (
+        {!placedIn3D && (
           <div className="mt-3">
             <FloorPlanPositionPicker
               image={building.planImage}
@@ -188,7 +226,7 @@ export default function BuildingBlock({ building, onChange, folder }) {
  */
 function InvestmentFields({ building, onChange }) {
   const investment = building.investment ?? makeInvestment()
-  const set = (patch) => onChange({ ...building, investment: { ...investment, ...patch } })
+  const set = (patch) => onChange((b) => ({ ...b, investment: mergeFields(b.investment ?? makeInvestment(), patch) }))
   const populated = hasInvestmentData({ ...building, investment })
   const highlights = investment.highlights ?? []
 

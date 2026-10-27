@@ -227,6 +227,10 @@ export function ConfirmButton({
   busyLabel = 'Deleting…',
   icon,
   size = 'sm',
+  // Locked rather than hidden, with `title` saying why — a missing Delete
+  // reads as a bug, a greyed one with a reason reads as a rule.
+  disabled = false,
+  title,
 }) {
   const [armed, setArmed] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -255,7 +259,16 @@ export function ConfirmButton({
 
   if (!armed) {
     return (
-      <Button ref={triggerRef} variant="danger-ghost" size={size} icon={icon} onClick={() => setArmed(true)}>
+      <Button
+        ref={triggerRef}
+        variant="danger-ghost"
+        size={size}
+        icon={icon}
+        onClick={() => setArmed(true)}
+        disabled={disabled}
+        title={title}
+        className="disabled:cursor-not-allowed disabled:opacity-40"
+      >
         {label}
       </Button>
     )

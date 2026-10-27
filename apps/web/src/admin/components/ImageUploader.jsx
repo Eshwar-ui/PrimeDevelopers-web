@@ -26,6 +26,16 @@ export default function ImageUploader({ value, onChange, folder, label, hint = t
 
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview) }, [preview])
 
+  // The upload resolves seconds after the file was picked. Calling the
+  // `onChange` from that render handed the parent a callback built around the
+  // form as it was then — typing done during the upload, or a second upload
+  // finishing first, was written over. The latest one is read at the end
+  // instead; the editors' updaters (resolveNext in adminUtils) cover the rest.
+  const onChangeRef = useRef(onChange)
+  useEffect(() => {
+    onChangeRef.current = onChange
+  })
+
   const pick = () => inputRef.current?.click()
 
   const clearPreview = () => setPreview((url) => { if (url) URL.revokeObjectURL(url); return null })
@@ -51,7 +61,7 @@ export default function ImageUploader({ value, onChange, folder, label, hint = t
     setBusy(true)
     try {
       const url = await uploadImage(file, folder)
-      onChange(url)
+      onChangeRef.current(url)
     } catch (err) {
       setError(err.message)
       // The upload failed, so the frame must go back to what is actually

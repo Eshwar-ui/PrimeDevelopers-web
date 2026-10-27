@@ -5,6 +5,7 @@ import RepeatableList from './RepeatableList'
 import { Button, EmptyState } from './ui'
 import { buildingKey, makeInfoBuilding, makeInfoImage } from '../../lib/propertyInfo'
 import { countByStatus, getUnits } from '../../lib/units'
+import { mergeFields } from '../adminUtils'
 
 /**
  * The Info page tab of the property editor — everything on
@@ -33,8 +34,10 @@ export default function InfoPageEditor({ info, usingDefault, slug, property, flo
     )
   }
 
-  const patch = (partial) => onChange({ ...info, ...partial })
-  const patchBand = (band, partial) => patch({ [band]: { ...info[band], ...partial } })
+  // Updaters, not copies of `info`: an upload landing later must apply to the
+  // page as it is then (see resolveNext in adminUtils).
+  const patch = (partial) => onChange((current) => mergeFields(current, partial))
+  const patchBand = (band, partial) => patch({ [band]: (current) => mergeFields(current, partial) })
   const folder = `projects/${slug}/info`
   const pageUrl = `/properties/${slug}/info`
 
@@ -206,7 +209,7 @@ function ImageBandEditor({ sectionProps, title, description, band, onChange, fol
         addLabel={addLabel}
         renderItem={(image, set) => (
           <div className="flex flex-col gap-3">
-            <ImageUploader value={image.src} onChange={(src) => set({ ...image, src })} folder={folder} hint={false} />
+            <ImageUploader value={image.src} onChange={(src) => set((it) => ({ ...it, src }))} folder={folder} hint={false} />
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <TextField label="Caption" value={image.caption} onChange={(caption) => set({ ...image, caption })} hint="Shown under the image." />
               <TextField label="Alt text" value={image.alt} onChange={(alt) => set({ ...image, alt })} hint="What it shows, for screen readers." />
@@ -263,11 +266,11 @@ function BuildingList({ items, onChange, floorBuildings, folder }) {
               </div>
               <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
                 <div className="flex flex-col gap-3">
-                  <ImageUploader label="Photograph" value={item.photo} onChange={(photo) => set({ ...item, photo })} folder={folder} hint={false} />
+                  <ImageUploader label="Photograph" value={item.photo} onChange={(photo) => set((it) => ({ ...it, photo }))} folder={folder} hint={false} />
                   <TextField label="Photo alt text" value={item.photoAlt} onChange={(photoAlt) => set({ ...item, photoAlt })} />
                 </div>
                 <div className="flex flex-col gap-3">
-                  <ImageUploader label="Floor-plan sheet" value={item.plan} onChange={(plan) => set({ ...item, plan })} folder={folder} hint={false} />
+                  <ImageUploader label="Floor-plan sheet" value={item.plan} onChange={(plan) => set((it) => ({ ...it, plan }))} folder={folder} hint={false} />
                   <TextField label="Plan alt text" value={item.planAlt} onChange={(planAlt) => set({ ...item, planAlt })} />
                 </div>
               </div>
@@ -289,7 +292,7 @@ function BuildingList({ items, onChange, floorBuildings, folder }) {
           size="sm"
           icon={Plus}
           className="w-fit"
-          onClick={() => onChange([...items, ...missing.map((b) => makeInfoBuilding(b.building))])}
+          onClick={() => onChange((current) => [...(current ?? []), ...missing.map((b) => makeInfoBuilding(b.building))])}
         >
           Add {missing.length === 1 ? missing[0].building : `the ${missing.length} buildings`} from Floor plans
         </Button>

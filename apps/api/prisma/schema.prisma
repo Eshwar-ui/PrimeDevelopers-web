@@ -163,6 +163,11 @@ model WebsiteLead {
   source    String   @default("contact")
   context   Json?
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  /// Caught by the honeypot or the fill-time check (leads.service.ts). Kept out
+  /// of the inbox and the staff email rather than thrown away, so a person who
+  /// tripped a check by mistake can still be found under "Show filtered".
+  spam       Boolean @default(false)
+  spamReason String? @map("spam_reason")
 
   unitAttributions WebsiteLeadUnitAttribution[]
 

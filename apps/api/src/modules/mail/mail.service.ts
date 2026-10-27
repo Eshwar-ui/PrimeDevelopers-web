@@ -44,7 +44,19 @@ export class MailService {
     // Credentials are deliberately not read from config: the SDK's own
     // provider chain covers env vars, shared config, and — on AWS — the
     // instance/task role, which is the way this should run in production.
-    this.client = this.from && region ? new SESv2Client({ region }) : null;
+    //
+    // Bounded, because the brochure email is sent while a visitor waits on the
+    // response: the SDK's default is no request timeout at all, so a stalled
+    // connection held their request open until the proxy gave up. Five seconds
+    // a try, two tries.
+    this.client =
+      this.from && region
+        ? new SESv2Client({
+            region,
+            maxAttempts: 2,
+            requestHandler: { connectionTimeout: 3_000, requestTimeout: 5_000 },
+          })
+        : null;
 
     if (!this.client) {
       this.logger.warn(

@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { BadRequestException, Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
@@ -16,20 +15,30 @@ const BROCHURE_MAX_BYTES = 8 * 1024 * 1024;
 export const DEFAULT_LEADS_NOTIFY_TO = 'sales@theprimedeveloper.com';
 
 /**
- * Faster than this from the form appearing to it being sent is a script. A
- * person with autofill still has to open the form, accept the suggestion and
- * press Send — comfortably over two and a half seconds.
+ * Faster than this from the form appearing to it being sent is a script. Kept
+ * low on purpose: autofill and a quick Send can come in under two seconds, and
+ * a person caught here is only filtered, not lost — but it still costs them a
+ * reply until someone looks under "Show filtered".
  */
-export const MIN_FILL_MS = 2500;
+export const MIN_FILL_MS = 1000;
 
 export const LEADS_PAGE_DEFAULT = 100;
 
 /** Which bot tell a submission shows, or null for none. See SpamSignalsDto. */
 export function spamSignal(dto: SpamSignalsDto): string | null {
-  if (typeof dto.website === 'string' && dto.website.trim()) return 'honeypot filled';
+  if (typeof dto.honeypot === 'string' && dto.honeypot.trim()) return 'honeypot filled';
   if (typeof dto.fillMs === 'number' && dto.fillMs < MIN_FILL_MS) return `sent ${dto.fillMs}ms after the form opened`;
   return null;
 }
+
+/**
+ * A lead as the public endpoint returns it: without the spam flag, so the
+ * answer to a filtered submission is indistinguishable from a real one.
+ */
+const publicLead = <T extends { spam?: boolean; spamReason?: string | null }>(lead: T) => {
+  const { spam: _spam, spamReason: _spamReason, ...rest } = lead;
+  return rest;
+};
 
 /** What happened to the brochure email, for the staff notification. */
 export type BrochureOutcome = { sent: true; attached: boolean } | { sent: false; reason: string };
@@ -126,12 +135,6 @@ export class LeadsService {
    * success they did not get.
    */
   async requestBrochure(dto: BrochureRequestDto) {
-    const spam = spamSignal(dto);
-    if (spam) {
-      this.logger.warn(`Dropped a brochure request as spam (${spam}).`);
-      return { id: randomUUID(), emailed: false, hasBrochure: false };
-    }
-
     const property = await this.prisma.property.findUnique({
       where: { id: dto.propertyId },
       select: { id: true, name: true, slug: true, address: true, detail: true, published: true },
@@ -140,12 +143,32 @@ export class LeadsService {
     // not confirm a draft exists, let alone mail out its brochure.
     if (!property || !property.published) throw new NotFoundException(`No property with id "${dto.propertyId}"`);
 
-    // Counted before this request's own row is written.
+    // Filtered, not dropped: kept for "Show filtered", with no brochure and no
+    // staff email, and answered the way a request with no brochure on file is.
+    const spam = spamSignal(dto);
+    if (spam) {
+      const filtered = await this.prisma.websiteLead.create({
+        data: {
+          name: dto.name,
+          email: dto.email,
+          phone: dto.phone,
+          message: `${BROCHURE_MESSAGE_PREFIX} ${property.name}.`,
+          spam: true,
+          spamReason: spam,
+        },
+      });
+      this.logger.warn(`Filtered brochure request ${filtered.id} as spam (${spam}).`);
+      return { id: filtered.id, emailed: false, hasBrochure: false };
+    }
+
+    // Counted before this request's own row is written. Filtered requests don't
+    // count: a bot reusing someone's address must not use up their allowance.
     const recentToSameAddress = await this.prisma.websiteLead.count({
       where: {
         email: { equals: dto.email, mode: 'insensitive' },
         message: { startsWith: BROCHURE_MESSAGE_PREFIX },
         createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+        spam: false,
       },
     });
 
@@ -180,9 +203,11 @@ export class LeadsService {
       }
     }
 
-    await this.notifyStaff(
-      { id: lead.id, name: dto.name, email: dto.email, phone: dto.phone },
-      { property: property.name, brochure: outcome, hasBrochure: Boolean(flyerUrl) },
+    this.inBackground(() =>
+      this.notifyStaff(
+        { id: lead.id, name: dto.name, email: dto.email, phone: dto.phone },
+        { property: property.name, brochure: outcome, hasBrochure: Boolean(flyerUrl) },
+      ),
     );
 
     return { id: lead.id, emailed: outcome.sent, hasBrochure: Boolean(flyerUrl) };
@@ -251,6 +276,20 @@ export class LeadsService {
   }
 
   /**
+   * Runs `work` after the response, not before it. The staff email is for the
+   * team, not the visitor: waiting on it meant a stalled SES call held the
+   * visitor's request open until it errored, and they sent the form again — a
+   * duplicate lead. Anything it throws is logged.
+   */
+  private inBackground(work: () => Promise<unknown>) {
+    void Promise.resolve()
+      .then(work)
+      .catch((err) =>
+        this.logger.error(`Lead notification failed: ${err instanceof Error ? err.message : String(err)}`),
+      );
+  }
+
+  /**
    * Tells the sales inbox a lead came in. Until this existed the only way to
    * learn of one was to open /admin/leads, so an enquiry could sit unseen for
    * days.
@@ -258,6 +297,7 @@ export class LeadsService {
    * Never throws. The lead is already written by the time this runs, and a
    * mail problem — SES still in its sandbox, an unverified sender — costs the
    * notification, not the enquiry. A failure is logged, as the brochure's is.
+   * Every inbox is sent to at once, so one slow recipient holds up no other.
    */
   async notifyStaff(
     lead: {
@@ -305,15 +345,16 @@ export class LeadsService {
       'Reply to this email to answer them directly.',
     ];
 
-    for (const to of this.notifyTo) {
-      try {
-        await this.mail.send({ to, subject, text: lines.join('\n'), replyTo: lead.email });
-      } catch (err) {
-        this.logger.error(
-          `Lead notification for ${lead.id} to ${to} failed: ${err instanceof Error ? err.message : String(err)}`,
-        );
+    const text = lines.join('\n');
+    const results = await Promise.allSettled(
+      this.notifyTo.map((to) => this.mail.send({ to, subject, text, replyTo: lead.email })),
+    );
+    results.forEach((result, i) => {
+      if (result.status === 'rejected') {
+        const reason = result.reason instanceof Error ? result.reason.message : String(result.reason);
+        this.logger.error(`Lead notification for ${lead.id} to ${this.notifyTo[i]} failed: ${reason}`);
       }
-    }
+    });
   }
 
   // Said plainly. When the brochure did not go, the visitor was told the team
@@ -338,7 +379,7 @@ export class LeadsService {
    * on it. Either both rows land or neither does.
    */
   async create(dto: CreateLeadDto) {
-    const { propertyId, unitLabel, buildingLabel, website: _website, fillMs: _fillMs, ...lead } = dto;
+    const { propertyId, unitLabel, buildingLabel, honeypot: _honeypot, fillMs: _fillMs, ...lead } = dto;
 
     const wantsAttribution = Boolean(propertyId || unitLabel);
     if (wantsAttribution && !(propertyId && unitLabel)) {
@@ -347,30 +388,18 @@ export class LeadsService {
       );
     }
 
-    // After the attribution check, so a malformed request gets the same 400
-    // whoever sent it. A dropped lead is answered in the shape of a real one:
-    // nothing in the response tells a bot which of its tries got through.
+    // A submission that trips a spam check is written all the same, flagged,
+    // and answered exactly as a real one — publicLead() leaves the flag out —
+    // so a bot learns nothing, and a person caught by mistake is still in the
+    // admin under "Show filtered". It just gets no staff email.
     const spam = spamSignal(dto);
-    if (spam) {
-      this.logger.warn(`Dropped a ${lead.source ?? 'contact'} lead as spam (${spam}).`);
-      return {
-        id: randomUUID(),
-        ...lead,
-        phone: lead.phone ?? null,
-        message: lead.message ?? null,
-        status: 'new',
-        source: lead.source ?? 'contact',
-        context: lead.context ?? null,
-        createdAt: new Date(),
-        unitAttributions: [],
-      };
-    }
 
     let created;
     try {
       created = await this.prisma.websiteLead.create({
         data: {
           ...lead,
+          ...(spam && { spam: true, spamReason: spam }),
           ...(wantsAttribution && {
             unitAttributions: {
               create: {
@@ -392,34 +421,83 @@ export class LeadsService {
       throw err;
     }
 
-    // The property's name makes the notification readable at a glance; a
-    // failed lookup only costs that line.
-    const property = wantsAttribution
-      ? await this.prisma.property
-          .findUnique({ where: { id: propertyId! }, select: { name: true } })
-          .catch(() => null)
-      : null;
-    await this.notifyStaff({ ...created, unitLabel, buildingLabel }, { property: property?.name ?? null });
-    return created;
+    if (spam) {
+      this.logger.warn(`Filtered ${lead.source ?? 'contact'} lead ${created.id} as spam (${spam}).`);
+      return publicLead(created);
+    }
+
+    // After the response. The property's name makes the email readable at a
+    // glance; a failed lookup only costs that line.
+    const saved = created;
+    this.inBackground(async () => {
+      const property = wantsAttribution
+        ? await this.prisma.property
+            .findUnique({ where: { id: propertyId! }, select: { name: true } })
+            .catch(() => null)
+        : null;
+      await this.notifyStaff({ ...saved, unitLabel, buildingLabel }, { property: property?.name ?? null });
+    });
+    return publicLead(created);
   }
 
   /**
-   * One page of leads, newest first. `before` is the id of the last lead the
-   * admin already holds; the id also breaks ties between leads written in the
-   * same instant, so paging never repeats or skips one.
+   * One page of leads, newest first — the inbox, or with `filtered` the ones
+   * the spam checks caught.
+   *
+   * The cursor is the last lead the admin holds, as (createdAt, id), compared
+   * as a pair: a lead deleted since still marks a place in the order, where an
+   * id-only cursor found nothing and ended the list. The id breaks ties.
+   * Ordered and compared at millisecond precision, because that is all of
+   * `createdAt` the cursor carries after a trip through JSON; the column holds
+   * microseconds, and comparing those against a truncated value would skip a
+   * lead written in the same millisecond as the cursor.
+   *
+   * Two queries: the page's ids in that order (SQL Prisma can't express), then
+   * the leads with their attributions.
    */
-  findAll(query: ListLeadsQueryDto = {}) {
-    return this.prisma.websiteLead.findMany({
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+  async findAll(query: ListLeadsQueryDto = {}) {
+    const take = query.limit ?? LEADS_PAGE_DEFAULT;
+    const spam = query.filtered === 'true';
+    const after =
+      query.before && query.beforeId
+        ? Prisma.sql`AND (date_trunc('milliseconds', created_at), id) < (${new Date(query.before)}::timestamptz, ${query.beforeId}::uuid)`
+        : Prisma.empty;
+    const page = await this.prisma.$queryRaw<{ id: string }[]>`
+      SELECT id FROM website_leads
+      WHERE spam = ${spam} ${after}
+      ORDER BY date_trunc('milliseconds', created_at) DESC, id DESC
+      LIMIT ${take}`;
+    if (!page.length) return [];
+
+    const position = new Map(page.map((row, i) => [row.id, i]));
+    const leads = await this.prisma.websiteLead.findMany({
+      where: { id: { in: page.map((row) => row.id) } },
       include: { unitAttributions: true },
-      take: query.limit ?? LEADS_PAGE_DEFAULT,
-      ...(query.before && { cursor: { id: query.before }, skip: 1 }),
     });
+    return leads.sort((a, b) => position.get(a.id)! - position.get(b.id)!);
   }
 
-  async updateStatus(id: string, status: string) {
+  /**
+   * Counts for the admin's badge and filter chips, from the database rather
+   * than from however many leads the admin happens to have loaded.
+   */
+  async summary() {
+    const [groups, filtered] = await Promise.all([
+      this.prisma.websiteLead.groupBy({ by: ['status'], where: { spam: false }, _count: { _all: true } }),
+      this.prisma.websiteLead.count({ where: { spam: true } }),
+    ]);
+    const byStatus: Record<string, number> = {};
+    for (const group of groups) byStatus[group.status] = group._count._all;
+    return { byStatus, total: Object.values(byStatus).reduce((sum, n) => sum + n, 0), filtered };
+  }
+
+  async update(id: string, changes: { status?: string; spam?: boolean }) {
+    const data: Prisma.WebsiteLeadUpdateInput = {};
+    if (changes.status !== undefined) data.status = changes.status;
+    if (changes.spam !== undefined) data.spam = changes.spam;
+    if (!Object.keys(data).length) throw new BadRequestException('Nothing to change: send status, spam or both.');
     await this.assertExists(id);
-    return this.prisma.websiteLead.update({ where: { id }, data: { status } });
+    return this.prisma.websiteLead.update({ where: { id }, data });
   }
 
   async remove(id: string) {

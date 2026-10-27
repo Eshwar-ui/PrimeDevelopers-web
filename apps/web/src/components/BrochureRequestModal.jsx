@@ -5,6 +5,7 @@ import { useSection } from '../context/ContentContext'
 import ArrowRight from './ArrowRight'
 import Honeypot from './Honeypot'
 import { useFormClock } from '../hooks/useFormClock'
+import { spamSignals } from '../lib/spamSignals'
 
 const FIELD = 'w-full border-b border-[var(--color-line)] bg-transparent pb-2.5 font-body text-[16px] text-content outline-none transition-colors placeholder:text-content/30 focus:border-accent'
 
@@ -33,8 +34,8 @@ export default function BrochureRequestModal({ property, onClose }) {
     try {
       const result = await api.post('/leads/brochure', {
         name: data.get('name'), email: data.get('email'), phone: data.get('phone'), propertyId: property.id,
-        // Spam signals — see Honeypot.jsx and useFormClock.
-        website: data.get('website') || undefined, fillMs: clock.elapsed(),
+        // Spam signals — see lib/spamSignals.js.
+        ...spamSignals(data, clock.elapsed()),
       })
       // The request succeeding and the brochure arriving are two different
       // things: the lead is always recorded, but the email can be off, the

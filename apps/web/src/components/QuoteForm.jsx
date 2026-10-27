@@ -2,6 +2,7 @@ import { useState } from 'react'
 import ArrowRight from './ArrowRight'
 import Honeypot from './Honeypot'
 import { useFormClock } from '../hooks/useFormClock'
+import { spamSignals } from '../lib/spamSignals'
 import CustomSelect from './CustomSelect'
 import { api } from '../lib/api'
 
@@ -146,9 +147,8 @@ export default function QuoteForm({
         phone: data.get('phone') || undefined,
         message: data.get('message'),
         source,
-        // Spam signals — see Honeypot.jsx and useFormClock.
-        website: data.get('website') || undefined,
-        fillMs: clock.elapsed(),
+        // Spam signals — see lib/spamSignals.js.
+        ...spamSignals(data, clock.elapsed()),
         ...(Object.keys(fullContext).length > 0 && { context: fullContext }),
         ...(unitContext?.unitLabel &&
           unitContext?.propertyId && {

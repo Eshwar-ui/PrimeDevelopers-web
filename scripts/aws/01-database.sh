@@ -17,9 +17,16 @@ ensure_secret ORIGIN_SECRET 32
 ssm_script "website: create prime_website database" <<'REMOTE'
 #!/bin/bash
 set -euo pipefail
-# The tracker's own connection string is the RDS master login; it is used here only
-# to create the website's role and database, and never written anywhere else.
-MASTER=$(grep -m1 '^DATABASE_URL=' /home/ubuntu/prime-tracker/apps/api/.env | cut -d= -f2- | tr -d '"')
+# The RDS master login is used here only to create the website's role and database,
+# and never written anywhere else. It is MIGRATE_DATABASE_URL in SSM: since 27 Oct the
+# tracker's own DATABASE_URL is its data-only login (prime_tracker_app), which cannot
+# create either. Read from SSM rather than the tracker's .env, whose values are quoted.
+MASTER=$(aws ssm get-parameter --name /prime-tracker/MIGRATE_DATABASE_URL --with-decryption \
+  --region us-east-1 --query Parameter.Value --output text 2>/dev/null || true)
+if [ -z "$MASTER" ] || [ "$MASTER" = REPLACE_ME ]; then
+  MASTER=$(aws ssm get-parameter --name /prime-tracker/DATABASE_URL --with-decryption \
+    --region us-east-1 --query Parameter.Value --output text)
+fi
 # Prisma's URL may carry ?schema=…&connection_limit=…, which psql rejects.
 MASTER="${MASTER%%\?*}?sslmode=require"
 PGPASSWORD_WEB=$(aws ssm get-parameter --name /prime-tracker/website/DB_PASSWORD --with-decryption \

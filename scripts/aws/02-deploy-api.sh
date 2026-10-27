@@ -60,10 +60,16 @@ tar -xzf /tmp/website-api.tgz -C \$REL 2>/dev/null && rm -f /tmp/website-api.tgz
 chown -R prime-website:prime-website \$REL
 
 # Rewritten whole on every deploy from SSM and the constants here, so nothing set by
-# hand on the box survives. The RDS host comes from the tracker's connection string,
-# read here as root and never written anywhere the website user can see.
-MASTER=\$(grep -m1 '^DATABASE_URL=' /home/ubuntu/prime-tracker/apps/api/.env | cut -d= -f2- | tr -d '"')
-DB_HOST=\$(echo "\$MASTER" | sed -E 's#^[a-z]+://[^@]+@([^:/?]+).*#\1#')
+# hand on the box survives. The RDS host comes from the tracker's connection string in
+# SSM, read here as root and never written anywhere the website user can see. It used to
+# be parsed out of the tracker's .env, which since 27 Oct quotes its values in '…': the
+# parse then returned the whole tracker URL as the "host", and this file was written
+# with a DATABASE_URL that only failed at psql below — and would have failed the running
+# API on its next restart. So the host is checked before anything is written.
+TRACKER_URL=\$(aws ssm get-parameter --name /prime-tracker/DATABASE_URL --with-decryption --region $AWS_REGION --query Parameter.Value --output text)
+DB_HOST=\$(echo "\$TRACKER_URL" | sed -E 's#^[a-z]+://[^@]+@([^:/?]+).*#\1#')
+unset TRACKER_URL
+[[ "\$DB_HOST" =~ ^[A-Za-z0-9.-]+\$ ]] || { echo "could not read the RDS host from /prime-tracker/DATABASE_URL" >&2; exit 1; }
 DB_URL="postgresql://prime_website:\$(param DB_PASSWORD)@\${DB_HOST}:5432/prime_website?sslmode=require"
 umask 077
 cat > \$APP/shared/.env <<ENV

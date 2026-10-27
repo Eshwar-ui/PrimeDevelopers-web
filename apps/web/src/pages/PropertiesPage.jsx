@@ -22,10 +22,17 @@ import { coverImage } from '../lib/covers'
 // `detail.specs`. Falling back to the columns rather than rendering an empty
 // row means the grid reads correctly today, before any listing has been given
 // specs of its own.
+//
+// The columns are misnamed, and the card used to repeat the misnomer: the one
+// called `buildings` counts units, and `sold` is every unit no longer
+// available — leased ones too. So "54 buildings · 47 sold" now reads
+// "54 units · 47 reserved", the word the property page's own hero uses for the
+// same figure ("Reserved", "Fully reserved").
+const plural = (n, one, many) => `${n} ${Number(n) === 1 ? one : many}`
 const specsFor = (p) => {
   const custom = p.detail?.specs
   if (Array.isArray(custom) && custom.length) return custom.slice(0, 3).map(String)
-  return [`${p.buildings} buildings`, `${p.sold} sold`, `${p.available} available`]
+  return [plural(p.buildings, 'unit', 'units'), `${p.sold} reserved`, `${p.available} available`]
 }
 
 /**

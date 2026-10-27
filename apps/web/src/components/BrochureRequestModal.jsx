@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom'
 import { api } from '../lib/api'
 import { useSection } from '../context/ContentContext'
 import ArrowRight from './ArrowRight'
+import Honeypot from './Honeypot'
+import { useFormClock } from '../hooks/useFormClock'
 
 const FIELD = 'w-full border-b border-[var(--color-line)] bg-transparent pb-2.5 font-body text-[16px] text-content outline-none transition-colors placeholder:text-content/30 focus:border-accent'
 
@@ -10,6 +12,7 @@ export default function BrochureRequestModal({ property, onClose }) {
   const t = useSection('brochure_modal')
   const dialog = useRef(null)
   const [status, setStatus] = useState('idle')
+  const clock = useFormClock()
 
   useEffect(() => {
     dialog.current?.focus()
@@ -30,6 +33,8 @@ export default function BrochureRequestModal({ property, onClose }) {
     try {
       const result = await api.post('/leads/brochure', {
         name: data.get('name'), email: data.get('email'), phone: data.get('phone'), propertyId: property.id,
+        // Spam signals — see Honeypot.jsx and useFormClock.
+        website: data.get('website') || undefined, fillMs: clock.elapsed(),
       })
       // The request succeeding and the brochure arriving are two different
       // things: the lead is always recorded, but the email can be off, the
@@ -66,7 +71,8 @@ export default function BrochureRequestModal({ property, onClose }) {
             <p className="font-body text-xs font-bold uppercase tracking-[0.2em] text-accent">{t.eyebrow}</p>
             <h2 id="brochure-title" className="mt-3 pr-10 font-display text-[1.75rem] sm:text-3xl font-bold leading-tight text-content">{t.heading.replace('{name}', property.name)}</h2>
             <p className="mt-3 font-body text-[15px] leading-relaxed text-content/70">{t.paragraph}</p>
-            <form onSubmit={submit} className="mt-8 flex flex-col gap-6">
+            <form onSubmit={submit} className="relative mt-8 flex flex-col gap-6">
+              <Honeypot />
               <input className={FIELD} name="name" required maxLength={200} placeholder={t.namePlaceholder} autoComplete="name" />
               <input className={FIELD} name="email" type="email" required maxLength={320} placeholder={t.emailPlaceholder} autoComplete="email" />
               <input className={FIELD} name="phone" type="tel" required maxLength={50} placeholder={t.phonePlaceholder} autoComplete="tel" />

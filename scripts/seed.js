@@ -259,14 +259,16 @@ async function main() {
       ],
     },
     footer: {
-      email: 'hello@primedevelopers.com',
-      phone: '+1 (512) 419-2837',
-      studio: 'East 6th Street, Austin, TX',
-      // Deliberately partial. A street number and ZIP we do not have is worse
-      // than none: Footer.jsx omits blank parts from the PostalAddress rather
-      // than publishing a half-address that geocodes to the wrong block.
+      // The contact details on the client's previous site (theprimedeveloper.com).
+      email: 'sales@theprimedeveloper.com',
+      phone: '+1 512-761-8025',
+      // TODO(client): the office address. The previous site says only "Texas",
+      // so the street, city and ZIP stay blank rather than guessed: a street we
+      // made up is worse than none, and Footer.jsx leaves blank parts out of
+      // the PostalAddress instead of publishing a half-address.
+      studio: '',
       addressStreet: '',
-      addressLocality: 'Austin',
+      addressLocality: '',
       addressRegion: 'TX',
       addressPostalCode: '',
       addressCountry: 'US',
@@ -285,15 +287,13 @@ async function main() {
         { label: 'Learn', href: '/learn' },
         { label: 'Contact', href: '/contact' },
       ],
-      // Placeholders, and visibly so — replace each '#' with the real profile
-      // URL in the CMS. They are rendered as-is: dropping them would make the
-      // Social column vanish, which reads as a missing section rather than as
-      // four links waiting to be filled in.
+      // The profiles the client's previous site links to. It has no X account,
+      // so there is no X row. The footer hides a row with no URL.
       socials: [
-        { label: 'Instagram', href: '#' },
-        { label: 'LinkedIn', href: '#' },
-        { label: 'X', href: '#' },
-        { label: 'Facebook', href: '#' },
+        { label: 'Instagram', href: 'https://www.instagram.com/theprimedeveloper_official/' },
+        { label: 'LinkedIn', href: 'https://www.linkedin.com/company/the-prime-developers/' },
+        { label: 'Facebook', href: 'https://www.facebook.com/profile.php?id=61557388995595' },
+        { label: 'YouTube', href: 'https://www.youtube.com/@theprimedeveloper6986' },
       ],
       legalLinks: [
         { label: 'Privacy Policy', href: '/privacy' },
@@ -352,9 +352,9 @@ async function main() {
       location: 'Texas, United States',
       socials: [
         { label: 'WhatsApp', href: 'https://wa.me/15127618025' },
-        { label: 'LinkedIn', href: '#' },
-        { label: 'Instagram', href: '#' },
-        { label: 'Facebook', href: '#' },
+        { label: 'LinkedIn', href: 'https://www.linkedin.com/company/the-prime-developers/' },
+        { label: 'Instagram', href: 'https://www.instagram.com/theprimedeveloper_official/' },
+        { label: 'Facebook', href: 'https://www.facebook.com/profile.php?id=61557388995595' },
       ],
     },
     properties_page: {

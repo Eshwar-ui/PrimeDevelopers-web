@@ -135,6 +135,9 @@ export default function Footer() {
   }
 
   const isExternal = (href) => /^(https?:)?\/\//i.test(href ?? '')
+  // A row with no URL — or still on the `#` the old seed shipped — is left
+  // out. Shown, it was an icon that went nowhere on every page of the site.
+  const liveSocials = (socials ?? []).filter((l) => l?.href && l.href.trim() !== '#')
   const portfolio = properties.slice(0, 5)
   const directoryLinks = withEssentialLinks(quickLinks)
 
@@ -468,20 +471,13 @@ export default function Footer() {
                   </nav>
                 )}
 
-                {socials.length > 0 && (
+                {liveSocials.length > 0 && (
                   <nav data-col aria-label="Social" className="flex flex-col gap-5">
                     <ColumnTitle>{socialHeading}</ColumnTitle>
                     <ul className="flex flex-col gap-1">
                       {/* Keyed on href *and* label because neither alone is
-                          unique: two entries may share a name, and the seeded
-                          placeholders all share `#`.
-
-                          Placeholders are rendered rather than filtered out.
-                          Hiding them makes the column silently disappear, which
-                          looks like the footer lost a section rather than like
-                          four URLs are missing — `handleNav` already swallows
-                          the click, and the CMS is where this gets fixed. */}
-                      {socials.map((l) => (
+                          unique: two entries may share a name or a URL. */}
+                      {liveSocials.map((l) => (
                         <li key={`${l.href}|${l.label}`}>
                           <a
                             href={l.href}

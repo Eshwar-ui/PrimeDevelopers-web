@@ -40,7 +40,15 @@ umask 077
 WORK=\$(mktemp -d)
 trap 'rm -rf "\$WORK"' EXIT
 aws s3 cp s3://$STAGE_BUCKET/$KEY "\$WORK/admins.csv" --region $AWS_REGION --quiet
-DB_URL=\$(grep -m1 '^DIRECT_URL=' /home/ubuntu/prime-website/apps/api/.env | cut -d= -f2-)
+# The website's own login, built from SSM as 02-deploy-api.sh builds it. It used to be
+# read from /home/ubuntu/prime-website, the layout from before /srv/prime-website, which
+# the runbook's clean-up step deletes.
+TRACKER_URL=\$(aws ssm get-parameter --name /prime-tracker/DATABASE_URL --with-decryption --region $AWS_REGION --query Parameter.Value --output text)
+HOST=\$(echo "\$TRACKER_URL" | sed -E 's#^[a-z]+://[^@]+@([^:/?]+).*#\1#')
+unset TRACKER_URL
+[[ "\$HOST" =~ ^[A-Za-z0-9.-]+\$ ]] || { echo "could not read the RDS host from /prime-tracker/DATABASE_URL" >&2; exit 1; }
+export PGPASSWORD=\$(aws ssm get-parameter --name $PARAMS/DB_PASSWORD --with-decryption --region $AWS_REGION --query Parameter.Value --output text)
+DB_URL="host=\$HOST port=5432 dbname=prime_website user=prime_website sslmode=require"
 
 psql "\$DB_URL" -X -q -v ON_ERROR_STOP=1 <<SQL
 begin;

@@ -1,25 +1,29 @@
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
-  Equals,
   IsArray,
   IsIn,
   IsInt,
   IsISO8601,
+  IsNumber,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   Min,
   MinLength,
   ValidateNested,
 } from 'class-validator';
-import { TRACKER_UNIT_STATUSES, TrackerUnitStatus } from '../tracker-merge';
+import { SNAPSHOT_VERSIONS } from '../tracker-merge';
 
 /**
- * The snapshot Prime Tracker pushes, version 1 — see
+ * The snapshot Prime Tracker pushes, versions 1 and 2 — see
  * docs/tracker-sync-and-aws-plan.md. Signed, so these bounds are not about
  * hostile input; they keep a tracker bug from writing a malformed row into the
  * public site's unit list.
+ *
+ * Version 2 only adds optional fields, so both arrive here. The website must
+ * accept a version before the tracker sends it: deploy the website first.
  */
 export class SnapshotUnitDto {
   @IsString() @MinLength(1) @MaxLength(64)
@@ -28,8 +32,11 @@ export class SnapshotUnitDto {
   @IsString() @MinLength(1) @MaxLength(80)
   unitNumber!: string;
 
-  @IsIn(TRACKER_UNIT_STATUSES)
-  status!: TrackerUnitStatus;
+  // Any enum-shaped value, not only the seven known ones: a status a newer
+  // tracker added must not fail the whole project's push. The merge reports
+  // it and keeps the row's previous status.
+  @IsString() @Matches(/^[A-Z][A-Z0-9_]{0,39}$/)
+  status!: string;
 
   @IsOptional() @IsInt() @Min(0)
   sqft!: number | null;
@@ -39,6 +46,33 @@ export class SnapshotUnitDto {
 
   @IsOptional() @IsString() @MaxLength(200)
   occupant!: string | null;
+
+  // ── Version 2 ──
+
+  @IsOptional() @IsArray() @ArrayMaxSize(200)
+  @IsString({ each: true }) @MaxLength(64, { each: true })
+  dealUnitIds?: string[];
+
+  @IsOptional() @IsArray() @ArrayMaxSize(200)
+  @IsString({ each: true }) @MaxLength(64, { each: true })
+  mergedFromIds?: string[];
+
+  // Free text in the tracker (a CustomOption key), so roomier than a unit number.
+  @IsOptional() @IsString() @MaxLength(200)
+  unitType?: string | null;
+
+  // Accepted so a version 2 push validates, then dropped by the merge: the
+  // public property GET serves `detail` as stored, so asking figures are held
+  // until the client approves publishing them. Phase 2 adds public-read
+  // filtering of `tracker` data.
+  @IsOptional() @IsNumber({ allowNaN: false, allowInfinity: false }) @Min(0)
+  askingRent?: number | null;
+
+  @IsOptional() @IsNumber({ allowNaN: false, allowInfinity: false }) @Min(0)
+  askingPrice?: number | null;
+
+  @IsOptional() @IsISO8601()
+  availableSince?: string | null;
 }
 
 export class SnapshotBuildingDto {
@@ -52,6 +86,14 @@ export class SnapshotBuildingDto {
   @ValidateNested({ each: true })
   @Type(() => SnapshotUnitDto)
   units!: SnapshotUnitDto[];
+
+  // ── Version 2 ──
+
+  @IsOptional() @IsInt() @Min(0)
+  totalSqft?: number | null;
+
+  @IsOptional() @IsInt() @Min(0)
+  stories?: number | null;
 }
 
 export class SnapshotProjectDto {
@@ -66,8 +108,8 @@ export class SnapshotProjectDto {
 }
 
 export class TrackerSnapshotDto {
-  @Equals(1)
-  version!: 1;
+  @IsIn(SNAPSHOT_VERSIONS)
+  version!: (typeof SNAPSHOT_VERSIONS)[number];
 
   @IsISO8601()
   generatedAt!: string;

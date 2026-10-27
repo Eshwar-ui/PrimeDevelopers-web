@@ -1,7 +1,7 @@
 import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { MergeReport, TrackerSnapshot, mergeSnapshot } from './tracker-merge';
+import { MergeReport, SiteModel, TrackerCounts, TrackerSnapshot, mergeSnapshot } from './tracker-merge';
 
 export interface ApplyOptions {
   dryRun?: boolean;
@@ -13,6 +13,25 @@ export interface ApplyResult {
   applied: boolean;
   dryRun: boolean;
   report: MergeReport;
+}
+
+/**
+ * The property's `detail` after a merge. The site model is written only when a
+ * binding moved, and floor plans only when the property had some or the merge
+ * made some — a property with none keeps none rather than gaining an empty
+ * object.
+ */
+function nextDetail(
+  detail: Record<string, any>,
+  floorPlans: Record<string, any> | null | undefined,
+  siteModel: SiteModel | null | undefined,
+  trackerCounts: TrackerCounts,
+  rebound: boolean,
+): Prisma.InputJsonValue {
+  const next: Record<string, any> = { ...detail, trackerCounts };
+  if (floorPlans !== undefined) next.floorPlans = floorPlans;
+  if (rebound) next.siteModel = siteModel;
+  return next as Prisma.InputJsonValue;
 }
 
 @Injectable()
@@ -37,10 +56,15 @@ export class TrackerSyncService {
 
       const detail = (current.detail ?? {}) as Record<string, any>;
       const totalsBefore = { buildings: current.buildings, sold: current.sold, available: current.available };
-      const { floorPlans, totals, report } = mergeSnapshot(detail.floorPlans, totalsBefore, snapshot, {
-        force: options.force,
-      });
+      const { floorPlans, siteModel, trackerCounts, totals, report } = mergeSnapshot(
+        detail.floorPlans,
+        totalsBefore,
+        snapshot,
+        { force: options.force, siteModel: detail.siteModel, trackerCounts: detail.trackerCounts },
+      );
 
+      // A dry run answers 200 with the whole report — refusals included — so
+      // the first push of a property can be read before anything is written.
       const result: ApplyResult = { property: current.slug, applied: false, dryRun: !!options.dryRun, report };
       if (options.dryRun) return result;
       if (report.refused) {
@@ -72,7 +96,7 @@ export class TrackerSyncService {
         data: {
           ...link,
           ...totals,
-          detail: { ...detail, floorPlans } as Prisma.InputJsonValue,
+          detail: nextDetail(detail, floorPlans, siteModel, trackerCounts, report.rebound.length > 0),
           trackerSyncedAt: new Date(),
           updatedAt: new Date(),
         },
@@ -81,7 +105,7 @@ export class TrackerSyncService {
       this.logger.log(
         `Tracker sync ${current.slug}: ${totalsBefore.buildings}/${totalsBefore.sold}/${totalsBefore.available}` +
           ` → ${totals.buildings}/${totals.sold}/${totals.available}, ${report.removedRows} rows removed` +
-          (options.force ? ' (forced)' : ''),
+          (options.force ? ` (forced past: ${report.refusals.join('; ') || 'nothing'})` : ''),
       );
       return { ...result, applied: true };
     });

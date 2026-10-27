@@ -200,7 +200,12 @@ export default function PropertyEditPage() {
   const save = async ({ force = false } = {}) => {
     // An empty or duplicated unit label makes a unit that can't be opened or
     // linked in 3D. BuildingBlock shows each next to its building.
-    const { errors: labelErrors } = unitLabelProblems(form.detail.floorPlans?.buildings)
+    // Only what the editor can fix blocks: a clash between rows Prime Tracker
+    // owns is locked here, so it warns unless this edit introduced it.
+    const { errors: labelErrors } = unitLabelProblems(
+      form.detail.floorPlans?.buildings,
+      baseline.detail?.floorPlans?.buildings ?? [],
+    )
     if (labelErrors.length) {
       setError(
         `${labelErrors[0].text}${labelErrors.length > 1 ? ` And ${labelErrors.length - 1} more.` : ''} Every unit needs a label of its own — see Floor plans & 3D.`,
@@ -554,6 +559,7 @@ export default function PropertyEditPage() {
                 addLabel="Add building"
                 // One click used to take a building, every unit in it and their
                 // photos off the form — easy to miss before pressing Save.
+                itemLabel={(b) => String(b.building ?? '').trim()}
                 confirmRemove={(b) => {
                   const count = (b.unitList ?? []).length
                   const name = String(b.building ?? '').trim() || 'this building'

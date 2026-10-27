@@ -110,6 +110,7 @@ export default function BuildingBlock({ building, onChange, folder, siteModel = 
             // The next sync would only put a tracker unit back, so it can't be
             // deleted here — it goes when it goes in Prime Tracker.
             canRemove={(unit) => (isTrackerUnit(unit) ? `${TRACKER_MANAGED} — remove it there` : true)}
+            itemLabel={(unit) => (String(unit.label ?? '').trim() ? `unit ${String(unit.label).trim()}` : '')}
             renderItem={(unit, _set, i) => {
               const set = (next) => setUnitAt(i, next)
               const isBound = boundLabels?.has(String(unit.label ?? '').trim().toLowerCase())

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ImageSquare, UploadSimple, X } from '@phosphor-icons/react'
 import { uploadImage, assertImageOk, IMAGE_ACCEPT, IMAGE_TYPES, IMAGE_MAX_BYTES, formatBytes } from '../../lib/uploads'
 import { Button } from './ui'
+import { useReportBusy } from './uploadBusy'
 
 /**
  * Pick an image, see it immediately, then upload it.
@@ -35,6 +36,8 @@ export default function ImageUploader({ value, onChange, folder, label, hint = t
   useEffect(() => {
     onChangeRef.current = onChange
   })
+  // Holds the enclosing lists' rows in place until the URL lands.
+  useReportBusy(busy)
 
   const pick = () => inputRef.current?.click()
 

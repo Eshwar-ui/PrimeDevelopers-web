@@ -231,6 +231,9 @@ export function ConfirmButton({
   // reads as a bug, a greyed one with a reason reads as a rule.
   disabled = false,
   title,
+  // The trigger's accessible name when its visible label is generic — a list
+  // of "Remove" buttons needs to say which row each one removes.
+  ariaLabel,
 }) {
   const [armed, setArmed] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -267,6 +270,7 @@ export function ConfirmButton({
         onClick={() => setArmed(true)}
         disabled={disabled}
         title={title}
+        aria-label={ariaLabel}
         className="disabled:cursor-not-allowed disabled:opacity-40"
       >
         {label}
@@ -282,7 +286,7 @@ export function ConfirmButton({
       }}
     >
       <span className="text-xs text-bone-2">{prompt}</span>
-      <Button ref={confirmRef} variant="danger" size={size} onClick={confirm} disabled={busy}>
+      <Button ref={confirmRef} variant="danger" size={size} onClick={confirm} disabled={busy || disabled}>
         {busy ? busyLabel : confirmLabel}
       </Button>
       <Button variant="ghost" size={size} onClick={() => setArmed(false)} disabled={busy}>

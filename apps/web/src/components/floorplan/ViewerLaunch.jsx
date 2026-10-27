@@ -1,5 +1,6 @@
 import { Cube } from '@phosphor-icons/react'
 import ActionButton from '../ActionButton'
+import { sized, srcSetFor } from '../../lib/images'
 
 /**
  * What a 3D section shows until the visitor asks for the model.
@@ -22,9 +23,14 @@ export default function ViewerLaunch({ poster, height, onLaunch, onPrefetch }) {
     <div
       className={`relative isolate overflow-hidden rounded-2xl border border-line bg-surface-alt ${height}`}
     >
+      {/* Resized: the poster was the 965 KB original, at 60% opacity under a
+          scrim. The card ladder tops out at 1200px, which is the widest this
+          column renders on a 2x laptop; the resizer serves WebP to match. */}
       {poster && (
         <img
-          src={poster}
+          src={sized(poster, 'card')}
+          srcSet={srcSetFor(poster, 'card')}
+          sizes="(min-width: 1024px) 75vw, 100vw"
           alt=""
           loading="lazy"
           decoding="async"

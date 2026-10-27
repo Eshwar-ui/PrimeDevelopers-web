@@ -1,12 +1,14 @@
 import { Component, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { Html, OrbitControls, OrthographicCamera, PerspectiveCamera, useGLTF } from '@react-three/drei'
+import { Html, OrbitControls, OrthographicCamera, PerspectiveCamera, useGLTF, useProgress } from '@react-three/drei'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'
 import { BUILDING_HEX, ROAD_HEX, SCENERY_HEX, unitStatusMeta } from '../../lib/unitStatus'
-import { groupBySharedVertices, meshUnitLabel, unitsByMeshName } from '../../lib/units'
+import { formatArea, formatBytes, groupBySharedVertices, meshUnitLabel, unitsByMeshName } from '../../lib/units'
 import { sized } from '../../lib/images'
 import { prefersReducedMotion } from '../../lib/webgl'
+import { reportError } from '../../lib/reportError'
 import { useTheme } from '../../context/ThemeContext'
 
 // This whole module lands in its own lazy chunk — three + fiber + drei is
@@ -30,6 +32,37 @@ const FOCUS_DIM_HEX = '#37424b'
 // framing effects key on — they would re-run on every render of any caller
 // that does not pass a selection at all, which is the admin.
 const NO_SELECTION = []
+
+// Decoders for compressed models, both served from this origin — the CSP
+// allows no third-party script or WASM host, and drei's defaults reach for
+// one (gstatic) for Draco. Meshopt is three's own build, with its WASM inlined
+// in the module: drei's bundled copy is older and cannot read the newer
+// bitstream gltf-transform writes by default.
+const DRACO_PATH = '/draco/'
+const withMeshopt = (loader) => loader.setMeshoptDecoder(MeshoptDecoder)
+
+/**
+ * A plain float copy of a vertex attribute.
+ *
+ * `.clone()` is wrong twice over for what mergeScenery() does with it. On an
+ * interleaved attribute — which meshopt and many exporters emit — it logs a
+ * warning per call, 500-odd on Centro alone. And on a quantized one
+ * (normalized int16, which gltf-transform writes) the copy keeps the integer
+ * type, so baking world transforms into it clamps every vertex outside the
+ * unit cube. Reading through getComponent() de-interleaves and de-quantizes
+ * in one pass.
+ */
+function floatCopy(attribute) {
+  if (!attribute.isInterleavedBufferAttribute && !attribute.normalized && attribute.array instanceof Float32Array) {
+    return attribute.clone()
+  }
+  const { count, itemSize } = attribute
+  const array = new Float32Array(count * itemSize)
+  for (let i = 0; i < count; i++) {
+    for (let k = 0; k < itemSize; k++) array[i * itemSize + k] = attribute.getComponent(i, k)
+  }
+  return new THREE.BufferAttribute(array, itemSize)
+}
 
 /**
  * Collapses every non-unit mesh into a single geometry sharing one material.
@@ -61,9 +94,9 @@ function mergeScenery(meshes) {
       // mergeGeometries refuses to merge those. Nothing here is textured, so
       // there is nothing to lose.
       const geometry = new THREE.BufferGeometry()
-      geometry.setAttribute('position', position.clone())
+      geometry.setAttribute('position', floatCopy(position))
       const normal = source.getAttribute('normal')
-      if (normal) geometry.setAttribute('normal', normal.clone())
+      if (normal) geometry.setAttribute('normal', floatCopy(normal))
       if (source.index) geometry.setIndex(source.index.clone())
       geometry.applyMatrix4(mesh.matrixWorld)
       if (!normal) geometry.computeVertexNormals()
@@ -98,7 +131,7 @@ function mergeScenery(meshes) {
 /* ── model ─────────────────────────────────────────────────────────────── */
 
 function Model({ url, units, bindings, siteEntries, focusMeshes, isolateFocus, labelKinds, rotation, selected, hoveredName, statusFilter, showLabels, flaggedMeshes, onHover, onSelect, onMeshClick, onReady, onFrames, onFacings }) {
-  const { scene } = useGLTF(url, '/draco/')
+  const { scene } = useGLTF(url, DRACO_PATH, false, withMeshopt)
   const invalidate = useThree((state) => state.invalidate)
 
   // Read as a boolean rather than taking the camera itself: this only decides
@@ -188,6 +221,10 @@ function Model({ url, units, bindings, siteEntries, focusMeshes, isolateFocus, l
     // Keyed on the two *plan* axes — keying on the extrusion axis instead
     // collapses the model, since every wall in the building spans the same
     // floor-to-roof range and so shares a key with every other wall.
+    //
+    // Admin tagging only. Nothing a visitor does reads the blocks, and
+    // building them walks every vertex of the scenery into a string key —
+    // the single largest cost of opening the model on a phone.
     const [planA, planB] = planAxes.map((axis) => 'xyz'[axis])
     const siteArea = extent[planAxes[0]] * extent[planAxes[1]]
     // A slab covering most of the site — the ground plane, a podium roof —
@@ -196,7 +233,7 @@ function Model({ url, units, bindings, siteEntries, focusMeshes, isolateFocus, l
     // own floor and ceiling still join their block and light up with it.
     const SPAN_FRACTION = 0.6
     const grouped = []
-    for (const mesh of sceneryMeshes) {
+    for (const mesh of bindingMode ? sceneryMeshes : []) {
       const position = mesh.geometry?.getAttribute('position')
       if (!position) continue
       const keys = new Set()
@@ -483,14 +520,34 @@ function Model({ url, units, bindings, siteEntries, focusMeshes, isolateFocus, l
   // whole block, so the boxes are unioned before a position is taken.
   const labels = useMemo(() => {
     if (!showLabels) return []
+    // A whole site has a label for every building, road and unit it holds —
+    // ninety-odd pills stacked over a plot read as noise, not as
+    // information. `labelKinds` narrows them to whatever answers the
+    // question being asked at this zoom: building names across the site,
+    // unit numbers once inside one. Per-building models pass nothing and
+    // label everything, as before.
+    //
+    // At site level a building is labelled from *every* shape that carries
+    // it, its units' included. Filtering by kind alone skipped any building
+    // whose shapes are all tagged as units — Buildings 6, 8, 9 and 10, most
+    // of the inventory — so the overview named only the five strips.
+    const byBuilding = Boolean(labelKinds?.includes('building') && !labelKinds.includes('unit'))
+    const buildingTargets = new Map()
+    const buildingTarget = (entry) => {
+      if (!buildingTargets.has(entry.buildingIndex)) {
+        buildingTargets.set(entry.buildingIndex, {
+          index: entry.buildingIndex,
+          kind: 'building',
+          label: entry.building.building,
+          building: entry.building,
+        })
+      }
+      return buildingTargets.get(entry.buildingIndex)
+    }
+
     const boxes = new Map()
-    for (const [name, unit] of unitByMesh) {
-      // A whole site has a label for every building, road and unit it
-      // holds — ninety-odd pills stacked over a plot read as noise, not
-      // as information. `labelKinds` narrows them to whatever answers
-      // the question being asked at this zoom: building names across the
-      // site, unit numbers once inside one. Per-building models pass
-      // nothing and label everything, as before.
+    for (const [name, entry] of unitByMesh) {
+      const unit = byBuilding && entry.building && entry.buildingIndex != null ? buildingTarget(entry) : entry
       if (labelKinds && unit.kind && !labelKinds.includes(unit.kind)) continue
       // And nothing outside the building being drilled into, whose
       // labels would otherwise float over the dimmed context.
@@ -1330,12 +1387,19 @@ function CameraRig({ bounds, focus, mode, navMode, resetSignal, onDragStart, onD
   // primary drag bound to it makes the one obvious gesture do nothing at all.
   const panFirst = navMode === 'pan' || mode === '2d'
 
+  // Damping keeps the camera gliding after the hand has stopped. That drift
+  // is motion the visitor did not make, which is what reduced motion asks us
+  // not to add — so with it set, the camera stops where the gesture stops.
+  // The focus fly-to above already jumps instead of easing for the same
+  // reason.
+  const damp = !prefersReducedMotion()
+
   return (
     <OrbitControls
       key={mode}
       ref={controls}
       makeDefault
-      enableDamping
+      enableDamping={damp}
       dampingFactor={0.08}
       rotateSpeed={0.65}
       zoomSpeed={0.8}
@@ -1384,6 +1448,9 @@ function CameraRig({ bounds, focus, mode, navMode, resetSignal, onDragStart, onD
 
 /* ── failure handling ──────────────────────────────────────────────────── */
 
+// Inside the Canvas, so a model that fails to load or parse is caught here
+// rather than tearing down the renderer. The caller decides what to show —
+// the sections swap in their fallback with a Retry (see useViewerState).
 class ModelErrorBoundary extends Component {
   state = { failed: false }
 
@@ -1392,7 +1459,7 @@ class ModelErrorBoundary extends Component {
   }
 
   componentDidCatch(error) {
-    this.props.onError?.(error)
+    this.props.onError?.(error, 'load')
   }
 
   render() {
@@ -1445,6 +1512,10 @@ export default function ModelViewer({
   // The admin passes `true`: its panels are dark whatever the site theme is, so
   // an editor in light mode would otherwise get a pale plan in a dark chrome.
   darkGround,
+  // Both only dress the loading overlay: the still the visitor pressed on
+  // stays on screen under it, and the size says why the wait is a wait.
+  poster = null,
+  fileSize = null,
 }) {
   const containerRef = useRef(null)
   const { isDark } = useTheme()
@@ -1469,8 +1540,31 @@ export default function ModelViewer({
   }, [resetToken])
   const [frames, setFrames] = useState(null)
   const [bounds, setBounds] = useState(null)
+  // Which model has finished loading, rather than a boolean, so an admin who
+  // replaces the file gets the overlay again instead of a blank canvas.
+  const [readyUrl, setReadyUrl] = useState(null)
+  // And which one failed. The public sections unmount the viewer on failure
+  // and show their own fallback; the admin's previews keep it mounted, so the
+  // viewer has to say so itself rather than leave the overlay up forever.
+  const [failure, setFailure] = useState(null)
+  const failed = failure?.url === url
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [dragging, setDragging] = useState(false)
+
+  // Whether the visitor has taken hold of the viewer. A touch drag over an
+  // untouched viewer scrolls the page — one with `touch-action: none` from
+  // the start trapped the scroll, and on a phone the viewer is most of the
+  // screen, so the page simply stopped moving under the visitor's thumb.
+  // A tap engages it; a tap anywhere else lets go.
+  const [engaged, setEngaged] = useState(false)
+  useEffect(() => {
+    if (!engaged) return undefined
+    const release = (event) => {
+      if (!containerRef.current?.contains(event.target)) setEngaged(false)
+    }
+    document.addEventListener('pointerdown', release)
+    return () => document.removeEventListener('pointerdown', release)
+  }, [engaged])
 
   // `frameloop="demand"` is the right idle behaviour but the wrong interactive
   // one: it draws one frame per input event, so damped orbit advances in steps
@@ -1505,12 +1599,37 @@ export default function ModelViewer({
     sleepSoon()
   }, [sleepSoon])
 
+  const handleError = useCallback(
+    (error, reason = 'load') => {
+      setFailure({ url, reason })
+      if (onError) onError(error, reason)
+      else reportError(error, { where: 'model-viewer', reason, url })
+    },
+    [onError, url],
+  )
+  // The context-loss listener is attached once, when the canvas is created,
+  // and has to reach the current handler rather than the one from then.
+  const handleErrorRef = useRef(handleError)
+  handleErrorRef.current = handleError
+  // R3F forces a context loss itself when it disposes an unmounted canvas,
+  // half a second after the fact. That one is housekeeping, not a failure —
+  // reported, it overwrote the real reason the viewer was unmounted ("didn't
+  // load") with "interrupted".
+  const unmounted = useRef(false)
+  useLayoutEffect(() => {
+    unmounted.current = false
+    return () => {
+      unmounted.current = true
+    }
+  }, [])
+
   const handleReady = useCallback(
     (payload) => {
       setBounds(payload.bounds)
+      setReadyUrl(url)
       onModelReady?.(payload.meshNames)
     },
-    [onModelReady],
+    [onModelReady, url],
   )
 
   const selected = useMemo(() => new Set(selection), [selection])
@@ -1593,10 +1712,13 @@ export default function ModelViewer({
       data-lenis-prevent
       onPointerEnter={wake}
       onPointerLeave={sleepSoon}
-      // `touch-action: none` stops a touch drag from panning the page, and
+      onPointerDown={() => setEngaged(true)}
+      // Once engaged, `touch-action: none` stops a touch drag from panning the
+      // page. Before that, `pan-y` hands vertical drags to the page so it
+      // scrolls past; sideways drags and pinches still reach the model.
       // `overscroll-contain` stops a wheel that reaches the end of the model's
       // zoom range from chaining out to the document.
-      style={{ touchAction: 'none', overscrollBehavior: 'contain' }}
+      style={{ touchAction: engaged || isFullscreen ? 'none' : 'pan-y', overscrollBehavior: 'contain' }}
       // `isolate` is load-bearing, not cosmetic: `relative` alone leaves
       // z-index:auto, so descendants compete with the whole page. Isolating
       // means nothing inside the viewer can ever paint over the navbar or the
@@ -1626,9 +1748,12 @@ export default function ModelViewer({
           preserveDrawingBuffer: Boolean(onCaptureReady),
         }}
         onCreated={({ gl }) => {
+          // iOS drops the context of a backgrounded tab, and phones evict
+          // the oldest when too many are live. Reported as its own reason:
+          // a Retry mounts a fresh canvas, so this one is recoverable.
           gl.domElement.addEventListener('webglcontextlost', (event) => {
             event.preventDefault()
-            onError?.(new Error('WebGL context lost'))
+            if (!unmounted.current) handleErrorRef.current(new Error('WebGL context lost'), 'context')
           })
           onCaptureReady?.(
             () => new Promise((resolve) => gl.domElement.toBlob(resolve, 'image/jpeg', 0.85)),
@@ -1650,7 +1775,11 @@ export default function ModelViewer({
 
         {!groundless && <SiteGround bounds={bounds} dark={groundIsDark} />}
 
-        <ModelErrorBoundary onError={onError}>
+        {/* Keyed on the URL, so a replaced model gets a clean boundary
+            rather than inheriting the last one's failure. */}
+        <ModelErrorBoundary key={url} onError={handleError}>
+          {/* Null because a canvas has no DOM to fall back to; the loading
+              overlay below the canvas is what the visitor sees instead. */}
           <Suspense fallback={null}>
             <Model
               url={url}
@@ -1691,6 +1820,18 @@ export default function ModelViewer({
 
         {hasOrientation && <CompassNeedle dialRef={dialRef} bounds={bounds} />}
       </Canvas>
+
+      {failed ? (
+        <div role="status" className="absolute inset-0 z-20 flex items-center justify-center bg-surface-alt p-6 text-center">
+          <p className="max-w-xs font-body text-[13px] leading-relaxed text-content/75">
+            {failure.reason === 'context'
+              ? 'The 3D view was interrupted. Reload the page to bring it back.'
+              : 'The 3D model didn’t load. Reload the page to try again.'}
+          </p>
+        </div>
+      ) : (
+        readyUrl !== url && <LoadingOverlay poster={poster} fileSize={fileSize} />
+      )}
 
       {/* Always visible so every plan has a directional reference. When the
           admin has calibrated orientation the needle follows the camera;
@@ -1738,8 +1879,8 @@ export default function ModelViewer({
           </div>
           <div className="mt-0.5 font-body text-[11px] text-content/70">
             {chip.unit.kind === 'road' ? 'Road' : chip.unit.kind === 'building' ? 'Building' : unitStatusMeta(chip.unit.status).label}
-            {(!chip.unit.kind || chip.unit.kind === 'unit') && chip.unit.size
-              ? ` · ${Number(String(chip.unit.size).replace(/[^\d.]/g, '')).toLocaleString()} sq ft`
+            {(!chip.unit.kind || chip.unit.kind === 'unit') && formatArea(chip.unit.size)
+              ? ` · ${formatArea(chip.unit.size)}`
               : ''}
           </div>
         </div>
@@ -1852,6 +1993,42 @@ function HandIcon() {
       <path d="M11.8 10.6V4.4a1.4 1.4 0 0 1 2.8 0v6.2" />
       <path d="M14.6 11V6.2a1.4 1.4 0 0 1 2.8 0V14a6 6 0 0 1-6 6h-.6a5 5 0 0 1-3.6-1.6l-3.2-3.6a1.4 1.4 0 0 1 2-2L9 14.4V11" />
     </svg>
+  )
+}
+
+/**
+ * What the viewer shows while the model downloads and is prepared.
+ *
+ * It used to show nothing: Suspense inside a canvas has no DOM to fall back
+ * to, so a 4.7 MB model meant seconds of an empty grey box that read as
+ * broken. Progress comes from three's loading manager, which counts files
+ * rather than bytes, so a single .glb reads as "loading" and then
+ * "preparing". That is still the honest split — the second phase (parsing,
+ * merging, framing) is real time on a phone.
+ */
+function LoadingOverlay({ poster, fileSize }) {
+  const { active, progress, total } = useProgress()
+  // A percentage only means something across several files — a model with
+  // embedded textures. One file reads 0 and then 100, so it gets a pulse.
+  const percent = active && total > 1 && progress > 0 && progress < 100 ? Math.round(progress) : null
+  const size = formatBytes(fileSize)
+  return (
+    <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-surface-alt">
+      {poster && <img src={sized(poster, 'card')} alt="" className="absolute inset-0 size-full object-cover opacity-25" />}
+      <div role="status" className="relative flex w-60 max-w-[80%] flex-col items-center gap-3 text-center">
+        <span className="eyebrow text-content/75">{active ? 'Loading 3D model' : 'Preparing the model'}</span>
+        <span className="relative h-1 w-full overflow-hidden rounded-full bg-content/15">
+          {percent == null ? (
+            <span className="absolute inset-0 rounded-full bg-accent/70 motion-safe:animate-pulse" />
+          ) : (
+            <span className="absolute inset-y-0 left-0 rounded-full bg-accent transition-[width] duration-300" style={{ width: `${percent}%` }} />
+          )}
+        </span>
+        <span className="font-body text-[11px] tabular-nums text-content/55">
+          {percent != null ? `${percent}%` : (size ?? '\u00a0')}
+        </span>
+      </div>
+    </div>
   )
 }
 

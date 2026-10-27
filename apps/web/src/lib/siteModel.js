@@ -9,7 +9,12 @@
 // binding here is admin tap-to-tag first and a naming convention second —
 // the convention exists mainly so a hand-authored test fixture doesn't need
 // a bindings map to be useful.
-import { findUnitByLabel, getUnits } from './units'
+// With the extension, so node --test can load this module as it stands.
+import { findUnitByLabel, getUnits, siteUnitKey } from './units.js'
+
+// Re-exported so everything about site-model bindings can be imported from
+// here; it lives in units.js because applyUnitChange() needs it.
+export { rekeySiteBindings, siteUnitKey } from './units.js'
 
 export const ROAD_MESH_PREFIX = 'road-'
 export const BUILDING_MESH_PREFIX = 'building-'
@@ -68,6 +73,12 @@ export function resolveFacingRoad(building, unit) {
  *
  * Used identically by the public site viewer and the admin tagging screen —
  * same reason units.js's reconcile() is shared, see that file's comment.
+ *
+ * A stale unit binding falls back to the mesh's building rather than going
+ * dead. `staleBindings` still lists the mesh, so the admin can see which
+ * shapes have lost their unit, but the visitor sees the shape as part of its
+ * building: clickable, coloured as a building, and counted towards that
+ * building's chip and label.
  */
 export function reconcileSite(meshNames, buildings, siteModel) {
   const buildingBindings = siteModel?.buildingBindings ?? {}
@@ -79,7 +90,7 @@ export function reconcileSite(meshNames, buildings, siteModel) {
   const unbound = []
   const staleBindings = []
   const claimedBuildings = new Set()
-  const claimedUnits = new Set() // `${buildingLabel}::${unitLabel}`, normalized
+  const claimedUnits = new Set() // siteUnitKey(building, unit)
   const claimedRoads = new Set()
 
   for (const meshName of meshNames) {
@@ -92,13 +103,25 @@ export function reconcileSite(meshNames, buildings, siteModel) {
       const unit = building ? findUnitByLabel(getUnits(building), unitBind.unitLabel) : null
       if (building && unit) {
         resolved.push({ meshName, kind: 'unit', building, unit })
-        claimedUnits.add(`${norm(building.building)}::${norm(unit.label)}`)
-      } else {
-        // Bound to a building/unit pair that has since been renamed or
-        // deleted. Same call as reconcile()'s stale-binding handling: this
-        // is pruned on next upload, not surfaced as a shape needing a fix
-        // the admin never asked for.
-        staleBindings.push(meshName)
+        claimedUnits.add(siteUnitKey(building.building, unit.label))
+        continue
+      }
+      // Bound to a unit that has since been renamed or deleted — which the
+      // tracker sync does routinely: on 16 Sep it took Building 10 to zero
+      // units and Building 6 from twenty to two, and the old `continue` here
+      // turned 30 of Centro's 57 unit shapes into grey scenery and dropped
+      // Building 10 off the map entirely.
+      //
+      // The shape is still part of its building, so it falls back to that:
+      // the mesh's own building binding first, then the building the unit
+      // binding itself names. Only when neither building exists is the
+      // shape truly dead.
+      staleBindings.push(meshName)
+      const fallback =
+        findBuildingByLabel(buildings, buildingBind) ?? findBuildingByLabel(buildings, unitBind.buildingLabel)
+      if (fallback) {
+        resolved.push({ meshName, kind: 'building', building: fallback })
+        claimedBuildings.add(norm(fallback.building))
       }
       continue
     }
@@ -153,7 +176,7 @@ export function reconcileSite(meshNames, buildings, siteModel) {
   const unmodelledBuildings = (buildings ?? []).filter((b) => !claimedBuildings.has(norm(b.building)))
   const unmodelledUnits = (buildings ?? []).flatMap((building) =>
     getUnits(building)
-      .filter((unit) => !claimedUnits.has(`${norm(building.building)}::${norm(unit.label)}`))
+      .filter((unit) => !claimedUnits.has(siteUnitKey(building.building, unit.label)))
       .map((unit) => ({ building, unit }))
   )
   const unmodelledRoads = roads.filter((r) => !claimedRoads.has(norm(r.name)))
@@ -173,10 +196,16 @@ export function siteMeshMap(meshNames, buildings, siteModel) {
 
 /**
  * Binds a set of meshes to one target (a unit within a building, a road, or
- * a building itself), clearing any prior binding of a different kind first —
- * a mesh is exactly one of building/unit/road/unbound at a time, never two,
- * so re-tagging a shape has to release its old role before taking a new one.
+ * a building itself), clearing any prior binding of a different kind first,
+ * so re-tagging a shape releases its old role before taking a new one.
  * `target: null` unbinds.
+ *
+ * A unit is the one role that keeps a second binding: tagging a shape as a
+ * unit also binds it to that unit's building. The unit binding wins while
+ * the unit exists; the building binding is what reconcileSite() falls back
+ * to once it doesn't. Deleting it here, as this used to, meant a shape tagged
+ * as a unit went fully dead the moment that unit was relabelled or synced
+ * away.
  */
 export function bindSiteMeshes(siteModel, meshNames, target) {
   const next = {
@@ -191,6 +220,7 @@ export function bindSiteMeshes(siteModel, meshNames, target) {
     delete next.roadBindings[meshName]
     if (target?.kind === 'unit') {
       next.unitBindings[meshName] = { buildingLabel: target.buildingLabel, unitLabel: target.unitLabel }
+      next.buildingBindings[meshName] = target.buildingLabel
     } else if (target?.kind === 'road') {
       next.roadBindings[meshName] = target.roadName
     } else if (target?.kind === 'building') {
@@ -240,6 +270,12 @@ export function diffSiteModel(previousSiteModel, nextMeshNames = []) {
  * `index` is unique per *identity*, not per mesh: several meshes bound to the
  * same unit (a block of wall panels) share one index, the same way
  * unitsByMeshName() in units.js already does for per-building models.
+ *
+ * Every entry that carries a building also carries `buildingIndex`, the
+ * index its building's own identity has — equal to `index` on a building
+ * entry. It is what lets the viewer give a building one site-level label even
+ * when every shape in it is tagged as a unit, as in Buildings 6, 8, 9 and 10,
+ * which had none.
  */
 export function toViewerEntries(reconcileResult) {
   const indexFor = new Map() // `${kind}:${identity}` -> index
@@ -251,8 +287,9 @@ export function toViewerEntries(reconcileResult) {
 
   return reconcileResult.resolved.map(({ meshName, kind, building, unit, road }) => {
     if (kind === 'unit') {
-      const index = indexOf(`unit:${norm(building.building)}::${norm(unit.label)}`)
-      return { meshName, kind, index, label: unit.label, status: unit.status, unit, building }
+      const index = indexOf(`unit:${siteUnitKey(building.building, unit.label)}`)
+      const buildingIndex = indexOf(`building:${norm(building.building)}`)
+      return { meshName, kind, index, buildingIndex, label: unit.label, status: unit.status, unit, building }
     }
     if (kind === 'road') {
       const index = indexOf(`road:${norm(road.name)}`)
@@ -260,6 +297,6 @@ export function toViewerEntries(reconcileResult) {
     }
     // kind === 'building'
     const index = indexOf(`building:${norm(building.building)}`)
-    return { meshName, kind, index, label: building.building, building }
+    return { meshName, kind, index, buildingIndex: index, label: building.building, building }
   })
 }

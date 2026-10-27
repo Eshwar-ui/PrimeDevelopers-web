@@ -1,0 +1,944 @@
+{
+ "_source": "GET https://dtw8rs0oq8bpp.cloudfront.net/api/properties/centro-plaza on 2026-10-27, trimmed to labels, statuses and bindings (no tenants, rents or media)",
+ "slug": "centro-plaza",
+ "detail": {
+  "siteModel": {
+   "meshNames": [
+    "empty_2",
+    "empty_3",
+    "empty_4",
+    "empty_5",
+    "empty_6",
+    "empty_7",
+    "empty_8",
+    "empty_9",
+    "empty_10",
+    "empty_11",
+    "empty_12",
+    "empty_13",
+    "empty_14",
+    "empty_15",
+    "empty_16",
+    "empty_17",
+    "empty_18",
+    "empty_19",
+    "empty_20",
+    "empty_21",
+    "empty_22",
+    "empty_23",
+    "empty_24",
+    "empty_25",
+    "empty_26",
+    "empty_27",
+    "empty_28",
+    "empty_29",
+    "empty_30",
+    "empty_31",
+    "empty_32",
+    "empty_33",
+    "empty_34",
+    "empty_35",
+    "empty_36",
+    "empty_37",
+    "empty_38",
+    "empty_39",
+    "empty_40",
+    "empty_41",
+    "empty_42",
+    "empty_43",
+    "empty_44",
+    "empty_45",
+    "empty_46",
+    "empty_47",
+    "empty_48",
+    "empty_49",
+    "empty_50",
+    "empty_51",
+    "empty_52",
+    "empty_53",
+    "empty_54",
+    "empty_55",
+    "empty_56",
+    "empty_57",
+    "empty_58",
+    "empty_59",
+    "empty_60",
+    "empty_61",
+    "empty_62",
+    "empty_63",
+    "empty_64",
+    "empty_65",
+    "empty_66",
+    "empty_67",
+    "empty_68",
+    "empty_69",
+    "empty_70",
+    "empty_71",
+    "empty_72",
+    "empty_73",
+    "empty_74",
+    "empty_75",
+    "empty_76",
+    "empty_77",
+    "empty_78",
+    "empty_79",
+    "empty_80",
+    "empty_81",
+    "empty_82",
+    "empty_83",
+    "empty_84",
+    "empty_85",
+    "empty_86",
+    "empty_87",
+    "empty_88",
+    "empty_89",
+    "empty_90",
+    "empty_91",
+    "empty_92",
+    "empty_93",
+    "empty_94",
+    "empty_95",
+    "empty_96",
+    "empty_97",
+    "empty_98",
+    "empty_99",
+    "empty_100",
+    "empty_101",
+    "empty_102",
+    "empty_103",
+    "empty_104",
+    "empty_105",
+    "empty_106",
+    "empty_107",
+    "empty_108",
+    "empty_109",
+    "empty_110",
+    "empty_111",
+    "empty_112",
+    "empty_113",
+    "empty_114",
+    "empty_115",
+    "empty_116",
+    "empty_117",
+    "empty_118",
+    "empty_119",
+    "empty_120",
+    "empty_121",
+    "empty_122",
+    "empty_123",
+    "empty_124",
+    "empty_125",
+    "empty_126",
+    "empty_127",
+    "empty_128",
+    "empty_129",
+    "empty_130",
+    "empty_131",
+    "empty_132",
+    "empty_133",
+    "empty_134",
+    "empty_135",
+    "empty_136",
+    "empty_137",
+    "empty_138",
+    "empty_139",
+    "empty_140",
+    "empty_141",
+    "empty_142",
+    "empty_143",
+    "empty_144",
+    "empty_145",
+    "empty_146",
+    "empty_147",
+    "empty_148",
+    "empty_149",
+    "empty_150",
+    "empty_151",
+    "empty_152",
+    "empty_153",
+    "empty_154",
+    "empty_155",
+    "empty_156",
+    "empty_157",
+    "empty_158",
+    "empty_159",
+    "empty_160",
+    "empty_161",
+    "empty_162",
+    "empty_163",
+    "empty_164",
+    "empty_165",
+    "empty_166",
+    "empty_167",
+    "empty_168",
+    "empty_169",
+    "empty_170",
+    "empty_171",
+    "empty_172",
+    "empty_173",
+    "empty_174",
+    "empty_175",
+    "empty_176",
+    "empty_177",
+    "empty_178",
+    "empty_179",
+    "empty_180",
+    "empty_181",
+    "empty_182",
+    "empty_183",
+    "empty_184",
+    "empty_185",
+    "empty_186",
+    "empty_187",
+    "empty_188",
+    "empty_189",
+    "empty_190",
+    "empty_191",
+    "empty_192",
+    "empty_193",
+    "empty_194",
+    "empty_195",
+    "empty_196",
+    "empty_197",
+    "empty_198",
+    "empty_199",
+    "empty_200",
+    "empty_201",
+    "empty_202",
+    "empty_203",
+    "empty_204",
+    "empty_205",
+    "empty_206",
+    "empty_207",
+    "empty_208",
+    "empty_209",
+    "empty_210",
+    "empty_211",
+    "empty_212",
+    "empty_213",
+    "empty_214",
+    "empty_215",
+    "empty_216",
+    "empty_217",
+    "empty_218",
+    "empty_219",
+    "empty_220",
+    "empty_221",
+    "empty_222",
+    "empty_223",
+    "empty_224",
+    "empty_225",
+    "empty_226",
+    "empty_227",
+    "empty_228",
+    "empty_229",
+    "empty_230",
+    "empty_231",
+    "empty_232",
+    "empty_233",
+    "empty_234",
+    "empty_235",
+    "empty_236",
+    "empty_237",
+    "empty_238",
+    "empty_239",
+    "empty_240",
+    "empty_241",
+    "empty_242",
+    "empty_243",
+    "empty_244",
+    "empty_245",
+    "empty_246",
+    "empty_247",
+    "empty_248",
+    "empty_249",
+    "empty_250",
+    "empty_251",
+    "empty_252",
+    "empty_253",
+    "empty_254",
+    "empty_255",
+    "empty_256",
+    "empty_257",
+    "empty_258",
+    "empty_259",
+    "empty_260",
+    "empty_261",
+    "empty_262",
+    "empty_263",
+    "empty_264",
+    "empty_265",
+    "empty_266",
+    "empty_267",
+    "empty_268",
+    "empty_269",
+    "empty_270",
+    "empty_271",
+    "empty_272",
+    "empty_273",
+    "empty_274",
+    "empty_275",
+    "empty_276",
+    "empty_277",
+    "empty_278",
+    "empty_279",
+    "empty_280",
+    "empty_281",
+    "empty_282",
+    "empty_283",
+    "empty_284",
+    "empty_285",
+    "empty_286",
+    "empty_287",
+    "empty_288",
+    "empty_289",
+    "empty_290",
+    "empty_291",
+    "empty_292",
+    "empty_293",
+    "empty_294",
+    "empty_295",
+    "empty_296",
+    "empty_297",
+    "empty_298",
+    "empty_299",
+    "empty_300",
+    "empty_301",
+    "empty_302",
+    "empty_303",
+    "empty_304",
+    "empty_305",
+    "empty_306",
+    "empty_307",
+    "empty_308",
+    "empty_309",
+    "empty_310",
+    "empty_311",
+    "empty_312",
+    "empty_313",
+    "empty_314",
+    "empty_315",
+    "empty_316",
+    "empty_317",
+    "empty_318",
+    "empty_319",
+    "empty_320",
+    "empty_321",
+    "empty_322",
+    "empty_323",
+    "empty_324",
+    "empty_325",
+    "empty_326",
+    "empty_327",
+    "empty_328",
+    "empty_329",
+    "empty_330",
+    "empty_331",
+    "empty_332",
+    "empty_333",
+    "empty_334",
+    "empty_335",
+    "empty_336",
+    "empty_337",
+    "empty_338",
+    "empty_339",
+    "empty_340",
+    "empty_341",
+    "empty_342",
+    "empty_343",
+    "empty_344",
+    "empty_345",
+    "empty_346",
+    "empty_347",
+    "empty_348",
+    "empty_349",
+    "empty_350",
+    "empty_351",
+    "empty_352",
+    "empty_353",
+    "empty_354",
+    "empty_355",
+    "empty_356",
+    "empty_357",
+    "empty_358",
+    "empty_359",
+    "empty_360",
+    "empty_361",
+    "empty_362",
+    "empty_363",
+    "empty_364",
+    "empty_365"
+   ],
+   "unitBindings": {
+    "empty_42": {
+     "unitLabel": "1003",
+     "buildingLabel": "Building 10"
+    },
+    "empty_43": {
+     "unitLabel": "1006",
+     "buildingLabel": "Building 10"
+    },
+    "empty_44": {
+     "unitLabel": "1005",
+     "buildingLabel": "Building 10"
+    },
+    "empty_46": {
+     "unitLabel": "1009",
+     "buildingLabel": "Building 10"
+    },
+    "empty_47": {
+     "unitLabel": "1008",
+     "buildingLabel": "Building 10"
+    },
+    "empty_48": {
+     "unitLabel": "1002",
+     "buildingLabel": "Building 10"
+    },
+    "empty_50": {
+     "unitLabel": "1001",
+     "buildingLabel": "Building 10"
+    },
+    "empty_52": {
+     "unitLabel": "1007",
+     "buildingLabel": "Building 10"
+    },
+    "empty_53": {
+     "unitLabel": "1004",
+     "buildingLabel": "Building 10"
+    },
+    "empty_55": {
+     "unitLabel": "610",
+     "buildingLabel": "Building 6"
+    },
+    "empty_56": {
+     "unitLabel": "612",
+     "buildingLabel": "Building 6"
+    },
+    "empty_57": {
+     "unitLabel": "620",
+     "buildingLabel": "Building 6"
+    },
+    "empty_58": {
+     "unitLabel": "615",
+     "buildingLabel": "Building 6"
+    },
+    "empty_59": {
+     "unitLabel": "604",
+     "buildingLabel": "Building 6"
+    },
+    "empty_60": {
+     "unitLabel": "608",
+     "buildingLabel": "Building 6"
+    },
+    "empty_61": {
+     "unitLabel": "618",
+     "buildingLabel": "Building 6"
+    },
+    "empty_62": {
+     "unitLabel": "605",
+     "buildingLabel": "Building 6"
+    },
+    "empty_63": {
+     "unitLabel": "601",
+     "buildingLabel": "Building 6"
+    },
+    "empty_64": {
+     "unitLabel": "607",
+     "buildingLabel": "Building 6"
+    },
+    "empty_65": {
+     "unitLabel": "603",
+     "buildingLabel": "Building 6"
+    },
+    "empty_66": {
+     "unitLabel": "606",
+     "buildingLabel": "Building 6"
+    },
+    "empty_67": {
+     "unitLabel": "614",
+     "buildingLabel": "Building 6"
+    },
+    "empty_68": {
+     "unitLabel": "609",
+     "buildingLabel": "Building 6"
+    },
+    "empty_69": {
+     "unitLabel": "616",
+     "buildingLabel": "Building 6"
+    },
+    "empty_70": {
+     "unitLabel": "613",
+     "buildingLabel": "Building 6"
+    },
+    "empty_71": {
+     "unitLabel": "617",
+     "buildingLabel": "Building 6"
+    },
+    "empty_72": {
+     "unitLabel": "602",
+     "buildingLabel": "Building 6"
+    },
+    "empty_73": {
+     "unitLabel": "611",
+     "buildingLabel": "Building 6"
+    },
+    "empty_74": {
+     "unitLabel": "619",
+     "buildingLabel": "Building 6"
+    },
+    "empty_95": {
+     "unitLabel": "810",
+     "buildingLabel": "Building 8"
+    },
+    "empty_96": {
+     "unitLabel": "812",
+     "buildingLabel": "Building 8"
+    },
+    "empty_97": {
+     "unitLabel": "820",
+     "buildingLabel": "Building 8"
+    },
+    "empty_98": {
+     "unitLabel": "815",
+     "buildingLabel": "Building 8"
+    },
+    "empty_99": {
+     "unitLabel": "804",
+     "buildingLabel": "Building 8"
+    },
+    "empty_100": {
+     "unitLabel": "808",
+     "buildingLabel": "Building 8"
+    },
+    "empty_101": {
+     "unitLabel": "818",
+     "buildingLabel": "Building 8"
+    },
+    "empty_102": {
+     "unitLabel": "805",
+     "buildingLabel": "Building 8"
+    },
+    "empty_103": {
+     "unitLabel": "801",
+     "buildingLabel": "Building 8"
+    },
+    "empty_104": {
+     "unitLabel": "807",
+     "buildingLabel": "Building 8"
+    },
+    "empty_105": {
+     "unitLabel": "803",
+     "buildingLabel": "Building 8"
+    },
+    "empty_106": {
+     "unitLabel": "806",
+     "buildingLabel": "Building 8"
+    },
+    "empty_107": {
+     "unitLabel": "814",
+     "buildingLabel": "Building 8"
+    },
+    "empty_108": {
+     "unitLabel": "809",
+     "buildingLabel": "Building 8"
+    },
+    "empty_109": {
+     "unitLabel": "816",
+     "buildingLabel": "Building 8"
+    },
+    "empty_110": {
+     "unitLabel": "813",
+     "buildingLabel": "Building 8"
+    },
+    "empty_111": {
+     "unitLabel": "817",
+     "buildingLabel": "Building 8"
+    },
+    "empty_112": {
+     "unitLabel": "802",
+     "buildingLabel": "Building 8"
+    },
+    "empty_113": {
+     "unitLabel": "811",
+     "buildingLabel": "Building 8"
+    },
+    "empty_114": {
+     "unitLabel": "819",
+     "buildingLabel": "Building 8"
+    },
+    "empty_115": {
+     "unitLabel": "907",
+     "buildingLabel": "Building 9"
+    },
+    "empty_116": {
+     "unitLabel": "903",
+     "buildingLabel": "Building 9"
+    },
+    "empty_117": {
+     "unitLabel": "902",
+     "buildingLabel": "Building 9"
+    },
+    "empty_118": {
+     "unitLabel": "906",
+     "buildingLabel": "Building 9"
+    },
+    "empty_119": {
+     "unitLabel": "901",
+     "buildingLabel": "Building 9"
+    },
+    "empty_120": {
+     "unitLabel": "905",
+     "buildingLabel": "Building 9"
+    },
+    "empty_121": {
+     "unitLabel": "904",
+     "buildingLabel": "Building 9"
+    },
+    "empty_122": {
+     "unitLabel": "908",
+     "buildingLabel": "Building 9"
+    }
+   },
+   "buildingBindings": {
+    "empty_14": "Building 4",
+    "empty_15": "Building 4",
+    "empty_16": "Building 4",
+    "empty_17": "Building 4",
+    "empty_18": "Building 4",
+    "empty_19": "Building 4",
+    "empty_21": "Building 3",
+    "empty_22": "Building 3",
+    "empty_23": "Building 3",
+    "empty_24": "Building 3",
+    "empty_25": "Building 3",
+    "empty_26": "Building 3",
+    "empty_28": "Building 1",
+    "empty_29": "Building 1",
+    "empty_30": "Building 1",
+    "empty_31": "Building 1",
+    "empty_32": "Building 1",
+    "empty_33": "Building 1",
+    "empty_35": "Building 2",
+    "empty_36": "Building 2",
+    "empty_37": "Building 2",
+    "empty_38": "Building 2",
+    "empty_39": "Building 2",
+    "empty_40": "Building 2",
+    "empty_42": "Building 10",
+    "empty_43": "Building 10",
+    "empty_44": "Building 10",
+    "empty_46": "Building 10",
+    "empty_47": "Building 10",
+    "empty_48": "Building 10",
+    "empty_50": "Building 10",
+    "empty_52": "Building 10",
+    "empty_53": "Building 10",
+    "empty_55": "Building 6",
+    "empty_56": "Building 6",
+    "empty_57": "Building 6",
+    "empty_58": "Building 6",
+    "empty_59": "Building 6",
+    "empty_60": "Building 6",
+    "empty_61": "Building 6",
+    "empty_62": "Building 6",
+    "empty_63": "Building 6",
+    "empty_64": "Building 6",
+    "empty_65": "Building 6",
+    "empty_66": "Building 6",
+    "empty_67": "Building 6",
+    "empty_68": "Building 6",
+    "empty_69": "Building 6",
+    "empty_70": "Building 6",
+    "empty_71": "Building 6",
+    "empty_72": "Building 6",
+    "empty_73": "Building 6",
+    "empty_74": "Building 6",
+    "empty_75": "Building 7",
+    "empty_76": "Building 7",
+    "empty_77": "Building 7",
+    "empty_78": "Building 7",
+    "empty_79": "Building 7",
+    "empty_80": "Building 7",
+    "empty_81": "Building 7",
+    "empty_82": "Building 7",
+    "empty_83": "Building 7",
+    "empty_84": "Building 7",
+    "empty_85": "Building 7",
+    "empty_86": "Building 7",
+    "empty_87": "Building 7",
+    "empty_88": "Building 7",
+    "empty_89": "Building 7",
+    "empty_90": "Building 7",
+    "empty_91": "Building 7",
+    "empty_92": "Building 7",
+    "empty_93": "Building 7",
+    "empty_94": "Building 7",
+    "empty_95": "Building 8",
+    "empty_96": "Building 8",
+    "empty_97": "Building 8",
+    "empty_98": "Building 8",
+    "empty_99": "Building 8",
+    "empty_100": "Building 8",
+    "empty_101": "Building 8",
+    "empty_102": "Building 8",
+    "empty_103": "Building 8",
+    "empty_104": "Building 8",
+    "empty_105": "Building 8",
+    "empty_106": "Building 8",
+    "empty_107": "Building 8",
+    "empty_108": "Building 8",
+    "empty_109": "Building 8",
+    "empty_110": "Building 8",
+    "empty_111": "Building 8",
+    "empty_112": "Building 8",
+    "empty_113": "Building 8",
+    "empty_114": "Building 8",
+    "empty_115": "Building 9",
+    "empty_116": "Building 9",
+    "empty_117": "Building 9",
+    "empty_118": "Building 9",
+    "empty_119": "Building 9",
+    "empty_120": "Building 9",
+    "empty_121": "Building 9",
+    "empty_122": "Building 9"
+   },
+   "roadBindings": {},
+   "roads": []
+  },
+  "floorPlans": {
+   "buildings": [
+    {
+     "building": "Building 1",
+     "unitList": [
+      {
+       "label": "101+102+103+106",
+       "status": "sold"
+      },
+      {
+       "label": "104+105",
+       "status": "leased"
+      }
+     ]
+    },
+    {
+     "building": "Building 2",
+     "unitList": [
+      {
+       "label": "201",
+       "status": "available"
+      },
+      {
+       "label": "201+202+203+204",
+       "status": "sold"
+      },
+      {
+       "label": "202",
+       "status": "leased"
+      },
+      {
+       "label": "203+204",
+       "status": "leased"
+      },
+      {
+       "label": "205",
+       "status": "sold"
+      },
+      {
+       "label": "206",
+       "status": "sold"
+      }
+     ]
+    },
+    {
+     "building": "Building 3",
+     "unitList": []
+    },
+    {
+     "building": "Building 4",
+     "unitList": [
+      {
+       "label": "401",
+       "status": "sold"
+      },
+      {
+       "label": "402+404",
+       "status": "sold"
+      },
+      {
+       "label": "403",
+       "status": "sold"
+      },
+      {
+       "label": "405",
+       "status": "sold"
+      },
+      {
+       "label": "406",
+       "status": "sold"
+      }
+     ]
+    },
+    {
+     "building": "Building 6",
+     "unitList": [
+      {
+       "label": "605",
+       "status": "leased"
+      },
+      {
+       "label": "606+608",
+       "status": "leased"
+      }
+     ]
+    },
+    {
+     "building": "Building 7",
+     "unitList": [
+      {
+       "label": "701",
+       "status": "available"
+      },
+      {
+       "label": "702",
+       "status": "available"
+      },
+      {
+       "label": "703",
+       "status": "available"
+      },
+      {
+       "label": "704",
+       "status": "available"
+      },
+      {
+       "label": "705",
+       "status": "available"
+      },
+      {
+       "label": "706",
+       "status": "available"
+      }
+     ]
+    },
+    {
+     "building": "Building 8",
+     "unitList": [
+      {
+       "label": "801",
+       "status": "sold"
+      },
+      {
+       "label": "802",
+       "status": "sold"
+      },
+      {
+       "label": "803",
+       "status": "sold"
+      },
+      {
+       "label": "804",
+       "status": "sold"
+      },
+      {
+       "label": "805",
+       "status": "sold"
+      },
+      {
+       "label": "806",
+       "status": "sold"
+      },
+      {
+       "label": "807",
+       "status": "sold"
+      },
+      {
+       "label": "808",
+       "status": "sold"
+      },
+      {
+       "label": "809",
+       "status": "sold"
+      },
+      {
+       "label": "810",
+       "status": "sold"
+      },
+      {
+       "label": "811",
+       "status": "sold"
+      },
+      {
+       "label": "813",
+       "status": "sold"
+      },
+      {
+       "label": "815",
+       "status": "sold"
+      },
+      {
+       "label": "816",
+       "status": "sold"
+      },
+      {
+       "label": "817",
+       "status": "sold"
+      },
+      {
+       "label": "818",
+       "status": "sold"
+      },
+      {
+       "label": "819",
+       "status": "sold"
+      },
+      {
+       "label": "820",
+       "status": "sold"
+      }
+     ]
+    },
+    {
+     "building": "Building 9",
+     "unitList": [
+      {
+       "label": "901",
+       "status": "sold"
+      },
+      {
+       "label": "902",
+       "status": "sold"
+      },
+      {
+       "label": "903",
+       "status": "sold"
+      },
+      {
+       "label": "904",
+       "status": "sold"
+      },
+      {
+       "label": "905",
+       "status": "sold"
+      },
+      {
+       "label": "906",
+       "status": "sold"
+      },
+      {
+       "label": "907",
+       "status": "sold"
+      },
+      {
+       "label": "908",
+       "status": "sold"
+      }
+     ]
+    },
+    {
+     "building": "Building 10",
+     "unitList": []
+    }
+   ]
+  }
+ }
+}

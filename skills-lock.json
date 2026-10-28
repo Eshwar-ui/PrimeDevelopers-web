@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "aws-deployment": {
+      "source": "aws/agent-toolkit-for-aws",
+      "sourceType": "github",
+      "skillPath": "skills/core-skills/aws-deployment/SKILL.md",
+      "computedHash": "0505084fb5e7bf6c5c1b3c4f9bc87c1f712f86edb221d19b8de0ddeff313b51a"
+    },
+    "rds-oss": {
+      "source": "aws/agent-toolkit-for-aws",
+      "sourceType": "github",
+      "skillPath": "skills/specialized-skills/database-skills/rds-oss/SKILL.md",
+      "computedHash": "2eb4a41737249e0f7f470247f3c8d04b4eb40084a73561583d5b0b102c545100"
+    }
+  }
+}

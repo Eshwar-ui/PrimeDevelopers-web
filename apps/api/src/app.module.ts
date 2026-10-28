@@ -39,6 +39,18 @@ import { CspModule } from './modules/csp/csp.module';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: [`.env.${process.env.NODE_ENV || 'development'}`, '.env'],
+      // Fail at startup with the variable names, instead of a Prisma stack trace
+      // or a web app that only says "Could not reach the server".
+      validate: (config: Record<string, unknown>) => {
+        const missing = ['DATABASE_URL', 'JWT_ACCESS_SECRET'].filter((key) => !config[key]);
+        if (missing.length > 0) {
+          throw new Error(
+            `Missing required environment variable(s): ${missing.join(', ')}. ` +
+              'Copy apps/api/.env.example to apps/api/.env and fill it in (see README "Local setup").',
+          );
+        }
+        return config;
+      },
     }),
 
     // Default ceiling for every route. Login and the public lead endpoint

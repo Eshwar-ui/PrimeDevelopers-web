@@ -1,16 +1,48 @@
-# React + Vite
+# Prime Developers
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+pnpm monorepo: `apps/web` (React + Vite site and admin) and `apps/api` (NestJS + Prisma on Supabase Postgres).
 
-Currently, two official plugins are available:
+## Local setup
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Requires Node >= 20 and pnpm >= 8.
 
-## React Compiler
+```bash
+pnpm install
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Option A — web only (no secrets needed)
 
-## Expanding the Oxlint configuration
+`apps/web/.env.development` is committed and proxies `/api` to the deployed API, so the site loads real data with nothing to configure:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+```bash
+pnpm --filter @prime-developers/web dev   # http://localhost:5173
+```
+
+The dev server is pinned to port 5173. If it says the port is in use, stop whatever holds it — the proxy depends on it.
+
+This is **live data**: changes made in the admin are real. To override anything personally, create `apps/web/.env.development.local` (gitignored).
+
+### Option B — run the API locally
+
+1. `cp apps/api/.env.example apps/api/.env` and fill it in. Get the values from the project owner through the team password manager — never chat or git.
+2. Use a **development** database, not production.
+3. Start the API (http://localhost:3001) and point the web app at it by putting this in `apps/web/.env.development.local`:
+
+```bash
+DEV_API_TARGET=http://localhost:3001
+```
+
+```bash
+pnpm --filter @prime-developers/api dev
+pnpm --filter @prime-developers/web dev
+```
+
+If the API exits at startup it names the missing variables.
+
+### Troubleshooting
+
+| Symptom | Cause |
+|---|---|
+| "Could not reach the server" | Nothing answered `/api`: wrong port, API not running, or `DEV_API_TARGET` unreachable. |
+| `GSAP target ... not found` | Follow-on of the above — no data, so nothing rendered. |
+| CORS errors | The browser is calling the API directly. Use `VITE_API_BASE_URL=http://localhost:5173` so requests go through the proxy. |

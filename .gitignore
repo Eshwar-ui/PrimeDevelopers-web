@@ -38,9 +38,13 @@ yarn.lock
 .env
 .env.*
 
-# Templates. No real values, by definition. Copy apps/web/.env.example to
-# apps/web/.env.development / .env.production locally — those stay untracked.
+# Templates. No real values, by definition.
 !.env.example
+
+# The web app's dev config: public URLs only (a VITE_ value is readable by anyone
+# who opens the bundle), committed so a fresh clone loads data with no setup.
+# Personal overrides go in .env.development.local, which stays ignored.
+!apps/web/.env.development
 
 # The API's secrets stay out: apps/api/.env is local-only and production lives
 # in the Render dashboard (render.yaml, `sync: false`). Both are covered by the

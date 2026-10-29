@@ -184,3 +184,15 @@ export function srcSetFor(src, size) {
   if (!widths || !isTransformable(src)) return undefined
   return widths.map((w) => `${imageUrl(src, { width: w })} ${w}w`).join(', ')
 }
+
+/**
+ * Authored alt text for one of a property's images, or ''.
+ *
+ * `detail.imageAlts` is a list of `{ src, alt }` rather than a map keyed by
+ * URL on purpose: `withTransformedImages` rewrites every URL *value* on load
+ * and leaves object keys alone, so a keyed map would stop matching the
+ * gallery the moment it reached a visitor. As values, both sides are
+ * rewritten the same way and still compare equal.
+ */
+export const imageAlt = (property, src) =>
+  (property?.detail?.imageAlts ?? []).find((entry) => entry?.src && entry.src === src)?.alt ?? ''

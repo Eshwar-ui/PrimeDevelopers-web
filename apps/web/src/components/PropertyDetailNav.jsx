@@ -14,6 +14,7 @@ const SECTIONS = [
   { id: 'location', label: 'Location' },
   { id: 'media', label: 'Gallery' },
   { id: 'video', label: 'Video' },
+  { id: 'faq', label: 'FAQs' },
   { id: 'resources', label: 'Resources' },
 ]
 

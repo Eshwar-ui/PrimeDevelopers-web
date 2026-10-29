@@ -4,7 +4,7 @@ import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import SocialIcon from './SocialIcon'
 import ArrowRight from './ArrowRight'
-import { sized, srcSetFor } from '../lib/images'
+import { imageAlt, sized, srcSetFor } from '../lib/images'
 import { useProperties } from '../context/ContentContext'
 import { phaseSiblings } from '../lib/phases'
 import { coverImage } from '../lib/covers'
@@ -65,7 +65,11 @@ const isSharedTransition = document.documentElement.classList.contains('property
             srcSet={srcSetFor(coverImage(property, 'detailHero'), 'full')}
             sizes="100vw"
             style={{ viewTransitionName: `property-image-${property.slug}` }}
-            alt={`${property.name} property exterior`}
+            alt={
+              imageAlt(property, coverImage(property, 'detailHero')) ||
+              property.detail?.seo?.heroAlt ||
+              `${property.name} property exterior`
+            }
             fetchPriority="high"
             className="h-[112%] w-full object-cover"
           />
@@ -75,22 +79,44 @@ const isSharedTransition = document.documentElement.classList.contains('property
       )}
 
       <div className="relative mx-auto flex min-h-[100dvh] max-w-[1560px] flex-col px-gutter pb-8 pt-28 md:pb-10 md:pt-36">
-        <Link to="/properties" className="group inline-flex min-h-11 w-fit items-center gap-3 font-body text-[12px] font-bold uppercase tracking-[0.16em] text-white/70 transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
-          <span className="transition-transform duration-300 group-hover:-translate-x-1">←</span>
-          All properties
-        </Link>
+        {/* Breadcrumb trail, mirrored by the BreadcrumbList in
+            usePropertyHead. It replaces the old "← All properties" link,
+            which the middle crumb still is. */}
+        <nav aria-label="Breadcrumb">
+          <ol className="flex flex-wrap items-center gap-x-2.5 font-body text-[12px] font-bold uppercase tracking-[0.16em] text-white/70">
+            {[
+              ['Home', '/'],
+              ['Properties', '/properties'],
+            ].map(([label, href]) => (
+              <li key={href} className="flex items-center gap-2.5">
+                <Link to={href} className="inline-flex min-h-11 items-center transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
+                  {label}
+                </Link>
+                <span aria-hidden className="text-white/40">›</span>
+              </li>
+            ))}
+            <li aria-current="page" className="text-white">{property.name}</li>
+          </ol>
+        </nav>
 
         <div className="mt-auto grid items-end gap-12 pb-7 lg:grid-cols-[minmax(0,1fr)_21rem] lg:gap-20">
           <div>
-            <p data-property-kicker className="font-body text-[12px] font-bold uppercase tracking-[0.2em] text-white/65">
-              {[property.category, property.address].filter(Boolean).join(' · ')}
+            <p data-property-kicker className="font-body text-[11px] font-bold uppercase tracking-[0.14em] text-white/65 sm:text-[12px] sm:tracking-[0.2em]">
+              {/* `detail.kicker` when the line needs to say more than the
+                  category, which also drives the listing filters and so
+                  can't simply be renamed. */}
+              {property.detail?.kicker || [property.category, property.address].filter(Boolean).join(' · ')}
             </p>
             <h1
               data-property-title
               style={{ viewTransitionName: `property-title-${property.slug}` }}
               className="mt-5 max-w-[14ch] text-balance font-display font-bold leading-[0.9] tracking-[-0.055em] [font-size:clamp(2.35rem,11vw,7rem)]"
             >
-              {words.map((word, index) => <span key={`${word}-${index}`} className="mr-[0.2em] inline-block overflow-hidden align-top"><span className="inline-block">{word}</span></span>)}
+              {/* The space between words is a real one, not only the margin:
+                  without it the heading's text — what crawlers and screen
+                  readers get — was "CentroPlaza". It trails inside the
+                  inline-block, where it collapses and costs no width. */}
+              {words.map((word, index) => <span key={`${word}-${index}`} className="mr-[0.2em] inline-block overflow-hidden align-top"><span className="inline-block">{word}</span>{index < words.length - 1 ? ' ' : ''}</span>)}
             </h1>
             {/* Phase switch. Sits directly under the title because it belongs
                 to it — these are two records describing one development, and

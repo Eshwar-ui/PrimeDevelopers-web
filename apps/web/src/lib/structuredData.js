@@ -15,6 +15,7 @@
  */
 
 import { citiesFor } from './texas'
+import { BRAND_NAME } from './site'
 
 /** Drops empty strings, empty arrays and nullish values, recursively. */
 function prune(value) {
@@ -28,8 +29,9 @@ function prune(value) {
       const pruned = prune(v)
       if (pruned !== undefined) out[k] = pruned
     }
-    // A node that is nothing but its own @type carries no information.
-    return Object.keys(out).filter((k) => !k.startsWith('@')).length ? out : undefined
+    // A node that is nothing but its own @type carries no information. An
+    // `@id` does: `{ '@id': … }` is how one node points at another.
+    return Object.keys(out).filter((k) => k !== '@type' && k !== '@context').length ? out : undefined
   }
   if (typeof value === 'string') return value.trim() || undefined
   return value ?? undefined
@@ -89,7 +91,7 @@ export function organizationSchema({ footer, properties = [], cities = [], origi
     // that gets an entity distrusted rather than ranked.
     '@type': addressLocality ? 'RealEstateAgent' : 'Organization',
     '@id': origin ? origin + '/#organization' : undefined,
-    name: 'Prime Developers',
+    name: BRAND_NAME,
     legalName: legalName,
     url: origin,
     logo: logoUrl,
@@ -120,4 +122,102 @@ export function organizationSchema({ footer, properties = [], cities = [], origi
       availableLanguage: 'en',
     }),
   })
+}
+
+// "14300 Ronald Reagan Blvd, Leander, TX 78641" as PostalAddress parts. The
+// CMS stores one line; an address that doesn't parse is left out rather than
+// split at a guess.
+function postalAddress(line) {
+  const m = String(line ?? '').match(/^(.+?),\s*([^,]+?),\s*([A-Z]{2})\s+(\d{5})(?:-\d{4})?$/)
+  if (!m) return undefined
+  return {
+    '@type': 'PostalAddress',
+    streetAddress: m[1],
+    addressLocality: m[2],
+    addressRegion: m[3],
+    postalCode: m[4],
+    addressCountry: 'US',
+  }
+}
+
+/**
+ * The page graph for one property: WebSite, WebPage, BreadcrumbList and the
+ * Place itself.
+ *
+ * The organisation is referenced by `@id`, not restated — the footer already
+ * emits it on every route, and a second copy here would be a second entity.
+ * No Offer or price markup, deliberately: prices change by the unit and the
+ * client has not signed off on them as structured data.
+ */
+export function propertySchema({ property, origin, url, title, description }) {
+  const seo = property.detail?.seo ?? {}
+  const org = { '@id': `${origin}/#organization` }
+  const address = postalAddress(property.address)
+  const hasGeo = Number.isFinite(seo.latitude) && Number.isFinite(seo.longitude)
+
+  return prune({
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'WebSite',
+        '@id': `${origin}/#website`,
+        url: `${origin}/`,
+        name: BRAND_NAME,
+        publisher: org,
+      },
+      {
+        '@type': 'WebPage',
+        '@id': `${url}#webpage`,
+        url,
+        name: title,
+        description,
+        inLanguage: 'en-US',
+        isPartOf: { '@id': `${origin}/#website` },
+        about: { '@id': `${url}#place` },
+        publisher: org,
+        breadcrumb: { '@id': `${url}#breadcrumb` },
+      },
+      {
+        '@type': 'BreadcrumbList',
+        '@id': `${url}#breadcrumb`,
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: `${origin}/` },
+          { '@type': 'ListItem', position: 2, name: 'Properties', item: `${origin}/properties` },
+          { '@type': 'ListItem', position: 3, name: property.name },
+        ],
+      },
+      {
+        '@type': 'Place',
+        '@id': `${url}#place`,
+        name: property.name,
+        description: seo.placeDescription,
+        address,
+        geo: hasGeo ? { '@type': 'GeoCoordinates', latitude: seo.latitude, longitude: seo.longitude } : undefined,
+        hasMap: hasGeo ? `https://www.google.com/maps?q=${seo.latitude},${seo.longitude}` : undefined,
+        containedInPlace: address
+          ? { '@type': 'City', name: `${address.addressLocality}, ${address.addressRegion}` }
+          : undefined,
+        amenityFeature: (seo.amenities ?? []).map((name) => ({
+          '@type': 'LocationFeatureSpecification',
+          name,
+          value: true,
+        })),
+      },
+    ],
+  })
+}
+
+/** FAQPage from the same list the page renders, so the two cannot drift. */
+export function faqSchema(faqs = []) {
+  const items = faqs.filter((f) => f?.question && f?.answer)
+  if (!items.length) return undefined
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: items.map((f) => ({
+      '@type': 'Question',
+      name: f.question,
+      acceptedAnswer: { '@type': 'Answer', text: f.answer },
+    })),
+  }
 }

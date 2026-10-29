@@ -324,8 +324,10 @@ export default function SiteModelSection({ property }) {
   return (
     <div ref={rootRef} className="flex scroll-mt-24 flex-col gap-4">
       {/* ── building rail ───────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="mr-1 font-body text-[10px] font-bold uppercase tracking-[0.16em] text-content/45">
+      {/* One scrolling row on a phone, wrapping from `sm`. Wrapped at 390px,
+          ten buildings took five rows and pushed the plan below the fold. */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
+        <span className="mr-1 shrink-0 font-body text-[10px] font-bold uppercase tracking-[0.16em] text-content/45">
           {property?.name}
         </span>
         <Chip active={!focusedBuilding} onClick={goSite} tone="accent">
@@ -367,7 +369,7 @@ export default function SiteModelSection({ property }) {
           )
         })}
         {taggedBuildings.length > 1 && (
-          <label className="ml-auto flex cursor-pointer items-center gap-2 font-body text-[12px] text-content/55">
+          <label className="ml-auto flex shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap font-body text-[12px] text-content/55">
             <input type="checkbox" checked={isolate} onChange={(e) => setIsolate(e.target.checked)} className="accent-[var(--color-accent)]" />
             Hide other buildings
           </label>
@@ -377,7 +379,11 @@ export default function SiteModelSection({ property }) {
       {/* ── unit rail, only once inside a building ──────────────── */}
       {focusedBuilding && focusedUnits.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="mr-1 font-body text-[10px] font-bold uppercase tracking-[0.16em] text-content/45">Units</span>
+          {/* The open building's heading — one h3 per tab, under the
+              section's h2 — styled as the rail label it replaces. */}
+          <h3 className="mr-1 font-body text-[10px] font-bold uppercase tracking-[0.16em] text-content/45">
+            {focusedBuilding.label}
+          </h3>
           {focusedUnits.map((u) => {
             const meta = unitStatusMeta(u.status)
             // Every unit is selectable, whether or not it has a shape in the
@@ -478,6 +484,11 @@ export default function SiteModelSection({ property }) {
           <UnitDetailCard
             unit={selectedUnit}
             units={focusedBuilding ? focusedUnits : allUnits}
+            totals={
+              !focusedBuilding && property.buildings > 0
+                ? { total: property.buildings, available: property.available ?? 0 }
+                : null
+            }
             onEnquire={enquire}
             maxHeight={canShow3D ? PANEL_MAX : ''}
             detailsHref={selectedUnit && focusedBuilding ? unitPath(property.slug, focusedBuilding.label, selectedUnit.label) : null}
@@ -522,7 +533,10 @@ function Chip({ active, onClick, disabled, tone, children }) {
       onClick={onClick}
       disabled={disabled}
       aria-pressed={active}
-      className={`min-h-9 rounded-full border px-3.5 py-1.5 font-body text-[12px] font-semibold tracking-[0.01em] transition-colors duration-200 disabled:cursor-default disabled:opacity-35 ${
+      // `relative` anchors the count's sr-only label (absolute) to the chip.
+      // Unanchored it positioned against the page, so in the scrolling rail
+      // on a phone it escaped the clip and widened the page to 1230px.
+      className={`relative min-h-9 shrink-0 rounded-full border px-3.5 py-1.5 font-body text-[12px] font-semibold tracking-[0.01em] transition-colors duration-200 disabled:cursor-default disabled:opacity-35 ${
         active
           ? tone === 'accent'
             ? 'border-accent bg-accent text-white dark:text-void'

@@ -27,7 +27,10 @@ const SWIPE_PX = 40
  * and the browser fetches only the chips near the scroll position. Opening the
  * section costs one full-size image and a screenful of 200px chips.
  */
-export default function PropertyGallery({ images, label }) {
+// `altFor(src)` supplies authored alt text where the record has it. The frame
+// otherwise falls back to naming the property and its place in the set, so the
+// one image a screen reader meets in the viewer is never silent.
+export default function PropertyGallery({ images, label, altFor = () => '' }) {
   const [active, setActive] = useState(0)
   // Which edges of the rail have more behind them. Scrollbars are hidden
   // site-wide (index.css), so the mask is the only thing telling a visitor
@@ -39,6 +42,15 @@ export default function PropertyGallery({ images, label }) {
   const mounted = useRef(false)
 
   const count = images.length
+
+  // Which photographs are taller than wide, learnt as each one loads — the
+  // viewer's own frame, or the neighbour warmed below, so the next one is
+  // usually known before it is shown.
+  const [portrait, setPortrait] = useState({})
+  const notePortrait = useCallback((src, img) => {
+    const tall = img.naturalHeight > img.naturalWidth
+    setPortrait((known) => (known[src] === tall ? known : { ...known, [src]: tall }))
+  }, [])
 
   // Positive modulo — JS's `%` keeps the sign of the dividend, so stepping
   // back from 0 gives -1 and the rail would index `undefined`. Same helper
@@ -73,9 +85,10 @@ export default function PropertyGallery({ images, label }) {
     if (count < 2) return
     for (const i of [(active + 1) % count, (active - 1 + count) % count]) {
       const img = new Image()
+      img.onload = () => notePortrait(images[i], img)
       img.src = sized(images[i], 'card')
     }
-  }, [active, count, images])
+  }, [active, count, images, notePortrait])
 
   const readEdges = useCallback(() => {
     const rail = railRef.current
@@ -134,17 +147,35 @@ export default function PropertyGallery({ images, label }) {
             under the incoming one for the length of the cross-fade instead of
             collapsing the box to zero height mid-transition. */}
         <AnimatePresence initial={false}>
-          <motion.img
+          <motion.div
             key={images[active]}
-            src={sized(images[active], 'card')}
-            alt=""
-            decoding="async"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute inset-0 size-full object-cover"
-          />
+            className="absolute inset-0"
+          >
+            {/* A portrait frame is shown whole, over a blurred copy of itself.
+                Cropped to this landscape box it kept only the middle third —
+                on Centro's unit shoots (74 of 135) that is the blank wall above
+                the storefront, with the door and sign cut off below. The
+                backdrop is the rail chip's URL, so it is already cached. */}
+            {portrait[images[active]] && (
+              <img
+                src={sized(images[active], THUMB_WIDTH)}
+                alt=""
+                aria-hidden
+                className="absolute inset-0 size-full scale-110 object-cover opacity-60 blur-2xl"
+              />
+            )}
+            <img
+              src={sized(images[active], 'card')}
+              alt={altFor(images[active]) || `${label ? `${label}, photograph` : 'Photograph'} ${active + 1} of ${count}`}
+              decoding="async"
+              onLoad={(e) => notePortrait(images[active], e.currentTarget)}
+              className={`absolute inset-0 size-full ${portrait[images[active]] ? 'object-contain' : 'object-cover'}`}
+            />
+          </motion.div>
         </AnimatePresence>
 
         {count > 1 && (
@@ -187,7 +218,9 @@ export default function PropertyGallery({ images, label }) {
                 key={`${src}-${i}`}
                 type="button"
                 onClick={() => setActive(i)}
-                aria-label={`Photograph ${i + 1} of ${count}`}
+                // The chip's image stays alt="" — the button's label is its
+                // name, and carries the authored description when there is one.
+                aria-label={`Photograph ${i + 1} of ${count}${altFor(src) ? `: ${altFor(src)}` : ''}`}
                 aria-current={i === active}
                 className={`h-16 w-20 shrink-0 overflow-hidden rounded-lg border transition-[border-color,opacity] duration-300 ease-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
                   i === active

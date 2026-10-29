@@ -14,6 +14,7 @@ const SECTIONS = [
   { id: 'location', label: 'Location' },
   { id: 'media', label: 'Gallery' },
   { id: 'video', label: 'Video' },
+  { id: 'faq', label: 'FAQs' },
   { id: 'resources', label: 'Resources' },
 ]
 
@@ -60,20 +61,36 @@ export default function PropertyDetailNav({ property }) {
     if (!items.length) return undefined
     const sections = items.map((item) => document.getElementById(item.id)).filter(Boolean)
     if (!sections.length) return undefined
-    setActiveId((current) => current || items[0].id)
+    // The current section is the last one whose top has crossed a line 40%
+    // down the viewport. This was an IntersectionObserver that took the
+    // *topmost* section touching a band under the bar, so a section's bottom
+    // padding still in that band kept it lit while the next one filled the
+    // screen — Location never lit on Centro, sitting under Availability's
+    // tail. At the foot of the page the last tab wins outright, since short
+    // closing sections can't scroll up to the line.
+    let frame = 0
+    const update = () => {
+      frame = 0
+      const line = window.innerHeight * 0.4
+      const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4
+      let current = sections[0]
+      for (const section of sections) {
+        if (section.getBoundingClientRect().top <= line) current = section
+      }
+      setActiveId(atBottom ? sections[sections.length - 1].id : current.id)
+    }
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(update)
+    }
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)
-        if (visible[0]) setActiveId(visible[0].target.id)
-      },
-      { rootMargin: '-144px 0px -58% 0px', threshold: [0, 0.15, 0.5] },
-    )
-
-    sections.forEach((section) => observer.observe(section))
-    return () => observer.disconnect()
+    update()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll)
+    return () => {
+      cancelAnimationFrame(frame)
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+    }
   }, [items])
 
   if (!items.length) return null

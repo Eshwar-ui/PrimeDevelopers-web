@@ -4,7 +4,7 @@ import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import SocialIcon from './SocialIcon'
 import ArrowRight from './ArrowRight'
-import { sized, srcSetFor } from '../lib/images'
+import { imageAlt, sized, srcSetFor } from '../lib/images'
 import { useProperties } from '../context/ContentContext'
 import { phaseSiblings } from '../lib/phases'
 import { coverImage } from '../lib/covers'
@@ -16,18 +16,25 @@ export default function PropertyHero({ property, soldPct, onEnquire }) {
 
   useGSAP(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-const isSharedTransition = document.documentElement.classList.contains('property-route-transition')
+    const isSharedTransition = document.documentElement.classList.contains('property-route-transition')
     const timeline = gsap.timeline({
       delay: isSharedTransition ? 0.78 : 0,
       defaults: { ease: 'power3.out' },
     })
-    timeline
-      .from('[data-property-kicker]', { y: 20, opacity: 0, duration: 0.65 })
-      .from('[data-property-title] span', { yPercent: 110, opacity: 0, duration: 0.9, stagger: 0.06 }, '-=0.35')
-      .from('[data-property-phases]', { y: 18, opacity: 0, duration: 0.6 }, '-=0.45')
-      .from('[data-property-copy]', { y: 28, opacity: 0, duration: 0.75 }, '-=0.4')
-      .from('[data-property-actions]', { y: 20, opacity: 0, duration: 0.65 }, '-=0.45')
-      .from('[data-property-socials]', { y: 16, opacity: 0, duration: 0.6 }, '-=0.4')
+    // The phase switch, tagline and socials only render when the property has
+    // them, and the photograph only once it has a cover — GSAP warns on every
+    // missing target, so each step is skipped rather than aimed at nothing.
+    const step = (selector, vars, position) => {
+      if (scope.current?.querySelector(selector)) timeline.from(selector, vars, position)
+    }
+    step('[data-property-kicker]', { y: 20, opacity: 0, duration: 0.65 })
+    step('[data-property-title] span', { yPercent: 110, opacity: 0, duration: 0.9, stagger: 0.06 }, '-=0.35')
+    step('[data-property-phases]', { y: 18, opacity: 0, duration: 0.6 }, '-=0.45')
+    step('[data-property-copy]', { y: 28, opacity: 0, duration: 0.75 }, '-=0.4')
+    step('[data-property-actions]', { y: 20, opacity: 0, duration: 0.65 }, '-=0.45')
+    step('[data-property-socials]', { y: 16, opacity: 0, duration: 0.6 }, '-=0.4')
+
+    if (!image.current) return
 
     if (!isSharedTransition) {
       timeline.from(image.current, { scale: 1.08, opacity: 0, duration: 1.25 }, 0.1)
@@ -65,32 +72,64 @@ const isSharedTransition = document.documentElement.classList.contains('property
             srcSet={srcSetFor(coverImage(property, 'detailHero'), 'full')}
             sizes="100vw"
             style={{ viewTransitionName: `property-image-${property.slug}` }}
-            alt={`${property.name} property exterior`}
+            alt={
+              imageAlt(property, coverImage(property, 'detailHero')) ||
+              property.detail?.seo?.heroAlt ||
+              `${property.name} property exterior`
+            }
             fetchPriority="high"
             className="h-[112%] w-full object-cover"
           />
           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(12,21,27,0.94)_0%,rgba(12,21,27,0.74)_38%,rgba(12,21,27,0.18)_72%,rgba(12,21,27,0.34)_100%)]" />
           <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(12,21,27,0.82)_0%,transparent_46%)]" />
+          {/* Top scrim for the breadcrumb, kicker and navbar. Neither scrim
+              above reaches the sky at the head of the frame, and on a phone
+              the horizontal one has faded out a few words into the line —
+              the address sat white-on-pale-grey. Deeper below md, where the
+              tall crop puts far more sky behind the text. */}
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(12,21,27,0.78)_0%,rgba(12,21,27,0.5)_34%,transparent_62%)] md:bg-[linear-gradient(180deg,rgba(12,21,27,0.62)_0%,transparent_32%)]" />
         </div>
       )}
 
       <div className="relative mx-auto flex min-h-[100dvh] max-w-[1560px] flex-col px-gutter pb-8 pt-28 md:pb-10 md:pt-36">
-        <Link to="/properties" className="group inline-flex min-h-11 w-fit items-center gap-3 font-body text-[12px] font-bold uppercase tracking-[0.16em] text-white/70 transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
-          <span className="transition-transform duration-300 group-hover:-translate-x-1">←</span>
-          All properties
-        </Link>
+        {/* Breadcrumb trail, mirrored by the BreadcrumbList in
+            usePropertyHead. It replaces the old "← All properties" link,
+            which the middle crumb still is. */}
+        <nav aria-label="Breadcrumb">
+          <ol className="flex flex-wrap items-center gap-x-2.5 font-body text-[12px] font-bold uppercase tracking-[0.16em] text-white/70">
+            {[
+              ['Home', '/'],
+              ['Properties', '/properties'],
+            ].map(([label, href]) => (
+              <li key={href} className="flex items-center gap-2.5">
+                <Link to={href} className="inline-flex min-h-11 items-center transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
+                  {label}
+                </Link>
+                <span aria-hidden className="text-white/40">›</span>
+              </li>
+            ))}
+            <li aria-current="page" className="text-white">{property.name}</li>
+          </ol>
+        </nav>
 
         <div className="mt-auto grid items-end gap-12 pb-7 lg:grid-cols-[minmax(0,1fr)_21rem] lg:gap-20">
           <div>
-            <p data-property-kicker className="font-body text-[12px] font-bold uppercase tracking-[0.2em] text-white/65">
-              {[property.category, property.address].filter(Boolean).join(' · ')}
+            <p data-property-kicker className="font-body text-[11px] font-bold uppercase tracking-[0.14em] text-white/65 sm:text-[12px] sm:tracking-[0.2em]">
+              {/* `detail.kicker` when the line needs to say more than the
+                  category, which also drives the listing filters and so
+                  can't simply be renamed. */}
+              {property.detail?.kicker || [property.category, property.address].filter(Boolean).join(' · ')}
             </p>
             <h1
               data-property-title
               style={{ viewTransitionName: `property-title-${property.slug}` }}
               className="mt-5 max-w-[14ch] text-balance font-display font-bold leading-[0.9] tracking-[-0.055em] [font-size:clamp(2.35rem,11vw,7rem)]"
             >
-              {words.map((word, index) => <span key={`${word}-${index}`} className="mr-[0.2em] inline-block overflow-hidden align-top"><span className="inline-block">{word}</span></span>)}
+              {/* The space between words is a real one, not only the margin:
+                  without it the heading's text — what crawlers and screen
+                  readers get — was "CentroPlaza". It trails inside the
+                  inline-block, where it collapses and costs no width. */}
+              {words.map((word, index) => <span key={`${word}-${index}`} className="mr-[0.2em] inline-block overflow-hidden align-top"><span className="inline-block">{word}</span>{index < words.length - 1 ? ' ' : ''}</span>)}
             </h1>
             {/* Phase switch. Sits directly under the title because it belongs
                 to it — these are two records describing one development, and

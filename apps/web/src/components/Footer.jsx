@@ -1,11 +1,11 @@
 import { useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import { useSectionNav } from '../hooks/useSectionNav'
 import { lenis } from '../hooks/useSmoothScroll'
-import { useSection, useListings } from '../context/ContentContext'
+import { useSection, useListings, useProperty } from '../context/ContentContext'
 import { renderEmphasis } from '../lib/emphasis'
 import { organizationSchema } from '../lib/structuredData'
 import SocialIcon from './SocialIcon'
@@ -120,7 +120,23 @@ export default function Footer() {
     addressStreet, addressLocality, addressRegion, addressPostalCode,
     legalLinks, licenseLabel, licenseNumber, backToTopLabel,
   } = footer
-  const cta = useSection('cta_home')
+  const homeCta = useSection('cta_home')
+  const detailCopy = useSection('property_detail_page')
+  const { pathname } = useLocation()
+  // A property page used to end on its own "Interested in {name}?" band and
+  // then this panel straight after it — two closing asks in a row, both to
+  // /contact. The page's band is gone; on a property page this panel carries
+  // its copy instead, so the ask stays specific to the listing.
+  const current = useProperty(pathname.match(/^\/properties\/([^/]+)\/?$/)?.[1])
+  const soldPct = current?.buildings > 0 ? Math.round((current.sold / current.buildings) * 100) : 0
+  const cta = current
+    ? {
+        heading: detailCopy.closingHeading.replace('{name}', current.name),
+        paragraph: current.detail?.closing?.body || detailCopy.closingParagraph.replace('{soldPct}', soldPct),
+        ctaLabel: detailCopy.closingCtaLabel,
+        ctaHref: '/contact',
+      }
+    : homeCta
   const { cities } = useSection('texas_map')
   // Developments, not records: the portfolio links, the map's pins and the
   // structured data each name a phased development once.

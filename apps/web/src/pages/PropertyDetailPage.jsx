@@ -9,12 +9,16 @@ import PrimePill from '../components/PrimePill'
 import FloorPlanSection from '../components/FloorPlanSection'
 import SiteModelSection from '../components/SiteModelSection'
 import { hasSiteModel } from '../lib/siteModel'
-import { sized } from '../lib/images'
+import { imageAlt, sized } from '../lib/images'
+import { coverImage } from '../lib/covers'
+import { usePropertyHead } from '../hooks/usePropertyHead'
+import Prose from '../components/Prose'
+import PropertyPricingTables from '../components/PropertyPricingTables'
+import VideoFacade from '../components/VideoFacade'
 import { scrollToElement } from '../lib/scrollToElement'
 import PropertyHero from '../components/PropertyHero'
 import PropertyGallery from '../components/PropertyGallery'
 import PropertyDetailNav from '../components/PropertyDetailNav'
-import { youtubeEmbedUrl } from '../lib/video'
 import { buildingFromResourceLabel } from '../lib/investment'
 import { resourceKind } from '../lib/resourceKinds'
 import { marketplaceLogo } from '../lib/marketplaceLogos'
@@ -51,6 +55,9 @@ const HIGHLIGHT_ICONS = [
   [/\b(premium|feature|balcon|glass|finish)\b/i, 'M12 3l2.2 5.6L20 10l-4.4 3.4L16.8 19 12 16l-4.8 3 1.2-5.6L4 10l5.8-1.4z'],
   [/\b(traffic|location|road|access|highway|hwy)\b/i, 'M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11zM12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z'],
   [/\b(park|vehicle|car)\b/i, 'M3 13l2-6h14l2 6v6h-3v-2H6v2H3zM7 16h.01M17 16h.01'],
+  [/\b(own|lease|buy|sale|invest\w*)\b/i, 'M14 7a4 4 0 1 1-3.7 5.5L3 20v-3h2v-2h2l2.3-2.3A4 4 0 0 1 14 7zM15.5 8.5h.01'],
+  [/\b(demographic\w*|household\w*|population|people)\b/i, 'M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3 20a6 6 0 0 1 12 0M16 11a2.5 2.5 0 1 0 0-5M17.5 20a5 5 0 0 0-2.5-4.3'],
+  [/\b(zoning|zoned|zone|permit\w*)\b/i, 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z'],
 ]
 const HIGHLIGHT_FALLBACK = 'M12 4l8 8-8 8-8-8 8-8Z'
 
@@ -86,6 +93,7 @@ export default function PropertyDetailPage() {
   const [searchParams] = useSearchParams()
   const [tab, setTab] = useState(0)
   const [openArea, setOpenArea] = useState(0)
+  usePropertyHead(property)
 
   // A unit link from the homepage arrives as `?building=…&unit=…`. On the
   // per-building path the building is a tab, so it has to be opened here
@@ -164,9 +172,55 @@ export default function PropertyDetailPage() {
   // Use several gallery frames so the overview feels like a property tour
   // rather than a single hero followed by an empty reserved area.
   const overviewImages = gallery.filter((src) => src !== property.image).slice(0, PROPERTY_GALLERY_LIMIT)
+  // The hero and the overview mosaic have shown these already. Every later
+  // section draws on what's left, so the same two photographs no longer turn
+  // up four times down one page.
+  const shown = new Set([coverImage(property, 'detailHero'), property.image, ...overviewImages])
+  const unseen = gallery.filter((src) => !shown.has(src))
+  // Tenants' own storefronts where the unit records carry them — that is what
+  // "businesses already open" means — and unseen gallery frames otherwise.
+  const storefrontUnits = (d?.floorPlans?.buildings ?? [])
+    .flatMap((b) => b.unitList ?? [])
+    .filter((u) => u.tenant && u.status !== 'available' && u.images?.[0])
+  const storefronts = [...new Set(storefrontUnits.map((u) => u.images[0]))]
+  const establishedImages = (storefronts.length >= 4 ? storefronts : unseen).slice(0, 4)
+  // These cards are photographs only, so the alt is all that says whose shop
+  // it is. A leased unit's `tenant` is the business trading there; a sold
+  // unit's is its owner — often a private person — so that one is never shown
+  // and the card falls back to the unit label.
+  const establishedAlt = (src) => {
+    const unit = storefrontUnits.find((u) => u.images[0] === src)
+    if (unit?.status === 'leased') return `${unit.tenant} at ${property.name}`
+    return (
+      imageAlt(property, src) ||
+      `Storefront at ${property.name}${unit?.label ? `, unit ${unit.label}` : ''}`
+    )
+  }
+  const posters = unseen.filter((src) => !establishedImages.includes(src))
   // Guarded: a property with no buildings yet would divide 0 by 0 and render
   // "(NaN% currently reserved.)" in the enquiry copy.
   const soldPct = property.buildings > 0 ? Math.round((property.sold / property.buildings) * 100) : 0
+  // Unit counts in CMS copy come from the same three fields as the hero's
+  // availability strip — the totals the Prime Tracker sync writes — so a
+  // figure typed into a stat can no longer disagree with the strip.
+  const unitTokens = (text) =>
+    String(text ?? '')
+      .replace('{totalUnits}', property.buildings ?? '')
+      .replace('{availableUnits}', property.available ?? '')
+      .replace('{reservedUnits}', property.sold ?? '')
+  const floorIntro = d?.floorPlans?.intro?.heading && (
+    // Uncapped, like the plan and rail beneath it: capped to 1560 it started
+    // 80px right of the content it introduces on a 1920 screen.
+    <div className="mb-10 pt-8 md:mb-12 md:pt-12">
+      <h2 className="max-w-[24ch] text-balance font-display font-bold leading-[1.08] tracking-[-0.02em] text-content [font-size:clamp(1.9rem,3.4vw,3rem)]">
+        {d.floorPlans.intro.heading}
+      </h2>
+      <div className="mt-6 max-w-[68ch] font-body text-[16px] leading-[1.7] text-content/70">
+        <Prose text={d.floorPlans.intro.body} />
+      </div>
+    </div>
+  )
+  const faqs = (d?.faqs ?? []).filter((f) => f?.question && f?.answer)
 
   return (
     <div>
@@ -229,12 +283,14 @@ export default function PropertyDetailPage() {
                     key={`${image}-${index}`}
                     variants={rise}
                     className={`h-48 min-h-0 overflow-hidden rounded-panel border border-line bg-surface-alt lg:h-auto ${
-                      index === 0 ? 'sm:col-span-2 lg:col-span-2 lg:row-span-2' : ''
+                      // The lead frame alone on a phone: three stacked photos
+                      // put the copy 380px further down the tallest section.
+                      index === 0 ? 'sm:col-span-2 lg:col-span-2 lg:row-span-2' : 'hidden sm:block'
                     }`}
                   >
                     <img
                       src={sized(image, index === 0 ? 'full' : 'card')}
-                      alt=""
+                      alt={imageAlt(property, image)}
                       loading="lazy"
                       decoding="async"
                       className="h-full w-full object-cover transition-transform duration-700 ease-brand hover:scale-[1.04]"
@@ -288,7 +344,7 @@ export default function PropertyDetailPage() {
                   out. Only one `lg:mt-*` is ever written, because two would
                   resolve by stylesheet order rather than by the order they are
                   listed here. */}
-              <div className="grid gap-x-16 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.25fr)] lg:items-start">
+              <div className="grid gap-x-16 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.35fr)] lg:items-start">
                 {d.overview.eyebrow && (
                   <motion.div variants={rise} className="lg:col-start-1 lg:row-start-1">
                     <SectionTag>{d.overview.eyebrow}</SectionTag>
@@ -305,10 +361,19 @@ export default function PropertyDetailPage() {
                     `text-balance` rather than a `ch` cap: the heading is CMS
                     copy of unknown length, and a hard measure that lands two
                     tidy lines on the seeded string turns a longer one into a
-                    stub. */}
+                    stub.
+
+                    A sentence-length heading (the SEO copy runs ~80 characters,
+                    twice any other on the page) drops a step and widens its
+                    measure: at 3rem in 22ch it was a five-line wall beside the
+                    body. Short headings keep the section size. */}
                 <motion.h2
                   variants={rise}
-                  className={`max-w-[22ch] text-balance font-display font-bold leading-[1.08] tracking-[-0.02em] text-content [font-size:clamp(1.9rem,3.4vw,3rem)] lg:col-start-1 lg:row-start-2 ${
+                  className={`text-balance font-display font-bold leading-[1.08] tracking-[-0.02em] text-content lg:col-start-1 lg:row-start-2 ${
+                    d.overview.heading.length > 60
+                      ? 'max-w-[30ch] [font-size:clamp(1.6rem,2.3vw,2.25rem)]'
+                      : 'max-w-[22ch] [font-size:clamp(1.9rem,3.4vw,3rem)]'
+                  } ${
                     d.overview.eyebrow ? 'mt-4' : ''
                   }`}
                 >
@@ -317,15 +382,18 @@ export default function PropertyDetailPage() {
                 {/* 62ch, not the 34rem this carried: that measure was set when
                     the paragraph ran under the heading in a single column, and
                     in a column of its own it left the text stopping halfway
-                    across its own half of the panel. */}
-                <motion.p
+                    across its own half of the panel. From lg the column itself
+                    is the measure, and the grid gives it the larger share: at
+                    three paragraphs the body, not the heading, sets the
+                    panel's height, so its width is what shortens the panel. */}
+                <motion.div
                   variants={rise}
-                  className={`mt-8 max-w-[62ch] font-body text-[17px] leading-[1.75] text-content/70 md:text-[18px] lg:col-start-2 lg:row-start-2 ${
+                  className={`mt-8 max-w-[62ch] lg:max-w-[80ch] font-body text-[17px] leading-[1.75] text-content/70 md:text-[18px] lg:col-start-2 lg:row-start-2 ${
                     d.overview.eyebrow ? 'lg:mt-4' : 'lg:mt-0'
                   }`}
                 >
-                  {d.overview.body}
-                </motion.p>
+                  <Prose text={d.overview.body} />
+                </motion.div>
               </div>
 
               {/* The figures and the call to action, on one row under a rule,
@@ -363,7 +431,7 @@ export default function PropertyDetailPage() {
                     figures or any length of label. */}
                 {d.overview.stats?.length > 0 && (
                   <div className="w-full sm:flex sm:w-auto sm:flex-wrap sm:items-start sm:gap-x-14">
-                    {d.overview.stats.map((s, i) => (
+                    {d.overview.stats.map((stat) => ({ ...stat, value: unitTokens(stat.value) })).filter((s) => s.value).map((s, i) => (
                       <motion.div
                         key={`${s.label ?? ''}-${i}`}
                         variants={rise}
@@ -427,7 +495,7 @@ export default function PropertyDetailPage() {
                   >
                     <img
                       src={logo}
-                      alt=""
+                      alt={imageAlt(property, logo)}
                       loading="lazy"
                       decoding="async"
                       className="max-h-[58%] max-w-[78%] object-contain transition-transform duration-300 group-hover:scale-[1.04]"
@@ -443,7 +511,7 @@ export default function PropertyDetailPage() {
       {/* Property highlights */}
       {d?.highlights?.heading && (
         <section id="spaces" data-band="light" className="scroll-mt-24 bg-surface-alt px-gutter pb-8 pt-16 md:pb-10 md:pt-20">
-          <div className="grid gap-12 lg:grid-cols-[1fr_1.1fr] lg:gap-16">
+          <div className="mx-auto grid max-w-[1560px] gap-12 lg:grid-cols-[1fr_1.1fr] lg:gap-16">
             <motion.div
               variants={stagger}
               initial="hidden"
@@ -462,12 +530,14 @@ export default function PropertyDetailPage() {
               >
                 {d.highlights.heading}
               </motion.h2>
-              <motion.p
+              <motion.div
                 variants={rise}
-                className="mt-6 max-w-[48ch] font-body text-[16px] leading-[1.7] text-content/70"
+                // 48ch left the paragraph stopping at ~60% of its column on a
+                // wide screen; from lg the column is wide enough to carry more.
+                className="mt-6 max-w-[48ch] font-body text-[16px] leading-[1.7] text-content/70 lg:max-w-[72ch]"
               >
-                {d.highlights.body}
-              </motion.p>
+                <Prose text={d.highlights.body} />
+              </motion.div>
               {d.highlights.bigStats?.length > 0 && (
                 <motion.div variants={rise} className="mt-10 flex flex-wrap gap-12">
                   {d.highlights.bigStats.map((s, i) => (
@@ -535,7 +605,11 @@ export default function PropertyDetailPage() {
           id="floor-plans"
           className="scroll-mt-24 bg-surface-alt px-gutter pb-16 pt-8 md:pb-20 md:pt-10"
         >
-          <SiteModelSection property={property} />
+          <div className="mx-auto max-w-[1560px]">
+            {floorIntro}
+            <SiteModelSection property={property} />
+            <PropertyPricingTables pricing={d?.pricing} />
+          </div>
         </section>
       ) : d?.floorPlans?.buildings?.length > 0 && (
         <section
@@ -543,70 +617,75 @@ export default function PropertyDetailPage() {
           id="floor-plans"
           className="scroll-mt-24 bg-surface-alt px-gutter pb-16 pt-8 md:pb-20 md:pt-10"
         >
-          {/* `floorPlans.heading` and `.body` are deliberately not rendered.
-              The design opens this section on the figures, and the stat cards
-              plus the building tabs already say what it is. The fields remain in
-              the CMS and on the record — editing them simply has no effect on
-              this page any more. */}
+          <div className="mx-auto max-w-[1560px]">
+            {/* `floorPlans.heading` and `.body` are deliberately not rendered.
+                The design opens this section on the figures, and the stat cards
+                plus the building tabs already say what it is. The fields remain in
+                the CMS and on the record — editing them simply has no effect on
+                this page any more. A property that wants a heading here sets
+                `floorPlans.intro` instead, which no stale record carries. */}
+            {floorIntro}
 
-          {/* Four separate cards rather than the joined strip Overview uses.
-              These are properties of the building currently selected below, so
-              they have to look like they can change when the tab does — a
-              welded strip reads as a fixed masthead. `Building No.` is dropped:
-              the tabs directly beneath already name the building. */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {[
-              ['Total Area', `${d.floorPlans.buildings[tab].area} sq ft`],
-              ['Total Units', d.floorPlans.buildings[tab].units],
-              ['Available Units', d.floorPlans.buildings[tab].available],
-              ['Parking', d.floorPlans.buildings[tab].parking],
-            ].map(([label, value]) => (
-              <div
-                key={label}
-                className="min-w-0 rounded-2xl border border-[var(--color-line)] bg-surface px-6 py-6 shadow-[0_18px_45px_-38px_rgba(20,28,33,.45)] md:px-7"
-              >
-                <span className="font-body text-[11px] font-bold uppercase tracking-[0.16em] text-content/70">
-                  {label}
-                </span>
-                <p className="mt-3 font-display text-[clamp(1.75rem,2.4vw,2.4rem)] font-bold uppercase leading-none tracking-[-0.025em] text-content">
-                  {value}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          {d.floorPlans.buildings.length > 1 && (
-            <div className="mt-4 flex max-w-full justify-start gap-2 overflow-x-auto pb-1">
-              {d.floorPlans.buildings.map((b, i) => (
-                <button
-                  key={b.building}
-                  type="button"
-                  onClick={() => setTab(i)}
-                  aria-pressed={i === tab}
-                  className={`min-h-12 shrink-0 rounded-xl border bg-surface px-5 py-3 font-body text-[15px] font-medium shadow-[0_12px_24px_-18px_rgba(20,28,33,.65)] transition-all duration-300 ${
-                    i === tab
-                      ? 'border-accent text-accent ring-1 ring-accent/20'
-                      : 'border-[var(--color-line)] text-content hover:-translate-y-0.5 hover:border-content/30'
-                  }`}
+            {/* Four separate cards rather than the joined strip Overview uses.
+                These are properties of the building currently selected below, so
+                they have to look like they can change when the tab does — a
+                welded strip reads as a fixed masthead. `Building No.` is dropped:
+                the tabs directly beneath already name the building. */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              {[
+                ['Total Area', `${d.floorPlans.buildings[tab].area} sq ft`],
+                ['Total Units', d.floorPlans.buildings[tab].units],
+                ['Available Units', d.floorPlans.buildings[tab].available],
+                ['Parking', d.floorPlans.buildings[tab].parking],
+              ].map(([label, value]) => (
+                <div
+                  key={label}
+                  className="min-w-0 rounded-2xl border border-[var(--color-line)] bg-surface px-6 py-6 shadow-[0_18px_45px_-38px_rgba(20,28,33,.45)] md:px-7"
                 >
-                  {b.building}
-                </button>
+                  <span className="font-body text-[11px] font-bold uppercase tracking-[0.16em] text-content/70">
+                    {label}
+                  </span>
+                  <p className="mt-3 font-display text-[clamp(1.75rem,2.4vw,2.4rem)] font-bold uppercase leading-none tracking-[-0.025em] text-content">
+                    {value}
+                  </p>
+                </div>
               ))}
             </div>
-          )}
-          {/* Interactive floor plan, or a placeholder until one is uploaded */}
-          <div className="mt-3">
-            {d.floorPlans.buildings[tab].planImage ||
-            d.floorPlans.buildings[tab].model?.url ||
-            d.floorPlans.buildings[tab].unitList?.length ? (
-              <FloorPlanSection key={tab} building={d.floorPlans.buildings[tab]} propertyId={property.id} />
-            ) : (
-              <div className="flex h-[280px] items-center justify-center rounded-2xl border border-[var(--color-line)] bg-surface-alt md:h-[380px]">
-                <span className="eyebrow text-content/70">
-                  Floor plan — {d.floorPlans.buildings[tab].building}
-                </span>
+
+            {d.floorPlans.buildings.length > 1 && (
+              <div className="mt-4 flex max-w-full justify-start gap-2 overflow-x-auto pb-1">
+                {d.floorPlans.buildings.map((b, i) => (
+                  <button
+                    key={b.building}
+                    type="button"
+                    onClick={() => setTab(i)}
+                    aria-pressed={i === tab}
+                    className={`min-h-12 shrink-0 rounded-xl border bg-surface px-5 py-3 font-body text-[15px] font-medium shadow-[0_12px_24px_-18px_rgba(20,28,33,.65)] transition-all duration-300 ${
+                      i === tab
+                        ? 'border-accent text-accent ring-1 ring-accent/20'
+                        : 'border-[var(--color-line)] text-content hover:-translate-y-0.5 hover:border-content/30'
+                    }`}
+                  >
+                    {b.building}
+                  </button>
+                ))}
               </div>
             )}
+            {/* Interactive floor plan, or a placeholder until one is uploaded */}
+            <div className="mt-3">
+              {d.floorPlans.buildings[tab].planImage ||
+              d.floorPlans.buildings[tab].model?.url ||
+              d.floorPlans.buildings[tab].unitList?.length ? (
+                <FloorPlanSection key={tab} building={d.floorPlans.buildings[tab]} propertyId={property.id} />
+              ) : (
+                <div className="flex h-[280px] items-center justify-center rounded-2xl border border-[var(--color-line)] bg-surface-alt md:h-[380px]">
+                  <span className="eyebrow text-content/70">
+                    Floor plan — {d.floorPlans.buildings[tab].building}
+                  </span>
+                </div>
+              )}
+            </div>
+            <PropertyPricingTables pricing={d?.pricing} />
           </div>
         </section>
       )}
@@ -623,22 +702,32 @@ export default function PropertyDetailPage() {
               1730px the photograph and the copy pulled apart to the window
               edges while the section above and the section below both stopped
               at 1560 — the page looked like it lost its margins for one block. */}
-          <div className="mx-auto grid max-w-[1560px] gap-12 lg:grid-cols-[1.1fr_1fr] lg:gap-20">
+          {/* `grid-cols-1` is `minmax(0, 1fr)`: with no column declared below
+              `lg`, the implicit `auto` track grew to the gallery's thumbnail
+              strip — 135 thumbnails wide — and the whole page scrolled
+              sideways on a phone. */}
+          <div className="mx-auto grid max-w-[1560px] grid-cols-1 gap-12 lg:grid-cols-[1.1fr_1fr] lg:gap-20">
             {/* Every photograph the property holds, not the first five.
                 This was a still frame with `gallery.slice(0, 5)` under it,
                 which on Centro Plaza put 5 of 135 images on the page and left
                 the other 130 reachable only through the admin. */}
-            <PropertyGallery images={gallery} label={property.name} />
+            {/* Opens on a photograph the page hasn't shown yet; the ones the
+                hero and mosaic used move to the end rather than leave. */}
+            <PropertyGallery
+              images={[...unseen, ...gallery.filter((src) => shown.has(src))]}
+              label={property.name}
+              altFor={(src) => imageAlt(property, src)}
+            />
 
             <div className="flex min-w-0 flex-col justify-center lg:pl-4">
               <SectionTag>{d.location.eyebrow}</SectionTag>
               <h2 className="mt-6 font-display text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] text-content md:text-[3rem]">
                 {d.location.heading}
               </h2>
-              <p className="mt-3 font-display text-lg font-bold text-accent">{d.location.sub}</p>
-              <p className="mt-6 max-w-[58ch] font-body text-[16px] leading-[1.7] text-content/70">
-                {d.location.body}
-              </p>
+              {d.location.sub && <p className="mt-3 font-display text-lg font-bold text-accent">{d.location.sub}</p>}
+              <div className="mt-6 max-w-[58ch] font-body text-[16px] leading-[1.7] text-content/70">
+                <Prose text={d.location.body} />
+              </div>
             </div>
           </div>
         </section>
@@ -647,50 +736,54 @@ export default function PropertyDetailPage() {
       {/* ── Established sites gallery — light intermission ────── */}
       {/* No top padding: this continues the section above on the same ground
           rather than starting a new one. */}
-      {d?.establishedSites?.heading && gallery.length > 0 && (
+      {/* On `establishedImages`, not the gallery: the hero and the mosaic
+          take the first frames, so a small gallery can leave nothing here. */}
+      {d?.establishedSites?.heading && establishedImages.length > 0 && (
         <section data-band="light" className="bg-base px-gutter pb-20 md:pb-28">
-          <SectionTag>{t.establishedSitesLabel}</SectionTag>
-          <h2 className="mt-6 max-w-[24ch] font-display text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] text-content md:text-[3rem]">
-            {d.establishedSites.heading}
-          </h2>
-          {/* Hovering a card takes it to ~40vw and the other three give up the
-              width to pay for it, so nothing is ever covered: the row is a flex
-              strip from md up and the hovered card's `flex-grow` goes 1 → 2.6.
-              At 2.6 of 5.6 total it takes 46% of the free space, which lands
-              between 37vw and 40vw from `lg` to `2xl` — the gaps and gutters
-              are fixed pixels, so the share drifts slightly with the viewport.
+          <div className="mx-auto max-w-[1560px]">
+            <SectionTag>{t.establishedSitesLabel}</SectionTag>
+            <h2 className="mt-6 max-w-[24ch] font-display text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] text-content md:text-[3rem]">
+              {d.establishedSites.heading}
+            </h2>
+            {/* Hovering a card takes it to ~40vw and the other three give up the
+                width to pay for it, so nothing is ever covered: the row is a flex
+                strip from md up and the hovered card's `flex-grow` goes 1 → 2.6.
+                At 2.6 of 5.6 total it takes 46% of the free space, which lands
+                between 37vw and 40vw from `lg` to `2xl` — the gaps and gutters
+                are fixed pixels, so the share drifts slightly with the viewport.
 
-              The row's height never changes, which is what keeps every card on
-              the one baseline: the open card gets wider, not taller.
+                The row's height never changes, which is what keeps every card on
+                the one baseline: the open card gets wider, not taller.
 
-              The photo scales *inside* the card as it opens. Growing the frame
-              alone only uncrops the picture — the zoom is what makes it read as
-              the card coming forward.
+                The photo scales *inside* the card as it opens. Growing the frame
+                alone only uncrops the picture — the zoom is what makes it read as
+                the card coming forward.
 
-              Below md it stays the two-column grid: a quarter-width card is
-              unusable on a phone and there is no hover there to open it. */}
-          <div className="mt-12 grid grid-cols-2 gap-4 md:flex md:h-[26rem] md:gap-5">
-            {gallery.slice(0, 4).map((src, i) => (
-              <div
-                key={i}
-                // `flex-grow` is the animated property, not `transform`. Every
-                // `scale-*` utility in Tailwind v4 compiles to the standalone
-                // `scale:` property rather than into `transform:`, so a
-                // `transition-[transform]` on a scaled element animates nothing
-                // and the change lands in a single frame.
-                className="group overflow-hidden rounded-2xl bg-surface-alt transition-[flex-grow] duration-700 ease-brand motion-reduce:transition-none md:min-w-0 md:flex-1 md:hover:flex-[2.6]"
-              >
-                <img
-                  // 1600 rather than the `card` 1200: open, this is the widest
-                  // card on the site, and at 2x on a wide display 1200 is soft.
-                  src={sized(src, 1600)}
-                  alt=""
-                  loading="lazy"
-                  decoding="async"
-                  className="h-48 w-full object-cover transition-[scale] duration-700 ease-brand group-hover:scale-[1.06] motion-reduce:transition-none md:h-full"
-                />
-              </div>
-            ))}
+                Below md it stays the two-column grid: a quarter-width card is
+                unusable on a phone and there is no hover there to open it. */}
+            <div className="mt-12 grid grid-cols-2 gap-4 md:flex md:h-[26rem] md:gap-5">
+              {establishedImages.map((src, i) => (
+                <div
+                  key={i}
+                  // `flex-grow` is the animated property, not `transform`. Every
+                  // `scale-*` utility in Tailwind v4 compiles to the standalone
+                  // `scale:` property rather than into `transform:`, so a
+                  // `transition-[transform]` on a scaled element animates nothing
+                  // and the change lands in a single frame.
+                  className="group overflow-hidden rounded-2xl bg-surface-alt transition-[flex-grow] duration-700 ease-brand motion-reduce:transition-none md:min-w-0 md:flex-1 md:hover:flex-[2.6]"
+                >
+                  <img
+                    // 1600 rather than the `card` 1200: open, this is the widest
+                    // card on the site, and at 2x on a wide display 1200 is soft.
+                    src={sized(src, 1600)}
+                    alt={establishedAlt(src)}
+                    loading="lazy"
+                    decoding="async"
+                    className="h-48 w-full object-cover transition-[scale] duration-700 ease-brand group-hover:scale-[1.06] motion-reduce:transition-none md:h-full"
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         </section>
       )}
@@ -703,22 +796,24 @@ export default function PropertyDetailPage() {
           Deliberately carries no data-band, so the navbar goes light over it. */}
       {d?.extFacade?.length > 0 && (
         <section id="media" className="scroll-mt-24 bg-void px-gutter py-20 text-bone md:py-28">
-          <SectionTag tone="inv">{t.extFacadeLabel}</SectionTag>
-          <div className="mt-10 grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-5">
-            {d.extFacade.map(
-              (src, i) =>
-                src && (
-                  <div key={i} className="group overflow-hidden rounded-2xl bg-carbon">
-                    <img
-                      src={sized(src, 'card')}
-                      alt=""
-                      loading="lazy"
-                      decoding="async"
-                      className="h-48 w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04] md:h-64"
-                    />
-                  </div>
-                )
-            )}
+          <div className="mx-auto max-w-[1560px]">
+            <SectionTag tone="inv">{t.extFacadeLabel}</SectionTag>
+            <div className="mt-10 grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-5">
+              {d.extFacade.map(
+                (src, i) =>
+                  src && (
+                    <div key={i} className="group overflow-hidden rounded-2xl bg-carbon">
+                      <img
+                        src={sized(src, 'card')}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        className="h-48 w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04] md:h-64"
+                      />
+                    </div>
+                  )
+              )}
+            </div>
           </div>
         </section>
       )}
@@ -726,63 +821,70 @@ export default function PropertyDetailPage() {
       {/* ── Neighborhoods + map ──────────────────────────────── */}
       {d?.neighborhoods?.items?.length > 0 && (
         <section data-band="light" className="bg-surface-alt px-gutter py-20 md:py-28">
-          <SectionTag>{t.neighborhoodsLabel}</SectionTag>
-          <h2 className="mt-6 font-display text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] text-content md:text-[3rem]">
-            {t.neighborhoodsHeading}
-          </h2>
-
-          <div className="mt-12 grid gap-10 lg:grid-cols-[1fr_1.2fr] lg:gap-16">
-            {/* Accordion */}
-            <div className="divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]">
-              {d.neighborhoods.items.map((n, i) => {
-                const open = i === openArea
-                return (
-                  <button
-                    key={n.name}
-                    type="button"
-                    onClick={() => setOpenArea(open ? -1 : i)}
-                    className="flex w-full flex-col items-start gap-2 py-5 text-left"
-                  >
-                    <span className="flex w-full items-center justify-between gap-4">
-                      <span className="font-display text-lg font-bold text-content">{n.name}</span>
-                      {/* accent, not the saffron this was: ember is gone from
-                          the light system, and it is the only affordance
-                          telling you the row opens. */}
-                      <span
-                        aria-hidden
-                        className={`text-accent transition-transform duration-300 ${open ? 'rotate-45' : ''}`}
-                      >
-                        +
-                      </span>
-                    </span>
-                    {open && n.note && (
-                      <span className="max-w-[46ch] font-body text-[15px] leading-[1.7] text-content/70">
-                        {n.note}
-                      </span>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-
-            {/* Map */}
-            {d.neighborhoods.mapQuery && (
-              <div className="h-[300px] overflow-hidden rounded-2xl border border-[var(--color-line)] md:h-[380px]">
-                <iframe
-                  title="Location map"
-                  src={`https://www.google.com/maps?q=${encodeURIComponent(d.neighborhoods.mapQuery)}&output=embed`}
-                  // Google serves a light map and there is no way to ask it for
-                  // a dark one, so the inversion is how this used to match a
-                  // dark section. Desaturated only on the light ground, where
-                  // the map is already the right value, and inverted just in
-                  // dark mode — a white rectangle there would be the brightest
-                  // thing on the page.
-                  className="h-full w-full grayscale dark:invert-[0.92]"
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                />
+          <div className="mx-auto max-w-[1560px]">
+            <SectionTag>{t.neighborhoodsLabel}</SectionTag>
+            <h2 className="mt-6 font-display text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] text-content md:text-[3rem]">
+              {d.neighborhoods.heading || t.neighborhoodsHeading}
+            </h2>
+            {d.neighborhoods.intro && (
+              <div className="mt-6 max-w-[68ch] font-body text-[16px] leading-[1.7] text-content/70">
+                <Prose text={d.neighborhoods.intro} />
               </div>
             )}
+
+            <div className="mt-12 grid gap-10 lg:grid-cols-[1fr_1.2fr] lg:gap-16">
+              {/* Accordion */}
+              <div className="divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]">
+                {d.neighborhoods.items.map((n, i) => {
+                  const open = i === openArea
+                  return (
+                    <button
+                      key={n.name}
+                      type="button"
+                      onClick={() => setOpenArea(open ? -1 : i)}
+                      className="flex w-full flex-col items-start gap-2 py-5 text-left"
+                    >
+                      <span className="flex w-full items-center justify-between gap-4">
+                        <span className="font-display text-lg font-bold text-content">{n.name}</span>
+                        {/* accent, not the saffron this was: ember is gone from
+                            the light system, and it is the only affordance
+                            telling you the row opens. */}
+                        <span
+                          aria-hidden
+                          className={`text-accent transition-transform duration-300 ${open ? 'rotate-45' : ''}`}
+                        >
+                          +
+                        </span>
+                      </span>
+                      {open && n.note && (
+                        <span className="max-w-[46ch] font-body text-[15px] leading-[1.7] text-content/70">
+                          {n.note}
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Map */}
+              {d.neighborhoods.mapQuery && (
+                <div className="h-[300px] overflow-hidden rounded-2xl border border-[var(--color-line)] md:h-[380px]">
+                  <iframe
+                    title="Location map"
+                    src={`https://www.google.com/maps?q=${encodeURIComponent(d.neighborhoods.mapQuery)}&output=embed`}
+                    // Google serves a light map and there is no way to ask it for
+                    // a dark one, so the inversion is how this used to match a
+                    // dark section. Desaturated only on the light ground, where
+                    // the map is already the right value, and inverted just in
+                    // dark mode — a white rectangle there would be the brightest
+                    // thing on the page.
+                    className="h-full w-full grayscale dark:invert-[0.92]"
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                  />
+                </div>
+              )}
+            </div>
           </div>
         </section>
       )}
@@ -790,36 +892,68 @@ export default function PropertyDetailPage() {
       {/* ── Videos ───────────────────────────────────────────── */}
       {d?.videos?.length > 0 && (
         <section id="video" data-band="light" className="scroll-mt-24 bg-base px-gutter py-20 md:py-28">
-          <SectionTag>{t.videosLabel}</SectionTag>
-          <h2 className="mt-6 font-display text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] text-content md:text-[3rem]">
-            {t.videosHeading}
-          </h2>
-          <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2">
-            {d.videos.map(
-              (v, i) =>
-                v.url && (
-                  <div
-                    key={i}
-                    className="relative aspect-video overflow-hidden rounded-2xl border border-[var(--color-line)] bg-surface-alt"
-                  >
-                    <iframe
-                      title={`Property video ${i + 1}`}
-                      src={youtubeEmbedUrl(v.url)}
-                      className="h-full w-full"
-                      loading="lazy"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    />
-                  </div>
-                )
-            )}
+          <div className="mx-auto max-w-[1560px]">
+            <SectionTag>{t.videosLabel}</SectionTag>
+            <h2 className="mt-6 font-display text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] text-content md:text-[3rem]">
+              {d.videosHeading || t.videosHeading}
+            </h2>
+            <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2">
+              {d.videos.map(
+                (v, i) =>
+                  v.url && (
+                    <div
+                      key={i}
+                      className="relative aspect-video overflow-hidden rounded-2xl border border-[var(--color-line)] bg-surface-alt"
+                    >
+                      {/* A different photograph behind each, so two posters
+                          side by side don't read as the same video twice. */}
+                      <VideoFacade
+                        url={v.url}
+                        title={v.title || `${property.name} video ${i + 1}`}
+                        poster={v.poster || posters[i * 7] || gallery[i] || property.image}
+                      />
+                    </div>
+                  )
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ── FAQ ──────────────────────────────────────────────────
+          `<details>` rather than the button accordion Neighborhoods uses:
+          every answer stays in the document while closed, because the
+          FAQPage markup in usePropertyHead is built from this same list and
+          must describe text a visitor (and a crawler) can actually find. */}
+      {faqs.length > 0 && (
+        <section id="faq" data-band="light" className="scroll-mt-24 bg-base px-gutter py-20 md:py-28">
+          <div className="mx-auto grid max-w-[1560px] gap-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.25fr)] lg:gap-16">
+            <div>
+              <SectionTag>{t.faqLabel}</SectionTag>
+              <h2 className="mt-6 max-w-[20ch] text-balance font-display font-bold leading-[1.08] tracking-[-0.02em] text-content [font-size:clamp(1.9rem,3.4vw,3rem)]">
+                {d.faqHeading || t.faqHeading.replace('{name}', property.name)}
+              </h2>
+            </div>
+            <div className="divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]">
+              {faqs.map((f) => (
+                <details key={f.question} className="group py-5">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent [&::-webkit-details-marker]:hidden">
+                    <h3 className="font-display text-lg font-bold text-content">{f.question}</h3>
+                    <span aria-hidden className="text-accent transition-transform duration-300 group-open:rotate-45">
+                      +
+                    </span>
+                  </summary>
+                  <p className="mt-3 max-w-[62ch] font-body text-[15px] leading-[1.7] text-content/70">{f.answer}</p>
+                </details>
+              ))}
+            </div>
           </div>
         </section>
       )}
 
       {/* ── Resources ────────────────────────────────────────────
-          Last of the content sections, immediately before the closing
-          enquiry. These are the take-aways — flyers, the Crexi and
+          Last of the content sections, immediately before the footer's
+          enquiry panel. These are the take-aways — flyers, the Crexi and
           LoopNet listings — and they belong at the end, once the page has
           made its case. Opening the page on them sent a visitor off-site
           before they had seen the property.
@@ -980,57 +1114,6 @@ export default function PropertyDetailPage() {
             </section>
           )
         })()}
-
-      {/* ── CTA ──────────────────────────────────────────────── */}
-      {/* ── Closing anchor ───────────────────────────────────────
-          The band itself, not a card sitting on one. This was a dark panel
-          inset on a ground of almost the same value, separated by a hairline —
-          which read as a leftover component rather than the end of the page.
-          Full-bleed, it closes the page the way the About page's final band
-          does, and it is the second and last of the two dark anchors.
-
-          No data-band, so the navbar keeps its light chrome over it. */}
-      <section className="relative overflow-hidden bg-void px-gutter py-24 text-bone md:py-32">
-        {/* A single low breath of CG Blue behind the corner the eye leaves
-            from. Atmosphere rather than decoration: on a flat near-black this
-            wide it is the difference between a closing statement and a slab. */}
-        <div
-          aria-hidden
-          className="bleed-fill pointer-events-none"
-          style={{
-            background:
-              'radial-gradient(60% 70% at 100% 100%, rgba(0,115,164,0.22) 0%, rgba(0,115,164,0) 70%)',
-          }}
-        />
-
-        <div className="relative flex flex-col items-start gap-10 md:flex-row md:items-end md:justify-between">
-          <div>
-            <SectionTag tone="inv">{t.closingLabel}</SectionTag>
-            <h2 className="mt-6 max-w-[20ch] font-display text-[2rem] font-bold leading-[1.1] tracking-[-0.02em] md:text-[3rem]">
-              {t.closingHeading.replace('{name}', property.name)}
-            </h2>
-            <p className="mt-5 max-w-[52ch] font-body text-[16px] leading-[1.7] text-bone/70">
-              {t.closingParagraph.replace('{soldPct}', soldPct)}
-            </p>
-          </div>
-
-          {/* PrimePill rather than the accent PillButton: this is the site's
-              primary call to action and the one on the page that should look
-              like it. Its solid variant is built from fixed pigments — the
-              gradient and a white disc — so it is legible on this band in
-              either theme, where anything keyed to --color-accent would shift
-              underneath it. */}
-          <PrimePill
-            href="/contact"
-            onClick={(e) => {
-              e.preventDefault()
-              go('/contact')
-            }}
-          >
-            {t.closingCtaLabel}
-          </PrimePill>
-        </div>
-      </section>
     </div>
   )
 }

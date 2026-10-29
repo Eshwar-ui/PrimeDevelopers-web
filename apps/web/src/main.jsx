@@ -7,6 +7,19 @@ import { ContentProvider } from './context/ContentContext.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
 import { ThemeProvider } from './context/ThemeContext.jsx'
 import { startMeasurement } from './lib/firebase.js'
+import { isProductionHost } from './lib/site.js'
+
+// Every host but the production domain is a staging copy (CloudFront, the
+// Firebase previews, localhost) and has to stay out of search results. Written
+// before the first render so no page ever exists without it.
+// TODO: also send `X-Robots-Tag: noindex, nofollow` from the CloudFront
+// distribution — a header covers crawlers that never run this script.
+if (!isProductionHost()) {
+  const robots = document.createElement('meta')
+  robots.name = 'robots'
+  robots.content = 'noindex, nofollow'
+  document.head.appendChild(robots)
+}
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

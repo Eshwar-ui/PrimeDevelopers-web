@@ -9,22 +9,36 @@ import { WhatsappLogo } from '@phosphor-icons/react'
 import logoOnDark from '../assets/prime-logo.svg'
 import logoOnLight from '../assets/prime-logo-dark.svg'
 
-// Homepage section ids tracked for the scroll-spy active-link highlight —
-// structural, tied to actual DOM ids on the homepage, not admin-editable.
-const sections = ['about', 'properties']
-
-// The Expertise tab's four doors, hung off its own nav link the same way
-// `linksWithAcademy` hangs Learn off the admin's list below — structural
-// routing, not admin copy, so it lives here rather than in the CMS. Keyed on
-// `/enterprise` so it rides whatever the admin labels that link "Expertise"
-// or anything else.
-const EXPERTISE_LINK_TO = '/enterprise'
-const EXPERTISE_SECTIONS = [
-  { label: 'Interiors', to: '/enterprise/interiors' },
-  { label: 'Franchise', to: '/enterprise/franchise' },
-  { label: 'Collab', to: '/enterprise/collab' },
-  { label: 'Invest', to: '/enterprise/invest' },
+// The rail's shape is structural routing, not admin copy, so it lives here
+// rather than in the CMS: Properties · Expertise ▾ · News · About ▾, with Home
+// carried by the lockup. The admin's navbar links still supply the labels —
+// matched on `to` — so a renamed entry there keeps its name here. Expertise
+// opens on its four doors; About gathers every other page on the site.
+const NAV = [
+  { label: 'Properties', to: '/properties' },
+  {
+    label: 'Expertise',
+    to: '/enterprise',
+    children: [
+      { label: 'Interiors', to: '/enterprise/interiors' },
+      { label: 'Franchise', to: '/enterprise/franchise' },
+      { label: 'Collab', to: '/enterprise/collab' },
+      { label: 'Invest', to: '/enterprise/invest' },
+    ],
+  },
+  { label: 'News', to: '/news' },
+  {
+    label: 'About',
+    to: '/about',
+    children: [
+      { label: 'About us', to: '/about' },
+      { label: 'Learn', to: '/learn' },
+      { label: 'Contact', to: '/contact' },
+    ],
+  },
 ]
+
+const onRoute = (pathname, to) => pathname === to || pathname.startsWith(`${to}/`)
 
 function RollingNavLabel({ children }) {
   const layerClass =
@@ -51,21 +65,20 @@ export default function Navbar() {
   const { links } = nav
   const contact = useSection('contact_page')
   const { isDark } = useTheme()
-  const [active, setActive] = useState(null)
   const [overLight, setOverLight] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [whatsappOpen, setWhatsappOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
-  const [expertiseOpen, setExpertiseOpen] = useState(false)
+  // The `to` of whichever desktop dropdown is open, or null.
+  const [submenu, setSubmenu] = useState(null)
   // The mobile rail's own disclosure, separate from the desktop hover panel
-  // above: the four Expertise doors used to sit permanently unfurled under the
-  // link, which cost four lines of the overlay's height on every phone whether
-  // or not anyone wanted them. Collapsed by default, and pre-opened when you
-  // are already somewhere under /enterprise so the menu shows you where you
-  // stand rather than hiding it behind a tap.
-  const [mobileExpertiseOpen, setMobileExpertiseOpen] = useState(false)
-  const inBand = useRef(new Set())
-  const expertiseRef = useRef(null)
+  // above: the sub-pages used to sit permanently unfurled under their link,
+  // which cost lines of the overlay's height on every phone whether or not
+  // anyone wanted them. Collapsed by default, and pre-opened for the section
+  // you are already standing in so the menu shows you where you are rather
+  // than hiding it behind a tap.
+  const [mobileSubmenu, setMobileSubmenu] = useState(null)
+  const submenuRef = useRef(null)
   const navigate = useNavigate()
   const { pathname } = useLocation()
   // Touch has no real :hover-leave, so the CSS-only submenu below has nothing
@@ -78,7 +91,7 @@ export default function Navbar() {
 
   useEffect(() => {
     if (!menuOpen) {
-      setMobileExpertiseOpen(false)
+      setMobileSubmenu(null)
       return undefined
     }
     const previousOverflow = document.body.style.overflow
@@ -99,28 +112,25 @@ export default function Navbar() {
   }, [whatsappOpen])
 
   useEffect(() => {
-    if (!expertiseOpen) return undefined
+    if (!submenu) return undefined
     const onPointerDown = (event) => {
-      if (expertiseRef.current && !expertiseRef.current.contains(event.target)) setExpertiseOpen(false)
+      if (submenuRef.current && !submenuRef.current.contains(event.target)) setSubmenu(null)
     }
-    const onKeyDown = (event) => event.key === 'Escape' && setExpertiseOpen(false)
+    const onKeyDown = (event) => event.key === 'Escape' && setSubmenu(null)
     document.addEventListener('pointerdown', onPointerDown)
     document.addEventListener('keydown', onKeyDown)
     return () => {
       document.removeEventListener('pointerdown', onPointerDown)
       document.removeEventListener('keydown', onKeyDown)
     }
-  }, [expertiseOpen])
+  }, [submenu])
 
-  useEffect(() => setExpertiseOpen(false), [pathname])
+  useEffect(() => setSubmenu(null), [pathname])
 
-  // The lockup doubles as the Home link, so the rail only needs an explicit
-  // Home entry when the admin-managed list doesn't already carry one.
-  const linksWithHome = links.some((l) => l.to === '/') ? links : [{ label: 'Home', to: '/' }, ...links]
-  const linksWithAcademy = linksWithHome.some((l) => l.to === '/learn')
-    ? linksWithHome
-    : [...linksWithHome, { label: 'Learn', to: '/learn' }]
-  const navLinks = linksWithAcademy.filter((link) => link.to !== '/contact')
+  const navLinks = NAV.map((item) => ({
+    ...item,
+    label: links.find((l) => l.to === item.to)?.label || item.label,
+  }))
   // `\d`, not `d`: without the backslash every digit was stripped and the
   // header's Call link dialled "tel:+".
   const phoneHref = contact.phone ? `tel:${contact.phone.replace(/[^\d+]/g, '')}` : null
@@ -133,17 +143,7 @@ export default function Navbar() {
   const handleNav = (e, link) => {
     e.preventDefault()
     setMenuOpen(false)
-    if (link.to) {
-      navigate(link.to)
-      return
-    }
-    const target = `#${link.section}`
-    if (pathname !== '/') {
-      navigate('/')
-      setTimeout(() => lenis.current?.scrollTo(target, { offset: -20 }), 140)
-    } else {
-      lenis.current?.scrollTo(target, { offset: -20 })
-    }
+    navigate(link.to)
   }
 
   const goHome = (e) => {
@@ -159,38 +159,11 @@ export default function Navbar() {
     navigate('/contact')
   }
 
-  const isActive = (link) => {
-    // Home and the homepage's own section links are both true at the top of
-    // `/`, so scrolling into About used to mark two entries current at once.
-    // The section is the more specific answer whenever the scroll-spy has one;
-    // Home holds the mark only until then.
-    if (link.to === '/') return pathname === '/' && !active
-    if (link.to) {
-      return pathname === link.to || (link.to === EXPERTISE_LINK_TO && pathname.startsWith(`${EXPERTISE_LINK_TO}/`))
-    }
-    return pathname === '/' && active === link.section
-  }
-
-  // Active home-section highlight.
-  useEffect(() => {
-    inBand.current.clear()
-    setActive(null)
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((e) => {
-          if (e.isIntersecting) inBand.current.add(e.target.id)
-          else inBand.current.delete(e.target.id)
-        })
-        setActive(sections.find((id) => inBand.current.has(id)) ?? null)
-      },
-      { rootMargin: '-45% 0px -45% 0px' }
-    )
-    sections.forEach((id) => {
-      const el = document.getElementById(id)
-      if (el) observer.observe(el)
-    })
-    return () => observer.disconnect()
-  }, [pathname])
+  // A parent lights for its own route, anything beneath it, and any of its
+  // dropdown's pages — so /learn marks About and /enterprise/invest marks
+  // Expertise.
+  const isActive = (link) =>
+    onRoute(pathname, link.to) || (link.children ?? []).some((child) => onRoute(pathname, child.to))
 
   // Interior pages are still dark; the light bands (tagged data-band="light",
   // the homepage hero among them) flip the chrome to charcoal. A thin band
@@ -421,45 +394,46 @@ export default function Navbar() {
           <nav className="absolute left-1/2 hidden -translate-x-1/2 lg:block">
             <ul className="flex items-center gap-5 lg:gap-6">
               {navLinks.map((link) => {
-                const hasSubmenu = link.to === EXPERTISE_LINK_TO
+                const hasSubmenu = Boolean(link.children)
+                const open = submenu === link.to
                 return (
                   <li
-                    key={link.label}
-                    ref={hasSubmenu ? expertiseRef : undefined}
+                    key={link.to}
+                    ref={open ? submenuRef : undefined}
                     className={hasSubmenu ? 'group/sub relative' : undefined}
-                    // Visibility is driven entirely by `expertiseOpen`, not CSS
+                    // Visibility is driven entirely by `submenu`, not CSS
                     // :hover — a client-side route change doesn't move the
                     // pointer, so a still-hovered panel would otherwise have
                     // nothing telling it the selection was already made.
-                    onMouseEnter={hasSubmenu && supportsHover ? () => setExpertiseOpen(true) : undefined}
-                    onMouseLeave={hasSubmenu && supportsHover ? () => setExpertiseOpen(false) : undefined}
-                    onFocus={hasSubmenu ? () => setExpertiseOpen(true) : undefined}
+                    onMouseEnter={hasSubmenu && supportsHover ? () => setSubmenu(link.to) : undefined}
+                    onMouseLeave={hasSubmenu && supportsHover ? () => setSubmenu(null) : undefined}
+                    onFocus={hasSubmenu ? () => setSubmenu(link.to) : undefined}
                     onBlur={
                       hasSubmenu
                         ? (e) => {
-                            if (!e.currentTarget.contains(e.relatedTarget)) setExpertiseOpen(false)
+                            if (!e.currentTarget.contains(e.relatedTarget)) setSubmenu(null)
                           }
                         : undefined
                     }
                   >
                     <a
-                      href={link.to ?? `/#${link.section}`}
+                      href={link.to}
                       onClick={(e) => {
                         // A touch tap can't hover, so the first tap only opens
                         // the panel; a second tap (or a mouse click, which
                         // never sets this — the hover handler above already
                         // opened it) falls through to the normal navigate.
-                        if (hasSubmenu && !supportsHover && !expertiseOpen) {
+                        if (hasSubmenu && !supportsHover && !open) {
                           e.preventDefault()
-                          setExpertiseOpen(true)
+                          setSubmenu(link.to)
                           return
                         }
-                        setExpertiseOpen(false)
+                        setSubmenu(null)
                         handleNav(e, link)
                       }}
                       aria-current={isActive(link) ? 'page' : undefined}
                       aria-haspopup={hasSubmenu ? 'true' : undefined}
-                      aria-expanded={hasSubmenu ? expertiseOpen : undefined}
+                      aria-expanded={hasSubmenu ? open : undefined}
                       className={`group relative flex items-center gap-1.5 rounded-sm py-2 font-body text-[15px] font-medium transition-colors duration-200 ease-brand focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent ${
                         isActive(link) ? current : idle
                       }`}
@@ -474,7 +448,7 @@ export default function Navbar() {
                           strokeWidth="2.2"
                           aria-hidden
                           className={`relative size-3 shrink-0 transition-transform duration-300 ease-brand ${
-                            expertiseOpen ? 'rotate-180' : ''
+                            open ? 'rotate-180' : ''
                           }`}
                         >
                           <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
@@ -497,16 +471,16 @@ export default function Navbar() {
                       // down closes the menu before it ever reaches it.
                       <div
                         className={`absolute left-1/2 top-full w-56 -translate-x-1/2 pt-3 transition-[opacity,transform] duration-200 ease-brand ${
-                          expertiseOpen ? 'visible translate-y-0 opacity-100' : 'invisible translate-y-1 opacity-0'
+                          open ? 'visible translate-y-0 opacity-100' : 'invisible translate-y-1 opacity-0'
                         }`}
                       >
                         <ul className="overflow-hidden rounded-2xl border border-line bg-surface p-1.5 shadow-[0_30px_70px_-30px_rgba(0,0,0,0.45)]">
-                          {EXPERTISE_SECTIONS.map((section) => (
+                          {link.children.map((section) => (
                             <li key={section.to}>
                               <a
                                 href={section.to}
                                 onClick={(e) => {
-                                  setExpertiseOpen(false)
+                                  setSubmenu(null)
                                   handleNav(e, section)
                                 }}
                                 className="block rounded-xl px-4 py-2.5 font-body text-[14px] font-semibold text-content/70 transition-colors duration-150 hover:bg-accent/10 hover:text-accent"
@@ -571,10 +545,10 @@ export default function Navbar() {
             type="button"
             onClick={() =>
               setMenuOpen((open) => {
-                // Seed the Expertise disclosure from the route each time the
-                // menu is opened, so it starts unfurled only where you are
-                // already standing inside that tab.
-                if (!open) setMobileExpertiseOpen(pathname.startsWith(EXPERTISE_LINK_TO))
+                // Seed the disclosure from the route each time the menu is
+                // opened, so it starts unfurled only for the section you are
+                // already standing in.
+                if (!open) setMobileSubmenu(navLinks.find((l) => l.children && isActive(l))?.to ?? null)
                 return !open
               })
             }
@@ -638,10 +612,12 @@ export default function Navbar() {
                 links failing to line up with it. */}
             <div className="flex min-h-full flex-col justify-center gap-3 px-gutter pb-[max(2rem,env(safe-area-inset-bottom))] pt-24">
               {navLinks.map((link, i) => {
-                const hasSubmenu = link.to === EXPERTISE_LINK_TO
+                const hasSubmenu = Boolean(link.children)
+                const open = mobileSubmenu === link.to
+                const panelId = `mobile-submenu-${i}`
                 // Same `isActive` the desktop rail reads, so the two agree on
-                // what "here" means — including a sub-page of /enterprise
-                // lighting its Expertise parent. The mobile rail had no active
+                // what "here" means — including a dropdown's page lighting its
+                // parent. The mobile rail had no active
                 // state at all: every row was bone with an accent numeral,
                 // which spent the accent on all five and so marked none. The
                 // numerals drop to a quiet index and the accent now does one
@@ -649,7 +625,7 @@ export default function Navbar() {
                 const current = isActive(link)
                 return (
                   <motion.div
-                    key={link.label}
+                    key={link.to}
                     initial={{ opacity: 0, y: 24 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 + i * 0.08, ease: 'easeOut' }}
@@ -657,10 +633,10 @@ export default function Navbar() {
                     {/* The label keeps its own tap target and still navigates
                         to the tab itself; only the chevron works the
                         disclosure. Splitting them means nobody loses the way
-                        to /enterprise in exchange for gaining the submenu. */}
+                        to the parent page in exchange for gaining the submenu. */}
                     <div className="flex items-center gap-3">
                       <a
-                        href={link.to ?? `/#${link.section}`}
+                        href={link.to}
                         onClick={(e) => handleNav(e, link)}
                         aria-current={current ? 'page' : undefined}
                         className={`flex min-h-11 flex-1 items-center font-display text-[clamp(2.25rem,10vw,3rem)] font-light tracking-[-0.02em] transition-colors duration-300 ease-brand ${
@@ -679,10 +655,10 @@ export default function Navbar() {
                       {hasSubmenu && (
                         <button
                           type="button"
-                          onClick={() => setMobileExpertiseOpen((open) => !open)}
-                          aria-expanded={mobileExpertiseOpen}
-                          aria-controls="mobile-expertise-panel"
-                          aria-label={`${mobileExpertiseOpen ? 'Hide' : 'Show'} ${link.label} sections`}
+                          onClick={() => setMobileSubmenu(open ? null : link.to)}
+                          aria-expanded={open}
+                          aria-controls={panelId}
+                          aria-label={`${open ? 'Hide' : 'Show'} ${link.label} sections`}
                           className="grid size-11 shrink-0 place-items-center rounded-full border border-bone/20 text-bone/70 transition-colors duration-200 hover:border-bone/40 hover:text-bone focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                         >
                           <svg
@@ -692,7 +668,7 @@ export default function Navbar() {
                             strokeWidth="2.2"
                             aria-hidden
                             className={`size-4 transition-transform duration-300 ease-brand motion-reduce:transition-none ${
-                              mobileExpertiseOpen ? 'rotate-180' : ''
+                              open ? 'rotate-180' : ''
                             }`}
                           >
                             <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
@@ -702,9 +678,9 @@ export default function Navbar() {
                     </div>
                     {hasSubmenu && (
                       <AnimatePresence initial={false}>
-                        {mobileExpertiseOpen && (
+                        {open && (
                           <motion.div
-                            id="mobile-expertise-panel"
+                            id={panelId}
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: 'auto', opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
@@ -712,7 +688,7 @@ export default function Navbar() {
                             className="overflow-hidden"
                           >
                             <ul className="ml-11 mt-1 flex flex-col border-l border-bone/15 pl-4">
-                              {EXPERTISE_SECTIONS.map((section) => (
+                              {link.children.map((section) => (
                                 <li key={section.to}>
                                   <a
                                     href={section.to}

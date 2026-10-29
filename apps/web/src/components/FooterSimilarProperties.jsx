@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion, useReducedMotion } from 'motion/react'
 import { useProperties } from '../context/ContentContext'
-import { parsePhase, storedName } from '../lib/phases'
+import { phaseOf } from '../lib/phases'
 import { sized } from '../lib/images'
 import ArrowRight from './ArrowRight'
 import { coverImage } from '../lib/covers'
@@ -28,10 +28,10 @@ const cityFrom = (address = '') => {
   return (parts.length >= 3 ? parts.at(-2) : parts[0] ?? '').toLowerCase()
 }
 
-function similarityScore(candidate, current) {
+function similarityScore(candidate, current, phaseFor) {
   let score = 0
-  const candidatePhase = parsePhase(storedName(candidate))
-  const currentPhase = parsePhase(storedName(current))
+  const candidatePhase = phaseFor(candidate)
+  const currentPhase = phaseFor(current)
 
   if (candidatePhase?.base && candidatePhase.base === currentPhase?.base) score += 100
   if (candidate.category && candidate.category === current.category) score += 30
@@ -77,7 +77,8 @@ export default function FooterSimilarProperties({
   const records = useProperties()
   const match = pathname.match(/^\/properties\/([^/]+)\/?$/)
   const current = match ? records.find((property) => property.slug === match[1]) : null
-  const currentBase = current ? parsePhase(storedName(current))?.base : undefined
+  const phaseFor = phaseOf(records)
+  const currentBase = current ? phaseFor(current)?.base : undefined
 
   // Ranked against the property being viewed, or simply the head of the
   // portfolio when there is nothing to rank against. The development being
@@ -90,11 +91,11 @@ export default function FooterSimilarProperties({
         .filter(
           ({ property }) =>
             property.slug !== current.slug &&
-            !(currentBase && parsePhase(storedName(property))?.base === currentBase),
+            !(currentBase && phaseFor(property)?.base === currentBase),
         )
         .sort(
           (a, b) =>
-            similarityScore(b.property, current) - similarityScore(a.property, current) ||
+            similarityScore(b.property, current, phaseFor) - similarityScore(a.property, current, phaseFor) ||
             a.index - b.index,
         )
         .slice(0, 3)
@@ -140,7 +141,10 @@ export default function FooterSimilarProperties({
         </Link>
       </div>
 
-      <div className="-mx-4 mt-7 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-3 sm:-mx-6 sm:mt-8 sm:px-6 lg:mx-0 lg:gap-5 lg:overflow-visible lg:px-0 lg:pb-0"
+      {/* The scroll padding matches the bleed: `snap-start` snaps to the
+          scrollport's edge, not its padding, so without it the first card sat
+          on the bleed 16px left of the heading instead of under it. */}
+      <div className="-mx-4 mt-7 flex snap-x snap-mandatory scroll-px-4 gap-4 overflow-x-auto px-4 pb-3 sm:-mx-6 sm:mt-8 sm:scroll-px-6 sm:px-6 lg:mx-0 lg:scroll-px-0 lg:gap-5 lg:overflow-visible lg:px-0 lg:pb-0"
         // Leaving the row returns it to rest. On the row rather than on each
         // card, so crossing the gap between two cards is not read as a leave.
         onMouseLeave={() => setOpen(0)}

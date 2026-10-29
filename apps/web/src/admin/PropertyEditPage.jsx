@@ -176,6 +176,16 @@ export default function PropertyEditPage() {
   const patch = (partial) => setForm((f) => mergeFields(f, partial))
   const patchDetail = (section, partial) =>
     setForm((f) => ({ ...f, detail: { ...f.detail, [section]: mergeFields(f.detail[section], partial) } }))
+  // `floorPlans.intro` is one level deeper than patchDetail reaches, and most
+  // records don't carry it yet, so it is merged from whatever is there.
+  const patchFloorIntro = (partial) =>
+    setForm((f) => ({
+      ...f,
+      detail: {
+        ...f.detail,
+        floorPlans: { ...f.detail.floorPlans, intro: { ...f.detail.floorPlans?.intro, ...partial } },
+      },
+    }))
   const setDetailKey = (key) => (value) =>
     setForm((f) => ({ ...f, detail: { ...f.detail, [key]: resolveNext(value, f.detail[key]) } }))
 
@@ -535,8 +545,13 @@ export default function PropertyEditPage() {
 
       <TabPanel id="plans" activeTab={activeTab}>
         <Section {...section('floorplans')} title="Floor plans">
-          <TextField label="Heading" value={form.detail.floorPlans.heading} onChange={(heading) => patchDetail('floorPlans', { heading })} />
-          <TextAreaField label="Body" value={form.detail.floorPlans.body} onChange={(body) => patchDetail('floorPlans', { body })} />
+          {/* The intro the page renders above the plan. These used to edit
+              `floorPlans.heading` / `.body`, which the page stopped rendering,
+              so a change here saved and showed nowhere. The heading is what
+              turns the intro on: leave it empty and the section opens on the
+              figures. */}
+          <TextField label="Heading" value={form.detail.floorPlans.intro?.heading ?? ''} onChange={(heading) => patchFloorIntro({ heading })} />
+          <TextAreaField label="Body" value={form.detail.floorPlans.intro?.body ?? ''} onChange={(body) => patchFloorIntro({ body })} />
           <div>
             <span className="text-xs font-bold uppercase tracking-wide text-bone-3">Buildings &amp; units</span>
             <div className="mt-3">

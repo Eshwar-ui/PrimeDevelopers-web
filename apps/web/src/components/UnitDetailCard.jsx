@@ -42,8 +42,8 @@ function externalHref(value) {
 // long description from pushing the enquiry button past the bottom of the
 // plan beside it. Unset — stacked under the plan on narrow screens — the card
 // simply grows to its content like any other.
-export default function UnitDetailCard({ unit, units = [], aspect = null, onEnquire, maxHeight = '', emptyHint = '', detailsHref = null }) {
-  if (!unit) return <EmptyPanel units={units} maxHeight={maxHeight} hint={emptyHint} />
+export default function UnitDetailCard({ unit, units = [], totals = null, aspect = null, onEnquire, maxHeight = '', emptyHint = '', detailsHref = null }) {
+  if (!unit) return <EmptyPanel units={units} totals={totals} maxHeight={maxHeight} hint={emptyHint} />
 
   const meta = unitStatusMeta(unit.status)
   const area = formatArea(unit.size)
@@ -308,9 +308,14 @@ export function TenantBlock({ name, logo, url, category, status }) {
 // Beside the plan this space exists whether or not anything is selected, so it
 // earns its keep by answering the question a visitor arrives with — how much
 // is actually free here — rather than sitting empty until they click.
-function EmptyPanel({ units, maxHeight = '', hint = '' }) {
-  const total = units.length
-  const available = units.filter((unit) => unit.status === 'available').length
+//
+// `totals` overrides the count with figures from elsewhere. Across a whole site
+// the unit list undercounts — a combined suite like "201+202+203+204" is one
+// row — so the site view passes the tracker's headline totals instead, the
+// same ones the hero and overview show.
+function EmptyPanel({ units, totals = null, maxHeight = '', hint = '' }) {
+  const total = totals?.total ?? units.length
+  const available = totals?.available ?? units.filter((unit) => unit.status === 'available').length
 
   return (
     <div className={`relative flex min-h-[18rem] flex-col justify-end gap-4 overflow-hidden rounded-2xl border border-[var(--color-line)] bg-surface px-7 py-8 shadow-[0_20px_55px_-40px_rgba(20,28,33,.5)] ${maxHeight}`}>

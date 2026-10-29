@@ -55,6 +55,37 @@ export function parsePhase(name) {
 }
 
 /**
+ * `parsePhase` with one addition that needs the rest of the list: a record
+ * whose whole name is a phased record's base is that development's first
+ * phase. A development's opening record is usually named before anyone knows
+ * there will be a second — "POW Lewisville" beside "POW Lewisville Phase II" —
+ * and read strictly the two were separate developments, listed twice under one
+ * name with no switch between them.
+ *
+ * Exact equality with the base, never a shared prefix, so the strictness above
+ * still holds: "Rio Ranch" would join "Rio Ranch Phase 2", but "Rio Ranch 1
+ * Acre Lots" joins nothing.
+ *
+ * Returns a lookup, `(property) => phase | null`, so a list is scanned once.
+ */
+export function phaseOf(properties) {
+  const bases = new Map()
+  for (const property of properties ?? []) {
+    const phase = parsePhase(storedName(property))
+    if (phase && !bases.has(phase.base)) bases.set(phase.base, phase)
+  }
+  return (property) => {
+    const own = parsePhase(storedName(property))
+    if (own) return own
+    const base = (storedName(property) ?? '').trim().replace(/\s+/g, ' ').toLowerCase()
+    const sibling = bases.get(base)
+    if (!sibling) return null
+    // Numbered the way its siblings are: "Phase 1" beside "Phase 2".
+    return { base, label: /\d/.test(sibling.label) ? 'Phase 1' : 'Phase I', order: 1 }
+  }
+}
+
+/**
  * Every published phase of the development `current` belongs to, in order,
  * including `current` itself.
  *
@@ -79,8 +110,9 @@ export function parsePhase(name) {
 export function collapsePhases(properties) {
   const groups = new Map()
   const entries = []
+  const phaseFor = phaseOf(properties)
   for (const property of properties ?? []) {
-    const phase = parsePhase(storedName(property))
+    const phase = phaseFor(property)
     if (!phase) {
       entries.push({ property })
       continue
@@ -110,11 +142,12 @@ export function collapsePhases(properties) {
 }
 
 export function phaseSiblings(properties, current) {
-  const self = parsePhase(storedName(current))
+  const phaseFor = phaseOf(properties)
+  const self = phaseFor(current)
   if (!self) return []
 
   const group = (properties ?? [])
-    .map((property) => ({ property, phase: parsePhase(storedName(property)) }))
+    .map((property) => ({ property, phase: phaseFor(property) }))
     .filter(({ phase }) => phase?.base === self.base)
     .sort((a, b) => a.phase.order - b.phase.order)
 

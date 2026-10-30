@@ -15,7 +15,6 @@
 // totals. Writes a backup of the record before committing.
 //
 // Values the handoff marks unconfirmed are left out, not guessed:
-//   TODO: geo coordinates (seo.latitude / seo.longitude) → enables geo.position, `geo` and `hasMap`
 //   TODO: tenant names in pricing.capRate need sign-off → SHOW_TENANT_NAMES stays false
 //   TODO: "23,000 vehicles a day on US 183" needs confirming (unchanged from the old copy)
 //   TODO: /cedar-park and /leander don't exist yet, so those anchors are plain text
@@ -207,6 +206,18 @@ const fullPatch = (detail, img) => ({
     heroAlt: 'Centro Plaza retail storefronts on Ronald Reagan Blvd, Cedar Park area, TX',
     geoRegion: 'US-TX',
     geoPlacename: 'Leander',
+    // The street address geocoded, agreed to within ~3 m by two independent
+    // sources: the US Census geocoder (30.548621, -97.793706, matched on
+    // "14300 RONALD W REAGAN BLVD") and the OpenStreetMap house node for the
+    // same address (30.548629, -97.793679). Both place it on the Cedar Park
+    // side of the line, which is why the title says Cedar Park while
+    // `geoPlacename` and the postal address say Leander.
+    //
+    // Numbers, never strings: usePropertyHead and propertySchema both gate on
+    // Number.isFinite, so a quoted value drops geo.position, `geo` and
+    // `hasMap` from the page without any error to notice.
+    latitude: 30.548629,
+    longitude: -97.793679,
     placeDescription: '15-acre mixed-use retail and office development with 753 ft of frontage on Ronald Reagan Blvd, zoned for retail, restaurant, medical, service and office uses.',
     amenities: ['On-site parking', 'Ronald Reagan Blvd frontage (753 ft)'],
   },

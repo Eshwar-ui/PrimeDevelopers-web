@@ -221,3 +221,47 @@ export function faqSchema(faqs = []) {
     })),
   }
 }
+
+/**
+ * BreadcrumbList for an interior page.
+ *
+ * Not a rich result in its own right — it replaces the bare URL line above a
+ * search result with the path through the site, and it tells a crawler where
+ * the page sits without making it infer that from the nav. Needs at least two
+ * crumbs: a list containing only "Home" describes nothing.
+ */
+export function breadcrumbSchema(trail = [], origin) {
+  const crumbs = trail.filter((c) => c?.name && c?.path)
+  if (crumbs.length < 2) return undefined
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: crumbs.map((crumb, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: crumb.name,
+      item: `${origin}${crumb.path}`,
+    })),
+  }
+}
+
+/**
+ * The site itself, as an entity, for the homepage.
+ *
+ * `publisher` points at the organisation by `@id` rather than restating it —
+ * the footer already emits that graph on every route, and a second copy would
+ * read as a second company. No SearchAction: the site has no search endpoint
+ * to name, and claiming one that 404s is worse than claiming none.
+ */
+export function websiteSchema({ origin, name, description }) {
+  return prune({
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    '@id': `${origin}/#website`,
+    url: `${origin}/`,
+    name,
+    description,
+    publisher: { '@id': `${origin}/#organization` },
+    inLanguage: 'en-US',
+  })
+}

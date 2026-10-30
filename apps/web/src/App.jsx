@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
@@ -21,6 +21,10 @@ import LatestUpdates from './components/LatestUpdates'
 // deleting the file would take the photographic treatment with it.
 import Footer from './components/Footer'
 import ErrorBoundary, { PageError } from './components/ErrorBoundary'
+import { useHead } from './hooks/useHead'
+import { staticHead } from './lib/seo'
+import { websiteSchema } from './lib/structuredData'
+import { BRAND_NAME, SITE_ORIGIN } from './lib/site'
 import SectionRevealController from './components/SectionRevealController'
 import LandingParallaxChapter from './components/LandingParallaxChapter'
 
@@ -52,6 +56,7 @@ const NewsPage = lazy(() => import('./pages/NewsPage'))
 const NewsPostPage = lazy(() => import('./pages/NewsPostPage'))
 const LearnPage = lazy(() => import('./pages/LearnPage'))
 const LearnTermPage = lazy(() => import('./pages/LearnTermPage'))
+const FaqPage = lazy(() => import('./pages/FaqPage'))
 // Linked from the footer's copyright bar, which renders on every route — so
 // these two are reachable from everywhere and visited from almost nowhere.
 // Exactly the shape a lazy chunk is for.
@@ -111,7 +116,25 @@ function RouteBoundary({ name, resetKey, children }) {
   )
 }
 
+// The WebSite entity, on top of the title and description RouteHead has
+// already given this route from the table in lib/seo. It names the site as a
+// thing in its own right and points `publisher` at the Organization the footer
+// emits on every route, so search engines read one company with a website
+// rather than two unrelated entities that happen to share a domain.
+//
+// Only the homepage carries it: WebSite describes the site, and repeating it
+// per route would be the same claim made fifteen times.
 function Home() {
+  // The route table is the single source for what this page says it is, so the
+  // graph quotes it rather than restating the description a second time and
+  // letting the two drift.
+  const description = staticHead('/')?.description
+  const jsonLd = useMemo(
+    () => [websiteSchema({ origin: SITE_ORIGIN, name: BRAND_NAME, description })],
+    [description],
+  )
+  useHead({ jsonLd })
+
   return (
     <div data-landing-page>
       <Hero />
@@ -188,6 +211,30 @@ function ScrollTop() {
     const raf = requestAnimationFrame(() => ScrollTrigger.refresh())
     return () => cancelAnimationFrame(raf)
   }, [])
+  return null
+}
+
+/**
+ * Gives every fixed route its title, description, canonical and social card,
+ * from the one table in lib/seo.
+ *
+ * Mounted once here rather than called in each of the sixteen pages, because
+ * a page that forgets the call does not break — it quietly inherits the
+ * generic head from index.html, which is the state this replaces and is
+ * invisible from inside the app. One mounting point cannot be forgotten.
+ *
+ * It sits above <Routes>, so it survives the page transition rather than
+ * being unmounted and remounted mid-crossfade.
+ *
+ * The dynamic routes — a property, a post, a glossary term — are not in the
+ * table and get `undefined` here. They describe themselves from the record
+ * they loaded, once it arrives.
+ */
+function RouteHead() {
+  const { pathname } = useLocation()
+  // A trailing slash is the same page to the router and a different key to
+  // the table, so `/about/` would otherwise fall through to no head at all.
+  useHead(staticHead(pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname))
   return null
 }
 
@@ -280,6 +327,7 @@ function PublicSite() {
             `sync` show two different pages at all — read from context instead,
             both instances would resolve to the new URL and render the same
             page twice. */}
+        <RouteHead />
         <RouteBoundary name="route" resetKey={location.pathname}>
           <AnimatePresence mode={sharedPropertyTransition ? 'sync' : 'wait'} initial={false}>
             <motion.div
@@ -332,6 +380,7 @@ function PublicSite() {
                 <Route path="/news/:slug" element={<NewsPostPage />} />
                 <Route path="/learn" element={<LearnPage />} />
                 <Route path="/learn/:slug" element={<LearnTermPage />} />
+                <Route path="/faq" element={<FaqPage />} />
                 <Route path="/contact" element={<ContactPage />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="/terms" element={<TermsPage />} />

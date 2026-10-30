@@ -33,6 +33,7 @@ const NAV = [
     children: [
       { label: 'About us', to: '/about' },
       { label: 'Learn', to: '/learn' },
+      { label: 'FAQ', to: '/faq' },
       { label: 'Contact', to: '/contact' },
     ],
   },

@@ -8,7 +8,11 @@
 export const SITE_ORIGIN = (import.meta.env.VITE_SITE_ORIGIN || 'https://theprimedeveloper.com').replace(/\/$/, '')
 
 // Singular, with "The". Never "Prime Developers" in copy or structured data.
-export const BRAND_NAME = 'The Prime Developer'
+//
+// Defined in ./seo, which the build scripts also read — they cannot import
+// this module, because the line above reaches for `import.meta.env`. One
+// definition, so a rename cannot leave the sitemap and the pages disagreeing.
+export { BRAND as BRAND_NAME } from './seo'
 
 const productionHost = new URL(SITE_ORIGIN).hostname
 

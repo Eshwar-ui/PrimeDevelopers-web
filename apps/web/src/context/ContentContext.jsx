@@ -26,7 +26,36 @@ const publicName = (name) =>
 // Fallback shape per section so a missing/not-yet-seeded row never crashes a
 // component — every field a component reads is guaranteed to exist.
 const DEFAULTS = {
-  hero: { eyebrow: 'Prime Developer | Est. 2017', heading: 'We build the *landmarks* of Texas', paragraph: 'Retail in Cedar Park. Flex space in Leander. Open lots in Liberty Hill. One team, start to finish - acquisition, design, and handover.', ctaLabel: 'View Properties', ctaHref: '#properties', slides: [] },
+  hero: {
+    eyebrow: 'Prime Developer | Est. 2017',
+    // Left as the client approved it. The homepage's own target terms are the
+    // branded ones ("Prime Developers", "The Prime Developer Texas"), which an
+    // H1 does not need to spell out, and the category terms are carried by the
+    // paragraph below and by the sections underneath — where they can be said
+    // truthfully rather than stuffed into the one line everybody reads first.
+    heading: 'We build the *landmarks* of Texas',
+    // The homepage's topical signal, and the one line on it that names what is
+    // actually for sale. One clause per keyword cluster, each tied to the town
+    // the inventory is really in: office warehouse condos (POW Lewisville),
+    // flex space (POW Leander), retail (Centro Plaza) and one-acre commercial
+    // lots (Rio Ranch, Liberty Hill).
+    //
+    // Cedar Park is deliberately gone, though the approved line named it and
+    // the keyword list targets it four times. Nothing in the published
+    // portfolio is in Cedar Park — Centro Plaza, the one retail property, has
+    // `seo.geoPlacename: 'Leander'` and a Leander address. Naming a town the
+    // inventory cannot back is the kind of geo claim that costs trust in a
+    // listing, so it waits for a property there.
+    paragraph:
+      'Office warehouse condos in Lewisville. Flex space and retail in Leander. One-acre commercial lots in Liberty Hill. One team, start to finish — acquisition, design, and handover.',
+    ctaLabel: 'View Properties',
+    ctaHref: '#properties',
+    slides: [],
+    // No SEO fields here. The homepage's title and description live in the
+    // route table in lib/seo.js, because scripts/prerender.mjs and
+    // scripts/seo-assets.mjs have to read the same values under plain node,
+    // hours before any browser renders this section.
+  },
   marquee: { logos: [] },
   // The film ships with the app rather than being uploaded, so it lands here
   // as a default: the live content row predates these two keys, and a key the
@@ -260,13 +289,13 @@ const DEFAULTS = {
   units_home: {
     eyebrow: 'Our Units',
     heading: 'Find your *ideal* space',
-    paragraph: 'Filter by size — every unit across the portfolio, including the ones already let.',
+    paragraph: 'Filter by size — every office warehouse, flex and retail unit across the portfolio, including the ones already let.',
   },
   gallery: {
     heading: 'Explore Our Properties',
     eyebrow: 'Curated Portfolio',
     paragraph:
-      'Discover our portfolio of commercial spaces, retail destinations, and thoughtfully developed properties designed for long-term value and business growth.',
+      'Office warehouse condos, flex space, retail plazas and commercial lots across Central Texas and DFW — developed, owned and operated by one team.',
     ctaLabel: 'See more projects',
     features: [],
   },
@@ -441,6 +470,131 @@ const DEFAULTS = {
     mapHeading: "We're here to serve across Texas",
     mapParagraph: 'Serving investors, businesses and property owners across the Texas market.',
     mapQuery: 'Texas, USA',
+  },
+  // /faq, under the About menu. Ships with a full set of answers rather than an
+  // empty list for the reason enterprise_page's copy does: no row exists yet, and
+  // a page whose only content is its own heading is worse than one the client
+  // edits down. Every answer here is drawn from what the site already states
+  // elsewhere — the four practices, the leasing statuses, the brochure flow, the
+  // investment disclaimer — so none of it is a new claim about the business.
+  // Nothing here quotes a figure, a timescale or a fee: those are the client's to
+  // give, and an invented one would be published as fact.
+  faq_page: {
+    heroEyebrow: 'Questions, answered',
+    heroHeading: 'Your Texas property questions, *answered*',
+    heroParagraph:
+      'What people ask us most about leasing, buying and investing in Texas property — and about the ways to build with us. If yours is not here, the team will answer it directly.',
+    searchPlaceholder: 'Search a question or a keyword',
+    allLabel: 'All',
+    emptyHeading: 'No matching questions yet.',
+    emptyResetLabel: 'Clear search',
+    // The crumb between "Home" and this page in the BreadcrumbList.
+    breadcrumbLabel: 'FAQ',
+    // Both override what the page would otherwise derive from the hero above.
+    // Set here rather than left blank because the hero heading is written to be
+    // read, and a title tag is written to be matched against a search.
+    seoTitle: 'FAQ — Leasing, Buying and Investing in Texas Property',
+    seoDescription:
+      'Answers on leasing, buying and investing in Texas property — availability, tours, brochures, cap rates, land collaborations and franchise partnerships.',
+    // Answer-first on purpose: the opening sentence has to stand on its own,
+    // because that is the part a search result or an AI answer quotes. The
+    // `[label](/path)` links are what make this page an internal hub rather
+    // than a dead end — every answer hands the reader the page that covers it
+    // in full.
+    items: [
+      {
+        category: 'Working with us',
+        question: 'What does The Prime Developer do?',
+        answer:
+          'We develop commercial and residential property across Texas, and carry each project through ourselves — acquisition, design, construction and handover. Four further practices sit alongside development: [interiors](/enterprise/interiors), [collaborations](/enterprise/collab), [franchise](/enterprise/franchise) and [investment](/enterprise/invest).',
+      },
+      {
+        category: 'Working with us',
+        question: 'Where in Texas does The Prime Developer build?',
+        answer:
+          'Across Texas, concentrated today in the Austin corridor — Cedar Park, Leander and Liberty Hill among them. [The properties page](/properties) is the live list, so if the market you are interested in is not on it, [ask us](/contact).',
+      },
+      {
+        category: 'Working with us',
+        question: 'Who will I be dealing with on a project?',
+        answer:
+          'The same team, from the first drawing to handover. Interiors are handled in-house too, so specification, procurement and snagging answer to one contract rather than three — and the detail you were shown is the detail you get. [More about the firm](/about).',
+      },
+      {
+        category: 'Working with us',
+        question: 'How do I contact The Prime Developer?',
+        answer:
+          'Use the enquiry form on [the contact page](/contact), email sales@theprimedeveloper.com, or call +1 512-761-8025. For anything quicker, the WhatsApp button in the header reaches the team directly.',
+      },
+      {
+        category: 'Properties and leasing',
+        question: 'Are your units for lease or for sale?',
+        answer:
+          'Both, depending on the property. Each listing carries its own leasing map, where every unit is marked available, leased, coming soon or sold. Tenanted buildings offered as income assets are listed separately under [CAP properties](/cap-properties), and everything else is on [the properties page](/properties).',
+      },
+      {
+        category: 'Properties and leasing',
+        question: 'How do I find out which units are available?',
+        answer:
+          'Open the property and use its leasing map — every unit has a page of its own with the floor plan, the size and its current status. The property information page alongside it carries the site plan, the full floor plan set and the rate sheets. Start from [the properties page](/properties).',
+      },
+      {
+        category: 'Properties and leasing',
+        question: 'Can I book a tour of a property?',
+        answer:
+          'Yes. Ask from [the contact page](/contact) or the enquiry panel on any property page, and tell us which building or unit you would like to see so the right person can meet you there.',
+      },
+      {
+        category: 'Properties and leasing',
+        question: 'How do I get a property brochure?',
+        answer:
+          'Every property page has a brochure request on it. Leave your details and the brochure is emailed to you; where one is not yet on file, a member of the team sends it across instead.',
+      },
+      {
+        category: 'Investment',
+        question: 'What investment opportunities do you offer?',
+        answer:
+          'Two: participation in our commercial and residential pipeline, and individual tenanted buildings sold as income assets. Each is presented with the whole picture — hold period, exit assumptions, and the risks set out beside the returns. See [invest](/enterprise/invest) and [CAP properties](/cap-properties).',
+      },
+      {
+        category: 'Investment',
+        question: 'What is a cap rate, and what is an NNN lease?',
+        answer:
+          "A cap rate is a property's annual net operating income as a percentage of its price. An NNN, or triple net, lease is one where the tenant pays taxes, insurance and maintenance on top of the rent. Both terms, and the rest of the vocabulary you will meet while comparing deals, are explained in plain language in [the field guide](/learn).",
+      },
+      {
+        category: 'Investment',
+        question: 'Is a return on investment guaranteed?',
+        answer:
+          'No. Real estate carries risk and no return is assured. Figures shown on the summary sheets are as published and are subject to change — take independent legal, tax and financial advice before investing.',
+      },
+      {
+        category: 'Partnerships',
+        question: 'I own land in Texas. Can we develop it together?',
+        answer:
+          'Yes — that is what [collaborations](/enterprise/collab) are for. You bring the land or the capital, we bring entitlement, design and delivery, structured as a genuine partnership with the terms agreed before a drawing is issued.',
+      },
+      {
+        category: 'Partnerships',
+        question: 'Can I operate a franchise under the Prime name?',
+        answer:
+          'Yes. [Franchise partners](/enterprise/franchise) take on our processes, supplier network and brand system in their own market, with hands-on onboarding and the standards that earned the name in the first place.',
+      },
+      {
+        category: 'Partnerships',
+        question: 'What do your interior design and fit-out services cover?',
+        answer:
+          'Bespoke interior design and fit-out, delivered by the same team that finishes the shell. Finishes are compared and priced per square foot on [the interiors pages](/enterprise/interiors), so you can see what a specification costs before committing to it.',
+      },
+    ],
+    closingEyebrow: 'Still stuck?',
+    closingHeading: 'Ask us the question that is *not* on this page',
+    closingParagraph:
+      'Tell us what you are trying to work out — a unit, a site, a partnership or a deal — and the person who can answer it will come back to you.',
+    ctaLabel: 'Talk to us',
+    ctaHref: '/contact',
+    ctaSecondaryLabel: 'Explore the field guide',
+    ctaSecondaryHref: '/learn',
   },
   // No enterprise_page row exists and every field here was blank, so /enterprise
   // rendered a single band containing nothing but its own CTA button: an empty

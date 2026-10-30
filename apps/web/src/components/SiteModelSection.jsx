@@ -21,7 +21,7 @@ import { scrollToElement } from '../lib/scrollToElement'
 const PLAN_HEIGHT = 'h-[340px] sm:h-[420px] md:h-[500px] lg:h-[calc(100dvh-7rem)]'
 
 // A cap rather than a height — see the note on FloorPlanSection's PANEL_MAX.
-const PANEL_MAX = 'lg:h-[calc(100dvh-7rem)]'
+const PANEL_MAX = 'lg:max-h-[calc(100dvh-7rem)]'
 
 const norm = (value) => String(value ?? '').trim().toLowerCase()
 
@@ -413,7 +413,7 @@ export default function SiteModelSection({ property }) {
           I just click" sat on top of the thing being clicked — and on a
           phone it covered a third of the model. Its own column costs the
           model some width and buys back the whole surface. */}
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(19rem,1fr)] lg:items-start">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,2.2fr)_minmax(21rem,1fr)] lg:items-start">
         <div className="relative min-w-0">
           {canShow3D && !viewer.activated ? (
             <ViewerLaunch
@@ -490,6 +490,10 @@ export default function SiteModelSection({ property }) {
                 : null
             }
             onEnquire={enquire}
+            // `selectUnit` already defaults to the focused building, and a
+            // unit is only ever selected while one is focused — so the units
+            // offered here are always that building's own.
+            onSelectUnit={selectUnit}
             maxHeight={canShow3D ? PANEL_MAX : ''}
             detailsHref={selectedUnit && focusedBuilding ? unitPath(property.slug, focusedBuilding.label, selectedUnit.label) : null}
             emptyHint={

@@ -42,7 +42,7 @@ function externalHref(value) {
 // long description from pushing the enquiry button past the bottom of the
 // plan beside it. Unset — stacked under the plan on narrow screens — the card
 // simply grows to its content like any other.
-export default function UnitDetailCard({ unit, units = [], totals = null, aspect = null, onEnquire, maxHeight = '', emptyHint = '', detailsHref = null }) {
+export default function UnitDetailCard({ unit, units = [], totals = null, aspect = null, onEnquire, onSelectUnit = null, maxHeight = '', emptyHint = '', detailsHref = null }) {
   if (!unit) return <EmptyPanel units={units} totals={totals} maxHeight={maxHeight} hint={emptyHint} />
 
   const meta = unitStatusMeta(unit.status)
@@ -75,6 +75,19 @@ export default function UnitDetailCard({ unit, units = [], totals = null, aspect
 
   const canEnquire = onEnquire && !isTenanted
 
+  // The header chip already gives the status and the tenant block already
+  // names who is in the space, so falling back to STATUS_COPY underneath both
+  // of them stated one fact three times — and spent the card's most valuable
+  // line doing it. ("Leased" · "TENANT Devi Liquors" · "Currently leased.")
+  //
+  // The fallback is kept for a unit with no tenant named, where it is the
+  // only thing on the card that says what is going on.
+  const showsTenant = isTenanted && Boolean(tenant)
+  const body =
+    unit.description ||
+    (tenant && !isTenanted ? tenant : '') ||
+    (showsTenant ? '' : STATUS_COPY[unit.status] ?? STATUS_COPY.available)
+
   return (
     <div className={`flex flex-col overflow-hidden rounded-2xl border border-[var(--color-line)] bg-surface shadow-[0_20px_55px_-40px_rgba(20,28,33,.5)] ${maxHeight}`}>
       <div className="flex items-start justify-between gap-4 px-7 pb-5 pt-8 lg:px-8 lg:pt-9">
@@ -84,6 +97,34 @@ export default function UnitDetailCard({ unit, units = [], totals = null, aspect
 
       <div className="min-h-0 flex-1 overflow-y-auto px-7 pb-7 lg:px-8">
         {images.length > 0 && <UnitGallery images={images} label={unit.label} />}
+
+        {/* Directly under the photograph, and above the tenant block and the
+            description. These are the figures the visitor clicked the unit to
+            read, and they used to sit last — below all three — which on the
+            one layout where the card cannot grow, beside a full-height plan,
+            put them off the bottom of the screen.
+
+            Two columns rather than the single column this used to collapse to
+            at `lg`. A column of one fact per row turned four short values into
+            a 400px stack; paired, the whole specification reads at a glance.
+            Size keeps the full measure and the display size: it is the number
+            every other one is judged against. */}
+        {specs.length > 0 && (
+          <dl className={`grid grid-cols-2 gap-x-6 gap-y-5 ${images.length > 0 ? 'mt-6' : ''}`}>
+            {specs.map(([term, value]) => (
+              <div key={term} className={`flex flex-col gap-1.5 ${term === 'Size' ? 'col-span-2' : ''}`}>
+                <dt className="font-body text-[11px] font-bold uppercase tracking-[0.15em] text-content/50">{term}</dt>
+                <dd
+                  className={`font-display font-bold tracking-[-0.02em] break-words text-content ${
+                    term === 'Size' ? 'text-[clamp(1.75rem,2.4vw,2.4rem)] leading-[1.05]' : 'text-lg'
+                  }`}
+                >
+                  {value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        )}
 
         {isTenanted && tenant && (
           <TenantBlock
@@ -95,19 +136,10 @@ export default function UnitDetailCard({ unit, units = [], totals = null, aspect
           />
         )}
 
-        <p className={`font-body text-[15px] font-semibold leading-relaxed text-content/60 ${images.length > 0 || (isTenanted && tenant) ? 'mt-6' : ''}`}>
-          {unit.description || (tenant && !isTenanted ? tenant : STATUS_COPY[unit.status] ?? STATUS_COPY.available)}
-        </p>
-
-        {specs.length > 0 && (
-          <dl className="mt-7 grid grid-cols-2 gap-x-6 gap-y-6 border-t border-[var(--color-line)] pt-7 lg:grid-cols-1">
-            {specs.map(([term, value]) => (
-              <div key={term} className="flex flex-col gap-1.5">
-                <dt className="font-body text-[11px] font-bold uppercase tracking-[0.15em] text-content/50">{term}</dt>
-                <dd className={`font-display font-bold tracking-[-0.02em] break-words text-content ${term === 'Size' ? 'text-[clamp(1.75rem,2.4vw,2.4rem)]' : 'text-lg'}`}>{value}</dd>
-              </div>
-            ))}
-          </dl>
+        {body && (
+          <p className={`font-body text-[15px] font-semibold leading-relaxed text-content/60 ${images.length > 0 || showsTenant || specs.length > 0 ? 'mt-6' : ''}`}>
+            {body}
+          </p>
         )}
 
         {/* The card is a summary squeezed beside the plan; the unit's own page
@@ -122,12 +154,133 @@ export default function UnitDetailCard({ unit, units = [], totals = null, aspect
           </Link>
         )}
       </div>
-      {canEnquire && (
+      {canEnquire ? (
         <div className="mt-auto px-7 pb-7 lg:px-8 lg:pb-8">
           <button type="button" onClick={() => onEnquire(unit)} className="primary-button-flood min-h-14 w-full rounded-full bg-accent px-5 py-3 font-body text-[12px] font-bold uppercase tracking-[0.1em] text-white transition-colors duration-300 hover:bg-prime-deep dark:text-void">
             Enquire about {formatUnitLabel(unit.label) || 'this unit'}
           </button>
         </div>
+      ) : (
+        <AlsoAvailable units={units} current={unit} onSelect={onSelectUnit} />
+      )}
+    </div>
+  )
+}
+
+/**
+ * What to do next on a unit nobody can take.
+ *
+ * The enquiry button is this card's pinned action, and a let or sold unit has
+ * none — so the slot simply collapsed. Beside the 3D plan that is not a small
+ * cosmetic gap: PANEL_MAX is a *height*, not a cap, so the card is held to the
+ * full height of the viewer whatever is in it, and a sparsely filled let unit
+ * ended in several hundred pixels of nothing. (Unit 202 at Centro Plaza is the
+ * worst case and not a rare one: size, floor and frontage are all blank in the
+ * CMS and its rate is withheld, so the specs list — the card's spine — renders
+ * nothing at all.)
+ *
+ * The empty space was the symptom. The dead end was the problem: someone who
+ * clicks a taken unit has just been told the one thing they cannot have, and
+ * the card was already being handed every other unit in the building in
+ * `units` — then throwing it away the moment anything was selected, showing it
+ * only in the empty state that nobody sees twice.
+ *
+ * So the slot carries the answer to the question the status raises. Three at
+ * most: this is the foot of a summary card, not a second listing, and both the
+ * plan above and the unit list below still hold the full set.
+ */
+export function AlsoAvailable({ units = [], current, onSelect }) {
+  // Matched on label rather than object identity. The 3D tier rebuilds its
+  // unit objects as selection changes, so a reference check would list the
+  // open unit back to itself.
+  const free = units.filter((unit) => unit.status === 'available' && unit.label !== current?.label)
+
+  // Same hairline the specs list divides on, so the foot reads as the last
+  // row of the card rather than as a tray bolted underneath it.
+  const shell = 'mt-auto border-t border-[var(--color-line)] px-7 pb-7 pt-6 lg:px-8 lg:pb-8'
+
+  if (free.length === 0) {
+    return (
+      <div className={shell}>
+        <p className="font-body text-[13px] leading-relaxed text-content/55">
+          Every unit in this building is taken.{' '}
+          <Link
+            to="/contact"
+            className="font-semibold text-accent underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          >
+            Talk to us
+          </Link>{' '}
+          about what is coming up.
+        </p>
+      </div>
+    )
+  }
+
+  const shown = free.slice(0, 3)
+
+  return (
+    <div className={shell}>
+      {/* Set like a spec term, because that is what it is — one more fact
+          about where this unit sits, not a new section with its own voice. */}
+      <p className="font-body text-[11px] font-bold uppercase tracking-[0.15em] text-content/50">
+        {free.length === 1 ? 'Also available here' : `${free.length} others available here`}
+      </p>
+
+      <div className="mt-3 flex flex-col gap-2">
+        {shown.map((unit) => {
+          const size = formatArea(unit.size)
+          const inside = (
+            <>
+              <span className="flex min-w-0 items-center gap-2.5">
+                <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-[var(--color-status-available)]" />
+                <span className="truncate font-display text-[15px] font-bold tracking-[-0.02em] text-content">
+                  {formatUnitLabel(unit.label)}
+                </span>
+              </span>
+              <span className="flex shrink-0 items-center gap-2">
+                {size && <span className="font-body text-[13px] tabular-nums text-content/55">{size}</span>}
+                {/* Without it the row is a dot and a number on a bordered
+                    rectangle, which is what a static list item looks like.
+                    Unit 201 has no size in the CMS either, so on that row the
+                    caret is the only thing saying it can be clicked. */}
+                {onSelect && (
+                  <CaretRight
+                    aria-hidden
+                    weight="bold"
+                    className="size-3.5 text-content/35 transition-[color,transform] duration-200 group-hover:translate-x-0.5 group-hover:text-accent"
+                  />
+                )}
+              </span>
+            </>
+          )
+
+          const shape =
+            'flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-[var(--color-line)] bg-surface-alt px-4 py-2 text-left'
+
+          // Without a selector to call, the rows are still worth showing —
+          // they say what is free — they just are not pretending to be
+          // buttons. Both live call sites pass one.
+          return onSelect ? (
+            <button
+              key={unit.label}
+              type="button"
+              onClick={() => onSelect(unit)}
+              className={`${shape} group transition-colors duration-200 hover:border-accent/60 hover:bg-accent/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent`}
+            >
+              {inside}
+            </button>
+          ) : (
+            <div key={unit.label} className={shape}>
+              {inside}
+            </div>
+          )
+        })}
+      </div>
+
+      {free.length > shown.length && (
+        <p className="mt-3 font-body text-[12px] text-content/45">
+          and {free.length - shown.length} more on the plan
+        </p>
       )}
     </div>
   )

@@ -101,16 +101,21 @@ model Property {
 }
 
 /// One applied Prime Tracker sync, with what the property held just before it.
-/// Writing `previousFloorPlans` and `previousTotals` back undoes the sync.
+/// Writing `previousFloorPlans` and `previousTotals` back, and spreading
+/// `previousSiteBindings` over `detail.siteModel`, undoes the sync.
 model WebsiteTrackerSync {
-  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  propertyId         String   @map("property_id") @db.Uuid
-  trackerProjectId   String   @map("tracker_project_id")
-  report             Json
-  previousFloorPlans Json?    @map("previous_floor_plans")
-  previousTotals     Json     @map("previous_totals")
-  forced             Boolean  @default(false)
-  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  propertyId           String   @map("property_id") @db.Uuid
+  trackerProjectId     String   @map("tracker_project_id")
+  report               Json
+  previousFloorPlans   Json?    @map("previous_floor_plans")
+  previousTotals       Json     @map("previous_totals")
+  /// `{ unitBindings, buildingBindings }` from `detail.siteModel`, the only part
+  /// of it the sync writes. Null when the property has no site model, and on
+  /// syncs from before migration 3.
+  previousSiteBindings Json?    @map("previous_site_bindings")
+  forced               Boolean  @default(false)
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 

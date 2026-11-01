@@ -64,6 +64,7 @@ function readStored() {
 }
 
 let accessToken = null
+let accessExpiresAt = null
 let refreshToken = readStored()
 let onAuthLost = null
 
@@ -72,8 +73,28 @@ export function setAuthLostHandler(fn) {
   onAuthLost = fn
 }
 
+/**
+ * When the access token stops working, on this machine's clock, or null if it
+ * can't be read.
+ *
+ * Measured as the token's lifetime (exp − iat) from the moment it arrived, not
+ * from `exp` itself, so an office PC whose clock is ten minutes out still
+ * refreshes on time. Tokens only ever come fresh off /auth/login or
+ * /auth/refresh, so "arrived" and "issued" are the same instant.
+ */
+function expiryOf(token) {
+  try {
+    const { exp, iat } = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+    if (typeof exp !== 'number') return null
+    return typeof iat === 'number' ? Date.now() + (exp - iat) * 1000 : exp * 1000
+  } catch {
+    return null
+  }
+}
+
 export function setTokens(tokens) {
   accessToken = tokens?.accessToken ?? null
+  accessExpiresAt = accessToken ? expiryOf(accessToken) : null
   refreshToken = COOKIE_MODE ? (accessToken ? COOKIE_MARKER : null) : (tokens?.refreshToken ?? null)
   try {
     if (refreshToken) localStorage.setItem(REFRESH_KEY, refreshToken)
@@ -115,27 +136,52 @@ function withRefreshLock(work) {
   return navigator.locks?.request ? navigator.locks.request('pd.admin.refresh', work) : work()
 }
 
+/** The session is over: forget it and send the UI to the login page. */
+function endSession() {
+  clearTokens()
+  onAuthLost?.()
+  return false
+}
+
+/**
+ * Trades the refresh token for a new pair.
+ *
+ * Resolves true on success and false when the API refused the token, which ends
+ * the session. Anything else — the network dropped, a 502/503 while a deploy
+ * rolls over — says nothing about the token, so it rejects with an ApiError and
+ * leaves the session alone. Treating those as a logout would unmount whatever
+ * the editor was in the middle of, unsaved edits and all, over a blip.
+ */
 async function refreshSession() {
   if (!refreshToken && !storedRefreshToken()) return false
   if (!refreshInFlight) {
     refreshInFlight = withRefreshLock(async () => {
       try {
         refreshToken = storedRefreshToken() ?? refreshToken
-        if (!refreshToken) throw new Error('no session')
-        const res = await fetch(`${BASE}/api/auth/refresh`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          // Same-origin in cookie mode, so the browser attaches the cookie itself.
-          credentials: 'same-origin',
-          body: JSON.stringify(refreshBody()),
-        })
-        if (!res.ok) throw new Error('refresh rejected')
-        setTokens(await res.json())
+        if (!refreshToken) return endSession()
+        let res
+        try {
+          res = await fetch(`${BASE}/api/auth/refresh`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            // Same-origin in cookie mode, so the browser attaches the cookie itself.
+            credentials: 'same-origin',
+            body: JSON.stringify(refreshBody()),
+          })
+        } catch (cause) {
+          throw new ApiError('Could not reach the server. Check your connection and try again.', 0, cause)
+        }
+        if (res.status === 401 || res.status === 403) return endSession()
+        const payload = await res.json().catch(() => null)
+        if (!res.ok || !payload?.accessToken) {
+          throw new ApiError(
+            `Could not renew your session (${res.status}). Nothing was lost — try again in a moment.`,
+            res.status,
+            payload,
+          )
+        }
+        setTokens(payload)
         return true
-      } catch {
-        clearTokens()
-        onAuthLost?.()
-        return false
       } finally {
         refreshInFlight = null
       }
@@ -205,18 +251,16 @@ export async function apiFetch(path, { method = 'GET', body, signal, _retried } 
   }
 
   // One retry, and only when a refresh token exists — otherwise an anonymous
-  // 401 would loop. FormData bodies can't be replayed reliably after being
-  // consumed, so refresh first and let the caller retry those.
-  if (res.status === 401 && !_retried && refreshToken && !(body instanceof FormData)) {
+  // 401 would loop. FormData goes too: unlike a stream it is re-serialised on
+  // every send, so the upload simply goes again. A refresh that fails for a
+  // transient reason rejects here, with the session still intact.
+  if (res.status === 401 && !_retried && refreshToken) {
     if (await refreshSession()) {
       return apiFetch(path, { method, body, signal, _retried: true })
     }
   }
 
-  if (res.status === 401 && accessToken) {
-    clearTokens()
-    onAuthLost?.()
-  }
+  if (res.status === 401 && accessToken) endSession()
 
   if (res.status === 204) return null
 
@@ -233,7 +277,40 @@ export const api = {
   del: (path, opts) => apiFetch(path, { ...opts, method: 'DELETE' }),
 }
 
-/** Ensures a valid access token before a request that can't be replayed. */
+/** Refresh this long before the access token runs out, so it can't lapse in flight. */
+const EXPIRY_MARGIN_MS = 60_000
+
+/**
+ * Ensures a live access token before a request too expensive to send twice — a
+ * photo or a model upload. An editor who spends twenty minutes on descriptions
+ * and then adds photos is holding a token that died five minutes ago (production
+ * tokens last 15 minutes). Rejects with an ApiError if the server can't be
+ * reached; the session is kept, so the editor can retry.
+ */
 export async function ensureFreshSession() {
-  if (!accessToken && refreshToken) await refreshSession()
+  if (!refreshToken) return
+  const stale = !accessToken || (accessExpiresAt !== null && accessExpiresAt - Date.now() < EXPIRY_MARGIN_MS)
+  if (stale && !(await refreshSession())) {
+    throw new ApiError('Your session has expired. Sign in again.', 401)
+  }
+}
+
+/**
+ * Turns a stored refresh token back into a signed-in admin on page load.
+ *
+ * Resolves to the user, or null when there is no session or the API says the
+ * token is no good. Rejects, with the token kept, when the API couldn't be
+ * asked — so trying again, or reloading once a deploy has finished, still works.
+ */
+export async function restoreSession() {
+  if (!refreshToken) return null
+  try {
+    return await apiFetch('/auth/me')
+  } catch (err) {
+    if (err?.status === 401 || err?.status === 403) {
+      clearTokens()
+      return null
+    }
+    throw err
+  }
 }

@@ -65,8 +65,8 @@ export function assertImageOk(file) {
 }
 
 async function upload(kind, file, folder) {
-  // A multipart body can't be replayed after a 401-triggered refresh — the
-  // stream is already consumed — so make sure the token is good beforehand.
+  // apiFetch would retry a 401 after refreshing, but only by sending the whole
+  // file a second time — so make sure the token is good beforehand.
   await ensureFreshSession()
 
   const body = new FormData()

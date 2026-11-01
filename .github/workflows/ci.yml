@@ -1,0 +1,76 @@
+# Tests, lint, type check and a production build for both apps, on every PR to
+# main and every push to it.
+#
+# This workflow deploys nothing and uses no secrets: the web and API tests fake
+# the network, Prisma and SES, and need no database. Production deploys stay
+# manual (scripts/aws/02-deploy-api.sh, scripts/deploy-web-aws.sh). Keep it that
+# way — nothing here should ever need a production credential.
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# A new push to a PR supersedes the run in progress. Pushes to main each run to
+# completion, so every commit on main has a result.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  web:
+    name: web
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      # Reads the pnpm version from packageManager in the root package.json.
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Unit tests
+        run: pnpm --filter @prime-developers/web test
+      - name: Lint (oxlint)
+        run: pnpm --filter @prime-developers/web lint
+      # vite.config.js refuses a production build without VITE_API_BASE_URL.
+      # This is the site's public origin, the same one deploy-web-aws.sh bakes in.
+      - name: Build
+        run: pnpm --filter @prime-developers/web build
+        env:
+          VITE_API_BASE_URL: https://dtw8rs0oq8bpp.cloudfront.net
+
+  api:
+    name: api
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # The tests and the type check both load the generated client. Generating
+      # it needs no DATABASE_URL.
+      - name: Generate Prisma client
+        run: pnpm --filter @prime-developers/api exec prisma generate
+      - name: Unit tests
+        run: pnpm --filter @prime-developers/api test
+      - name: Type check
+        run: pnpm --filter @prime-developers/api exec tsc --noEmit

@@ -12,7 +12,7 @@ import UnitFields from './UnitFields'
 import { applyUnitChange, getUnits, makeUnit, nextUnitLabel, reconcile, unitFormId } from '../../lib/units'
 import { FIGURES, makeInvestment, hasInvestmentData } from '../../lib/investment'
 import { mergeFields, resolveNext } from '../adminUtils'
-import { TRACKER_MANAGED, isTrackerUnit, siteLinkedUnits, unitLabelProblems, unitPlacement } from '../unitChecks'
+import { TRACKER_MANAGED, isTrackerBuilding, isTrackerUnit, siteLinkedUnits, unitLabelProblems, unitPlacement } from '../unitChecks'
 
 // One building's full editor.
 //
@@ -56,9 +56,11 @@ export default function BuildingBlock({ building, onChange, folder, siteModel = 
   const setField = (key) => (value) => onChange((b) => ({ ...b, [key]: value }))
   const setUnits = (unitList) => onChange((b) => ({ ...b, unitList: resolveNext(unitList, b.unitList ?? []) }))
 
-  // A rename keeps the unit's 3D link — see applyUnitChange in lib/units.
+  // A rename keeps the unit's 3D link: the property editor re-keys every
+  // binding once at save (rekeyForSave in lib/units), so nothing is re-pointed
+  // per keystroke here — that walked through other units' labels on the way.
   const setUnitAt = (index, next) =>
-    onChange((b) => applyUnitChange(b, index, resolveNext(next, (b.unitList ?? [])[index])))
+    onChange((b) => applyUnitChange(b, index, resolveNext(next, (b.unitList ?? [])[index]), { rebind: false }))
 
   const handlePlace = (x, y) => {
     if (placingUnitIndex === null) return
@@ -107,13 +109,21 @@ export default function BuildingBlock({ building, onChange, folder, siteModel = 
         )}
 
         <div className="mt-4">
+          {/* A synced building's unit list is the tracker's: a unit added here
+              is not in its snapshot, so the next sync would delete it — or,
+              once it has photographs, refuse the whole property's push. */}
+          {isTrackerBuilding(building) && (
+            <p className="mb-3 text-xs text-bone-3">
+              Units in this building come from Prime Tracker. A missing unit is added there and appears after the next sync.
+            </p>
+          )}
           <UnitsWorkspace
             units={units}
             siteModel={siteModel}
             building={building}
             selected={selectedUnit}
             onSelect={setSelectedUnit}
-            onAdd={() => setUnits((list) => [...list, makeUnit(nextUnitLabel(list))])}
+            onAdd={isTrackerBuilding(building) ? null : () => setUnits((list) => [...list, makeUnit(nextUnitLabel(list))])}
             onMove={(i, by) =>
               setUnits((list) => {
                 const next = [...list]

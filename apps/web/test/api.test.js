@@ -49,6 +49,11 @@ async function loadApi({ cookie = false, stored = null } = {}) {
     removeItem: (key) => items.delete(key),
   }
   Object.defineProperty(globalThis, 'localStorage', { value: storage, configurable: true, writable: true })
+  // Every browser has navigator; Node only from v21. Without navigator.locks the
+  // module refreshes with no cross-tab lock, which is all a single page needs.
+  if (typeof navigator === 'undefined') {
+    Object.defineProperty(globalThis, 'navigator', { value: {}, configurable: true, writable: true })
+  }
 
   const env = JSON.stringify({ VITE_API_BASE_URL: BASE, VITE_REFRESH_COOKIE: String(cookie) })
   const code = `${source.replaceAll('import.meta.env', `(${env})`)}\n// copy ${++copies}\n`

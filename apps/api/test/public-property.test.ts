@@ -78,8 +78,7 @@ const row = () => ({
               floor: 'Ground',
               rate: '$450,000',
               frontage: '25 ft',
-              // The shape of every sold row's description on 1 Nov 2026.
-              description: 'Retail unit sold to Jane Q. Buyer for $450,000.',
+              description: 'Retail unit.',
               x: 12,
               y: 40,
               logo: '',
@@ -162,13 +161,15 @@ test('a unit row carries only the allowlisted fields', () => {
   assert.deepEqual(out, { label: '700', status: 'available' });
 });
 
-test("a sold unit's owner — name, website, category and the description that names them — is withheld; its photos, size and pin stay", () => {
+test("a sold unit's owner — name, website and category — is withheld; its description, photos, size and pin stay", () => {
   const [sold] = unitsOf(toPublicProperty(row()));
   assert.equal('tenant' in sold, false);
   assert.equal('tenantUrl' in sold, false);
   assert.equal('tenantCategory' in sold, false);
-  assert.equal('description' in sold, false);
   assert.equal('rate' in sold, false);
+  // The editor's copy is published as written: keeping a buyer out of it is
+  // the CMS's job, not this filter's.
+  assert.equal(sold.description, 'Retail unit.');
   assert.deepEqual(sold.images, ['https://site.test/media/images/units/601.webp']);
   assert.equal(sold.size, '1,500');
   assert.equal(sold.x, 12);
@@ -196,13 +197,11 @@ test('the CMS opt-ins publish them, and only a literal true counts', () => {
     status: 'sold',
     tenant: 'Dental Partners',
     tenantUrl: 'https://dp.test',
-    description: 'Owner-occupied dental practice.',
     rate: '$450,000',
   };
   const optedIn = toPublicUnit({ ...sold, publishTenant: true, publishRate: true });
   assert.equal(optedIn.tenant, 'Dental Partners');
   assert.equal(optedIn.tenantUrl, 'https://dp.test');
-  assert.equal(optedIn.description, 'Owner-occupied dental practice.');
   assert.equal(optedIn.rate, '$450,000');
   // Each flag publishes only its own fields.
   assert.equal('rate' in toPublicUnit({ ...sold, publishTenant: true }), false);

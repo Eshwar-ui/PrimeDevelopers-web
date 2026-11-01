@@ -71,12 +71,13 @@ export const PUBLIC_UNIT_FIELDS = [
 
 /**
  * Who the occupant is, withheld together: the site never shows the link or
- * trade without the name. `description` goes with them because it is where an
- * editor names the buyer — every sold row live on 1 Nov 2026 read "Retail unit
- * sold to <buyer> for <price>". With it gone the site says "This unit has been
- * sold." (STATUS_COPY in apps/web/src/lib/unitStatus.js).
+ * trade without the name.
+ *
+ * `description` is not among them and is always public. It is the editor's
+ * copy, so keeping a buyer or a price out of it is the editor's job — the unit
+ * form says so on a sold unit (apps/web/src/admin/components/UnitFields.jsx).
  */
-const TENANT_FIELDS = ['tenant', 'tenantUrl', 'tenantCategory', 'description'] as const;
+const TENANT_FIELDS = ['tenant', 'tenantUrl', 'tenantCategory'] as const;
 
 // By status, what is public without an opt-in. A missing status is one the
 // site shows as available. Anything else — a status this file does not know —
@@ -90,9 +91,8 @@ const RATE_PUBLIC = new Set(['', 'available', 'coming-soon']);
 
 /**
  * The CMS's opt-ins, set per unit. `publishTenant` publishes a sold unit's
- * occupant and description (an owner-occupier's trading name, say);
- * `publishRate` publishes the rate of a leased or sold unit. Only a literal
- * `true` counts.
+ * occupant (an owner-occupier's trading name, say); `publishRate` publishes
+ * the rate of a leased or sold unit. Only a literal `true` counts.
  */
 export const OPT_IN = { tenant: 'publishTenant', rate: 'publishRate' } as const;
 

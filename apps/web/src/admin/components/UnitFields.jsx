@@ -77,12 +77,12 @@ export default function UnitFields({ unit, onChange, folder }) {
       {/* The public API leaves these out unless ticked — see
           apps/api/src/modules/properties/public-property.ts. Asked only
           where there is something to withhold. */}
-      {unit.status === 'sold' && (String(unit.tenant ?? '').trim() || String(unit.description ?? '').trim()) && (
+      {unit.status === 'sold' && String(unit.tenant ?? '').trim() && (
         <CheckboxField
-          label="Show the owner and description on the website"
+          label="Show the owner on the website"
           value={unit.publishTenant === true}
           onChange={set('publishTenant')}
-          hint="A sold unit's owner, website, category and description are kept off the public site unless this is ticked — the site says “This unit has been sold.” instead. Tick it for a business that owns its unit, never for a private buyer, and keep the price out of the description."
+          hint="A sold unit's owner, website and category are kept off the public site unless this is ticked. Tick it for a business that owns its unit, never for a private buyer."
         />
       )}
       {(unit.status === 'leased' || unit.status === 'sold') && String(unit.rate ?? '').trim() && (
@@ -147,6 +147,15 @@ export default function UnitFields({ unit, onChange, folder }) {
         placeholder="Corner suite with dock access and 18ft clear height…"
         value={unit.description}
         onChange={set('description')}
+        // Withholding the owner and rate (the checkboxes above) covers their
+        // own fields only; this one is always published as written.
+        hint={
+          unit.status === 'sold'
+            ? 'Shown on the public site as written — leave out who bought the unit and what it sold for.'
+            : unit.status === 'leased'
+              ? 'Shown on the public site as written — leave out the rent.'
+              : undefined
+        }
       />
     </>
   )

@@ -34,6 +34,16 @@ function nextDetail(
   return next as Prisma.InputJsonValue;
 }
 
+/**
+ * The part of the site model a sync can change, for its undo record: spread
+ * back over `detail.siteModel`, it puts every shape back on the label it had,
+ * without undoing a model re-uploaded since.
+ */
+const siteBindings = (siteModel: SiteModel | null | undefined) =>
+  siteModel
+    ? ({ unitBindings: siteModel.unitBindings ?? {}, buildingBindings: siteModel.buildingBindings ?? {} } as Prisma.InputJsonValue)
+    : Prisma.JsonNull;
+
 @Injectable()
 export class TrackerSyncService {
   private readonly logger = new Logger(TrackerSyncService.name);
@@ -88,6 +98,7 @@ export class TrackerSyncService {
           report: report as unknown as Prisma.InputJsonValue,
           previousFloorPlans: (detail.floorPlans ?? Prisma.JsonNull) as Prisma.InputJsonValue,
           previousTotals: totalsBefore,
+          previousSiteBindings: siteBindings(detail.siteModel),
           forced: !!options.force,
         },
       });

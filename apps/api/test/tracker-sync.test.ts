@@ -344,6 +344,29 @@ test('service: a dry run answers with the report, an unforced partial push is a 
   }
 });
 
+test('service: the undo record keeps the site model\'s bindings, so writing it back restores the shapes too', async () => {
+  const detail = {
+    floorPlans: {
+      buildings: [{ building: 'Building 6', trackerBuildingId: 'b6', unitList: [{ label: '605', status: 'leased', trackerUnitIds: ['u605'] }] }],
+    },
+    siteModel: {
+      url: 'site.glb',
+      unitBindings: { m605: { buildingLabel: 'Building 6', unitLabel: '605' } },
+      buildingBindings: { m605: 'Building 6' },
+    },
+  };
+  const property = { ...leanderProperty(), trackerProjectId: 'proj-centro', buildings: 1, sold: 1, available: 0, detail };
+  const { prisma, writes } = fakePrisma(property);
+  await new TrackerSyncService(prisma).apply(snapshot([{ id: 'b6', name: 'Building 6', units: [unit('u605', '605A', 'LEASED')] }]));
+
+  const [{ detail: after }] = writes.updates;
+  assert.equal(after.siteModel.unitBindings.m605.unitLabel, '605A');
+  const [undo] = writes.syncs;
+  const restored = { ...after, floorPlans: undo.previousFloorPlans, siteModel: { ...after.siteModel, ...undo.previousSiteBindings } };
+  assert.deepEqual(restored.floorPlans, detail.floorPlans);
+  assert.deepEqual(restored.siteModel, detail.siteModel);
+});
+
 // ── 2. The removal guard, per building ─────────────────────────────────────
 
 test('removing a whole building is refused even when the property is large', () => {
@@ -706,6 +729,118 @@ test('a unit moved between buildings keeps its photographs and its shape, but no
   // The input is never mutated.
   assert.equal(floorPlans.buildings[0].unitList[0].x, 0.1);
   assert.deepEqual(nextSite!.unitBindings!.m, { buildingLabel: 'Building 9', unitLabel: '801' });
+});
+
+test('a unit moved to another building takes its shape\'s building binding with it', () => {
+  const floorPlans = {
+    buildings: [
+      { building: 'Building 8', trackerBuildingId: 'b8', unitList: [{ label: '801', status: 'sold', trackerUnitIds: ['u801'] }, { label: '802', status: 'sold', trackerUnitIds: ['u802'] }] },
+      { building: 'Building 9', trackerBuildingId: 'b9', unitList: [{ label: '901', status: 'sold', trackerUnitIds: ['u901'] }] },
+    ],
+  };
+  // As bindSiteMeshes() in apps/web/src/lib/siteModel.js tags them: a unit tag always carries its building's.
+  const siteModel: SiteModel = {
+    unitBindings: {
+      m801: { buildingLabel: 'Building 8', unitLabel: '801' },
+      m802: { buildingLabel: 'Building 8', unitLabel: '802' },
+    },
+    buildingBindings: { m801: 'Building 8', m802: 'Building 8', roof: 'Building 8' },
+  };
+  const { siteModel: nextSite } = mergeSnapshot(
+    floorPlans,
+    ZERO,
+    snapshot([
+      { id: 'b8', name: 'Building 8', units: [unit('u802', '802', 'SOLD')] },
+      { id: 'b9', name: 'Building 9', units: [unit('u801', '903', 'SOLD'), unit('u901', '901', 'SOLD')] },
+    ]),
+    { siteModel },
+  );
+  assert.deepEqual(nextSite!.unitBindings!.m801, { buildingLabel: 'Building 9', unitLabel: '903' });
+  // The two maps agree again; nothing else moves.
+  assert.deepEqual(nextSite!.buildingBindings, { m801: 'Building 9', m802: 'Building 8', roof: 'Building 8' });
+  assert.deepEqual(siteModel.buildingBindings!.m801, 'Building 8');
+});
+
+// ── 3D shapes through a split ──────────────────────────────────────────────
+
+const building6 = (unitList: any[], model?: Record<string, any>) => ({
+  buildings: [{ building: 'Building 6', trackerBuildingId: 'b6', ...(model ? { model } : {}), unitList }],
+});
+const leasedTogether = snapshot([
+  {
+    id: 'b6',
+    name: 'Building 6',
+    units: [unit('u606', '606', 'LEASED', { dealRef: 'LEASE:SRI' }), unit('u608', '608', 'LEASED', { dealRef: 'LEASE:SRI' })],
+  },
+]);
+const apart = (number606 = '606') =>
+  snapshot([{ id: 'b6', name: 'Building 6', units: [unit('u606', number606, 'LEASED'), unit('u608', '608', 'AVAILABLE')] }]);
+const site6 = (bindings: Record<string, string>): SiteModel => ({
+  url: 'site.glb',
+  unitBindings: Object.fromEntries(Object.entries(bindings).map(([mesh, label]) => [mesh, { buildingLabel: 'Building 6', unitLabel: label }])),
+  buildingBindings: Object.fromEntries(Object.keys(bindings).map((mesh) => [mesh, 'Building 6'])),
+});
+
+test('a split never gives one half the other half\'s shape: shapes tagged to the whole row wait for re-tagging', () => {
+  const siteModel = site6({ m606: '606+608', m608: '606+608' });
+  const { floorPlans: next, siteModel: nextSite, report } = mergeSnapshot(
+    building6([{ label: '606+608', status: 'leased', trackerUnitIds: ['u606', 'u608'] }]),
+    ZERO,
+    apart(),
+    { siteModel },
+  );
+  assert.deepEqual(labels(next), ['606', '608']);
+  // Nothing says which shopfront is 608's, so neither shows as "606 · Leased":
+  // both stay on the old label, which reconcileSite() shows as Building 6.
+  assert.deepEqual(nextSite!.unitBindings, siteModel.unitBindings);
+  assert.deepEqual(nextSite!.buildingBindings, siteModel.buildingBindings);
+  assert.deepEqual(report.rebound, []);
+  const into = ['Building 6 / 606', 'Building 6 / 608'];
+  assert.deepEqual(report.stranded, [
+    { mesh: 'm606', model: 'site', from: 'Building 6 / 606+608', into },
+    { mesh: 'm608', model: 'site', from: 'Building 6 / 606+608', into },
+  ]);
+  assert.equal(report.counts.stranded, 2);
+});
+
+test('a combine remembers which unit each shape was, so the split after it sends each one back', () => {
+  const siteModel = site6({ m606: '606', m608: '608' });
+  const rows = [
+    { label: '606', status: 'leased', trackerUnitIds: ['u606'] },
+    { label: '608', status: 'available', trackerUnitIds: ['u608'] },
+  ];
+  const combined = mergeSnapshot(building6(rows), ZERO, leasedTogether, { siteModel });
+  assert.deepEqual(labels(combined.floorPlans), ['606+608']);
+  assert.deepEqual(combined.siteModel!.unitBindings, {
+    m606: { buildingLabel: 'Building 6', unitLabel: '606+608', trackerUnitId: 'u606' },
+    m608: { buildingLabel: 'Building 6', unitLabel: '606+608', trackerUnitId: 'u608' },
+  });
+
+  // Stored as jsonb stores it, then 608's lease ends and the pair splits — with 606 renumbered too.
+  const stored = jsonbRoundTrip({ floorPlans: combined.floorPlans, siteModel: combined.siteModel });
+  const split = mergeSnapshot(stored.floorPlans, combined.totals, apart(), { siteModel: stored.siteModel });
+  assert.deepEqual(split.siteModel!.unitBindings, siteModel.unitBindings);
+  assert.deepEqual(split.report.stranded, []);
+  const renumbered = mergeSnapshot(stored.floorPlans, combined.totals, apart('606A'), { siteModel: stored.siteModel });
+  assert.deepEqual(
+    Object.entries(renumbered.siteModel!.unitBindings!).map(([mesh, b]) => [mesh, b.unitLabel]),
+    [['m606', '606A'], ['m608', '608']],
+  );
+});
+
+test('a building\'s own model: a split sends unit-608 back to 608 by its name, and leaves a shape with no name', () => {
+  const model = {
+    url: 'b6.glb',
+    meshNames: ['unit-606', 'unit-608', 'Node7'],
+    bindings: { 'unit-606': '606+608', 'unit-608': '606+608', Node7: '606+608' },
+  };
+  const { floorPlans: next, report } = mergeSnapshot(
+    building6([{ label: '606+608', status: 'leased', trackerUnitIds: ['u606', 'u608'] }], model),
+    ZERO,
+    apart(),
+  );
+  assert.deepEqual(next.buildings[0].model.bindings, { 'unit-606': '606', 'unit-608': '608', Node7: '606+608' });
+  assert.deepEqual(report.stranded, [{ mesh: 'Node7', model: 'Building 6', from: '606+608', into: ['606', '608'] }]);
 });
 
 test('labels are normalised: prefixes, leading zeros and spaces around "+"', () => {

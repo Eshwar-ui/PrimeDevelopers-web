@@ -6,7 +6,15 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { bindSiteMeshes, reconcileSite, toViewerEntries } from '../src/lib/siteModel.js'
+import {
+  bindSiteMeshes,
+  buildingMeshes,
+  meshBuilding,
+  reconcileSite,
+  shapesInBuilding,
+  tagBuildingShapes,
+  toViewerEntries,
+} from '../src/lib/siteModel.js'
 
 const fixture = process.env.CENTRO_JSON ?? new URL('./fixtures/centro-plaza-site.json', import.meta.url)
 const centro = JSON.parse(readFileSync(fixture, 'utf8'))
@@ -104,4 +112,51 @@ test('tagging a shape as a unit keeps it bound to the unit’s building', () => 
   assert.deepEqual([asRoad.unitBindings, asRoad.buildingBindings, asRoad.roadBindings], [{}, {}, { m: 'FM 1431' }])
   const cleared = bindSiteMeshes(asUnit, ['m'], null)
   assert.deepEqual([cleared.unitBindings, cleared.buildingBindings, cleared.roadBindings], [{}, {}, {}])
+})
+
+test('step 1 knows each building’s shapes, unit-tagged ones included', () => {
+  const model = {
+    buildingBindings: { a: 'B1', b: 'B1', c: 'B2' },
+    unitBindings: { b: { buildingLabel: 'B1', unitLabel: '101' }, legacy: { buildingLabel: 'B2', unitLabel: '201' } },
+  }
+  assert.deepEqual(buildingMeshes(model, 'b1').sort(), ['a', 'b'])
+  // A shape tagged before units carried a building tag still counts.
+  assert.deepEqual(buildingMeshes(model, 'B2').sort(), ['c', 'legacy'])
+  assert.equal(meshBuilding(model, 'legacy'), 'B2')
+  assert.equal(meshBuilding(model, 'nowhere'), null)
+})
+
+test('step 2 only lets a building’s own shapes take its units', () => {
+  const model = { buildingBindings: { a: 'B1', b: 'B1', c: 'B2' }, unitBindings: {} }
+  // A block that straddles two buildings keeps only the armed building’s part.
+  assert.deepEqual(shapesInBuilding(model, ['a', 'c', 'untagged'], 'B1'), ['a'])
+  assert.deepEqual(shapesInBuilding(model, ['c', 'untagged'], 'B1'), [])
+  assert.deepEqual(shapesInBuilding(model, ['a'], ''), [])
+})
+
+test('re-tagging a building keeps the units already tagged inside it', () => {
+  const start = {
+    buildingBindings: { a: 'B1', b: 'B1', c: 'B2' },
+    unitBindings: { b: { buildingLabel: 'B1', unitLabel: '101' }, c: { buildingLabel: 'B2', unitLabel: '201' } },
+    roadBindings: { r: 'Main St' },
+  }
+  const next = tagBuildingShapes(start, ['a', 'b', 'c', 'r', 'new'], 'B1')
+  // b stays unit 101 of B1; c moves building, so its B2 unit goes; the road and the new shape become B1.
+  assert.deepEqual(next.unitBindings, { b: { buildingLabel: 'B1', unitLabel: '101' } })
+  assert.deepEqual(next.buildingBindings, { a: 'B1', b: 'B1', c: 'B1', r: 'B1', new: 'B1' })
+  assert.deepEqual(next.roadBindings, {})
+  // The input is not mutated.
+  assert.equal(start.buildingBindings.c, 'B2')
+})
+
+test('on the live Centro record every unit-tagged shape belongs to its unit’s building', () => {
+  for (const [mesh, bind] of Object.entries(siteModel.unitBindings)) {
+    assert.equal(meshBuilding(siteModel, mesh), bind.buildingLabel, mesh)
+  }
+  assert.equal(buildingMeshes(siteModel, 'Building 6').length, 20)
+})
+
+test('a building whose every shape is a unit counts as tagged', () => {
+  const report = reconcileSite(siteModel.meshNames, buildings, siteModel)
+  assert.ok(!report.unmodelledBuildings.some((b) => b.building === 'Building 9'))
 })

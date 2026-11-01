@@ -104,6 +104,10 @@ export function reconcileSite(meshNames, buildings, siteModel) {
       if (building && unit) {
         resolved.push({ meshName, kind: 'unit', building, unit })
         claimedUnits.add(siteUnitKey(building.building, unit.label))
+        // A unit's shape is its building's too. Without this, a building
+        // whose every shape is a unit (Building 9) read as untagged, which
+        // step 1 of the admin then told the editor to go and tag.
+        claimedBuildings.add(norm(building.building))
         continue
       }
       // Bound to a unit that has since been renamed or deleted — which the
@@ -227,6 +231,58 @@ export function bindSiteMeshes(siteModel, meshNames, target) {
       next.buildingBindings[meshName] = target.buildingLabel
     }
   }
+  return next
+}
+
+/** The building a shape belongs to, or null: its building tag, else the
+ *  building its unit tag names (a shape tagged before units carried both). */
+export function meshBuilding(siteModel, meshName) {
+  return siteModel?.buildingBindings?.[meshName] ?? siteModel?.unitBindings?.[meshName]?.buildingLabel ?? null
+}
+
+/** Every shape tagged to a building — its shell and the units within it. */
+export function buildingMeshes(siteModel, buildingLabel) {
+  const target = norm(buildingLabel)
+  if (!target) return []
+  const names = new Set([
+    ...Object.keys(siteModel?.buildingBindings ?? {}),
+    ...Object.keys(siteModel?.unitBindings ?? {}),
+  ])
+  return [...names].filter((name) => norm(meshBuilding(siteModel, name)) === target)
+}
+
+/**
+ * Of the shapes a click picked, the ones step 1 put in `buildingLabel`.
+ *
+ * Units are tagged building-first: a building's shapes are tagged as the
+ * building, and only then are its units picked out of those shapes. This is
+ * the gate for the second step, so a unit can never land on a shape that
+ * belongs to another building, or to none — the mistake the old free-for-all
+ * Units tab allowed, where Building 6's unit could be tapped onto Building 7.
+ */
+export function shapesInBuilding(siteModel, meshNames, buildingLabel) {
+  const target = norm(buildingLabel)
+  if (!target) return []
+  return meshNames.filter((name) => norm(meshBuilding(siteModel, name)) === target)
+}
+
+/**
+ * Tags shapes as a building without undoing step 2: a shape that already
+ * carries a unit of this same building keeps that unit. Sweeping across
+ * Building 6 again with Building 6 armed must not wipe the twenty units
+ * tagged inside it. Any other tag (another building, a road, a unit of
+ * another building) is replaced, as bindSiteMeshes() does.
+ */
+export function tagBuildingShapes(siteModel, meshNames, buildingLabel) {
+  const target = norm(buildingLabel)
+  const rebind = meshNames.filter(
+    (name) => !(siteModel?.unitBindings?.[name] && norm(meshBuilding(siteModel, name)) === target),
+  )
+  // Keeps a kept unit's building tag current too: one tagged before units
+  // carried both now gets the building tag reconcileSite() falls back to.
+  const kept = meshNames.filter((name) => !rebind.includes(name))
+  const next = bindSiteMeshes(siteModel, rebind, { kind: 'building', buildingLabel })
+  for (const name of kept) next.buildingBindings[name] = siteModel.unitBindings[name].buildingLabel
   return next
 }
 

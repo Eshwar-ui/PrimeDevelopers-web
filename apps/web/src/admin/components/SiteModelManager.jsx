@@ -6,22 +6,29 @@ import UnitFields from './UnitFields'
 import { STATUS_WORDS } from '../completeness'
 import { resolveNext } from '../adminUtils'
 import { formatBytes, getUnits, makeUnit, nextUnitLabel, siteUnitKey } from '../../lib/units'
+import { isTrackerBuilding, isTrackerUnit } from '../unitChecks'
 import {
   bindSiteMeshes,
+  buildingMeshes,
   diffSiteModel,
   findBuildingByLabel,
   makeRoad,
+  meshBuilding,
   pruneSiteBindings,
   reconcileSite,
+  shapesInBuilding,
+  tagBuildingShapes,
   toViewerEntries,
 } from '../../lib/siteModel'
 
 const ModelViewer = lazy(() => import('../../components/floorplan/ModelViewer'))
 
+// In order: a building's shapes are tagged first, then its units are picked
+// out of those shapes. Roads stand apart and can be done at any point.
 const TABS = [
-  { key: 'buildings', label: 'Buildings' },
-  { key: 'units', label: 'Units' },
-  { key: 'roads', label: 'Roads' },
+  { key: 'buildings', label: '1 · Buildings' },
+  { key: 'units', label: '2 · Units' },
+  { key: 'roads', label: '3 · Roads' },
 ]
 
 /**
@@ -29,11 +36,20 @@ const TABS = [
  * building on the site, tagged building/unit/road-wise instead of one GLB per
  * building.
  *
+ * Tagging is building-first. Step 1 tags each building's shapes; step 2 picks
+ * a building and tags its units, and only that building's shapes can be
+ * picked — the rest of the site dims, and a tap outside it is refused with a
+ * note saying where the shape belongs. Untagging a unit in step 2 leaves its
+ * shape in the building rather than dropping it back to untagged.
+ *
  * Building creation stays in the Floor Plans section above (it already has a
  * full form for area/units/parking); this panel only *tags* buildings that
- * already exist there. Units and roads, which have no other creation UI, can
- * be created straight from a tap — the same "arm-then-click, or tap-to-create"
- * pattern ModelManager already uses for units.
+ * already exist there. A unit's details come from Prime Tracker once the sync
+ * has linked its building: those units are listed here but added in the
+ * tracker, and the fields the sync writes are locked (see UnitFields). A
+ * building the tracker has no data for keeps the CMS as its editor — units and
+ * roads can be created straight from a tap, the same "arm-then-click, or
+ * tap-to-create" pattern ModelManager already uses for units.
  */
 export default function SiteModelManager({ buildings, onBuildingsChange, siteModel, onSiteModelChange, folder }) {
   const inputRef = useRef(null)
@@ -49,6 +65,8 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
   const [multiSelect, setMultiSelect] = useState(false)
   const [pendingMeshNames, setPendingMeshNames] = useState([])
   const [showUnbound, setShowUnbound] = useState(false)
+  // Why the last tap did nothing — a shape outside the building being worked on.
+  const [notice, setNotice] = useState(null)
 
   const model = siteModel ?? null
   // A photo upload lands seconds after it starts; edit from the latest list, not the render's copy.
@@ -75,6 +93,21 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
 
   const armedBuilding = findBuildingByLabel(buildings, armedBuildingLabel)
   const armedBuildingUnits = armedBuilding ? getUnits(armedBuilding) : []
+  // Units of a tracker-linked building are the tracker's to add.
+  const trackerBuilding = isTrackerBuilding(armedBuilding)
+
+  /** Step 1's result: how many shapes each building has. Step 2 opens only a building with some. */
+  const shapeCounts = useMemo(
+    () => new Map(buildings.filter((b) => b.building).map((b) => [b.building, buildingMeshes(model, b.building).length])),
+    [buildings, model],
+  )
+  const buildingsTagged = [...shapeCounts.values()].filter(Boolean).length
+
+  /** While step 2 works inside one building, the rest of the site recedes. */
+  const focusMeshes = useMemo(
+    () => (tab === 'units' && armedBuilding ? new Set(buildingMeshes(model, armedBuilding.building)) : null),
+    [tab, armedBuilding, model],
+  )
 
   const setModel = (next) => onSiteModelChange(next)
 
@@ -144,11 +177,25 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
     setModel(bindSiteMeshes(model, names, target))
   }
 
+  /** Step 1's tag: keeps the units step 2 already tagged on this building's shapes. */
+  const tagAsBuilding = (names, buildingLabel) => {
+    setModel(tagBuildingShapes(model, names, buildingLabel))
+  }
+
+  /** What untagging means on this step: a unit's shape stays in its building. */
+  const untagTarget = (buildingLabel) => (tab === 'units' && buildingLabel ? { kind: 'building', buildingLabel } : null)
+
+  /** Applies a tag from any of the three ways to pick one (armed click, multi-select, pick panel). */
+  const applyTag = (names, target) => {
+    if (target?.kind === 'building') tagAsBuilding(names, target.buildingLabel)
+    else bindNames(names, target)
+  }
+
   /** Tap-to-create a unit, mirroring ModelManager's tagShape(): only offered
    *  once a building is armed on the Units tab, since a unit has to belong to
    *  one. */
   const createUnitFromTap = (names) => {
-    if (!armedBuilding) return
+    if (!armedBuilding || trackerBuilding) return
     const label = nextUnitLabel(armedBuildingUnits)
     const unitList = [...(armedBuilding.unitList ?? []), makeUnit(label)]
     const nextBuildings = buildings.map((b) => (b === armedBuilding ? { ...b, unitList } : b))
@@ -157,7 +204,36 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
   }
 
   const onMeshClick = (meshName, block) => {
-    const names = block?.length ? block : [meshName]
+    let names = block?.length ? block : [meshName]
+    setNotice(null)
+
+    // Step 2 works inside one building. With none picked yet, a tap on a
+    // tagged building picks it (and the unit, if the shape has one); a tap on
+    // a shape no building owns is sent back to step 1.
+    if (tab === 'units') {
+      if (!armedBuilding) {
+        const owner = findBuildingByLabel(buildings, meshBuilding(model, meshName))
+        if (!owner) {
+          setNotice('That shape is not part of a building yet. Tag it in step 1 first, then come back for its units.')
+          return
+        }
+        setArmedBuildingLabel(owner.building)
+        setArmedUnitLabel(model?.unitBindings?.[meshName]?.unitLabel ?? '')
+        setTagUnitMode(false)
+        return
+      }
+      const inside = shapesInBuilding(model, names, armedBuilding.building)
+      if (!inside.length) {
+        const owner = meshBuilding(model, meshName)
+        setNotice(
+          owner
+            ? `That shape is part of ${owner}, not ${armedBuilding.building}. Pick ${owner} above to tag its units.`
+            : `That shape is not part of ${armedBuilding.building}. If it belongs to it, tag it in step 1 first.`,
+        )
+        return
+      }
+      names = inside
+    }
 
     if (multiSelect) {
       setPendingMeshNames((prev) => Array.from(new Set([...prev, ...names])))
@@ -168,10 +244,14 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
     if (target) {
       // Clicking a shape that already carries the armed tag takes it off again.
       if (names.every((n) => isBoundTo(n, target))) {
-        bindNames(names, null)
+        if (target.kind === 'building' && names.some((n) => model?.unitBindings?.[n])) {
+          setNotice(`That shape carries a unit of ${target.buildingLabel}. Untag the unit in step 2 before taking the shape out of the building.`)
+          return
+        }
+        bindNames(names, untagTarget(target.buildingLabel))
         return
       }
-      bindNames(names, target)
+      applyTag(names, target)
       // Tagging a whole building unit by unit: move on to the next untagged
       // one so the editor just keeps clicking shapes.
       if (target.kind === 'unit') {
@@ -199,13 +279,13 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
     setPendingMeshNames(names)
   }
 
-  /** Takes every shape off a unit. */
+  /** Takes every shape off a unit. They stay in the building, ready for another unit. */
   const untagUnit = (buildingLabel, unitLabel) => {
     const key = siteUnitKey(buildingLabel, unitLabel)
     const names = Object.entries(model?.unitBindings ?? {})
       .filter(([, b]) => siteUnitKey(b.buildingLabel, b.unitLabel) === key)
       .map(([name]) => name)
-    if (names.length) bindNames(names, null)
+    if (names.length) bindNames(names, { kind: 'building', buildingLabel })
   }
 
   /** Edits one unit of the armed building from the side panel. */
@@ -225,7 +305,7 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
   }
 
   const addUnitFromPanel = () => {
-    if (!armedBuilding) return
+    if (!armedBuilding || trackerBuilding) return
     const label = nextUnitLabel(armedBuilding.unitList ?? [])
     onBuildingsChange(
       buildingsRef.current.map((b) => (b === armedBuilding ? { ...b, unitList: [...(b.unitList ?? []), makeUnit(label)] } : b)),
@@ -240,7 +320,8 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
       return Boolean(b) && siteUnitKey(b.buildingLabel, b.unitLabel) === siteUnitKey(target.buildingLabel, target.unitLabel)
     }
     if (target.kind === 'road') return model?.roadBindings?.[name] === target.roadName
-    return model?.buildingBindings?.[name] === target.buildingLabel && !model?.unitBindings?.[name]
+    // Step 1 asks "is this shape in the building", units inside it included.
+    return meshBuilding(model, name) === target.buildingLabel
   }
 
   /** What the picked shapes are tagged as, in words — every distinct tag, not just the first shape's. */
@@ -268,14 +349,24 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
   }
 
   const tagPicked = (target) => {
-    bindNames(pendingMeshNames, target)
+    applyTag(pendingMeshNames, target)
+    setPendingMeshNames([])
+  }
+
+  /** The pick panel's Remove tag, which on step 1 would also drop units step 2 tagged. */
+  const removePickedTag = () => {
+    if (tab === 'buildings' && pendingMeshNames.some((n) => model?.unitBindings?.[n])) {
+      setNotice('Some of those shapes carry units. Untag the units in step 2 before taking the shapes out of their building.')
+      return
+    }
+    bindNames(pendingMeshNames, untagTarget(armedBuildingLabel))
     setPendingMeshNames([])
   }
 
   const commitPendingSelection = () => {
     const target = armedTarget()
     if (!target || !pendingMeshNames.length) return
-    bindNames(pendingMeshNames, target)
+    applyTag(pendingMeshNames, target)
     setPendingMeshNames([])
   }
 
@@ -398,13 +489,14 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
                 onClick={() => {
                   setTab(t.key)
                   setPendingMeshNames([])
+                  setNotice(null)
                 }}
                 aria-pressed={tab === t.key}
                 className={`rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide ${
                   tab === t.key ? 'border-ember bg-ember text-void' : 'border-white/20 text-bone/70 hover:border-ember hover:text-ember'
                 }`}
               >
-                Tag {t.label}
+                {t.label}
               </button>
             ))}
             <span className="mx-1 h-4 w-px bg-white/15" />
@@ -425,11 +517,16 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
             </label>
           </div>
 
-          {/* Buildings tab: arm one that already exists in Floor Plans above. */}
+          {/* Step 1: arm a building that already exists in Floor Plans above and click its shapes. */}
           {tab === 'buildings' && (
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {buildings.length === 0 && (
                 <p className="text-xs text-bone-3">Add a building in Floor Plans above first — this panel only tags buildings that already exist.</p>
+              )}
+              {buildings.length > 0 && (
+                <p className="basis-full text-xs text-bone-3">
+                  Tag every building's shapes first. Its units are picked out of those shapes in step 2.
+                </p>
               )}
               {buildings.map((b) => (
                 <button
@@ -442,33 +539,45 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
                   }`}
                 >
                   {b.building || '(unnamed — set a name above first)'}
+                  {b.building ? ` · ${shapeCounts.get(b.building) ?? 0}` : ''}
                 </button>
               ))}
             </div>
           )}
 
-          {/* Units tab: pick a building first (scopes which unit list), then a unit, or tap-to-create. */}
+          {/* Step 2: pick a building step 1 tagged (scopes the shapes and the unit list), then a unit, or tap-to-create. */}
           {tab === 'units' && (
             <div className="mt-3 flex flex-col gap-2">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs text-bone-3">Building:</span>
-                {buildings.map((b) => (
-                  <button
-                    key={b.building || Math.random()}
-                    type="button"
-                    onClick={() => {
-                      setArmedBuildingLabel(armedBuildingLabel === b.building ? '' : b.building)
-                      setArmedUnitLabel('')
-                    }}
-                    disabled={!b.building}
-                    className={`rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide disabled:opacity-40 ${
-                      armedBuildingLabel === b.building ? 'border-ember bg-ember text-void' : 'border-white/20 text-bone/70 hover:border-ember hover:text-ember'
-                    }`}
-                  >
-                    {b.building || '(unnamed)'}
-                  </button>
-                ))}
+                {buildings.map((b) => {
+                  const shapes = shapeCounts.get(b.building) ?? 0
+                  return (
+                    <button
+                      key={b.building || Math.random()}
+                      type="button"
+                      onClick={() => {
+                        setArmedBuildingLabel(armedBuildingLabel === b.building ? '' : b.building)
+                        setArmedUnitLabel('')
+                        setTagUnitMode(false)
+                        setPendingMeshNames([])
+                        setNotice(null)
+                      }}
+                      disabled={!b.building || shapes === 0}
+                      title={b.building && shapes === 0 ? 'Tag this building’s shapes in step 1 first' : undefined}
+                      className={`rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide disabled:opacity-40 ${
+                        armedBuildingLabel === b.building ? 'border-ember bg-ember text-void' : 'border-white/20 text-bone/70 hover:border-ember hover:text-ember'
+                      }`}
+                    >
+                      {b.building || '(unnamed)'}
+                      {b.building && shapes === 0 ? ' · step 1 first' : ''}
+                    </button>
+                  )
+                })}
               </div>
+              {buildingsTagged === 0 && (
+                <p className="text-xs text-ember">No building has shapes yet. Tag the buildings in step 1, then come back for their units.</p>
+              )}
               {armedBuilding && (
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-xs text-bone-3">Unit:</span>
@@ -486,19 +595,21 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
                       {u.label || '(unlabelled)'}
                     </button>
                   ))}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTagUnitMode((on) => !on)
-                      setArmedUnitLabel('')
-                    }}
-                    aria-pressed={tagUnitMode}
-                    className={`rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide ${
-                      tagUnitMode ? 'border-ember bg-ember text-void' : 'border-white/20 text-bone/70 hover:border-ember hover:text-ember'
-                    }`}
-                  >
-                    {tagUnitMode ? 'Done — stop creating new units' : '+ New unit by tapping'}
-                  </button>
+                  {!trackerBuilding && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTagUnitMode((on) => !on)
+                        setArmedUnitLabel('')
+                      }}
+                      aria-pressed={tagUnitMode}
+                      className={`rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wide ${
+                        tagUnitMode ? 'border-ember bg-ember text-void' : 'border-white/20 text-bone/70 hover:border-ember hover:text-ember'
+                      }`}
+                    >
+                      {tagUnitMode ? 'Done — stop creating new units' : '+ New unit by tapping'}
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -582,9 +693,9 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
 
           {/* ── coverage summary ─────────────────────────────────── */}
           <div className="mt-4 grid grid-cols-3 gap-3 text-xs text-bone-3">
-            <span>{report.unmodelledBuildings.length} building{report.unmodelledBuildings.length === 1 ? '' : 's'} not yet tagged</span>
-            <span>{report.unmodelledUnits.length} unit{report.unmodelledUnits.length === 1 ? '' : 's'} not yet tagged</span>
-            <span>{report.unmodelledRoads.length} road{report.unmodelledRoads.length === 1 ? '' : 's'} not yet tagged</span>
+            <span>1 · {report.unmodelledBuildings.length} building{report.unmodelledBuildings.length === 1 ? '' : 's'} not yet tagged</span>
+            <span>2 · {report.unmodelledUnits.length} unit{report.unmodelledUnits.length === 1 ? '' : 's'} not yet tagged</span>
+            <span>3 · {report.unmodelledRoads.length} road{report.unmodelledRoads.length === 1 ? '' : 's'} not yet tagged</span>
           </div>
           {/* A shape whose unit has gone still shows as part of its building
               (see reconcileSite), so this is a to-do, not a breakage: re-tag
@@ -608,7 +719,7 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
               onArm={(label) => setArmedUnitLabel(armedUnitLabel === label ? '' : label)}
               onUntag={(label) => untagUnit(armedBuildingLabel, label)}
               onChangeUnit={changeUnit}
-              onAdd={addUnitFromPanel}
+              onAdd={trackerBuilding ? null : addUnitFromPanel}
               folder={`${folder}/unit-images`}
             />
           )}
@@ -621,8 +732,12 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
                       tab === 'buildings' ? armedBuildingLabel : tab === 'units' ? armedUnitLabel : armedRoadName
                     }`
                 : tab === 'units' && tagUnitMode
-                  ? 'Tap a shape to create a new unit for it'
-                  : `Click any shape to tag it (click a tagged shape again while its tag is armed to untag) — or arm a ${tab === 'buildings' ? 'building' : tab === 'units' ? 'unit' : 'road'} above first and click its shape`}
+                  ? `Tap a shape of ${armedBuildingLabel} to create a new unit for it`
+                  : tab === 'units'
+                    ? armedBuilding
+                      ? `Pick a unit, then click its shape — only ${armedBuildingLabel}'s shapes can be picked`
+                      : 'Click a tagged building, or pick one above, to tag its units'
+                    : `Click any shape to tag it (click a tagged shape again while its tag is armed to untag) — or arm a ${tab === 'buildings' ? 'building' : 'road'} above first and click its shape`}
             </div>
             <Suspense
               fallback={
@@ -634,6 +749,7 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
               <ModelViewer
                 url={model.url}
                 siteEntries={entries}
+                focusMeshes={focusMeshes}
                 defaultMode="3d"
                 darkGround
                 orientation={Number.isFinite(model.orientation) ? model.orientation : null}
@@ -644,15 +760,22 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
                 height="h-96 md:h-[34rem]"
               />
             </Suspense>
+            {notice && (
+              <p role="status" className="mt-2 rounded-lg border border-ember/40 bg-ember/5 px-3 py-2 text-xs leading-relaxed text-ember">
+                {notice}
+              </p>
+            )}
             {pendingMeshNames.length > 0 && (
               <PickPanel
+                step={tab}
                 names={pendingMeshNames}
                 current={describeMeshes(pendingMeshNames)}
                 onNewRoad={tagPickedAsNewRoad}
-                buildings={buildings}
+                buildings={tab === 'units' && armedBuilding ? [armedBuilding] : buildings}
                 roads={roads}
                 taggedUnits={taggedUnits}
                 onTag={tagPicked}
+                onRemove={removePickedTag}
                 onClear={() => setPendingMeshNames([])}
               />
             )}
@@ -665,11 +788,12 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
   )
 }
 
-// Shown after a shape is clicked with nothing armed: one tap on a building,
-// unit or road tags it. Untagged units come first, since those are what is
-// left to do; a ✓ marks a unit that already owns a shape (tagging it again
-// moves it to this one).
-function PickPanel({ names, current, buildings, roads, taggedUnits, onTag, onNewRoad, onClear }) {
+// Shown after a shape is clicked with nothing armed: one tap tags it as what
+// the current step is about — a building on step 1, one of the picked
+// building's units on step 2, a road on step 3. Untagged units come first,
+// since those are what is left to do; a ✓ marks a unit that already owns a
+// shape (tagging it again moves it to this one).
+function PickPanel({ step, names, current, buildings, roads, taggedUnits, onTag, onRemove, onNewRoad, onClear }) {
   const chip =
     'rounded-full border border-white/20 px-3 py-1 text-xs font-bold uppercase tracking-wide text-bone/80 hover:border-ember hover:text-ember'
   return (
@@ -683,8 +807,8 @@ function PickPanel({ names, current, buildings, roads, taggedUnits, onTag, onNew
         </p>
         <span className="flex gap-2">
           {!/^Not tagged yet$/.test(current) && (
-            <button type="button" onClick={() => onTag(null)} className="text-xs text-red-300 hover:text-red-200">
-              Remove tag
+            <button type="button" onClick={onRemove} className="text-xs text-red-300 hover:text-red-200">
+              {step === 'units' ? 'Remove unit tag' : 'Remove tag'}
             </button>
           )}
           <button type="button" onClick={onClear} className="text-xs text-bone-3 hover:text-ember">
@@ -693,7 +817,7 @@ function PickPanel({ names, current, buildings, roads, taggedUnits, onTag, onNew
         </span>
       </div>
 
-      {buildings.filter((b) => b.building).length > 0 && (
+      {step === 'buildings' && buildings.filter((b) => b.building).length > 0 && (
         <div className="mt-3">
           <span className="text-[11px] font-bold uppercase tracking-wide text-bone-3">Whole building</span>
           <div className="mt-1 flex flex-wrap gap-2">
@@ -708,58 +832,66 @@ function PickPanel({ names, current, buildings, roads, taggedUnits, onTag, onNew
         </div>
       )}
 
-      {buildings
-        .filter((b) => b.building && (b.unitList ?? []).some((u) => u.label))
-        .map((b) => {
-          const units = (b.unitList ?? []).filter((u) => u.label)
-          const sorted = [...units].sort(
-            (x, y) =>
-              Number(taggedUnits.has(siteUnitKey(b.building, x.label))) -
-              Number(taggedUnits.has(siteUnitKey(b.building, y.label))),
-          )
-          return (
-            <div key={b.building} className="mt-3">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-bone-3">{b.building} · units</span>
-              <div className="mt-1 flex flex-wrap gap-2">
-                {sorted.map((u) => {
-                  const tagged = taggedUnits.has(siteUnitKey(b.building, u.label))
-                  return (
-                    <button
-                      key={u.label}
-                      type="button"
-                      className={`${chip} ${tagged ? 'opacity-60' : ''}`}
-                      onClick={() => onTag({ kind: 'unit', buildingLabel: b.building, unitLabel: u.label })}
-                    >
-                      {tagged ? '✓ ' : ''}Unit {u.label}
-                    </button>
-                  )
-                })}
+      {step === 'units' && buildings.every((b) => !(b.unitList ?? []).some((u) => u.label)) && (
+        <p className="mt-3 text-xs text-bone-3">This building has no units yet — add one beside the model, or in Prime Tracker if the building is synced.</p>
+      )}
+      {step === 'units' &&
+        buildings
+          .filter((b) => b.building && (b.unitList ?? []).some((u) => u.label))
+          .map((b) => {
+            const units = (b.unitList ?? []).filter((u) => u.label)
+            const sorted = [...units].sort(
+              (x, y) =>
+                Number(taggedUnits.has(siteUnitKey(b.building, x.label))) -
+                Number(taggedUnits.has(siteUnitKey(b.building, y.label))),
+            )
+            return (
+              <div key={b.building} className="mt-3">
+                <span className="text-[11px] font-bold uppercase tracking-wide text-bone-3">{b.building} · units</span>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  {sorted.map((u) => {
+                    const tagged = taggedUnits.has(siteUnitKey(b.building, u.label))
+                    return (
+                      <button
+                        key={u.label}
+                        type="button"
+                        className={`${chip} ${tagged ? 'opacity-60' : ''}`}
+                        onClick={() => onTag({ kind: 'unit', buildingLabel: b.building, unitLabel: u.label })}
+                      >
+                        {tagged ? '✓ ' : ''}Unit {u.label}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
-            </div>
-          )
-        })}
+            )
+          })}
 
-      <div className="mt-3">
-        <span className="text-[11px] font-bold uppercase tracking-wide text-bone-3">Road</span>
-        <div className="mt-1 flex flex-wrap gap-2">
-          {roads.map((r) => (
-            <button key={r.name} type="button" className={chip} onClick={() => onTag({ kind: 'road', roadName: r.name })}>
-              {r.name}
+      {step === 'roads' && (
+        <div className="mt-3">
+          <span className="text-[11px] font-bold uppercase tracking-wide text-bone-3">Road</span>
+          <div className="mt-1 flex flex-wrap gap-2">
+            {roads.map((r) => (
+              <button key={r.name} type="button" className={chip} onClick={() => onTag({ kind: 'road', roadName: r.name })}>
+                {r.name}
+              </button>
+            ))}
+            <button type="button" className={`${chip} border-dashed`} onClick={onNewRoad}>
+              + New road
             </button>
-          ))}
-          <button type="button" className={`${chip} border-dashed`} onClick={onNewRoad}>
-            + New road
-          </button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
 
-// Beside the 3D view on the Units tab: pick a unit, click its shape, fill it in.
+// Beside the 3D view on step 2: pick a unit, click its shape, fill it in.
 // Selecting a unit arms it, so the next click in the model tags it; a tagged
 // unit has an Untag button. The form is the same UnitFields the rest of the
-// admin uses, photographs included.
+// admin uses, photographs included. Each unit says where its details come
+// from: Prime Tracker once the sync has linked it, otherwise this CMS.
+// `onAdd` is null for a tracker-linked building, whose units the tracker adds.
 function UnitSidePanel({ building, units, taggedUnits, armedUnitLabel, onArm, onUntag, onChangeUnit, onAdd, folder }) {
   const tagged = units.filter((u) => taggedUnits.has(siteUnitKey(building.building, u.label))).length
   const selected = units.find((u) => u.label && u.label === armedUnitLabel)
@@ -769,6 +901,11 @@ function UnitSidePanel({ building, units, taggedUnits, armedUnitLabel, onArm, on
         <p className="text-sm font-medium text-bone">{building.building}</p>
         <p className="text-xs tabular-nums text-bone-3">
           {tagged} of {units.length} units tagged · 1. pick a unit, 2. click its shape in the model
+        </p>
+        <p className="mt-1 text-xs text-bone-3">
+          {onAdd
+            ? 'Prime Tracker has no units for this building, so they are added and edited here.'
+            : 'Units come from Prime Tracker. What the tracker holds follows it — each unit’s form shows which fields; anything it has no data for, photographs and descriptions included, is edited here.'}
         </p>
       </div>
       <ul className="flex flex-col gap-1.5">
@@ -788,6 +925,12 @@ function UnitSidePanel({ building, units, taggedUnits, armedUnitLabel, onArm, on
               >
                 <span className="font-medium">Unit {u.label || '(no label)'}</span>
                 <span className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wide">
+                  <span
+                    className="rounded border border-white/15 px-1 text-bone-3"
+                    title={isTrackerUnit(u) ? 'Details from Prime Tracker' : 'Details entered in this CMS'}
+                  >
+                    {isTrackerUnit(u) ? 'Tracker' : 'CMS'}
+                  </span>
                   <span className="text-bone-3">{(STATUS_WORDS[u.status] ?? STATUS_WORDS.available).short}</span>
                   <span className={isTagged ? 'text-accent-soft' : 'text-ember'}>{isTagged ? '✓ Tagged' : 'Not tagged'}</span>
                 </span>
@@ -806,13 +949,19 @@ function UnitSidePanel({ building, units, taggedUnits, armedUnitLabel, onArm, on
           )
         })}
       </ul>
-      <button
-        type="button"
-        onClick={onAdd}
-        className="min-h-11 cursor-pointer rounded-xl border border-dashed border-white/25 px-3 text-xs font-bold uppercase tracking-wide text-bone-2 hover:border-ember hover:text-ember"
-      >
-        + Add unit
-      </button>
+      {onAdd ? (
+        <button
+          type="button"
+          onClick={onAdd}
+          className="min-h-11 cursor-pointer rounded-xl border border-dashed border-white/25 px-3 text-xs font-bold uppercase tracking-wide text-bone-2 hover:border-ember hover:text-ember"
+        >
+          + Add unit
+        </button>
+      ) : (
+        <p className="rounded-xl border border-dashed border-white/15 px-3 py-2 text-xs text-bone-3">
+          A unit missing here is added in Prime Tracker and appears after the next sync.
+        </p>
+      )}
       {selected ? (
         <div className="flex flex-col gap-3 border-t border-white/10 pt-3">
           <p className="text-xs font-bold uppercase tracking-wide text-ember">Editing unit {selected.label}</p>

@@ -1,6 +1,6 @@
 // What a unit or building still needs before its public card reads as finished.
 // Pure, so the chip row, the summary strip and the tests all agree.
-import { isTrackerUnit, siteLinkedUnits, unitPlacement } from './unitChecks.js'
+import { siteLinkedUnits, trackerOwnedFields, unitPlacement } from './unitChecks.js'
 import { TENANTED } from '../lib/unitStatus.js'
 
 const blank = (value) => !String(value ?? '').trim()
@@ -16,10 +16,10 @@ export const STATUS_WORDS = {
 
 /** Field names a unit is still missing. Tracker-owned fields are skipped — the editor can't fill them. */
 export function unitMissing(unit) {
-  const synced = isTrackerUnit(unit)
+  const owned = trackerOwnedFields(unit)
   const missing = []
-  if (!synced && blank(unit?.label)) missing.push('Label')
-  if (!synced && blank(unit?.size)) missing.push('Size')
+  if (!owned.label && blank(unit?.label)) missing.push('Label')
+  if (!owned.size && blank(unit?.size)) missing.push('Size')
   if (blank(unit?.floor)) missing.push('Floor / level')
   if (blank(unit?.rate)) missing.push('Lease rate / price')
   if (TENANTED.has(unit?.status) && blank(unit?.tenant)) missing.push('Tenant')

@@ -641,20 +641,18 @@ function Model({ url, units, bindings, siteEntries, focusMeshes, isolateFocus, l
         }}
         onPointerOut={() => onHover(null)}
         onClick={(event) => {
-          const unit = pick(event)
-          if (unit) {
-            event.stopPropagation()
-            // Whether the tap *asked* to be additive. Whether it actually is
-            // additive is the section's call — it owns compare mode, which
-            // this viewer deliberately knows nothing about.
-            const native = event.nativeEvent
-            onSelect(unit.index, native.shiftKey || native.metaKey || native.ctrlKey)
-            return
-          }
           // Admin click-to-bind: mirrors the arm-then-click pattern the 2D
           // pin picker already uses, so an admin who can place a pin already
           // knows how to bind a shape.
-          if (onMeshClick) {
+          //
+          // On a whole-site model every tap is a tagging tap while binding,
+          // tagged shape or not. Re-tagging, untagging and picking a unit out
+          // of an already-tagged building all start on a shape that resolves,
+          // and routing those to onSelect — a no-op in the admin — made all
+          // three silently do nothing. A per-building model keeps a tagged
+          // shape inert: its unit is several panels and only untagged scenery
+          // is grouped into blocks, so a tap would re-bind one wall of a shop.
+          if (onMeshClick && (siteEntries || !pick(event))) {
             event.stopPropagation()
             // The whole connected block, so one tap tags the shop rather than
             // the one wall panel the ray happened to hit. Falls back to the
@@ -663,6 +661,16 @@ function Model({ url, units, bindings, siteEntries, focusMeshes, isolateFocus, l
             const gid = meshes.groupOf.get(event.object.name)
             const block = (gid !== undefined && meshes.membersOf.get(gid)) || [event.object.name]
             onMeshClick(event.object.name, block)
+            return
+          }
+          const unit = pick(event)
+          if (unit) {
+            event.stopPropagation()
+            // Whether the tap *asked* to be additive. Whether it actually is
+            // additive is the section's call — it owns compare mode, which
+            // this viewer deliberately knows nothing about.
+            const native = event.nativeEvent
+            onSelect(unit.index, native.shiftKey || native.metaKey || native.ctrlKey)
           }
         }}
       />
@@ -1658,7 +1666,14 @@ export default function ModelViewer({
 
   const handleReady = useCallback(
     (payload) => {
-      setBounds(payload.bounds)
+      // Kept as the same object when nothing moved. The admin rebuilds the
+      // scene on every tag (which shapes are addressable changed), and new
+      // bounds with identical numbers re-ran the camera framing — the view
+      // snapped back to default after each click of a building-by-building,
+      // unit-by-unit tagging pass.
+      setBounds((previous) =>
+        previous && JSON.stringify(previous) === JSON.stringify(payload.bounds) ? previous : payload.bounds,
+      )
       setReadyUrl(url)
       onModelReady?.(payload.meshNames)
     },

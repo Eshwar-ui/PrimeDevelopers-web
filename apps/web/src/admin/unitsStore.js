@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { useContentRefetch } from '../context/ContentContext'
 import { api } from '../lib/api'
-import { applyUnitChange, getBuildings, labelSlug } from '../lib/units'
+import { applyUnitChange, getBuildings, labelSlug, rekeySiteBindings } from '../lib/units'
 
 /** The admin URL of one unit's editor. */
 export const unitEditPath = (property, buildingLabel, unitLabel) =>
@@ -85,6 +85,23 @@ async function writeUnit({ propertySlug, buildingLabel, buildingIndex, unitLabel
     }
   }
 
-  const detail = { ...fresh.detail, floorPlans: { ...(fresh.detail?.floorPlans ?? {}), buildings } }
+  let detail = { ...fresh.detail, floorPlans: { ...(fresh.detail?.floorPlans ?? {}), buildings } }
+  // One save per edit here, so a rename is one step from the old label to the
+  // new: the whole-site model's shapes follow it (the clash check above has
+  // already refused a label another unit holds).
+  if (change.type === 'update') {
+    const from = units.find((u) => same(u.label, unitLabel))?.label
+    if (from && !same(from, change.unit.label) && fresh.detail?.siteModel) {
+      detail = {
+        ...detail,
+        siteModel: rekeySiteBindings(fresh.detail.siteModel, {
+          type: 'renameUnit',
+          building: building.building,
+          from,
+          to: change.unit.label,
+        }),
+      }
+    }
+  }
   return api.patch(`/admin/properties/${fresh.id}`, { detail, expectedUpdatedAt: fresh.updatedAt })
 }

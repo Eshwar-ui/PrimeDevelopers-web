@@ -10,6 +10,43 @@ export const TRACKER_MANAGED = 'Managed by Prime Tracker'
 /** A unit the Prime Tracker sync has claimed (docs/tracker-sync-and-aws-plan.md). */
 export const isTrackerUnit = (unit) => (unit?.trackerUnitIds ?? []).length > 0
 
+/**
+ * A building the sync has linked to a tracker building. Its unit list is the
+ * tracker's: a unit added here is not in the snapshot, so the next sync either
+ * removes it or, once it has photographs, refuses the whole push until someone
+ * forces it. Units for these buildings are added in the tracker.
+ */
+export const isTrackerBuilding = (building) => Boolean(building?.trackerBuildingId)
+
+const NOT_SYNCED = Object.freeze({ label: false, status: false, size: false, tenant: false })
+
+/**
+ * Which of a unit's details the tracker sync writes, so the editor locks
+ * exactly what the next sync would overwrite and leaves the CMS everything the
+ * tracker has no data for. Mirrors mergeRow() in the API's tracker-merge.ts:
+ * - label and status are always the tracker's;
+ * - size only once the tracker has a square footage — it never blanks one;
+ * - tenant while the unit is available or coming soon (the sync clears it) or
+ *   leased with a tenant on record in the tracker. A leased unit the tracker
+ *   names no tenant for, and every sold unit, keep what the CMS says.
+ * A row synced before `row.tracker` existed has no record of what was sent,
+ * so it locks size and tenant as it always did.
+ */
+export function trackerOwnedFields(unit) {
+  if (!isTrackerUnit(unit)) return NOT_SYNCED
+  const sent = unit.tracker
+  const status = unit.status
+  return {
+    label: true,
+    status: true,
+    size: sent ? sent.sqft != null : true,
+    tenant:
+      status === 'available' ||
+      status === 'coming-soon' ||
+      (status === 'leased' && (sent ? Boolean(String(sent.occupant ?? '').trim()) : true)),
+  }
+}
+
 const norm = (value) => String(value ?? '').trim().toLowerCase()
 
 // Which row a problem is about, stable across renames and reorders where it

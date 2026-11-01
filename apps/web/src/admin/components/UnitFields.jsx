@@ -4,7 +4,7 @@ import RepeatableList from './RepeatableList'
 import { UNIT_STATUSES } from '../../lib/unitStatus'
 import { STATUS_WORDS } from '../completeness'
 import { resolveNext } from '../adminUtils'
-import { TRACKER_MANAGED, isTrackerUnit } from '../unitChecks'
+import { TRACKER_MANAGED, isTrackerUnit, trackerOwnedFields } from '../unitChecks'
 
 // The dropdown says what an editor means — unsold, in lease, sold — while the
 // stored values and the public site's wording stay as they are.
@@ -24,18 +24,20 @@ const ADMIN_STATUSES = UNIT_STATUSES.map((s) => ({ ...s, label: STATUS_WORDS[s.v
  * in the meantime. `onChange` must accept one (resolveNext in adminUtils).
  */
 export default function UnitFields({ unit, onChange, folder }) {
-  // Its label, status and size are the tracker's, and so is the tenant unless
-  // the unit is sold — editing them here would only be undone by the next
-  // sync, which reads to an editor as the site losing their work.
+  // Exactly the fields the next sync would overwrite are locked — editing
+  // them here would only be undone, which reads to an editor as the site
+  // losing their work. Whatever the tracker has no data for stays editable.
   const synced = isTrackerUnit(unit)
-  const tenantSynced = synced && unit.status !== 'sold'
+  const owned = trackerOwnedFields(unit)
+  const ownedWords = ['label', 'status', owned.tenant && 'tenant', owned.size && 'size'].filter(Boolean)
   const set = (key) => (value) => onChange((u) => ({ ...u, [key]: value }))
   return (
     <>
       {synced && (
         <p className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs leading-relaxed text-bone-3">
-          Synced from Prime Tracker. {tenantSynced ? 'Label, status, tenant and size' : 'Label, status and size'} update
-          automatically — change them in the tracker. Photographs, description and the rest are edited here.
+          Synced from Prime Tracker. Its {ownedWords.slice(0, -1).join(', ')} and {ownedWords.at(-1)} update
+          automatically — change them in the tracker. The tracker has no data for the rest, so photographs,
+          description{owned.size ? '' : ', size'}{owned.tenant ? '' : ', tenant'} and everything else are edited here.
         </p>
       )}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -44,31 +46,31 @@ export default function UnitFields({ unit, onChange, folder }) {
           placeholder="Unit 101"
           value={unit.label}
           onChange={set('label')}
-          disabled={synced}
-          hint={synced ? TRACKER_MANAGED : undefined}
+          disabled={owned.label}
+          hint={owned.label ? TRACKER_MANAGED : undefined}
         />
         <SelectField
           label="Status"
           value={unit.status}
           onChange={set('status')}
           options={ADMIN_STATUSES}
-          disabled={synced}
-          hint={synced ? TRACKER_MANAGED : undefined}
+          disabled={owned.status}
+          hint={owned.status ? TRACKER_MANAGED : undefined}
         />
         <TextField
           label="Tenant / use (if any)"
           placeholder="Kalyan Jewellers"
           value={unit.tenant}
           onChange={set('tenant')}
-          disabled={tenantSynced}
-          hint={tenantSynced ? TRACKER_MANAGED : undefined}
+          disabled={owned.tenant}
+          hint={owned.tenant ? TRACKER_MANAGED : undefined}
         />
         <TextField
           label="Size (sq ft)"
           value={unit.size}
           onChange={set('size')}
-          disabled={synced}
-          hint={synced ? TRACKER_MANAGED : undefined}
+          disabled={owned.size}
+          hint={owned.size ? TRACKER_MANAGED : undefined}
         />
         <TextField label="Floor / level" placeholder="Ground" value={unit.floor} onChange={set('floor')} />
         <TextField label="Lease rate / price" placeholder="$28 / SF / yr" value={unit.rate} onChange={set('rate')} />

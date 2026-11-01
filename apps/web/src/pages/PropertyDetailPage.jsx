@@ -179,9 +179,12 @@ export default function PropertyDetailPage() {
   const unseen = gallery.filter((src) => !shown.has(src))
   // Tenants' own storefronts where the unit records carry them — that is what
   // "businesses already open" means — and unseen gallery frames otherwise.
+  // A sold unit counts by its status: the API withholds its owner's name
+  // (apps/api/src/modules/properties/public-property.ts), so it has no tenant
+  // here to go by.
   const storefrontUnits = (d?.floorPlans?.buildings ?? [])
     .flatMap((b) => b.unitList ?? [])
-    .filter((u) => u.tenant && u.status !== 'available' && u.images?.[0])
+    .filter((u) => (u.tenant || u.status === 'sold') && u.status !== 'available' && u.images?.[0])
   const storefronts = [...new Set(storefrontUnits.map((u) => u.images[0]))]
   const establishedImages = (storefronts.length >= 4 ? storefronts : unseen).slice(0, 4)
   // These cards are photographs only, so the alt is all that says whose shop

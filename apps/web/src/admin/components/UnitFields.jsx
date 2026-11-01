@@ -1,4 +1,4 @@
-import { SelectField, TextAreaField, TextField } from './Field'
+import { CheckboxField, SelectField, TextAreaField, TextField } from './Field'
 import ImageUploader from './ImageUploader'
 import RepeatableList from './RepeatableList'
 import { UNIT_STATUSES } from '../../lib/unitStatus'
@@ -74,6 +74,25 @@ export default function UnitFields({ unit, onChange, folder }) {
         <TextField label="Lease rate / price" placeholder="$28 / SF / yr" value={unit.rate} onChange={set('rate')} />
         <TextField label="Frontage" placeholder="32 ft on Leora Ln" value={unit.frontage} onChange={set('frontage')} />
       </div>
+      {/* The public API leaves these out unless ticked — see
+          apps/api/src/modules/properties/public-property.ts. Asked only
+          where there is something to withhold. */}
+      {unit.status === 'sold' && String(unit.tenant ?? '').trim() && (
+        <CheckboxField
+          label="Show the owner on the website"
+          value={unit.publishTenant === true}
+          onChange={set('publishTenant')}
+          hint="A sold unit's owner, website and category are kept off the public site unless this is ticked. Tick it for a business that owns its unit, never for a private buyer."
+        />
+      )}
+      {(unit.status === 'leased' || unit.status === 'sold') && String(unit.rate ?? '').trim() && (
+        <CheckboxField
+          label="Show the rate on the website"
+          value={unit.publishRate === true}
+          onChange={set('publishRate')}
+          hint="The rate of a leased or sold unit is kept off the public site unless this is ticked. The unit card still shows rates only on units on offer; a ticked rate appears in the unit comparison and the building's rent roll."
+        />
+      )}
       {/* Everything below is what a prospect actually reads when
           they tap the unit — each field is optional and simply
           omitted from the card when left blank. */}
@@ -128,6 +147,15 @@ export default function UnitFields({ unit, onChange, folder }) {
         placeholder="Corner suite with dock access and 18ft clear height…"
         value={unit.description}
         onChange={set('description')}
+        // Withholding the owner and rate (the checkboxes above) covers their
+        // own fields only; this one is always published as written.
+        hint={
+          unit.status === 'sold'
+            ? 'Shown on the public site as written — leave out who bought the unit and what it sold for.'
+            : unit.status === 'leased'
+              ? 'Shown on the public site as written — leave out the rent.'
+              : undefined
+        }
       />
     </>
   )

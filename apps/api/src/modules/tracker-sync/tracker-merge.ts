@@ -256,10 +256,8 @@ export interface Rebound {
 }
 
 /**
- * A 3D shape left on a label that is gone, because no one row holds its unit
- * now: a shape tagged to a whole row that split, which nothing says is which
- * half's, or a shape in a building's own model whose unit moved to another
- * building. It shows as its building until it is tagged again.
+ * A 3D shape the sync could not re-point, which shows as its building until it
+ * is tagged again.
  */
 export interface Stranded {
   mesh: string;
@@ -268,6 +266,14 @@ export interface Stranded {
   from: string;
   /** Where the row's units are now. */
   into: string[];
+  /**
+   * `split`: no one row holds its unit now — a shape tagged to the whole of a
+   * row that split, which nothing says is which half's. Left on the old label.
+   * `moved`: its unit went to another building, and the shape stays where it
+   * is. A site shape loses its unit tag and keeps its building one; a shape in
+   * a building's own model is left on the old label.
+   */
+  reason: 'split' | 'moved';
 }
 
 /** Tallies of the lists below, for the tracker's log line. */
@@ -649,20 +655,22 @@ const hasPin = (unit: WebsiteUnit) => Number.isFinite(unit.x) && Number.isFinite
 
 export interface Donor {
   unit: WebsiteUnit;
-  sameBuilding: boolean;
+  givesPin: boolean;
 }
 
 /**
  * Photographs, description and pin from the rows this one continues under a
  * new identity — the other half of a split, the rest of a combine. Only into
  * what the row lacks: its own are never replaced or reordered. A pin only from
- * the same building: it is a point on that building's plan.
+ * the same building, since it is a point on that building's plan, and only
+ * from a row nothing there carries on: the row continuing a split keeps it,
+ * and a second marker on the same spot would mark nothing.
  */
 function carryMedia(next: WebsiteUnit, donors: Donor[]): boolean {
   const own = imagesOf(next);
   const added: string[] = [];
   let carried = false;
-  for (const { unit: donor, sameBuilding } of donors) {
+  for (const { unit: donor, givesPin } of donors) {
     for (const url of imagesOf(donor)) {
       if (!own.includes(url) && !added.includes(url)) added.push(url);
     }
@@ -670,7 +678,7 @@ function carryMedia(next: WebsiteUnit, donors: Donor[]): boolean {
       next.description = donor.description;
       carried = true;
     }
-    if (sameBuilding && !hasPin(next) && hasPin(donor)) {
+    if (givesPin && !hasPin(next) && hasPin(donor)) {
       next.x = donor.x;
       next.y = donor.y;
       carried = true;
@@ -828,15 +836,16 @@ function follow(move: Move, recorded: unknown, claimed: string | null) {
  * Re-points the site model's unit bindings at the rows their units went to,
  * keyed as siteModel.js keys them (building label and unit label, trimmed and
  * lower-cased). Every binding is looked up once against the old labels, so two
- * units swapping numbers swap their shapes too.
+ * units swapping numbers swap their shapes too. A shape moved onto a row of
+ * several units records which unit it was, for the split that may follow.
  *
- * A shape moved to another building takes its building binding along, as
- * `rekeySiteBindings()` in apps/web/src/lib/units.js does for a renamed
- * building, so the two maps never disagree. A shape moved onto a row of
- * several units records which unit it was, for the split that may follow. A
+ * A shape never changes building. One whose unit went to another building
+ * still stands in the old building's block — as the 2D pin was a point on its
+ * plan — so it loses its unit tag and keeps a building one, which is what
+ * `removeUnit` in `rekeySiteBindings()` (apps/web/src/lib/units.js) leaves. A
  * removed row's binding is left alone — reconcileSite() shows a stale one as
- * its building, and restoring the unit re-links its shape — and so is a
- * stranded one.
+ * its building, and restoring the unit re-links its shape — and so is one a
+ * split strands.
  */
 function followSiteBindings(siteModel: SiteModel | null | undefined, moves: Move[], buildings: WebsiteBuilding[]) {
   const rebound: Rebound[] = [];
@@ -847,17 +856,24 @@ function followSiteBindings(siteModel: SiteModel | null | undefined, moves: Move
   const byKey = new Map(moves.map((m) => [siteKey(buildings[m.b].building, m.label), m]));
   const unitBindings: Record<string, SiteUnitBinding> = { ...siteModel.unitBindings };
   const buildingBindings: Record<string, string> = { ...siteModel.buildingBindings };
-  let movedBuilding = false;
+  let unbound = false;
   for (const [mesh, binding] of Object.entries(siteModel.unitBindings)) {
     const move = byKey.get(siteKey(binding?.buildingLabel, binding?.unitLabel));
     if (!move) continue;
     const from = `${binding.buildingLabel} / ${binding.unitLabel}`;
     const next = follow(move, binding.trackerUnitId, meshUnitLabel(mesh));
     if (!next) {
-      stranded.push({ mesh, model: 'site', from, into: move.to.map(where) });
+      stranded.push({ mesh, model: 'site', from, into: move.to.map(where), reason: 'split' });
       continue;
     }
-    const buildingLabel = String(buildings[next.to.b].building ?? '');
+    const buildingLabel = String(buildings[move.b].building ?? '');
+    if (next.to.b !== move.b) {
+      delete unitBindings[mesh];
+      if (!norm(buildingBindings[mesh])) buildingBindings[mesh] = buildingLabel;
+      stranded.push({ mesh, model: 'site', from, into: [where(next.to)], reason: 'moved' });
+      unbound = true;
+      continue;
+    }
     const unitLabel = next.to.row.label;
     const trackerUnitId = next.unit !== null && next.to.row.ids.length > 1 ? next.unit : undefined;
     if (binding.buildingLabel === buildingLabel && binding.unitLabel === unitLabel && binding.trackerUnitId === trackerUnitId) {
@@ -865,16 +881,12 @@ function followSiteBindings(siteModel: SiteModel | null | undefined, moves: Move
     }
     const { trackerUnitId: _recorded, ...rest } = binding;
     unitBindings[mesh] = { ...rest, buildingLabel, unitLabel, ...(trackerUnitId ? { trackerUnitId } : {}) };
-    if (norm(buildingLabel) !== norm(binding.buildingLabel)) {
-      buildingBindings[mesh] = buildingLabel;
-      movedBuilding = true;
-    }
     rebound.push({ mesh, model: 'site', from, to: where(next.to) });
   }
-  if (!rebound.length) return { siteModel, rebound, stranded };
+  if (!rebound.length && !unbound) return { siteModel, rebound, stranded };
   const next = { ...siteModel, unitBindings };
   return {
-    siteModel: siteModel.buildingBindings || movedBuilding ? { ...next, buildingBindings } : next,
+    siteModel: siteModel.buildingBindings || unbound ? { ...next, buildingBindings } : next,
     rebound,
     stranded,
   };
@@ -906,7 +918,7 @@ function followModelBindings(building: WebsiteBuilding, b: number, moves: Move[]
     if (!move) continue;
     const next = follow(move, undefined, meshUnitLabel(mesh));
     if (!next || next.to.b !== b) {
-      stranded.push({ mesh, model: where, from: String(label), into: move.to.map(into) });
+      stranded.push({ mesh, model: where, from: String(label), into: move.to.map(into), reason: next ? 'moved' : 'split' });
       continue;
     }
     const to = next.to.row.label;
@@ -1033,7 +1045,7 @@ export function mergeSnapshot(
       const { next, carried } = mergeRow(
         base,
         row,
-        donors.map((d) => ({ unit: d.unit, sameBuilding: d.b === b })),
+        donors.map((d) => ({ unit: d.unit, givesPin: d.b === b && continuedBy.get(d)?.b !== d.b })),
         syncedAt,
       );
       merged.set(slot, next);
@@ -1146,6 +1158,7 @@ export function mergeSnapshot(
   const changed =
     canonical(nextFloorPlans) !== canonical(floorPlans) ||
     rebound.length > 0 ||
+    site.siteModel !== options.siteModel ||
     canonical(trackerCounts) !== canonical(options.trackerCounts) ||
     totals.buildings !== totalsBefore.buildings ||
     totals.sold !== totalsBefore.sold ||

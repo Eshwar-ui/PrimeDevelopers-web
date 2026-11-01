@@ -16,21 +16,21 @@ export interface ApplyResult {
 }
 
 /**
- * The property's `detail` after a merge. The site model is written only when a
- * binding moved, and floor plans only when the property had some or the merge
- * made some — a property with none keeps none rather than gaining an empty
- * object.
+ * The property's `detail` after a merge. The site model is written only when
+ * the merge changed it — a binding re-pointed or a unit tag dropped, which it
+ * marks by handing back a new object — and floor plans only when the property
+ * had some or the merge made some: a property with none keeps none rather than
+ * gaining an empty object.
  */
 function nextDetail(
   detail: Record<string, any>,
   floorPlans: Record<string, any> | null | undefined,
   siteModel: SiteModel | null | undefined,
   trackerCounts: TrackerCounts,
-  rebound: boolean,
 ): Prisma.InputJsonValue {
   const next: Record<string, any> = { ...detail, trackerCounts };
   if (floorPlans !== undefined) next.floorPlans = floorPlans;
-  if (rebound) next.siteModel = siteModel;
+  if (siteModel !== detail.siteModel) next.siteModel = siteModel;
   return next as Prisma.InputJsonValue;
 }
 
@@ -107,7 +107,7 @@ export class TrackerSyncService {
         data: {
           ...link,
           ...totals,
-          detail: nextDetail(detail, floorPlans, siteModel, trackerCounts, report.rebound.length > 0),
+          detail: nextDetail(detail, floorPlans, siteModel, trackerCounts),
           trackerSyncedAt: new Date(),
           updatedAt: new Date(),
         },

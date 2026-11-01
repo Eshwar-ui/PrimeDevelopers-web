@@ -367,6 +367,33 @@ test('service: the undo record keeps the site model\'s bindings, so writing it b
   assert.deepEqual(restored.siteModel, detail.siteModel);
 });
 
+test('service: a move that only drops a shape\'s unit tag still writes the site model, and undoes', async () => {
+  const detail = {
+    floorPlans: {
+      buildings: [
+        { building: 'Building 8', trackerBuildingId: 'b8', unitList: [{ label: '801', status: 'sold', trackerUnitIds: ['u801'] }] },
+        { building: 'Building 9', trackerBuildingId: 'b9', unitList: [] },
+      ],
+    },
+    siteModel: { url: 'site.glb', unitBindings: { m801: { buildingLabel: 'Building 8', unitLabel: '801' } }, buildingBindings: { m801: 'Building 8' } },
+  };
+  const property = { ...leanderProperty(), trackerProjectId: 'proj-centro', buildings: 1, sold: 1, available: 0, detail };
+  const { prisma, writes } = fakePrisma(property);
+  const { report } = await new TrackerSyncService(prisma).apply(
+    snapshot([
+      { id: 'b8', name: 'Building 8', units: [] },
+      { id: 'b9', name: 'Building 9', units: [unit('u801', '801', 'SOLD')] },
+    ]),
+    { force: true },
+  );
+  assert.deepEqual(report.rebound, []);
+  const [{ detail: after }] = writes.updates;
+  assert.deepEqual(after.siteModel.unitBindings, {});
+  assert.deepEqual(after.siteModel.buildingBindings, { m801: 'Building 8' });
+  const [undo] = writes.syncs;
+  assert.deepEqual({ ...after.siteModel, ...undo.previousSiteBindings }, detail.siteModel);
+});
+
 // ── 2. The removal guard, per building ─────────────────────────────────────
 
 test('removing a whole building is refused even when the property is large', () => {
@@ -542,7 +569,7 @@ const building4 = (linked: boolean) => ({
   ],
 });
 
-test('a 402/404 split keeps the photographs on both halves — first sync and linked', () => {
+test('a 402/404 split keeps the photographs on both halves, and the pin on the first — first sync and linked', () => {
   // SOLD 402 with UNDER_CONTRACT 404: the deal ref is lost, so the pair splits.
   const split = snapshot([{ id: 'b4', name: 'Building 4', units: [unit('u402', '402', 'SOLD'), unit('u404', '404', 'UNDER_CONTRACT')] }]);
   for (const linked of [false, true]) {
@@ -552,8 +579,11 @@ test('a 402/404 split keeps the photographs on both halves — first sync and li
     for (const label of ['402', '404']) {
       assert.equal(row(next, 0, label).images.length, 5, `${label} linked=${linked}`);
       assert.equal(row(next, 0, label).description, 'Corner suite');
-      assert.deepEqual([row(next, 0, label).x, row(next, 0, label).y], [0.2, 0.3]);
     }
+    // The pin stays with 402, which carries the row on; a second marker on
+    // the same spot would mark nothing.
+    assert.deepEqual([row(next, 0, '402').x, row(next, 0, '402').y], [0.2, 0.3]);
+    assert.deepEqual([row(next, 0, '404').x, row(next, 0, '404').y], [null, null]);
     assert.deepEqual(report.buildings[0].removed, []);
     assert.deepEqual(report.buildings[0].relabelled, [{ from: '402+404', to: '402' }]);
     assert.deepEqual(report.buildings[0].carried, [{ label: '404', from: ['402+404'] }]);
@@ -694,7 +724,7 @@ test('a SOLD/UNDER_CONTRACT swap inside a deal does not give one unit another\'s
   assert.deepEqual(row(next, 0, '401+403').images, ['pair.jpg', '403.jpg']);
 });
 
-test('a unit moved between buildings keeps its photographs and its shape, but not its 2D pin', () => {
+test('a unit moved between buildings keeps its photographs, but not its 2D pin or its 3D shape', () => {
   const floorPlans = {
     buildings: [
       {
@@ -728,10 +758,16 @@ test('a unit moved between buildings keeps its photographs and its shape, but no
   assert.deepEqual(report.buildings[1].movedIn, [{ label: '801', from: 'Building 8', pinCleared: true }]);
   // The input is never mutated.
   assert.equal(floorPlans.buildings[0].unitList[0].x, 0.1);
-  assert.deepEqual(nextSite!.unitBindings!.m, { buildingLabel: 'Building 9', unitLabel: '801' });
+  // The shape is as much a part of Building 8 as the pin was: it loses its
+  // unit tag, keeps a building one, and waits to be tagged again.
+  assert.deepEqual(nextSite!.unitBindings, {});
+  assert.deepEqual(nextSite!.buildingBindings, { m: 'Building 8' });
+  assert.deepEqual(report.stranded, [{ mesh: 'm', model: 'site', from: 'Building 8 / 801', into: ['Building 9 / 801'], reason: 'moved' }]);
+  assert.deepEqual(report.rebound, []);
+  assert.equal(report.changed, true);
 });
 
-test('a unit moved to another building takes its shape\'s building binding with it', () => {
+test('a unit moved to another building drops its shape\'s unit tag; the shape stays its old building\'s', () => {
   const floorPlans = {
     buildings: [
       { building: 'Building 8', trackerBuildingId: 'b8', unitList: [{ label: '801', status: 'sold', trackerUnitIds: ['u801'] }, { label: '802', status: 'sold', trackerUnitIds: ['u802'] }] },
@@ -746,7 +782,7 @@ test('a unit moved to another building takes its shape\'s building binding with 
     },
     buildingBindings: { m801: 'Building 8', m802: 'Building 8', roof: 'Building 8' },
   };
-  const { siteModel: nextSite } = mergeSnapshot(
+  const { siteModel: nextSite, report } = mergeSnapshot(
     floorPlans,
     ZERO,
     snapshot([
@@ -755,10 +791,16 @@ test('a unit moved to another building takes its shape\'s building binding with 
     ]),
     { siteModel },
   );
-  assert.deepEqual(nextSite!.unitBindings!.m801, { buildingLabel: 'Building 9', unitLabel: '903' });
-  // The two maps agree again; nothing else moves.
-  assert.deepEqual(nextSite!.buildingBindings, { m801: 'Building 9', m802: 'Building 8', roof: 'Building 8' });
-  assert.deepEqual(siteModel.buildingBindings!.m801, 'Building 8');
+  // The mesh sits in Building 8's block whatever the tracker now calls its unit,
+  // so it is shown as Building 8 rather than as a Building 9 unit.
+  assert.deepEqual(nextSite!.unitBindings, { m802: { buildingLabel: 'Building 8', unitLabel: '802' } });
+  assert.deepEqual(nextSite!.buildingBindings, siteModel.buildingBindings);
+  assert.deepEqual(report.stranded, [
+    { mesh: 'm801', model: 'site', from: 'Building 8 / 801', into: ['Building 9 / 903'], reason: 'moved' },
+  ]);
+  assert.equal(report.counts.stranded, 1);
+  // The input is never mutated.
+  assert.deepEqual(siteModel.unitBindings!.m801, { buildingLabel: 'Building 8', unitLabel: '801' });
 });
 
 // ── 3D shapes through a split ──────────────────────────────────────────────
@@ -797,8 +839,8 @@ test('a split never gives one half the other half\'s shape: shapes tagged to the
   assert.deepEqual(report.rebound, []);
   const into = ['Building 6 / 606', 'Building 6 / 608'];
   assert.deepEqual(report.stranded, [
-    { mesh: 'm606', model: 'site', from: 'Building 6 / 606+608', into },
-    { mesh: 'm608', model: 'site', from: 'Building 6 / 606+608', into },
+    { mesh: 'm606', model: 'site', from: 'Building 6 / 606+608', into, reason: 'split' },
+    { mesh: 'm608', model: 'site', from: 'Building 6 / 606+608', into, reason: 'split' },
   ]);
   assert.equal(report.counts.stranded, 2);
 });
@@ -840,7 +882,7 @@ test('a building\'s own model: a split sends unit-608 back to 608 by its name, a
     apart(),
   );
   assert.deepEqual(next.buildings[0].model.bindings, { 'unit-606': '606', 'unit-608': '608', Node7: '606+608' });
-  assert.deepEqual(report.stranded, [{ mesh: 'Node7', model: 'Building 6', from: '606+608', into: ['606', '608'] }]);
+  assert.deepEqual(report.stranded, [{ mesh: 'Node7', model: 'Building 6', from: '606+608', into: ['606', '608'], reason: 'split' }]);
 });
 
 test('labels are normalised: prefixes, leading zeros and spaces around "+"', () => {

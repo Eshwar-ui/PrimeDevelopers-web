@@ -121,8 +121,10 @@ details.
 On each matched building the sync writes `trackerBuildingId` (the mapping, see
 below), `units`, `available` and a `tracker` sub-object (`id`, `name`, `totalSqft`,
 `stories`). On the property it writes `detail.trackerCounts`: the units in the
-snapshot per tracker status. Relabels and moves also re-point
-`detail.siteModel.unitBindings` and the building's own `model.bindings`.
+snapshot per tracker status. Relabels, combines and splits also re-point
+`detail.siteModel.unitBindings` and the building's own `model.bindings`, and a unit
+moved to another building loses its site shape's unit tag — see **3D bindings**
+below.
 
 **Note:** `detail` is returned whole by the public `GET /api/properties/:slug`, so
 `row.tracker` and `trackerCounts` are readable in the public JSON, though nothing
@@ -169,7 +171,8 @@ is one the website knows, but it is counted in the totals as not available.
   is not, since its tracker building's units are already counted once.
 - **Rows.** By tracker id first, across buildings, so a unit moved to another
   building keeps its photographs and description. Its 2D pin is cleared — it was a
-  point on the old building's plan — and the move entry says so (`pinCleared`).
+  point on the old building's plan — and the move entry says so (`pinCleared`). Its
+  3D shape stays with the old building for the same reason (see **3D bindings**).
   Then by the ids a combined unit was made from.
   Then, only for rows not linked to a unit the snapshot still has, by label, by the
   same unit numbers, and by any unit number in common. Labels are normalised:
@@ -180,17 +183,36 @@ is one the website knows, but it is counted in the totals as not available.
   pin from every earlier row that held its own units or the units it was combined
   from (or, before rows carry ids, shares a unit number), into what it lacks.
   So `402+404` splitting into 402 and 404 leaves the photographs on both, and 701
-  and 702 combining keeps both sets. A row that carries on unchanged never gives
-  or takes media — Building 2's 201 stays apart from `201+202+203+204` — and deal
-  partners never trade media. A row absorbed into one other row has its 3D shapes
-  re-pointed at it; its other website fields the combined row lacks (a logo, a
-  link, a second pin) are not merged, and its `absorbed` entry lists them under
-  `dropped`.
-- **3D bindings.** A relabel or a move re-points `siteModel.unitBindings` and the
-  building's `model.bindings` (including a `unit-605` shape linked by name), keyed
-  as `apps/web/src/lib/siteModel.js` and `units.js` key them. A removed row's
-  bindings are left alone: render ignores a stale binding, and restoring the unit
-  re-links its shape.
+  and 702 combining keeps both sets. A pin goes to one row only: on a split it
+  stays with the row that carries the old one on (402), and the other half is left
+  unplaced rather than given a second marker on the same spot. A row that carries
+  on unchanged never gives or takes media — Building 2's 201 stays apart from
+  `201+202+203+204` — and deal partners never trade media. A row absorbed into one
+  other row has its 3D shapes re-pointed at it; its other website fields the
+  combined row lacks (a logo, a link, a second pin) are not merged, and its
+  `absorbed` entry lists them under `dropped`.
+- **3D bindings.** Each shape follows its own unit to the row that holds it now,
+  keyed as `apps/web/src/lib/siteModel.js` and `units.js` key them, but never into
+  another building. A relabel or a combine re-points `siteModel.unitBindings` and
+  the building's `model.bindings` (including a `unit-605` shape linked by name).
+  - A shape knows its unit when its row was one unit, when its name claims one
+    (`unit-608`), or when the sync recorded it: a site shape moved onto a row of
+    several units gets a `trackerUnitId`, so when `606+608` splits again each shape
+    goes back to its own unit, renumbered or not.
+  - A shape tagged to the whole of a row that then splits is not guessed at.
+    Pointing both of `606+608`'s shapes at 606 lit 608's shopfront as
+    "606 · Leased". The shape stays on the old label, which the site shows as its
+    building, and the report lists it under `stranded` with `reason: 'split'`
+    for re-tagging. A building's own model has nowhere to record a unit, so there
+    only a `unit-` name tells the halves apart.
+  - A unit moved to another building leaves its shape behind: the mesh still
+    stands in the old building's block, as its 2D pin was a point on the old
+    plan. A site shape loses its unit tag and keeps its `buildingBindings` entry
+    (one is added if it had none), as `rekeySiteBindings()`'s `removeUnit` leaves
+    it in `apps/web/src/lib/units.js`. A shape in a building's own model stays on
+    the old label. Both are listed under `stranded` with `reason: 'moved'`.
+  - A removed row's bindings are left alone: render shows a stale binding as its
+    building, and restoring the unit re-links its shape.
 
 ### Safety
 
@@ -212,17 +234,24 @@ not.
   there is no restore tool yet.
 - Rows whose units moved, split or combined into other rows are not removals:
   they are listed as `movedOut` or `absorbed`, with their media carried.
-- **Every applied sync stores the previous `floorPlans` and totals** in
-  `website_tracker_syncs`, replacing the hand-made `*-units-backup-*.json` files.
-  Re-pointed 3D bindings are listed in the stored report's `rebound`.
+- **Every applied sync stores the previous `floorPlans`, totals and site-model
+  bindings** in `website_tracker_syncs`, replacing the hand-made
+  `*-units-backup-*.json` files. `previous_site_bindings` (migration
+  `3_tracker_sync_site_bindings`) holds `detail.siteModel`'s `unitBindings` and
+  `buildingBindings`, the only part of it the sync writes. To undo a sync, write
+  `previous_floor_plans` and `previous_totals` back and spread
+  `previous_site_bindings` over `detail.siteModel`; restoring the floor plans alone
+  leaves re-pointed shapes on labels the restored rows no longer have. Re-pointed
+  3D bindings are listed in the stored report's `rebound`, shapes left for
+  re-tagging in `stranded`.
 - **Dry run.** `?dryRun=true` answers 200 with the full report — refusals
   included — and writes nothing, not even the project link. The first sync of each
   property is a dry run.
 - **The report lists everything removed or unmatched:** per building `removed`
   (with photos, pin and whether a 3D shape is bound), `absorbed`, `movedIn`/
-  `movedOut` and `unknownStatus`; and `untouched`, `staleLinks` and
-  `unmatchedTrackerBuildings` (with their rows) for the property. `counts` tallies
-  them.
+  `movedOut` and `unknownStatus`; and `untouched`, `staleLinks`,
+  `unmatchedTrackerBuildings` (with their rows), `rebound` and `stranded` (each
+  with its `reason`, `split` or `moved`) for the property. `counts` tallies them.
 - **The tracker logs a warning** with those counts whenever a push it sent comes
   back 200 with anything removed, unmatched, unknown or refused — including every
   dry run. Website buildings the tracker simply lacks (Centro's Building 10), and
@@ -268,7 +297,11 @@ not.
    difference that is right (a unit really gone): go on to step 7 and apply it with
    one manual `POST …/push?force=true`. While the URL carries `dryRun=true`, even a
    forced push is only a dry run.
-7. **Only after a clean dry-run report**, drop `?dryRun=true`: set
+   A `stranded` shape does not block a push, but it shows as its building until
+   someone re-tags it in the admin, so note it.
+7. **Only after a clean dry-run report**, and once the website API that writes
+   `previous_site_bindings` is deployed (its deploy applies migration
+   `3_tracker_sync_site_bindings` before switching releases), drop `?dryRun=true`: set
    `/prime-tracker/WEBSITE_SYNC_URL` to
    `https://dtw8rs0oq8bpp.cloudfront.net/api/integrations/tracker/snapshot` and
    redeploy the tracker API. The cron pushes for real within five minutes.

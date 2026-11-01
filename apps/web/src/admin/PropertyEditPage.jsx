@@ -4,6 +4,7 @@ import { ArrowLeft } from '@phosphor-icons/react'
 import { useCategories, useContentRefetch, useProperties } from '../context/ContentContext'
 import { api } from '../lib/api'
 import { slugify } from '../lib/slugify'
+import { markOriginalLabels, rekeyForSave } from '../lib/units'
 import { CheckboxField, Section, TextField, TextAreaField } from './components/Field'
 import { mergeFields, resolveNext, stable, useAdminTitle } from './adminUtils'
 import { propertyPayload } from './propertyPayload'
@@ -110,7 +111,9 @@ export default function PropertyEditPage() {
     const next = {
       ...original,
       gallery: Array.isArray(original.gallery) ? original.gallery : [],
-      detail: { ...detail, specs: fixedSpecs(detail.specs) },
+      // Marked with the labels as loaded, so the save can carry a renamed
+      // building's or unit's 3D shapes across — see rekeyForSave in lib/units.
+      detail: markOriginalLabels({ ...detail, specs: fixedSpecs(detail.specs) }),
     }
     setForm(next)
     setBaseline(next)
@@ -226,6 +229,10 @@ export default function PropertyEditPage() {
     setError(null)
     setConflict(false)
     const snapshot = form
+    // Bindings re-keyed from the labels as loaded to the labels being saved,
+    // in one pass, and the markers stripped. Without this, renaming a building
+    // dropped every shape tagged to it — the whole of 3D step 1 for it.
+    const sent = { ...snapshot, detail: rekeyForSave(snapshot.detail) }
     let saved
     try {
       let expectedUpdatedAt = baseline.updatedAt
@@ -233,7 +240,7 @@ export default function PropertyEditPage() {
         const fresh = await api.get(`/admin/properties/${encodeURIComponent(baseline.slug)}`)
         expectedUpdatedAt = fresh?.updatedAt
       }
-      saved = await api.patch(`/admin/properties/${id}`, propertyPayload(snapshot, { expectedUpdatedAt }))
+      saved = await api.patch(`/admin/properties/${id}`, propertyPayload(sent, { expectedUpdatedAt }))
     } catch (err) {
       setSaving(false)
       if (err?.status === 409) setConflict(true)
@@ -245,8 +252,13 @@ export default function PropertyEditPage() {
     const updatedAt = saved?.updatedAt ?? snapshot.updatedAt
     setSaving(false)
     setSavedAt(Date.now())
-    setBaseline({ ...snapshot, updatedAt })
-    setForm((f) => ({ ...f, updatedAt }))
+    // What was saved, re-marked: the next save's renames start from here. A
+    // form edited while the PATCH was in flight keeps its own copy — its
+    // markers and bindings are still the loaded ones, so its next save
+    // re-keys from those and lands in the same place.
+    const savedForm = { ...sent, detail: markOriginalLabels(sent.detail), updatedAt }
+    setBaseline(savedForm)
+    setForm((f) => (f === snapshot ? savedForm : { ...f, updatedAt }))
     refetch()
     return true
   }

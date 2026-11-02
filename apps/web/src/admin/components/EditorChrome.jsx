@@ -21,9 +21,11 @@ const SAVED_VISIBLE_MS = 4000
  * Negative-margined to run full-bleed under <main>'s padding, then re-adds it —
  * the standard trick for a sticky bar inside a padded scroll container. The
  * sticky offset is negative by the same amount: a sticky `top` is measured from
- * the scroll container's *content* edge, so `top-0` held the bar 32px down,
- * over the top of the form. The values mirror <main> in AdminLayout and must
- * move with it.
+ * the scroll container's *content* edge, so `top-0` held the bar a padding's
+ * height down, over the top of the form. The values mirror <main> in
+ * AdminLayout (p-3 / sm:p-4 / lg:p-5) and must move with it.
+ *
+ * No max-width: the editors run the full width of <main>, so the bar does too.
  *
  * ⌘S / Ctrl+S saves. Browsers bind it to "Save page as…", which on an admin
  * form is never what anyone means.
@@ -39,7 +41,6 @@ export function EditorBar({
   savedAt,
   error,
   onSave,
-  maxWidth = 'max-w-4xl',
   children,
 }) {
   const [justSaved, setJustSaved] = useState(false)
@@ -79,10 +80,8 @@ export function EditorBar({
           : null
 
   return (
-    <div className="sticky -top-4 z-20 -mx-4 -mt-4 border-b border-white/10 bg-carbon/95 px-4 pb-3 pt-3 backdrop-blur sm:pb-4 sm:-top-6 sm:-mx-6 sm:-mt-6 sm:px-6 sm:pt-6 lg:-top-8 lg:-mx-8 lg:-mt-8 lg:px-8 lg:pt-6">
-      {/* Full-bleed ground, content held to the same measure as the form
-          below it, so Save lines up with the fields' right edge. */}
-      <div className={`mx-auto ${maxWidth}`}>
+    <div className="sticky -top-3 z-20 -mx-3 -mt-3 border-b border-white/10 bg-carbon/95 px-3 py-2.5 backdrop-blur sm:-top-4 sm:-mx-4 sm:-mt-4 sm:px-4 sm:py-3 lg:-top-5 lg:-mx-5 lg:-mt-5 lg:px-5">
+      <div>
         <div className="flex items-center gap-3">
           <Link
             to={backTo}

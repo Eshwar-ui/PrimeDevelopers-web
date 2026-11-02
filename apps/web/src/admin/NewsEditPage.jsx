@@ -107,14 +107,14 @@ export default function NewsEditPage() {
 
       <LeaveGuard when={dirty} onSave={save} />
 
-      <div className="mx-auto max-w-4xl">
+      <div>
         {error && (
-          <div className="mt-6">
+          <div className="mt-4">
             <Alert>Couldn&apos;t save — {error}</Alert>
           </div>
         )}
 
-        <div className="mt-8 flex flex-col gap-6">
+        <div className="mt-4 flex flex-col gap-4">
           <Section title="Post">
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <TextField

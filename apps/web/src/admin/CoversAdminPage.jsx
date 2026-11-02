@@ -68,7 +68,7 @@ function CoverPicker({ target, onClose }) {
         </div>
       )}
 
-      <p className="mt-6 text-xs font-bold uppercase tracking-wide text-bone-3">This property&apos;s photos</p>
+      <p className="mt-4 text-xs font-bold uppercase tracking-wide text-bone-3">This property&apos;s photos</p>
       {photos.length === 0 ? (
         <p className="mt-2 text-sm text-bone-3">No photos yet — upload one below.</p>
       ) : (
@@ -100,7 +100,7 @@ function CoverPicker({ target, onClose }) {
         </div>
       )}
 
-      <p className="mt-6 text-xs font-bold uppercase tracking-wide text-bone-3">Or upload a new one</p>
+      <p className="mt-4 text-xs font-bold uppercase tracking-wide text-bone-3">Or upload a new one</p>
       <div className="mt-3">
         <ImageUploader
           value={draft && !photos.includes(draft) ? draft : ''}
@@ -109,7 +109,7 @@ function CoverPicker({ target, onClose }) {
         />
       </div>
 
-      <div className="mt-8 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
         <Button variant="ghost" onClick={() => apply('')} disabled={busy || !current} className="max-sm:w-full">
           Use the main image
         </Button>
@@ -137,13 +137,13 @@ export default function CoversAdminPage() {
   const [target, setTarget] = useState(null)
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div>
       <PageHeader
         title="Cover images"
         description="Each place a property appears on the site can show a different photo — so the same picture isn't repeated down the homepage. Anything left on “Main image” uses the property's main image."
       />
 
-      <div className="mt-8 flex flex-col gap-8">
+      <div className="mt-4 flex flex-col gap-5">
         {properties.length === 0 && <EmptyState icon={ImageSquare} title="No properties yet" />}
         {properties.map((property) => {
           const custom = Object.keys(property.detail?.covers ?? {}).length

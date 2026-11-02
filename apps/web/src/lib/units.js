@@ -72,6 +72,12 @@ export const makeUnit = (label = '') => ({
   // siteModel.js, which is what every caller should read instead of this
   // field directly.
   facingRoad: '',
+  // True keeps this unit off the public website altogether — the API drops
+  // the row before it is sent (public-property.ts), and the tracker sync
+  // carries the flag over like any other website-owned field. The admin
+  // shows it as "Show on website", which is the inverse. Absent or false
+  // means shown, so every unit written before this existed still is.
+  hidden: false,
 })
 
 /**

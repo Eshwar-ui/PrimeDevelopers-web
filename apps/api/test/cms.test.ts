@@ -81,6 +81,21 @@ test('the record as loaded is what used to be sent, and the API rejects it', asy
   await assert.rejects(validateBody(UpdatePropertyDto, old), (err) => /trackerProjectId should not exist/.test(messages(err)));
 });
 
+test("a unit's \"Show on website\" switch survives validation and reaches the row — detail is not whitelisted per field", async () => {
+  const { propertyPayload } = await import('../../web/src/admin/propertyPayload.js');
+  const { makeUnit } = await import('../../web/src/lib/units.js');
+  const record = loaded();
+  record.detail.floorPlans.buildings[0].unitList = [{ ...makeUnit('101'), hidden: true }, makeUnit('102')] as never;
+  const dto: any = await validateBody(UpdatePropertyDto, propertyPayload(record, { expectedUpdatedAt: record.updatedAt }));
+  const [hidden, shown] = dto.detail.floorPlans.buildings[0].unitList;
+  assert.equal(hidden.hidden, true);
+  assert.equal(shown.hidden, false);
+
+  let args: any[] = [];
+  await new PropertiesAdminController({ update: async (...a: any[]) => (args = a) } as any).update(ID, dto);
+  assert.equal(args[1].detail.floorPlans.buildings[0].unitList[0].hidden, true);
+});
+
 test('the editor sends exactly the fields the DTO declares', async () => {
   const { PROPERTY_FIELDS } = await import('../../web/src/admin/propertyPayload.js');
   const declared = new Set(

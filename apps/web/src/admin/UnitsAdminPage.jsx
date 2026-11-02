@@ -63,7 +63,7 @@ export default function UnitsAdminPage() {
   const newHref = `/admin/units/new${propertyFilter ? `?property=${propertyFilter}` : ''}`
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div>
       <PageHeader
         title="Units"
         description={`${all.length} units across ${properties.length} properties — every one of them can appear in “Find your ideal space” on the homepage, and each has its own page.`}
@@ -74,7 +74,7 @@ export default function UnitsAdminPage() {
         }
       />
 
-      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,16rem)_1fr] sm:items-end">
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,16rem)_1fr] sm:items-end">
         <SelectField
           label="Property"
           value={propertyFilter}
@@ -106,7 +106,7 @@ export default function UnitsAdminPage() {
         })}
       </div>
 
-      <div className="mt-8 flex flex-col gap-8">
+      <div className="mt-4 flex flex-col gap-5">
         {all.length === 0 && (
           <EmptyState icon={Storefront} title="No units yet" action={<Button variant="primary" icon={Plus} to={newHref}>Add unit</Button>}>
             Units belong to a building on a property. Add one here, or under the property&apos;s Floor plans &amp; 3D tab.
@@ -138,6 +138,11 @@ export default function UnitsAdminPage() {
                         <span className="flex flex-wrap items-center gap-2">
                           <span className="font-display text-[15px] font-medium text-bone">Unit {formatUnitLabel(unit.label) || '—'}</span>
                           <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${meta.pill}`}>{meta.label}</span>
+                          {unit.hidden && (
+                            <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-bold text-bone-2" title="Not shown on the public website">
+                              Hidden
+                            </span>
+                          )}
                         </span>
                         <span className="block truncate text-xs text-bone-3">{facts.join(' · ') || 'No details yet'}</span>
                       </span>
@@ -147,7 +152,7 @@ export default function UnitsAdminPage() {
                         <Camera className="size-3.5" aria-hidden />
                         {photos.length}
                       </span>
-                      {property.published && unit.label && (
+                      {property.published && unit.label && !unit.hidden && (
                         <IconButton
                           icon={ArrowSquareOut}
                           label={`View unit ${unit.label} on the site`}

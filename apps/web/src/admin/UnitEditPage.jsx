@@ -146,7 +146,7 @@ export default function UnitEditPage() {
         backLabel="All units"
         title={title}
         live={property ? property.published !== false : undefined}
-        viewHref={!isNew && property?.published ? unitPath(property.slug, building.building, baseline.label) : undefined}
+        viewHref={!isNew && property?.published && !baseline.hidden ? unitPath(property.slug, building.building, baseline.label) : undefined}
         dirty={dirty || isNew}
         saving={saving}
         savedAt={savedAt}
@@ -161,14 +161,14 @@ export default function UnitEditPage() {
       </EditorBar>
       <LeaveGuard when={dirty} onSave={onSave} />
 
-      <div className="mx-auto max-w-4xl">
+      <div>
         {error && (
-          <div className="mt-6">
+          <div className="mt-4">
             <Alert>{error}</Alert>
           </div>
         )}
 
-        <div className="mt-8 flex flex-col gap-6">
+        <div className="mt-4 flex flex-col gap-4">
           {isNew && (
             <Section title="Where it is" description="The property and building this unit belongs to.">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

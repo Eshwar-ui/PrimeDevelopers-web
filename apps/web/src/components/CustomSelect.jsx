@@ -11,6 +11,17 @@ const VARIANTS = {
     option:
       'text-content/75 hover:bg-content/10 hover:text-content focus-visible:bg-content/10 focus-visible:text-content',
   },
+  // Over a canvas, where the page's own surfaces are not behind it: the same
+  // dark glass the viewer's own buttons use, in either theme.
+  overlay: {
+    trigger:
+      'h-11 gap-2! rounded-full border-white/12 bg-black/58 px-2.5 text-[12px]! text-bone shadow-[0_14px_32px_-22px_rgba(0,0,0,.9)] backdrop-blur-xl hover:border-white/30 hover:bg-black/72 sm:px-3.5 sm:text-[13px]!',
+    placeholder: 'text-bone/55',
+    icon: 'text-bone/70',
+    menu: 'max-h-60! min-w-44 border-white/12 bg-[#10171b]/95 backdrop-blur-xl',
+    option:
+      'text-bone/80 hover:bg-white/10 hover:text-bone focus-visible:bg-white/10 focus-visible:text-bone',
+  },
   form: {
     trigger:
       'contact-field h-12 rounded-xl border-[var(--color-line)] bg-carbon px-4 text-bone hover:border-bone/30',
@@ -34,6 +45,10 @@ export default function CustomSelect({
   invalid = false,
   errorId,
   variant = 'pill',
+  disabled = false,
+  // Which edge the menu lines up with. A menu wider than its trigger grows away
+  // from that edge, so a control at the right of a bar says 'right'.
+  align = 'left',
 }) {
   const controlled = value !== undefined
   const [internalValue, setInternalValue] = useState(defaultValue)
@@ -71,6 +86,7 @@ export default function CustomSelect({
   }, [activeIndex, open])
 
   const openMenu = () => {
+    if (disabled) return
     setActiveIndex(selectedIndex >= 0 ? selectedIndex : 0)
     setOpen(true)
   }
@@ -139,18 +155,19 @@ export default function CustomSelect({
         aria-controls={listboxId}
         aria-required={required || undefined}
         aria-invalid={invalid || undefined}
+        disabled={disabled}
         aria-describedby={invalid && errorId ? errorId : undefined}
         data-open={open}
         data-invalid={invalid || undefined}
         onClick={() => (open ? setOpen(false) : openMenu())}
         onKeyDown={handleTriggerKeyDown}
         className={
-          'flex w-full items-center justify-between gap-4 border text-left font-body text-[16px] font-semibold outline-none transition-[border-color,box-shadow] focus-visible:border-accent/75 focus-visible:ring-[3px] focus-visible:ring-accent/15 data-[open=true]:border-accent/75 data-[open=true]:ring-[3px] data-[open=true]:ring-accent/15 data-[invalid=true]:border-red-500/80 data-[invalid=true]:ring-[3px] data-[invalid=true]:ring-red-500/15 ' +
+          'flex w-full items-center justify-between gap-4 border text-left font-body text-[16px] font-semibold outline-none transition-[border-color,box-shadow] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-accent/75 focus-visible:ring-[3px] focus-visible:ring-accent/15 data-[open=true]:border-accent/75 data-[open=true]:ring-[3px] data-[open=true]:ring-accent/15 data-[invalid=true]:border-red-500/80 data-[invalid=true]:ring-[3px] data-[invalid=true]:ring-red-500/15 ' +
           styles.trigger
         }
       >
         <span className={'min-w-0 truncate ' + (selectedOption ? '' : styles.placeholder)}>
-          {selectedOption?.label ?? placeholder}
+          {selectedOption?.triggerLabel ?? selectedOption?.label ?? placeholder}
         </span>
         <CaretDown
           size={16}
@@ -166,7 +183,7 @@ export default function CustomSelect({
           role="listbox"
           aria-label={label}
           className={
-            'absolute left-0 top-[calc(100%+0.5rem)] z-40 max-h-72 w-full overflow-y-auto rounded-xl border p-1.5 shadow-[0_22px_55px_-28px_rgba(0,0,0,0.75)] ' +
+            'absolute ' + (align === 'right' ? 'right-0' : 'left-0') + ' top-[calc(100%+0.5rem)] z-40 max-h-72 w-full overflow-y-auto rounded-xl border p-1.5 shadow-[0_22px_55px_-28px_rgba(0,0,0,0.75)] ' +
             styles.menu
           }
         >

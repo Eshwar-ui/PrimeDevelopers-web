@@ -7,9 +7,10 @@
  *
  * The tracker owns a unit row's label, status, size and (for leased units)
  * tenant, and everything under `row.tracker`. Everything else on the row —
- * photographs, pins, logo, rate, description — belongs to the website and is
- * carried over untouched, including when the tracker renumbers a unit, moves
- * it to another building, or splits or combines units.
+ * photographs, pins, logo, rate, description, and whether it is shown on the
+ * website at all (`hidden`) — belongs to the website and is carried over
+ * untouched, including when the tracker renumbers a unit, moves it to another
+ * building, or splits or combines units.
  */
 
 /** Prime Tracker's `UnitStatus` enum, verbatim. */
@@ -224,7 +225,7 @@ export interface BuildingReport {
   movedOut: { label: string; to: string }[];
   relabelled: { from: string; to: string }[];
   statusChanged: { label: string; from: string; to: string }[];
-  /** Rows that took photographs, a description or a pin from the rows they continue. */
+  /** Rows that took photographs, a description, a pin or a `hidden` flag from the rows they continue. */
   carried: { label: string; from: string[] }[];
   /** Rows with a status this file does not know. `kept` is the status left on the row; null means it was not created. */
   unknownStatus: { label: string; status: string; kept: string | null }[];
@@ -410,6 +411,7 @@ const blankUnit = (label: string): WebsiteUnit => ({
   tenantUrl: '',
   tenantCategory: '',
   facingRoad: '',
+  hidden: false,
 });
 
 export interface TrackerRow {
@@ -665,12 +667,20 @@ export interface Donor {
  * the same building, since it is a point on that building's plan, and only
  * from a row nothing there carries on: the row continuing a split keeps it,
  * and a second marker on the same spot would mark nothing.
+ *
+ * `hidden` is carried the other way round — switched on, never off. Splitting
+ * or combining a suite an editor hid must not put any of its space on the
+ * public site; the editor switches the new row on if they want it.
  */
 function carryMedia(next: WebsiteUnit, donors: Donor[]): boolean {
   const own = imagesOf(next);
   const added: string[] = [];
   let carried = false;
   for (const { unit: donor, givesPin } of donors) {
+    if (donor.hidden && !next.hidden) {
+      next.hidden = true;
+      carried = true;
+    }
     for (const url of imagesOf(donor)) {
       if (!own.includes(url) && !added.includes(url)) added.push(url);
     }
@@ -747,7 +757,11 @@ function mergeRow(prior: WebsiteUnit | undefined, row: TrackerRow, donors: Donor
   return { next, carried };
 }
 
-/** Website-owned text fields of a row, as `makeUnit()` in apps/web/src/lib/units.js names them. */
+/**
+ * Website-owned text fields of a row, as `makeUnit()` in apps/web/src/lib/units.js names them.
+ * Not `hidden`: it is a flag, not text, and carryMedia() already puts it on
+ * every row made from a hidden one, so an absorbed row never loses it.
+ */
 const WEBSITE_FIELDS = ['description', 'logo', 'rate', 'floor', 'frontage', 'tenantUrl', 'tenantCategory', 'facingRoad'];
 
 /** The website fields of an absorbed row that none of the rows it went into kept. */

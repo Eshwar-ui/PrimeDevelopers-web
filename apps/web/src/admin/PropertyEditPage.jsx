@@ -11,7 +11,7 @@ import { propertyPayload } from './propertyPayload'
 import { unitLabelProblems } from './unitChecks'
 import { EditorBar, LeaveGuard } from './components/EditorChrome'
 import { Alert, Button, EmptyState, focusRing } from './components/ui'
-import ImageUploader from './components/ImageUploader'
+import ImageUploader, { ImageFormatHint } from './components/ImageUploader'
 import RepeatableList from './components/RepeatableList'
 import SiteModelManager from './components/SiteModelManager'
 import BuildingsWorkspace from './components/BuildingsWorkspace'
@@ -289,12 +289,11 @@ export default function PropertyEditPage() {
         savedAt={savedAt}
         error={error}
         onSave={save}
-        maxWidth="max-w-5xl"
       >
         {/* Real tabs, not a jump rail: only the active cluster's sections are
             in the DOM at all, so the heavy ones — the 3D site model chief
             among them — mount only when an editor actually opens that tab. */}
-        <div role="tablist" aria-label="Property sections" className="-mb-1 mt-4 flex gap-1.5 overflow-x-auto pb-1" onKeyDown={onTabKeyDown}>
+        <div role="tablist" aria-label="Property sections" className="-mb-1 mt-2.5 flex gap-1.5 overflow-x-auto pb-1" onKeyDown={onTabKeyDown}>
           {TABS.map((t) => {
             const selected = activeTab === t.id
             return (
@@ -322,9 +321,9 @@ export default function PropertyEditPage() {
 
       <LeaveGuard when={isDirty} onSave={save} />
 
-      <div className="mx-auto max-w-5xl">
+      <div>
       {conflict && (
-        <div className="mt-6">
+        <div className="mt-4">
           <Alert
             action={
               <span className="flex flex-wrap gap-2">
@@ -345,7 +344,7 @@ export default function PropertyEditPage() {
       )}
 
       {error && (
-        <div className="mt-6">
+        <div className="mt-4">
           <Alert>Couldn&apos;t save — {error}</Alert>
         </div>
       )}
@@ -456,10 +455,12 @@ export default function PropertyEditPage() {
                 onChange={(gallery) => patch({ gallery })}
                 makeItem={() => ''}
                 addLabel="Add photo"
+                layout="grid"
                 renderItem={(url, set) => (
-                  <ImageUploader value={url} onChange={set} folder={`projects/${form.slug}/gallery`} />
+                  <ImageUploader value={url} onChange={set} folder={`projects/${form.slug}/gallery`} hint={false} />
                 )}
               />
+              <ImageFormatHint className="mt-2" />
             </div>
           </div>
         </Section>
@@ -511,8 +512,10 @@ export default function PropertyEditPage() {
             onChange={setDetailKey('tenants')}
             makeItem={() => ''}
             addLabel="Add tenant logo"
-            renderItem={(url, set) => <ImageUploader value={url} onChange={set} folder={`projects/${form.slug}/tenants`} />}
+            layout="grid"
+            renderItem={(url, set) => <ImageUploader value={url} onChange={set} folder={`projects/${form.slug}/tenants`} hint={false} />}
           />
+          <ImageFormatHint />
         </Section>
 
         <Section {...section('highlights')} title="Highlights">
@@ -683,10 +686,12 @@ export default function PropertyEditPage() {
             onChange={setDetailKey('extFacade')}
             makeItem={() => ''}
             addLabel="Add photo"
+            layout="grid"
             renderItem={(url, set) => (
-              <ImageUploader value={url} onChange={set} folder={`projects/${form.slug}/facade`} />
+              <ImageUploader value={url} onChange={set} folder={`projects/${form.slug}/facade`} hint={false} />
             )}
           />
+          <ImageFormatHint />
         </Section>
 
         <Section
@@ -755,7 +760,7 @@ export default function PropertyEditPage() {
 function TabPanel({ id, activeTab, children }) {
   if (id !== activeTab) return null
   return (
-    <div role="tabpanel" id={`panel-${id}`} aria-labelledby={`tab-${id}`} tabIndex={0} className="mt-8 flex flex-col gap-6">
+    <div role="tabpanel" id={`panel-${id}`} aria-labelledby={`tab-${id}`} tabIndex={0} className="mt-4 flex flex-col gap-4">
       {children}
     </div>
   )

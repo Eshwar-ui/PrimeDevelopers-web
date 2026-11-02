@@ -30,6 +30,10 @@ import { UploadBusyContext } from './uploadBusy'
 // Building 2"); without it they say "item 2". `canRemove(item, i)` returns
 // true, or the reason the row can't be removed. `confirmRemove(item, i)`
 // returns a prompt to confirm with first, or nothing to remove at once.
+//
+// `layout="grid"` tiles the rows across the width instead of stacking them —
+// for lists of small items, an image each, where a full-width row per photo
+// left most of the line empty. Order still reads left-to-right, top-to-bottom.
 export default function RepeatableList({
   items,
   onChange,
@@ -43,6 +47,7 @@ export default function RepeatableList({
   itemLabel,
   canRemove,
   confirmRemove,
+  layout = 'stack',
 }) {
   const list = items ?? []
 
@@ -78,6 +83,9 @@ export default function RepeatableList({
   return (
     <UploadBusyContext.Provider value={report}>
       <div className="flex flex-col gap-3">
+        {/* `contents` leaves a stacked list exactly as it was: the rows stay
+            direct flex children of the column above. */}
+        <div className={layout === 'grid' ? 'grid grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] gap-3' : 'contents'}>
         {list.map((item, i) => {
           const name = String((itemLabel && itemLabel(item, i)) || '').trim() || `item ${i + 1}`
           const removable = canRemove ? canRemove(item, i) : true
@@ -91,7 +99,7 @@ export default function RepeatableList({
           return (
             <div key={i} className="rounded-xl border border-white/10 bg-black/15">
               {showToolbar && (
-                <div className="flex items-center justify-between gap-2 border-b border-white/5 py-1 pl-4 pr-1.5">
+                <div className="flex items-center justify-between gap-2 border-b border-white/5 py-0.5 pl-3 pr-1">
                   <span className="text-xs font-bold tabular-nums text-bone-3">
                     {i + 1}
                     <span className="font-normal"> of {list.length}</span>
@@ -141,10 +149,11 @@ export default function RepeatableList({
                   </span>
                 </div>
               )}
-              <div className="p-4">{renderItem(item, (next) => update(i, next), i)}</div>
+              <div className="p-3">{renderItem(item, (next) => update(i, next), i)}</div>
             </div>
           )
         })}
+        </div>
         {allowAdd && (maxItems == null || list.length < maxItems) && (
           <Button size="sm" icon={Plus} onClick={add} className="w-fit">
             {addLabel}

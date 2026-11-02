@@ -1,4 +1,5 @@
 import { useGLTF } from '@react-three/drei'
+import { modelSrc } from '../../lib/modelUrl'
 
 // Kept apart from ModelViewer so a section can clear a failed load before it
 // retries, through a dynamic import, without pulling the viewer's chunk into
@@ -8,5 +9,5 @@ import { useGLTF } from '@react-three/drei'
 // cache on the URL — so remounting without this rethrows the same error at
 // once, and Retry would look like it did nothing.
 export function clearModelCache(url) {
-  if (url) useGLTF.clear(url)
+  if (url) useGLTF.clear(modelSrc(url))
 }

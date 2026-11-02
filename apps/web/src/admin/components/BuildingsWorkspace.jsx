@@ -94,7 +94,7 @@ export default function BuildingsWorkspace({ buildings, onChange, makeBuilding, 
             aria-labelledby={`building-tab-${index}`}
             className="rounded-xl border border-white/10 bg-black/15"
           >
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 py-1 pl-4 pr-1.5">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 py-0.5 pl-3 pr-1">
               <span className="flex items-center gap-2 text-xs font-bold tabular-nums text-bone-3">
                 {index + 1}
                 <span className="font-normal"> of {list.length}</span>
@@ -139,7 +139,7 @@ export default function BuildingsWorkspace({ buildings, onChange, makeBuilding, 
                 />
               </span>
             </div>
-            <div className="p-4">
+            <div className="p-3">
               <BuildingBlock
                 // Keyed so a different building starts with its own unit
                 // selection rather than inheriting the last one's index.

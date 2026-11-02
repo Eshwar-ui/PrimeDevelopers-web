@@ -35,7 +35,7 @@ export default function NewsListPage() {
   const drafts = posts.filter((p) => !p.published).length
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div>
       <PageHeader
         title="News"
         description={`${posts.length} posts · ${posts.length - drafts} live · ${drafts} draft.`}
@@ -47,18 +47,18 @@ export default function NewsListPage() {
       />
 
       {posts.length > 5 && (
-        <div className="mt-6">
+        <div className="mt-4">
           <SearchInput value={query} onChange={setQuery} placeholder="Search posts…" label="Search posts" icon={MagnifyingGlass} />
         </div>
       )}
 
       {(error || createError) && (
-        <div className="mt-6">
+        <div className="mt-4">
           <Alert>{error || `Could not create a post — ${createError}`}</Alert>
         </div>
       )}
 
-      <div className="mt-6 flex flex-col gap-3">
+      <div className="mt-4 flex flex-col gap-3">
         {posts.length === 0 && (
           <EmptyState
             icon={Newspaper}

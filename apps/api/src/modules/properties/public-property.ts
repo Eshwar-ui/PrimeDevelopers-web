@@ -14,6 +14,8 @@
  * wipe every field it leaves out.
  */
 
+import { labelParts } from '../tracker-sync/tracker-merge';
+
 type Row = Record<string, any>;
 
 const isObject = (value: unknown): value is Row =>
@@ -49,7 +51,7 @@ export const PUBLIC_COLUMNS = [
  * the unit list and comparison, the 2D pin plan, the 3D viewer, the rent roll.
  * `makeUnit()` in apps/web/src/lib/units.js names the CMS's side of them.
  * Left out: `trackerUnitIds` and the `tracker` sub-object (ids, occupant,
- * availableSince), and the two opt-in flags below.
+ * availableSince), the two opt-in flags below, and `hidden` (WITHHELD_UNIT_FIELDS).
  */
 export const PUBLIC_UNIT_FIELDS = [
   'label',
@@ -68,6 +70,19 @@ export const PUBLIC_UNIT_FIELDS = [
   'images',
   'facingRoad',
 ] as const;
+
+/**
+ * Unit-row fields that are decided on and never sent. `hidden` is the CMS's
+ * "Show on website" switch, inverted: a hidden unit is dropped whole (see
+ * toPublicBuilding), so there is nothing left for the flag to say.
+ */
+export const WITHHELD_UNIT_FIELDS = ['hidden'] as const;
+
+/**
+ * A unit an editor switched off. Only absent, null or false shows it: a value
+ * the CMS never writes ("true", 1) hides the unit rather than publishing it.
+ */
+export const isHiddenUnit = (unit: unknown) => isObject(unit) && Boolean(unit.hidden);
 
 /**
  * Who the occupant is, withheld together: the site never shows the link or
@@ -117,45 +132,162 @@ const withoutTracker = (source: Row) => {
   return out;
 };
 
-function toPublicBuilding(building: unknown): unknown {
+const norm = (value: unknown) => String(value ?? '').trim().toLowerCase();
+
+/** A unit as the 3D bindings name it, matched the way reconcileSite() does: building and label, trimmed and lower-cased. */
+const unitKey = (building: unknown, label: unknown) => `${norm(building)}::${norm(label)}`;
+
+/** URL-safe form of a building or unit label — `labelSlug()` in apps/web/src/lib/units.js, which builds a unit page's address. */
+export const labelSlug = (label: unknown) =>
+  String(label ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+const unitRows = (detail: unknown): { building: unknown; unit: Row }[] => {
+  const buildings = isObject(detail) && isObject(detail.floorPlans) ? detail.floorPlans.buildings : null;
+  if (!Array.isArray(buildings)) return [];
+  return buildings.filter(isObject).flatMap((building) =>
+    (Array.isArray(building.unitList) ? building.unitList : []).filter(isObject).map((unit: Row) => ({ building: building.building, unit })),
+  );
+};
+
+/**
+ * What a property's hidden units are called, read off the stored rows before
+ * any is dropped. A name a shown unit also holds is left out of both sets:
+ * labels are typed by hand and not guaranteed unique, and blanking a shown
+ * unit's shape or rate-sheet row to be safe about a hidden one is the worse
+ * mistake of the two.
+ */
+interface HiddenUnits {
+  /** `unitKey()`s — for the 3D bindings, which name a unit by building and label. */
+  keys: Set<string>;
+  /** Unit numbers ("603", "201" and "202" of "201+202") — for the rate sheet, which names them with no building. */
+  numbers: Set<string>;
+}
+
+function hiddenUnitsOf(detail: unknown): HiddenUnits {
+  const hidden: HiddenUnits = { keys: new Set(), numbers: new Set() };
+  const shown: HiddenUnits = { keys: new Set(), numbers: new Set() };
+  for (const { building, unit } of unitRows(detail)) {
+    const side = isHiddenUnit(unit) ? hidden : shown;
+    side.keys.add(unitKey(building, unit.label));
+    for (const part of labelParts(unit.label)) side.numbers.add(norm(part));
+  }
+  for (const key of shown.keys) hidden.keys.delete(key);
+  for (const number of shown.numbers) hidden.numbers.delete(number);
+  return hidden;
+}
+
+/**
+ * The unit pages that must not resolve, as `property-slug/building-slug/unit-slug`
+ * (what `unitPath()` in apps/web/src/lib/units.js builds, lower-cased). For the
+ * content endpoint, whose homepage cards and links name units by address.
+ */
+export function hiddenUnitPaths(properties: { slug: string; detail: unknown }[]): Set<string> {
+  const hidden = new Set<string>();
+  const shown = new Set<string>();
+  for (const { slug, detail } of properties) {
+    for (const { building, unit } of unitRows(detail)) {
+      const unitSlug = labelSlug(unit.label);
+      if (!unitSlug) continue;
+      (isHiddenUnit(unit) ? hidden : shown).add(`${norm(slug)}/${labelSlug(building)}/${unitSlug}`);
+    }
+  }
+  for (const path of shown) hidden.delete(path);
+  return hidden;
+}
+
+function toPublicBuilding(building: unknown, hidden: HiddenUnits): unknown {
   if (!isObject(building)) return building;
   const out = withoutTracker(building);
-  if ('unitList' in out) out.unitList = Array.isArray(out.unitList) ? out.unitList.map(toPublicUnit) : [];
+  if ('unitList' in out) {
+    // Dropped, not flagged: a unit that is switched off must not be in the
+    // body at all — its tenant, photographs and rate included. Positions in
+    // the list shift, which nothing public depends on (units are addressed by
+    // label, and the viewers read the list they are given).
+    out.unitList = Array.isArray(out.unitList) ? out.unitList.filter((unit) => !isHiddenUnit(unit)).map(toPublicUnit) : [];
+  }
+  // A shape bound to a hidden unit's label would otherwise carry that label
+  // out. Blanked rather than removed: the viewer already treats a label no
+  // unit holds as scenery, and an empty one resolves the same way.
+  if (hidden.keys.size && isObject(out.model) && isObject(out.model.bindings)) {
+    const bindings = Object.fromEntries(
+      Object.entries(out.model.bindings).map(([mesh, label]) => [mesh, hidden.keys.has(unitKey(out.building, label)) ? '' : label]),
+    );
+    out.model = { ...out.model, bindings };
+  }
   return out;
 }
+
+/**
+ * The same for the whole-site model's unit tags. Its tracker id goes too: a
+ * stale tag is read as "its building" (reconcileSite), which is the fallback
+ * for a unit that is simply no longer in the list.
+ */
+function toPublicSiteModel(siteModel: unknown, hidden: HiddenUnits): unknown {
+  if (!hidden.keys.size || !isObject(siteModel) || !isObject(siteModel.unitBindings)) return siteModel;
+  const unitBindings = Object.fromEntries(
+    Object.entries(siteModel.unitBindings).map(([mesh, bind]) => {
+      if (!isObject(bind) || !hidden.keys.has(unitKey(bind.buildingLabel, bind.unitLabel))) return [mesh, bind];
+      const { trackerUnitId: _trackerUnitId, ...rest } = bind;
+      return [mesh, { ...rest, unitLabel: '' }];
+    }),
+  );
+  return { ...siteModel, unitBindings };
+}
+
+/**
+ * A rate-sheet row names its unit by hand ("603", "201, 202", "Unit 905"), so
+ * it is read as the unit numbers in it, the way the tracker sync reads a label.
+ */
+const namesHiddenUnit = (row: unknown, hidden: HiddenUnits) =>
+  isObject(row) &&
+  String(row.unit ?? '')
+    .split(/[,&/]/)
+    .flatMap(labelParts)
+    .some((number) => hidden.numbers.has(norm(number)));
 
 /**
  * `detail.pricing.capRate` names a tenant on each row, and the page shows it
  * only while `showTenantNames` is on (PropertyPricingTables.jsx). Enforced
  * here as well, so a name waiting on the client's sign-off is not in the
  * response either.
+ *
+ * Both tables are unit listings too, so a row for a hidden unit is dropped.
  */
-function toPublicPricing(pricing: unknown): unknown {
-  if (!isObject(pricing) || !isObject(pricing.capRate) || pricing.capRate.showTenantNames === true) return pricing;
-  const rows = pricing.capRate.rows;
-  if (!Array.isArray(rows)) return pricing;
-  return {
-    ...pricing,
-    capRate: {
-      ...pricing.capRate,
-      rows: rows.map((row) => {
+function toPublicPricing(pricing: unknown, hidden: HiddenUnits): unknown {
+  if (!isObject(pricing)) return pricing;
+  const out: Row = { ...pricing };
+  for (const key of ['units', 'capRate'] as const) {
+    const table = out[key];
+    if (!isObject(table) || !Array.isArray(table.rows)) continue;
+    let rows: unknown[] = hidden.numbers.size ? table.rows.filter((row) => !namesHiddenUnit(row, hidden)) : table.rows;
+    if (key === 'capRate' && table.showTenantNames !== true) {
+      rows = rows.map((row) => {
         if (!isObject(row)) return row;
         const { tenant: _tenant, ...rest } = row;
         return rest;
-      }),
-    },
-  };
+      });
+    }
+    out[key] = { ...table, rows };
+  }
+  return out;
 }
 
 export function toPublicDetail(detail: unknown): Row {
   if (!isObject(detail)) return {};
   const out = withoutTracker(detail);
+  const hidden = hiddenUnitsOf(out);
   if (isObject(out.floorPlans) && Array.isArray(out.floorPlans.buildings)) {
-    out.floorPlans = { ...out.floorPlans, buildings: out.floorPlans.buildings.map(toPublicBuilding) };
+    out.floorPlans = { ...out.floorPlans, buildings: out.floorPlans.buildings.map((building) => toPublicBuilding(building, hidden)) };
   }
-  if ('pricing' in out) out.pricing = toPublicPricing(out.pricing);
-  // `siteModel` goes out as it is: the 3D viewer needs every binding in it,
-  // and it holds mesh names and labels, nothing about who is in a unit.
+  if ('pricing' in out) out.pricing = toPublicPricing(out.pricing, hidden);
+  // `siteModel` goes out as it is, bar the tags of hidden units: the 3D viewer
+  // needs every other binding in it, and it holds mesh names and labels,
+  // nothing about who is in a unit.
+  if ('siteModel' in out) out.siteModel = toPublicSiteModel(out.siteModel, hidden);
   return out;
 }
 

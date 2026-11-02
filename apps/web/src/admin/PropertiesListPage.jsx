@@ -47,7 +47,7 @@ export default function PropertiesListPage() {
   const drafts = properties.filter((p) => !p.published).length
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div>
       <PageHeader
         title="Properties"
         description={`${properties.length} properties · ${properties.length - drafts} live · ${drafts} draft. Lower sort order shows first on the site.`}
@@ -59,18 +59,18 @@ export default function PropertiesListPage() {
       />
 
       {properties.length > 5 && (
-        <div className="mt-6">
+        <div className="mt-4">
           <SearchInput value={query} onChange={setQuery} placeholder="Search name, address, category…" label="Search properties" icon={MagnifyingGlass} />
         </div>
       )}
 
       {(error || createError) && (
-        <div className="mt-6">
+        <div className="mt-4">
           <Alert>{error || `Could not create a property — ${createError}`}</Alert>
         </div>
       )}
 
-      <div className="mt-6 flex flex-col gap-3">
+      <div className="mt-4 flex flex-col gap-3">
         {properties.length === 0 && (
           <EmptyState
             icon={Buildings}

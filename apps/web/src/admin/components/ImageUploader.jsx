@@ -5,6 +5,20 @@ import { Button } from './ui'
 import { useReportBusy } from './uploadBusy'
 
 /**
+ * Said once, here, rather than in a dozen section descriptions that would
+ * drift apart. The order is the recommendation. Exported for the tiled photo
+ * lists, which show it once under the grid instead of in every tile.
+ */
+export function ImageFormatHint({ className = '' }) {
+  return (
+    <p className={`text-xs leading-relaxed text-bone-3 ${className}`}>
+      {IMAGE_TYPES.map((t) => t.ext).join(', ')} · up to {formatBytes(IMAGE_MAX_BYTES)}. WebP is
+      smallest; use JPEG for photographs and keep PNG for logos and flat graphics.
+    </p>
+  )
+}
+
+/**
  * Pick an image, see it immediately, then upload it.
  *
  * The preview is the point. This used to show the *stored* image only — so
@@ -130,14 +144,7 @@ export default function ImageUploader({ value, onChange, folder, label, hint = t
         <input ref={inputRef} type="file" accept={IMAGE_ACCEPT} className="hidden" onChange={onFile} />
       </div>
 
-      {/* Said once, here, rather than in a dozen section descriptions that
-          would drift apart. The order is the recommendation. */}
-      {hint && (
-        <p className="text-xs leading-relaxed text-bone-3">
-          {IMAGE_TYPES.map((t) => t.ext).join(', ')} · up to {formatBytes(IMAGE_MAX_BYTES)}. WebP is
-          smallest; use JPEG for photographs and keep PNG for logos and flat graphics.
-        </p>
-      )}
+      {hint && <ImageFormatHint />}
 
       {error && (
         <p role="alert" className="text-xs text-red-300">

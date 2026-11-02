@@ -33,7 +33,10 @@ const FOCUSABLE = 'a[href], button:not([disabled])'
 const focusRing =
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bone'
 
-const footLink = `flex min-h-11 items-center gap-2.5 rounded-lg px-3 text-xs font-bold uppercase tracking-wide text-bone-3 transition-colors hover:bg-white/5 hover:text-bone ${focusRing}`
+// min-h-11 holds the 44px touch floor in the drawer; the desktop rail is
+// mouse-driven, so it drops to 36px there (lg: only ever matches the rail —
+// the drawer is lg:hidden).
+const footLink = `flex min-h-11 items-center gap-2.5 rounded-lg px-2.5 text-xs font-bold uppercase tracking-wide text-bone-3 transition-colors hover:bg-white/5 hover:text-bone lg:min-h-9 ${focusRing}`
 
 /**
  * Rendered twice — once in the static desktop rail, once inside the drawer —
@@ -48,8 +51,10 @@ function SidebarBody({ onLogout, onNavigate }) {
   return (
     <>
       <div>
-        <p className="px-3 font-display text-lg font-medium">Prime Admin</p>
-        <nav aria-label="Admin" className="mt-8 flex flex-col gap-1">
+        {/* text-[16px], not text-base: `base` is a colour token here (the
+            page ground), so text-base paints the heading invisible. */}
+        <p className="px-2.5 font-display text-lg font-medium lg:text-[16px]">Prime Admin</p>
+        <nav aria-label="Admin" className="mt-6 flex flex-col gap-0.5 lg:mt-4">
           {NAV.map((item) => {
             const count = item.badge ? badges[item.badge] : 0
             return (
@@ -59,16 +64,16 @@ function SidebarBody({ onLogout, onNavigate }) {
                 end={item.end}
                 onClick={onNavigate}
                 className={({ isActive }) =>
-                  // min-h-11 is the 44px touch-target floor; the old py-2 rows
-                  // came out at 36px.
-                  `flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors ${focusRing} ${
+                  // min-h-11 is the 44px touch-target floor for the drawer;
+                  // the mouse-driven desktop rail tightens to 36px.
+                  `flex min-h-11 items-center gap-2.5 rounded-lg px-2.5 text-sm font-medium transition-colors lg:min-h-9 ${focusRing} ${
                     isActive ? 'bg-white/10 text-bone' : 'text-bone-2 hover:bg-white/5 hover:text-bone'
                   }`
                 }
               >
                 {({ isActive }) => (
                   <>
-                    <item.icon weight={isActive ? 'fill' : 'regular'} className="size-5 shrink-0" aria-hidden />
+                    <item.icon weight={isActive ? 'fill' : 'regular'} className="size-5 shrink-0 lg:size-[18px]" aria-hidden />
                     <span className="flex-1">{item.label}</span>
                     {count > 0 && (
                       <span className="rounded-full bg-ember px-2 py-0.5 text-[11px] font-bold leading-none text-void">
@@ -84,9 +89,9 @@ function SidebarBody({ onLogout, onNavigate }) {
         </nav>
       </div>
 
-      <div className="flex flex-col border-t border-white/10 pt-4">
+      <div className="flex flex-col border-t border-white/10 pt-3">
         {session?.user?.email && (
-          <p className="truncate px-3 pb-2 text-xs text-bone-3" title={session.user.email}>
+          <p className="truncate px-2.5 pb-1.5 text-xs text-bone-3" title={session.user.email}>
             Signed in as <span className="text-bone-2">{session.user.name || session.user.email}</span>
           </p>
         )}
@@ -189,7 +194,7 @@ export default function AdminLayout() {
         out sat at the foot of a sidebar as long as the page. */}
     <div className="flex h-[100dvh] overflow-hidden bg-void font-body text-bone">
       <aside
-        className="hidden w-64 shrink-0 flex-col justify-between overflow-y-auto border-r border-white/10 px-3 py-6 lg:flex"
+        className="hidden w-48 shrink-0 flex-col justify-between overflow-y-auto border-r border-white/10 px-2 py-4 lg:flex"
       >
         <SidebarBody onLogout={onLogout} />
       </aside>
@@ -226,7 +231,8 @@ export default function AdminLayout() {
           <p className="font-display text-lg font-medium">Prime Admin</p>
         </header>
 
-        <main id="admin-main" className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 lg:p-8">
+        {/* Padding is mirrored by EditorBar's negative margins — change both. */}
+        <main id="admin-main" className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain p-3 sm:p-4 lg:p-5">
           <Outlet />
         </main>
       </div>

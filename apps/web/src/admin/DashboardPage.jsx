@@ -80,7 +80,7 @@ export default function DashboardPage() {
   const createError = newProperty.error || newPost.error
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div>
       <PageHeader
         title={name ? `${greeting()}, ${name}` : 'Dashboard'}
         description="What needs attention, and shortcuts to what gets edited most."
@@ -97,12 +97,12 @@ export default function DashboardPage() {
       />
 
       {createError && (
-        <div className="mt-6">
+        <div className="mt-4">
           <Alert>Could not create that draft — {createError}</Alert>
         </div>
       )}
 
-      <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {stats.map((s) => (
           <Link
             key={s.label}
@@ -126,7 +126,7 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-5">
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-5">
         <Card className="lg:col-span-3">
           <div className="flex items-center justify-between gap-4 border-b border-white/10 px-5 py-4">
             <h2 className="font-display text-[16px] font-medium text-bone">Recent leads</h2>
@@ -183,7 +183,7 @@ export default function DashboardPage() {
           )}
         </Card>
 
-        <div className="flex flex-col gap-6 lg:col-span-2">
+        <div className="flex flex-col gap-4 lg:col-span-2">
           <Card>
             <div className="border-b border-white/10 px-5 py-4">
               <h2 className="font-display text-[16px] font-medium text-bone">Quick edits</h2>

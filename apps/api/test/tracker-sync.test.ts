@@ -1288,3 +1288,135 @@ test('signature: accepts a fresh match, rejects stale, tampered, re-targeted and
   assert.equal(verify('s', ts, 'sha256=short', path, body, now), 'mismatch');
   assert.equal(verify('s', undefined, good, path, body, now), 'missing');
 });
+
+// ── "Show on website": a hidden unit stays hidden ──────────────────────────
+//
+// `hidden: true` is the CMS's, like the photographs: the tracker has no say in
+// it, so no sync may switch it back on — not by renumbering the unit, not by
+// moving it, and not by splitting or combining it into rows that are new.
+
+test('a hidden unit stays hidden through a relabel and a status change, and a shown one is left as it was', () => {
+  const floorPlans = {
+    buildings: [
+      {
+        building: 'Building 7',
+        trackerBuildingId: 'b7',
+        unitList: [
+          { label: '701', status: 'available', trackerUnitIds: ['u1'], images: ['shop.jpg'], hidden: true },
+          { label: '702', status: 'available', trackerUnitIds: ['u2'] },
+          { label: '703', status: 'available', trackerUnitIds: ['u3'], hidden: false },
+        ],
+      },
+    ],
+  };
+  const { floorPlans: next, report } = mergeSnapshot(
+    floorPlans,
+    ZERO,
+    snapshot([
+      {
+        id: 'b7',
+        name: 'Building 7',
+        units: [unit('u1', '701A', 'SOLD'), unit('u2', '702', 'LEASED', { occupant: 'Cafe' }), unit('u3', '703', 'SOLD')],
+      },
+    ]),
+  );
+  assert.equal(row(next, 0, '701A').hidden, true);
+  assert.deepEqual(row(next, 0, '701A').images, ['shop.jpg']);
+  assert.equal(row(next, 0, '701A').status, 'sold');
+  // Nothing is added to a row that never had the flag, and an editor's "shown" stands.
+  assert.equal('hidden' in row(next, 0, '702'), false);
+  assert.equal(row(next, 0, '703').hidden, false);
+  assert.deepEqual(report.buildings[0].carried, []);
+  // The input is never mutated.
+  assert.equal(floorPlans.buildings[0].unitList[0].hidden, true);
+});
+
+test('a push that changes nothing still reports no change on a hidden unit, even after jsonb reorders it', () => {
+  const tracker = snapshot([{ id: 'b1', name: 'Building 1', units: [unit('u101', '101', 'SOLD', { sqft: 900 })] }]);
+  const first = mergeSnapshot({ buildings: [{ building: 'Building 1', unitList: [] }] }, ZERO, tracker);
+  first.floorPlans.buildings[0].unitList[0].hidden = true;
+  const stored = jsonbRoundTrip({ floorPlans: first.floorPlans, trackerCounts: first.trackerCounts });
+  const second = mergeSnapshot(stored.floorPlans, first.totals, { ...tracker, generatedAt: '2026-10-23T11:00:00.000Z' }, {
+    trackerCounts: stored.trackerCounts,
+  });
+  assert.equal(second.report.changed, false);
+  assert.equal(second.floorPlans.buildings[0].unitList[0].hidden, true);
+});
+
+test('a hidden unit moved to another building is still hidden there', () => {
+  const floorPlans = {
+    buildings: [
+      { building: 'Building 8', trackerBuildingId: 'b8', unitList: [{ label: '801', status: 'sold', trackerUnitIds: ['u801'], hidden: true, x: 0.1, y: 0.9 }] },
+      { building: 'Building 9', trackerBuildingId: 'b9', unitList: [] },
+    ],
+  };
+  const { floorPlans: next, report } = mergeSnapshot(
+    floorPlans,
+    ZERO,
+    snapshot([
+      { id: 'b8', name: 'Building 8', units: [] },
+      { id: 'b9', name: 'Building 9', units: [unit('u801', '801', 'SOLD')] },
+    ]),
+    { force: true },
+  );
+  assert.equal(row(next, 1, '801').hidden, true);
+  assert.deepEqual(report.buildings[1].movedIn, [{ label: '801', from: 'Building 8', pinCleared: true }]);
+});
+
+test('splitting a hidden suite hides both halves; splitting a shown one hides neither', () => {
+  const split = snapshot([{ id: 'b4', name: 'Building 4', units: [unit('u402', '402', 'SOLD'), unit('u404', '404', 'UNDER_CONTRACT')] }]);
+  for (const linked of [false, true]) {
+    const hiddenSuite = building4(linked);
+    hiddenSuite.buildings[0].unitList[0] = { ...hiddenSuite.buildings[0].unitList[0], hidden: true } as any;
+    const { floorPlans: next, report } = mergeSnapshot(hiddenSuite, ZERO, split);
+    assert.deepEqual(labels(next), ['402', '404']);
+    assert.equal(row(next, 0, '402').hidden, true, `402 linked=${linked}`);
+    assert.equal(row(next, 0, '404').hidden, true, `404 linked=${linked}`);
+    // The new half took it from the row it continues, which the report says.
+    assert.deepEqual(report.buildings[0].carried, [{ label: '404', from: ['402+404'] }]);
+    assert.equal(hiddenSuite.buildings[0].unitList[0].hidden, true);
+
+    const shown = mergeSnapshot(building4(linked), ZERO, split).floorPlans;
+    assert.notEqual(row(shown, 0, '402').hidden, true);
+    assert.equal(row(shown, 0, '404').hidden, false);
+  }
+});
+
+test('combining a hidden row with a shown one gives a hidden row, whichever carries it on', () => {
+  const combined = snapshot(
+    [{ id: 'b7', name: 'Building 7', units: [unit('uNew', '701+702', 'AVAILABLE', { sqft: 3377, mergedFromIds: ['u701', 'u702'] })] }],
+    2,
+  );
+  for (const hiddenLabel of ['701', '702']) {
+    const floorPlans = {
+      buildings: [
+        {
+          building: 'Building 7',
+          trackerBuildingId: 'b7',
+          unitList: ['701', '702'].map((label) => ({
+            label,
+            status: 'available',
+            trackerUnitIds: [`u${label}`],
+            ...(label === hiddenLabel ? { hidden: true } : {}),
+          })),
+        },
+      ],
+    };
+    const { floorPlans: next, report } = mergeSnapshot(floorPlans, ZERO, combined);
+    assert.equal(report.refused, null);
+    assert.deepEqual(labels(next), ['701+702']);
+    assert.equal(row(next, 0, '701+702').hidden, true, `hidden ${hiddenLabel}`);
+  }
+});
+
+test('a row the sync creates has every field the CMS gives a new unit, the website flag included', async () => {
+  const { makeUnit } = await import('../../web/src/lib/units.js');
+  const { floorPlans: next } = mergeSnapshot(
+    { buildings: [{ building: 'Building 1', unitList: [] }] },
+    ZERO,
+    snapshot([{ id: 'b1', name: 'Building 1', units: [unit('u101', '101', 'AVAILABLE')] }]),
+  );
+  const created = row(next, 0, '101');
+  for (const key of Object.keys(makeUnit('101'))) assert.ok(key in created, `"${key}" is missing from a synced row`);
+  assert.equal(created.hidden, false);
+});

@@ -61,7 +61,7 @@ export default function CapAdminPage() {
   const remove = (id) => run((cur) => ({ ...cur, items: (cur.items ?? []).filter((l) => l.id !== id) }))
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div>
       <PageHeader
         title="CAP / NNN"
         description={`${items.length} deals · ${count('listed')} just listed · ${count('under-contract')} under contract · ${count('sold')} sold. Shown at /cap-properties, on /properties and on the Invest page.`}
@@ -78,13 +78,13 @@ export default function CapAdminPage() {
       />
 
       {!stored && (
-        <p className="mt-6 rounded-xl border border-accent-soft/30 bg-accent-soft/10 px-4 py-3 text-sm text-bone-2">
+        <p className="mt-4 rounded-xl border border-accent-soft/30 bg-accent-soft/10 px-4 py-3 text-sm text-bone-2">
           These are the 17 deals imported from the CAP &amp; NNN listings PDF. The first change you save here stores them
           with the site; until then they are the built-in set.
         </p>
       )}
 
-      <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div role="group" aria-label="Filter by status" className="flex flex-wrap gap-1.5">
           {FILTERS.map((f) => {
             const active = filter === f.value
@@ -108,12 +108,12 @@ export default function CapAdminPage() {
       </div>
 
       {error && (
-        <div className="mt-6">
+        <div className="mt-4">
           <Alert>Couldn&apos;t save — {error}</Alert>
         </div>
       )}
 
-      <div className="mt-6 flex flex-col gap-3">
+      <div className="mt-4 flex flex-col gap-3">
         {items.length === 0 && (
           <EmptyState
             icon={CurrencyCircleDollar}

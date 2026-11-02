@@ -1,5 +1,5 @@
 import { CheckboxField, SelectField, TextAreaField, TextField } from './Field'
-import ImageUploader from './ImageUploader'
+import ImageUploader, { ImageFormatHint } from './ImageUploader'
 import RepeatableList from './RepeatableList'
 import { UNIT_STATUSES } from '../../lib/unitStatus'
 import { STATUS_WORDS } from '../completeness'
@@ -76,6 +76,15 @@ export default function UnitFields({ unit, onChange, folder }) {
         <TextField label="Lease rate / price" placeholder="$28 / SF / yr" value={unit.rate} onChange={set('rate')} />
         <TextField label="Frontage" placeholder="32 ft on Leora Ln" value={unit.frontage} onChange={set('frontage')} />
       </div>
+      {/* Stored as `hidden`, the other way round, so a unit written before
+          this existed — which has no such field — reads as shown. The public
+          API drops a hidden unit whole; the tracker sync leaves the flag be. */}
+      <CheckboxField
+        label="Show on website"
+        value={!unit.hidden}
+        onChange={(shown) => set('hidden')(!shown)}
+        hint="Untick to keep this unit off the public site: its page, the unit lists and plans, homepage cards and rate-sheet rows. It stays here to edit, and the tracker sync leaves your choice alone."
+      />
       {/* The public API leaves these out unless ticked — see
           apps/api/src/modules/properties/public-property.ts. Asked only
           where there is something to withhold. */}
@@ -138,10 +147,12 @@ export default function UnitFields({ unit, onChange, folder }) {
           onChange={(images) => onChange((u) => ({ ...u, images: resolveNext(images, u.images ?? []) }))}
           makeItem={() => ''}
           addLabel="Add photograph"
+          layout="grid"
           renderItem={(url, setUrl) => (
-            <ImageUploader value={url} onChange={setUrl} folder={`${folder}/unit-photos`} />
+            <ImageUploader value={url} onChange={setUrl} folder={`${folder}/unit-photos`} hint={false} />
           )}
         />
+        <ImageFormatHint className="mt-2" />
       </div>
       <TextAreaField
         label="Unit description"

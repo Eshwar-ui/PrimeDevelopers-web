@@ -27,16 +27,16 @@ export default function ContentIndexPage() {
   const groups = grouped(matches)
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div>
       <PageHeader title="Site content" description="The text, images and links on every page. Pick a section to edit it." />
 
-      <div className="mt-6">
+      <div className="mt-4">
         <SearchInput value={query} onChange={setQuery} placeholder="Find a section — e.g. footer, hero" label="Find a section" icon={MagnifyingGlass} />
       </div>
 
       {groups.length === 0 && <p className="mt-10 text-center text-sm text-bone-3">No section matches “{query}”.</p>}
 
-      <div className="mt-8 flex flex-col gap-10">
+      <div className="mt-4 flex flex-col gap-6">
         {groups.map((g) => (
           <section key={g.id} aria-labelledby={`group-${g.id}`}>
             <h2 id={`group-${g.id}`} className="eyebrow text-[11px] text-bone-3">

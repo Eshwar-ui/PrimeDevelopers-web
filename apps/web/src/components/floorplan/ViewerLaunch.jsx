@@ -23,23 +23,41 @@ export default function ViewerLaunch({ poster, height, onLaunch, onPrefetch }) {
     <div
       className={`relative isolate overflow-hidden rounded-2xl border border-line bg-surface-alt ${height}`}
     >
-      {/* Resized: the poster was the 965 KB original, at 60% opacity under a
-          scrim. The card ladder tops out at 1200px, which is the widest this
-          column renders on a 2x laptop; the resizer serves WebP to match. */}
+      {/* Resized: the poster was the 965 KB original. The card ladder tops out
+          at 1200px, which is the widest this column renders on a 2x laptop;
+          the resizer serves WebP to match.
+
+          Contained, not covered. The column is half the row and taller than it
+          is wide, so `object-cover` cut a landscape photograph down to its
+          middle third. The whole picture now shows, over a blurred copy of
+          itself so the spare space reads as part of the image rather than as
+          empty bars. Both use the same URL, so it downloads once. */}
       {poster && (
-        <img
-          src={sized(poster, 'card')}
-          srcSet={srcSetFor(poster, 'card')}
-          sizes="(min-width: 1024px) 75vw, 100vw"
-          alt=""
-          loading="lazy"
-          decoding="async"
-          className="absolute inset-0 size-full object-cover opacity-60"
-        />
+        <>
+          <img
+            src={sized(poster, 'card')}
+            srcSet={srcSetFor(poster, 'card')}
+            sizes="(min-width: 1024px) 50vw, 100vw"
+            alt=""
+            aria-hidden
+            loading="lazy"
+            decoding="async"
+            className="absolute inset-0 size-full scale-110 object-cover opacity-45 blur-2xl"
+          />
+          <img
+            src={sized(poster, 'card')}
+            srcSet={srcSetFor(poster, 'card')}
+            sizes="(min-width: 1024px) 50vw, 100vw"
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="absolute inset-0 size-full object-contain"
+          />
+        </>
       )}
-      {/* A scrim over the poster, so the button reads against whatever the
-          picture happens to be. Theme-keyed, so it darkens with the page. */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-linear-to-t from-surface-alt/85 via-surface-alt/40 to-surface-alt/70 p-6 text-center">
+      {/* A light scrim, so the button reads against whatever the picture
+          happens to be without hiding the picture. Theme-keyed. */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-surface-alt/20 p-6 text-center">
         <ActionButton
           as="button"
           type="button"
@@ -53,7 +71,9 @@ export default function ViewerLaunch({ poster, height, onLaunch, onPrefetch }) {
           <Cube aria-hidden weight="bold" className="size-4 shrink-0" />
           View 3D model
         </ActionButton>
-        <p className="font-body text-[12px] text-content/70">Rotate, zoom and select a unit</p>
+        <p className="rounded-full bg-surface-alt/75 px-3 py-1 font-body text-[12px] text-content/80 backdrop-blur-sm">
+          Rotate, zoom and select a unit
+        </p>
       </div>
     </div>
   )

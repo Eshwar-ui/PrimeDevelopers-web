@@ -3,6 +3,7 @@ import { uploadModel } from '../../lib/uploads'
 import { imageWarning, inspectGlb, triangleWarning, validateModelFile } from '../../lib/glbInspect'
 import { ConfirmButton } from './ui'
 import UnitFields from './UnitFields'
+import { OrientationControl } from './ModelManager'
 import { STATUS_WORDS } from '../completeness'
 import { resolveNext } from '../adminUtils'
 import { formatBytes, getUnits, makeUnit, nextUnitLabel, siteUnitKey } from '../../lib/units'
@@ -707,6 +708,12 @@ export default function SiteModelManager({ buildings, onBuildingsChange, siteMod
               tag it again to link a unit.
             </p>
           )}
+
+          {/* ── orientation ──────────────────────────────────────── */}
+          {/* The one number the public compass and every unit's aspect depend
+              on. Without it the viewer cannot tell north from any other side
+              of the plot, and holds its compass still. */}
+          <OrientationControl model={model} setModel={setModel} />
 
           {/* ── viewer ───────────────────────────────────────────── */}
           <div className={`mt-4 ${sidePanel ? 'grid gap-4 xl:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]' : ''}`}>

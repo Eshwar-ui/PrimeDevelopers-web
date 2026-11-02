@@ -70,10 +70,10 @@ export default function LeadsPage() {
   }, [hash, leads])
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div>
       <PageHeader title="Leads" description="Enquiries from the contact, brochure and floor-plan forms on the public site." />
 
-      <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div role="group" aria-label="Filter by status" className="flex flex-wrap gap-1.5">
           {FILTERS.map((f) => {
             const active = filter === f.value
@@ -120,12 +120,12 @@ export default function LeadsPage() {
       )}
 
       {error && (
-        <div className="mt-6">
+        <div className="mt-4">
           <Alert action={<Button size="sm" onClick={reload}>Try again</Button>}>{error}</Alert>
         </div>
       )}
 
-      <div className="mt-6 flex flex-col gap-3">
+      <div className="mt-4 flex flex-col gap-3">
         {!leads && !error && Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-36" />)}
 
         {leads?.length === 0 &&

@@ -35,9 +35,9 @@ export default function ViewerFallback({ reason, hint, poster, height, onRetry }
           alt=""
           loading="lazy"
           decoding="async"
-          // Fainter than the launch poster's 60%: there the picture is the
-          // point, here the two lines of text are.
-          className="absolute inset-0 size-full object-cover opacity-10"
+          // Far fainter than the launch poster: there the picture is the
+          // point, here the two lines of text are. Contained to match it.
+          className="absolute inset-0 size-full object-contain opacity-10"
         />
       )}
       <div role="status" className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center">

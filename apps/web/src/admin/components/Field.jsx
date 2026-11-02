@@ -161,7 +161,7 @@ export function Section({ title, description, children, defaultOpen = true, open
       onToggle={onToggle ? (e) => onToggle(e.currentTarget.open) : undefined}
       className="group scroll-mt-24 rounded-2xl border border-white/10 bg-carbon"
     >
-      <summary className="flex cursor-pointer list-none items-start justify-between gap-4 rounded-2xl p-5 transition-colors hover:bg-white/[0.03] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-soft sm:p-6 [&::-webkit-details-marker]:hidden">
+      <summary className="flex cursor-pointer list-none items-start justify-between gap-4 rounded-2xl px-4 py-3.5 transition-colors hover:bg-white/[0.03] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-soft [&::-webkit-details-marker]:hidden">
         <div>
           <span className="font-display text-[16px] font-medium text-bone">{title}</span>
           {description && <p className="mt-1 max-w-prose text-sm text-bone-3">{description}</p>}
@@ -171,7 +171,7 @@ export function Section({ title, description, children, defaultOpen = true, open
           className="mt-1 size-4 shrink-0 text-bone-3 transition-transform duration-200 group-open:rotate-180"
         />
       </summary>
-      <div className="flex flex-col gap-5 px-5 pb-6 pt-1 sm:px-6">{children}</div>
+      <div className="flex flex-col gap-4 px-4 pb-4">{children}</div>
     </details>
   )
 }

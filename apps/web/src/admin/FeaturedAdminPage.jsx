@@ -84,7 +84,7 @@ export default function FeaturedAdminPage() {
   const remove = (id) => run((list) => list.filter((c) => c.id !== id))
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div>
       <PageHeader
         title="Featured"
         description={`The carousel under the homepage hero — advertise a property, a CAP / NNN deal or a unit. ${showing} of ${cards.length} showing; they rotate in this order.`}
@@ -96,12 +96,12 @@ export default function FeaturedAdminPage() {
       />
 
       {error && (
-        <div className="mt-6">
+        <div className="mt-4">
           <Alert>Couldn&apos;t save — {error}</Alert>
         </div>
       )}
 
-      <div className="mt-8 flex flex-col gap-3">
+      <div className="mt-4 flex flex-col gap-3">
         {cards.length === 0 && (
           <EmptyState icon={Megaphone} title="Nothing featured" action={<Button variant="primary" icon={Plus} onClick={create} disabled={busy}>New card</Button>}>
             With no cards showing, the homepage simply skips this panel.

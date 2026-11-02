@@ -1,5 +1,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Eye, EyeSlash } from '@phosphor-icons/react'
+import CustomSelect from './CustomSelect'
 import ErrorBoundary from './ErrorBoundary'
 import FloorPlanInteractive from './FloorPlanInteractive'
 import UnitDetailCard from './UnitDetailCard'
@@ -7,23 +9,57 @@ import UnitList from './UnitList'
 import ViewerFallback, { ViewerNotice } from './floorplan/ViewerFallback'
 import ViewerLaunch from './floorplan/ViewerLaunch'
 import { loadViewer, useViewerState } from './floorplan/useViewerState'
-import { formatUnitLabel, getBuildings, getUnits, unitPath } from '../lib/units'
-import { unitStatusMeta } from '../lib/unitStatus'
+import { bearingLabel, formatUnitLabel, getBuildings, getUnits, unitLabelParts, unitPath } from '../lib/units'
+import { UNIT_STATUSES, unitStatusMeta } from '../lib/unitStatus'
 import { getSiteModel, hasSiteModel, reconcileSite, toViewerEntries } from '../lib/siteModel'
 import { sized } from '../lib/images'
 import { scrollToElement } from '../lib/scrollToElement'
 
-// Matches FloorPlanSection's own PLAN_HEIGHT, and for the same reason: the
-// detail panel now takes a column out of this row from `lg` up, so the model
-// no longer has the full width to be wide and shallow in. Holding the old
-// full-bleed `100dvh-9rem` there would leave a site plan in a tall narrow
-// slot — the worst shape to orbit one in.
-const PLAN_HEIGHT = 'h-[340px] sm:h-[420px] md:h-[500px] lg:h-[calc(100dvh-7rem)]'
+// From `lg` up the plan and its panel are one row exactly as tall as the
+// screen under the two bars pinned to the top — the site header and the
+// section nav, 141px between them — so the whole picker (filter, building,
+// unit, model, details) is in view at once with nothing to scroll past. The
+// floor keeps it usable on a short window. Below `lg` the plan is a fixed
+// height, tall enough that the picker over its top leaves room for the model.
+const PLAN_HEIGHT = 'h-[440px] sm:h-[460px] md:h-[500px] lg:h-[max(30rem,calc(100dvh-9rem))]'
+
+// Where the picker sits over the plan: on one line with the viewer's own 2D/3D
+// button, which owns the top-left corner. That button is a bare icon on a
+// phone and carries its label from `sm`, so the offset follows it.
+const TOOLBAR_IN_VIEWER = 'absolute left-[4.25rem] right-4 top-4 z-30 sm:left-[6.5rem]'
+// Over the launch poster or the 2D plan there is no such button.
+const TOOLBAR_OVER_PLAN = 'absolute inset-x-4 top-4 z-30'
+
+// Sentinels for "nothing chosen" in the pickers. A building label could never
+// be either of these.
+const SITE = '__site'
+const ALL = '__all'
 
 // A cap rather than a height — see the note on FloorPlanSection's PANEL_MAX.
-const PANEL_MAX = 'lg:max-h-[calc(100dvh-7rem)]'
+const PANEL_MAX = 'lg:max-h-[max(30rem,calc(100dvh-9rem))]'
 
 const norm = (value) => String(value ?? '').trim().toLowerCase()
+
+// A closed picker has a third of a phone's width, so its label says less there
+// and the whole of it from `sm` up. The menu always has the full text.
+const shortOnPhone = (short, full) => (
+  <>
+    <span className="sm:hidden">{short}</span>
+    <span className="hidden sm:inline">{full}</span>
+  </>
+)
+
+const statusOf = (unit) => unit.status || 'available'
+
+/** Units per status, in suites rather than rows. */
+const tally = (list) => {
+  const counts = {}
+  for (const u of list) {
+    const key = statusOf(u)
+    counts[key] = (counts[key] ?? 0) + Math.max(1, unitLabelParts(u.label).length)
+  }
+  return counts
+}
 
 /**
  * The whole-site counterpart to FloorPlanSection.
@@ -47,6 +83,11 @@ export default function SiteModelSection({ property }) {
   const [focusedLabel, setFocusedLabel] = useState(null)
   const [selectedLabel, setSelectedLabel] = useState(null)
   const [isolate, setIsolate] = useState(false)
+  // One status at a time, or null for all. Mutes the other units in the
+  // model rather than hiding them, as the per-building plan's filter does.
+  const [statusFilter, setStatusFilter] = useState(null)
+  // Which way each unit looks out, as the viewer measures it from the model.
+  const [facings, setFacings] = useState(null)
   // Bumped on the way back out to the site, to re-frame the whole plot.
   const [resetToken, setResetToken] = useState(0)
   const rootRef = useRef(null)
@@ -109,6 +150,11 @@ export default function SiteModelSection({ property }) {
       .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }))
   }, [entries])
 
+  /** Every shape that belongs to a building — shells and units — as the set
+   *  the camera rests on. Roads and ground are left out on purpose: they are
+   *  most of the model by area and none of what the visitor came to see. */
+  const homeIndexes = useMemo(() => taggedBuildings.flatMap((b) => b.indexes), [taggedBuildings])
+
   /** Every building in the CMS, whether or not it has geometry.
    *
    *  The rail is built from the tagged set — an untagged building has
@@ -158,6 +204,16 @@ export default function SiteModelSection({ property }) {
    *  arrives with. */
   const allUnits = useMemo(() => buildings.flatMap((b) => getUnits(b)), [buildings])
 
+  /** Site-wide count per status, for the filter row.
+   *
+   *  Counted in suites, not rows: "101+102+103" is one row but three units,
+   *  and counted as rows the filter disagreed with the headline totals the
+   *  panel and hero show (46 sold against 63 reserved on Centro Plaza). */
+  const statusCounts = useMemo(() => tally(allUnits), [allUnits])
+  const focusedCounts = useMemo(() => tally(focusedUnits), [focusedUnits])
+  const filterOptions = UNIT_STATUSES.filter((s) => statusCounts[s.value] > 0)
+  const filterMeta = unitStatusMeta(statusFilter ?? 'available')
+
   /** Units of the focused building that are actually tagged in the model,
    *  keyed by label, so a chip can fly the camera to one. */
   const unitEntryByLabel = useMemo(() => {
@@ -175,6 +231,12 @@ export default function SiteModelSection({ property }) {
     () => (selectedLabel ? focusedUnits.find((u) => norm(u.label) === norm(selectedLabel)) ?? null : null),
     [focusedUnits, selectedLabel],
   )
+
+  /** The unit rail under the filter. The open unit stays in it whatever its
+   *  status, so filtering never takes away the chip for what is on screen. */
+  const railUnits = statusFilter
+    ? focusedUnits.filter((u) => statusOf(u) === statusFilter || u.index === selectedUnit?.index)
+    : focusedUnits
 
   /** What the camera frames: the selected unit if it has geometry, otherwise
    *  the whole focused building, otherwise the site. A selected unit with no
@@ -244,6 +306,9 @@ export default function SiteModelSection({ property }) {
   )
 
   const modelUrl = siteModel?.url ?? null
+  // The admin's turn that puts true north at the top. Without it nothing here
+  // knows which way a unit faces, and says nothing rather than guess.
+  const orientation = Number.isFinite(siteModel?.orientation) ? siteModel.orientation : null
   const isLocalhostUrl = modelUrl ? /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/.test(modelUrl) : false
   // The model waits for "View 3D model" rather than mounting with the page.
   // Selection is held as labels, not mesh indexes, so everything chosen
@@ -319,100 +384,162 @@ export default function SiteModelSection({ property }) {
       })}`,
     )
 
+  // ── pickers ───────────────────────────────────────────────────────────
+  //
+  // Each option has a full label for the menu and a short `triggerLabel` for
+  // the closed control, which has a third of a phone's width to itself.
+  const statusOptions = [
+    { value: ALL, label: 'All units', triggerLabel: shortOnPhone('All', 'All units') },
+    ...filterOptions.map((s) => ({
+      value: s.value,
+      triggerLabel: s.label,
+      label: (
+        <span className="inline-flex items-center gap-2">
+          <span aria-hidden className={`size-2 rounded-full ${s.swatch}`} />
+          {s.label}
+          <span className="tabular-nums text-bone/50">{statusCounts[s.value]}</span>
+        </span>
+      ),
+    })),
+  ]
+
+  // A building deep-linked to but with no geometry still has to read as the
+  // current one, so it joins the list rather than leaving the control blank.
+  const pickable =
+    focusedBuilding && !taggedBuildings.some((b) => b.label === focusedBuilding.label)
+      ? [...taggedBuildings, focusedBuilding]
+      : taggedBuildings
+  const buildingOptions = [
+    { value: SITE, label: 'Site overview', triggerLabel: shortOnPhone('Site', 'Site overview') },
+    ...pickable.map((b) => {
+      const units = getUnits(b.building)
+      // Follows the filter: available by default, otherwise the status being
+      // shown, so the menu says where the matches are.
+      const matching = units.filter((u) => statusOf(u) === filterMeta.value).length
+      return {
+        value: b.label,
+        triggerLabel: shortOnPhone(b.label.replace(/^Building\s+/i, 'Bldg '), b.label),
+        label: (
+          <span className="inline-flex items-center gap-2">
+            {b.label}
+            {units.length > 0 && (
+              <span className="tabular-nums text-bone/50">
+                <span aria-hidden>
+                  {matching}/{units.length}
+                </span>
+                <span className="sr-only">
+                  , {matching} of {units.length} units {filterMeta.label.toLowerCase()}
+                </span>
+              </span>
+            )}
+          </span>
+        ),
+      }
+    }),
+  ]
+
+  const unitOptions = [
+    { value: ALL, label: 'All units', triggerLabel: shortOnPhone('All', 'All units') },
+    ...railUnits.map((u) => {
+      const meta = unitStatusMeta(u.status)
+      return {
+        value: u.label,
+        triggerLabel: formatUnitLabel(u.label) || '—',
+        label: (
+          <span className="inline-flex items-center gap-2">
+            <span aria-hidden className={`size-2 rounded-full ${meta.swatch}`} />
+            {formatUnitLabel(u.label) || '—'}
+          </span>
+        ),
+      }
+    }),
+  ]
+  const noUnits = focusedBuilding && railUnits.length === 0
+
+  // The panel's facts about the open unit that only the model knows.
+  const selectedEntry = selectedUnit ? unitEntryByLabel.get(norm(selectedUnit.label)) : null
+  const aspect = orientation != null && selectedEntry ? bearingLabel(facings?.get(selectedEntry.index)) : null
+  const counts = focusedBuilding ? focusedCounts : statusCounts
+  const breakdown = UNIT_STATUSES.filter((s) => counts[s.value] > 0).map((s) => ({ ...s, count: counts[s.value] }))
+
+  // Content-sized, shrinking only when the bar runs out of room: equal thirds
+  // gave "All" as much width as "Building 10" and cut the long one.
+  const toolbar = (
+    <div role="group" aria-label="Choose what the plan shows" className="flex items-center gap-1.5 sm:gap-2">
+      {filterOptions.length > 1 && (
+        <div className="min-w-0 shrink">
+          <CustomSelect
+            variant="overlay"
+            label="Filter units by status"
+            value={statusFilter ?? ALL}
+            options={statusOptions}
+            onChange={(value) => setStatusFilter(value === ALL ? null : value)}
+          />
+        </div>
+      )}
+      <div className="min-w-0 shrink">
+        <CustomSelect
+          variant="overlay"
+          label="Building"
+          value={focusedBuilding?.label ?? SITE}
+          options={buildingOptions}
+          onChange={(value) => (value === SITE ? goSite() : openBuilding(value))}
+        />
+      </div>
+      <div className="min-w-0 shrink">
+        <CustomSelect
+          variant="overlay"
+          align="right"
+          label="Unit"
+          disabled={!focusedBuilding || noUnits}
+          value={selectedUnit?.label ?? (focusedBuilding && !noUnits ? ALL : '')}
+          // Short, because it has a third of the bar. Idle either because no
+          // building is open yet, or because the filter has left the open one
+          // with nothing to pick.
+          placeholder={!focusedBuilding ? 'Unit' : 'No units'}
+          options={unitOptions}
+          onChange={(value) => selectUnit(value === ALL ? null : (focusedUnits.find((u) => u.label === value) ?? null))}
+        />
+      </div>
+      {focusedBuilding && taggedBuildings.length > 1 && (
+        // Not on a phone: it is a refinement, and the one line the bar has there
+        // is worth more to the labels.
+        <button
+          type="button"
+          aria-pressed={isolate}
+          aria-label="Hide other buildings"
+          title="Hide other buildings"
+          onClick={() => setIsolate((v) => !v)}
+          className={`grid size-11 shrink-0 place-items-center rounded-full border backdrop-blur-xl transition-colors duration-200 max-sm:hidden ${
+            isolate
+              ? 'border-accent bg-accent text-white dark:text-void'
+              : 'border-white/12 bg-black/58 text-bone/80 hover:border-white/30 hover:bg-black/72'
+          }`}
+        >
+          {isolate ? <EyeSlash aria-hidden className="size-4" weight="bold" /> : <Eye aria-hidden className="size-4" weight="bold" />}
+        </button>
+      )}
+    </div>
+  )
+
   if (!hasSiteModel(property)) return null
 
   return (
-    <div ref={rootRef} className="flex scroll-mt-24 flex-col gap-4">
-      {/* ── building rail ───────────────────────────────────────── */}
-      {/* One scrolling row on a phone, wrapping from `sm`. Wrapped at 390px,
-          ten buildings took five rows and pushed the plan below the fold. */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
-        <span className="mr-1 shrink-0 font-body text-[10px] font-bold uppercase tracking-[0.16em] text-content/45">
-          {property?.name}
-        </span>
-        <Chip active={!focusedBuilding} onClick={goSite} tone="accent">
-          Site overview
-        </Chip>
-        {taggedBuildings.map((b) => {
-          const units = getUnits(b.building)
-          const free = units.filter((u) => u.status === 'available').length
-          const isActive = focusedBuilding?.label === b.label
-          return (
-            <Chip key={b.label} active={isActive} onClick={() => openBuilding(b.label)}>
-              <span className="inline-flex items-center gap-2">
-                {b.label}
-                {/* A separate pill, not a dimmed suffix. Run together with the
-                    name — "Building 1" followed by "0/1" — the eye reads
-                    "Building 10/1", and the rail became a column of building
-                    numbers nobody could trust. Its own ground breaks the
-                    number away from the name for good. */}
-                {units.length > 0 && (
-                  <span
-                    className={`rounded-full px-1.5 py-px font-body text-[10px] font-bold tabular-nums ${
-                      isActive ? 'bg-void/20 text-void' : 'bg-content/10 text-content/60'
-                    }`}
-                  >
-                    {/* The slash form is for the eye only. Read aloud it is
-                        "Building 1, 0 slash 1" — or worse, run together with
-                        the name as "Building 10 slash 1" — so the spoken
-                        version is spelled out instead. */}
-                    <span aria-hidden>
-                      {free}/{units.length}
-                    </span>
-                    <span className="sr-only">
-                      , {free} of {units.length} units available
-                    </span>
-                  </span>
-                )}
-              </span>
-            </Chip>
-          )
-        })}
-        {taggedBuildings.length > 1 && (
-          <label className="ml-auto flex shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap font-body text-[12px] text-content/55">
-            <input type="checkbox" checked={isolate} onChange={(e) => setIsolate(e.target.checked)} className="accent-[var(--color-accent)]" />
-            Hide other buildings
-          </label>
-        )}
-      </div>
-
-      {/* ── unit rail, only once inside a building ──────────────── */}
-      {focusedBuilding && focusedUnits.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
-          {/* The open building's heading — one h3 per tab, under the
-              section's h2 — styled as the rail label it replaces. */}
-          <h3 className="mr-1 font-body text-[10px] font-bold uppercase tracking-[0.16em] text-content/45">
-            {focusedBuilding.label}
-          </h3>
-          {focusedUnits.map((u) => {
-            const meta = unitStatusMeta(u.status)
-            // Every unit is selectable, whether or not it has a shape in the
-            // model and whatever its status: a let unit has a tenant,
-            // photographs and a size, which is exactly what a prospect
-            // deciding on the unit next door wants to see. One without
-            // geometry simply leaves the camera on the building.
-            return (
-              <Chip
-                key={u.index}
-                active={selectedUnit?.index === u.index}
-                onClick={() => selectUnit(u)}
-              >
-                <span className="inline-flex items-center gap-1.5">
-                  <span aria-hidden className={`size-1.5 rounded-full ${meta.swatch}`} />
-                  {formatUnitLabel(u.label) || '—'}
-                </span>
-              </Chip>
-            )
-          })}
-        </div>
-      )}
-
+    <div ref={rootRef} className="flex scroll-mt-36 flex-col gap-4">
       {/* ── the plan and its detail panel ───────────────────────── */}
       {/* Side by side from lg up, matching the per-building plan. The panel
           used to float over the canvas, which meant the answer to "what did
           I just click" sat on top of the thing being clicked — and on a
           phone it covered a third of the model. Its own column costs the
-          model some width and buys back the whole surface. */}
+          model some width and buys back the whole surface.
+
+          The model takes the larger share — it is the thing being worked —
+          and the panel keeps a 21rem floor so a unit's figures stay above
+          the fold beside it.
+
+          The pickers are over the plan rather than above it. Three rows of
+          chips ahead of the model pushed it below the fold; as dropdowns on
+          the model itself, the row is the whole section. */}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,2.2fr)_minmax(21rem,1fr)] lg:items-start">
         <div className="relative min-w-0">
           {canShow3D && !viewer.activated ? (
@@ -435,11 +562,19 @@ export default function SiteModelSection({ property }) {
                   onSelect={onSelect}
                   focusMeshes={focusMeshes}
                   isolateFocus={isolate}
+                  statusFilter={statusFilter}
+                  // The plaza itself, not the model's whole extent, which
+                  // is mostly road. Zoom-out stays free; zoom-in stops at
+                  // whatever frame the camera is resting on.
+                  homeIndexes={homeIndexes}
+                  fixedZoom
+                  toolbar={<div className={TOOLBAR_IN_VIEWER}>{toolbar}</div>}
                   // Building names across the site, unit numbers once inside one.
                   labelKinds={focusedBuilding ? ['unit', 'road'] : ['building', 'road']}
                   resetToken={resetToken}
                   groundless
-                  orientation={Number.isFinite(siteModel?.orientation) ? siteModel.orientation : null}
+                  orientation={orientation}
+                  onFacings={setFacings}
                   onError={viewer.fail}
                   poster={siteModel?.poster}
                   fileSize={siteModel?.fileSize}
@@ -458,6 +593,7 @@ export default function SiteModelSection({ property }) {
                 units={focusedUnits}
                 selection={selectedUnit ? [selectedUnit.index] : []}
                 onSelect={selectByUnitIndex}
+                statusFilter={statusFilter}
               />
               <ViewerNotice reason={unavailableReason} onRetry={viewer.retry} />
             </>
@@ -478,11 +614,17 @@ export default function SiteModelSection({ property }) {
               onRetry={viewer.retry}
             />
           )}
+          {/* The live viewer carries its own copy, inside its container, so
+              it stays on screen in fullscreen. */}
+          {!(canShow3D && viewer.activated) && <div className={TOOLBAR_OVER_PLAN}>{toolbar}</div>}
         </div>
 
-        <aside className="lg:sticky lg:top-24">
+        <aside className="lg:sticky lg:top-36">
           <UnitDetailCard
             unit={selectedUnit}
+            buildingLabel={focusedBuilding?.label ?? ''}
+            aspect={aspect}
+            breakdown={breakdown}
             units={focusedBuilding ? focusedUnits : allUnits}
             totals={
               !focusedBuilding && property.buildings > 0
@@ -498,8 +640,8 @@ export default function SiteModelSection({ property }) {
             detailsHref={selectedUnit && focusedBuilding ? unitPath(property.slug, focusedBuilding.label, selectedUnit.label) : null}
             emptyHint={
               focusedBuilding
-                ? ''
-                : 'Select a building on the plan — or from the row above — to see its units, their sizes and who is in them.'
+                ? 'Select any unit on the plan — or from the Unit menu — to see its size, floor, availability and who is in it.'
+                : 'Select a building on the plan — or from the Building menu — to see its units, their sizes and who is in them.'
             }
           />
         </aside>
@@ -523,33 +665,11 @@ export default function SiteModelSection({ property }) {
           units={focusedUnits}
           selection={selectedUnit ? [selectedUnit.index] : []}
           onSelect={selectByUnitIndex}
+          statusFilter={statusFilter}
           defaultOpen={!canShow3D}
         />
       )}
     </div>
-  )
-}
-
-function Chip({ active, onClick, disabled, tone, children }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-pressed={active}
-      // `relative` anchors the count's sr-only label (absolute) to the chip.
-      // Unanchored it positioned against the page, so in the scrolling rail
-      // on a phone it escaped the clip and widened the page to 1230px.
-      className={`relative min-h-9 shrink-0 rounded-full border px-3.5 py-1.5 font-body text-[12px] font-semibold tracking-[0.01em] transition-colors duration-200 disabled:cursor-default disabled:opacity-35 ${
-        active
-          ? tone === 'accent'
-            ? 'border-accent bg-accent text-white dark:text-void'
-            : 'border-ember bg-ember text-void'
-          : 'border-[var(--color-line)] bg-surface text-content/75 hover:border-content/35 hover:text-content'
-      }`}
-    >
-      {children}
-    </button>
   )
 }
 
@@ -558,7 +678,7 @@ function Chip({ active, onClick, disabled, tone, children }) {
 function ViewerSkeleton({ poster }) {
   return (
     <div className={`relative overflow-hidden rounded-2xl border border-[var(--color-line)] bg-surface-alt ${PLAN_HEIGHT}`}>
-      {poster && <img src={sized(poster, 'card')} alt="" className="h-full w-full object-cover opacity-25" />}
+      {poster && <img src={sized(poster, 'card')} alt="" className="h-full w-full object-contain opacity-25" />}
       <div className="absolute inset-0 flex items-center justify-center">
         <span className="eyebrow text-content/70">Loading site model…</span>
       </div>

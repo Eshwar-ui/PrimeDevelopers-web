@@ -117,6 +117,7 @@ details.
 | `tenant` | Tracker for leased units; cleared when a unit becomes available. When every unit of the row is LEASE_PENDING (the sitting tenant is leaving), cleared only if it is the name the sync last sent (`tracker.occupant`) — a tenant typed in the CMS stays. **Left alone on sold units** |
 | `tracker` (sub-object) | Tracker only: `ids`, `unitNumber`, `status` (the tracker's own), `sqft`, `unitType`, `availableSince`, `occupant` (what the sync sent as the tenant), `syncedAt`. Nothing reads it yet; the top-level fields above are still written exactly as before, so the public site and the CMS are unaffected. `syncedAt` is when these values last changed, not the last push. |
 | `images`, `description`, `x`/`y`, `logo`, `rate`, `floor`, `frontage`, `tenantUrl`, `tenantCategory`, `facingRoad` | Website |
+| `hidden` | Website. `true` is the CMS's "Show on website" switched off: the public API drops the unit (public-property.ts). Carried over every sync; a row made by splitting or combining a hidden row starts hidden. A row the tracker removes takes the flag with it |
 
 On each matched building the sync writes `trackerBuildingId` (the mapping, see
 below), `units`, `available` and a `tracker` sub-object (`id`, `name`, `totalSqft`,

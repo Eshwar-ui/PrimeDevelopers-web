@@ -1,11 +1,9 @@
 import { Fragment, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowSquareOut, CaretLeft, CaretRight } from '@phosphor-icons/react'
-import { STATUS_COPY, TENANTED, unitStatusMeta } from '../lib/unitStatus'
-import { formatArea, formatUnitLabel, getUnitImages, unitLabelParts } from '../lib/units'
+import { ArrowRight, ArrowSquareOut, CaretLeft, CaretRight } from '@phosphor-icons/react'
+import { STATUS_COPY, TENANTED, UNIT_STATUSES, unitStatusMeta } from '../lib/unitStatus'
+import { countByStatus, formatArea, formatUnitLabel, getUnitImages, unitLabelParts } from '../lib/units'
 import { sized } from '../lib/images'
-
-
 
 /**
  * A tenant's website as a safe absolute URL, or null.
@@ -36,14 +34,32 @@ function externalHref(value) {
 // card, so a copy change or a new field lands everywhere at once and the
 // tiers cannot drift into describing the same unit differently.
 //
+// It is laid out as a spec sheet: the unit's number and status, its photograph
+// at the proportions it was taken at, then every fact it has, then who is in
+// it, then the actions. One scroll, no tabs — the card is a third of the row
+// beside the plan, and a fact one click away is a fact most visitors never
+// see. The actions are pinned under the scroll so Enquire is always on screen.
+//
 // `maxHeight` is passed when the card sits in the column beside a fixed-height
 // plan. The card is a header / scrolling body / pinned action stack either
 // way; the cap is what makes the scrolling body do anything, and it keeps a
 // long description from pushing the enquiry button past the bottom of the
 // plan beside it. Unset — stacked under the plan on narrow screens — the card
 // simply grows to its content like any other.
-export default function UnitDetailCard({ unit, units = [], totals = null, aspect = null, onEnquire, onSelectUnit = null, maxHeight = '', emptyHint = '', detailsHref = null }) {
-  if (!unit) return <EmptyPanel units={units} totals={totals} maxHeight={maxHeight} hint={emptyHint} />
+export default function UnitDetailCard({
+  unit,
+  units = [],
+  totals = null,
+  breakdown = null,
+  aspect = null,
+  buildingLabel = '',
+  onEnquire,
+  onSelectUnit = null,
+  maxHeight = '',
+  emptyHint = '',
+  detailsHref = null,
+}) {
+  if (!unit) return <EmptyPanel units={units} totals={totals} breakdown={breakdown} maxHeight={maxHeight} hint={emptyHint} />
 
   const meta = unitStatusMeta(unit.status)
   const area = formatArea(unit.size)
@@ -55,22 +71,24 @@ export default function UnitDetailCard({ unit, units = [], totals = null, aspect
   // omitted rather than rendered as an empty label, so a sparsely filled unit
   // still reads as finished.
   //
-  // The specs are identical across statuses now. A sold unit's size, floor and
-  // frontage are the same facts they were the day before it sold, and hiding
-  // them made half the inventory look like an error rather than like a let
-  // space. Rate is the one exception and is handled below.
-  const specs = [
-    ['Size', area],
+  // The facts are identical across statuses. A sold unit's floor and frontage
+  // are the same facts they were the day before it sold, and hiding them made
+  // half the inventory look like an error rather than like a let space. Rate
+  // is the one exception: what a space went for is commercially sensitive once
+  // it is gone, and it is no longer an offer either, so it is published only
+  // while it is still something a visitor could actually take.
+  //
+  // Size is not in this list. It is the one fact a prospect filters on, so it
+  // is set apart above the rest.
+  const facts = [
     ['Floor', unit.floor],
-    // What the space went for is commercially sensitive once it is gone, and
-    // it is also no longer an offer — so it is published only while it is
-    // still something a visitor could actually take.
     isTenanted ? null : ['Rate', unit.rate],
     ['Frontage', unit.frontage],
     // Measured off the model rather than typed in, so it appears only once a
-    // model is loaded and an orientation is set. Sits with the typed specs
+    // model is loaded and an orientation is set. Sits with the typed facts
     // because to a tenant it reads as one — which way the shop looks out.
-    ['Aspect', aspect],
+    ['Faces', aspect],
+    ['Fronts', unit.facingRoad],
   ].filter((row) => row && row[1])
 
   const canEnquire = onEnquire && !isTenanted
@@ -89,38 +107,36 @@ export default function UnitDetailCard({ unit, units = [], totals = null, aspect
     (showsTenant ? '' : STATUS_COPY[unit.status] ?? STATUS_COPY.available)
 
   return (
-    <div className={`flex flex-col overflow-hidden rounded-2xl border border-[var(--color-line)] bg-surface shadow-[0_20px_55px_-40px_rgba(20,28,33,.5)] ${maxHeight}`}>
-      <div className="flex items-start justify-between gap-4 px-7 pb-5 pt-8 lg:px-8 lg:pt-9">
-        <UnitLabel label={unit.label} />
-        <span className={`mt-1 shrink-0 rounded-full px-4 py-2 font-body text-[12px] font-bold ${meta.chip}`}>{meta.label}</span>
+    <div className={`flex flex-col overflow-hidden rounded-2xl border border-[var(--color-line)] bg-surface ${maxHeight}`}>
+      <div className="flex items-start justify-between gap-3 px-5 pb-4 pt-5">
+        <div className="min-w-0">
+          <UnitLabel label={unit.label} />
+          {buildingLabel && <p className="mt-2 font-body text-[13px] font-semibold text-content/55">{buildingLabel}</p>}
+        </div>
+        <span className={`mt-0.5 shrink-0 rounded-full px-3 py-1.5 font-body text-[11px] font-bold ${meta.chip}`}>{meta.label}</span>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-7 pb-7 lg:px-8">
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
         {images.length > 0 && <UnitGallery images={images} label={unit.label} />}
 
         {/* Directly under the photograph, and above the tenant block and the
-            description. These are the figures the visitor clicked the unit to
-            read, and they used to sit last — below all three — which on the
-            one layout where the card cannot grow, beside a full-height plan,
-            put them off the bottom of the screen.
+            description: these are the figures the visitor clicked the unit to
+            read. Size is set apart at display size — it is the number every
+            other one is judged against — and the rest pair up in two columns,
+            so four short values read at a glance instead of as a tall stack. */}
+        {area && (
+          <div className={`flex items-baseline justify-between gap-3 border-y border-[var(--color-line)] py-4 ${images.length > 0 ? 'mt-4' : ''}`}>
+            <span className="font-body text-[11px] font-bold uppercase tracking-[0.15em] text-content/50">Size</span>
+            <span className="font-display text-[1.6rem] font-bold leading-none tracking-[-0.02em] text-content">{area}</span>
+          </div>
+        )}
 
-            Two columns rather than the single column this used to collapse to
-            at `lg`. A column of one fact per row turned four short values into
-            a 400px stack; paired, the whole specification reads at a glance.
-            Size keeps the full measure and the display size: it is the number
-            every other one is judged against. */}
-        {specs.length > 0 && (
-          <dl className={`grid grid-cols-2 gap-x-6 gap-y-5 ${images.length > 0 ? 'mt-6' : ''}`}>
-            {specs.map(([term, value]) => (
-              <div key={term} className={`flex flex-col gap-1.5 ${term === 'Size' ? 'col-span-2' : ''}`}>
+        {facts.length > 0 && (
+          <dl className={`grid grid-cols-2 gap-x-5 gap-y-4 ${area ? 'pt-4' : images.length > 0 ? 'pt-4' : ''}`}>
+            {facts.map(([term, value]) => (
+              <div key={term} className="min-w-0">
                 <dt className="font-body text-[11px] font-bold uppercase tracking-[0.15em] text-content/50">{term}</dt>
-                <dd
-                  className={`font-display font-bold tracking-[-0.02em] break-words text-content ${
-                    term === 'Size' ? 'text-[clamp(1.75rem,2.4vw,2.4rem)] leading-[1.05]' : 'text-lg'
-                  }`}
-                >
-                  {value}
-                </dd>
+                <dd className="mt-1 break-words font-display text-[15px] font-semibold text-content">{value}</dd>
               </div>
             ))}
           </dl>
@@ -136,27 +152,30 @@ export default function UnitDetailCard({ unit, units = [], totals = null, aspect
           />
         )}
 
-        {body && (
-          <p className={`font-body text-[15px] font-semibold leading-relaxed text-content/60 ${images.length > 0 || showsTenant || specs.length > 0 ? 'mt-6' : ''}`}>
-            {body}
-          </p>
-        )}
+        {body && <p className="mt-5 font-body text-[14px] leading-relaxed text-content/65">{body}</p>}
 
         {/* The card is a summary squeezed beside the plan; the unit's own page
-            has the full gallery, the plan and the rest of the building. */}
+            has the full gallery, the plan and the rest of the building. In the
+            body rather than the pinned foot, so a taken unit — whose foot is
+            the "also available" list — keeps the way through too. */}
         {detailsHref && (
           <Link
             to={detailsHref}
-            className="mt-7 inline-flex min-h-11 items-center gap-2 font-body text-[14px] font-bold text-accent underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-[var(--color-line)] px-5 font-body text-[13px] font-bold text-content transition-colors duration-200 hover:border-accent hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             Full unit details
-            <span aria-hidden>→</span>
+            <ArrowRight aria-hidden className="size-4" weight="bold" />
           </Link>
         )}
       </div>
+
       {canEnquire ? (
-        <div className="mt-auto px-7 pb-7 lg:px-8 lg:pb-8">
-          <button type="button" onClick={() => onEnquire(unit)} className="primary-button-flood min-h-14 w-full rounded-full bg-accent px-5 py-3 font-body text-[12px] font-bold uppercase tracking-[0.1em] text-white transition-colors duration-300 hover:bg-prime-deep dark:text-void">
+        <div className="mt-auto border-t border-[var(--color-line)] px-5 py-4">
+          <button
+            type="button"
+            onClick={() => onEnquire(unit)}
+            className="primary-button-flood min-h-12 w-full rounded-full bg-accent px-5 py-3 font-body text-[12px] font-bold uppercase tracking-[0.1em] text-white transition-colors duration-300 hover:bg-prime-deep dark:text-void"
+          >
             Enquire about {formatUnitLabel(unit.label) || 'this unit'}
           </button>
         </div>
@@ -197,7 +216,8 @@ export function AlsoAvailable({ units = [], current, onSelect }) {
 
   // Same hairline the specs list divides on, so the foot reads as the last
   // row of the card rather than as a tray bolted underneath it.
-  const shell = 'mt-auto border-t border-[var(--color-line)] px-7 pb-7 pt-6 lg:px-8 lg:pb-8'
+  // px-5 / py-4 — the same insets as the card's header and Enquire foot.
+  const shell = 'mt-auto border-t border-[var(--color-line)] px-5 py-4'
 
   if (free.length === 0) {
     return (
@@ -340,8 +360,18 @@ export function UnitLabel({ label }) {
  *
  * One frame at a time rather than a grid: the card is as narrow as 18rem in
  * the column beside the plan, and three thumbnails at that width are three
- * illegible smudges. The dots carry the count, which is the only thing a
- * second photograph needs to announce before someone asks for it.
+ * illegible smudges. The count and the dots carry how many there are, which is
+ * the only thing a second photograph needs to announce before someone asks for
+ * it.
+ *
+ * The photograph is shown whole, never cropped. `object-cover` filled a fixed
+ * 4:3 frame by cutting the sides off a storefront — the sign, the one thing the
+ * photograph is for — and it read as zoomed in. So the frame takes the shape of
+ * the photograph instead, within limits: no taller than 4:5, so a portrait shot
+ * cannot take the whole card, and no wider than 16:9. Inside those limits the
+ * picture fills the frame; beyond them it is contained, and a soft copy of the
+ * same photograph fills what is left, so the spare space reads as part of the
+ * picture rather than as bars.
  */
 export function UnitGallery({ images, label }) {
   const [index, setIndex] = useState(0)
@@ -360,24 +390,47 @@ export function UnitGallery({ images, label }) {
   const signature = images.join('\u0000')
   useEffect(() => setIndex(0), [signature])
 
+  // Each photograph's own proportions, once it has loaded. 3:2 until then, which
+  // is what most of these are, so the frame rarely has to move.
+  const [shapes, setShapes] = useState({})
+
   const count = images.length
   const step = (delta) => setIndex((i) => (i + delta + count) % count)
   const current = images[Math.min(index, count - 1)]
+  const shape = Math.min(Math.max(shapes[current] ?? 1.5, 0.8), 16 / 9)
 
   return (
-    <div className="mb-2">
-      <div className="group relative overflow-hidden rounded-xl border border-[var(--color-line)] bg-surface-alt">
+    <div>
+      <div
+        className="group relative overflow-hidden rounded-xl border border-[var(--color-line)] bg-surface-alt"
+        // Capped, so a portrait photograph on the wide unit page does not run to
+        // the height of the screen; the card beside the plan never reaches it.
+        style={{ aspectRatio: shape, maxHeight: '34rem' }}
+      >
+        <img
+          src={sized(current, 'thumb')}
+          alt=""
+          aria-hidden
+          className="absolute inset-0 size-full scale-110 object-cover opacity-50 blur-xl"
+        />
         <img
           src={sized(current, 'card')}
           alt={`Unit ${label || ''}`.trim()}
           loading="lazy"
-          className="aspect-[4/3] w-full object-cover"
+          onLoad={(event) => {
+            const { naturalWidth, naturalHeight } = event.currentTarget
+            if (naturalWidth && naturalHeight) setShapes((known) => ({ ...known, [current]: naturalWidth / naturalHeight }))
+          }}
+          className="relative size-full object-contain"
         />
 
         {count > 1 && (
           <>
             <GalleryArrow side="left" onClick={() => step(-1)} />
             <GalleryArrow side="right" onClick={() => step(1)} />
+            <span className="absolute bottom-2 right-2 rounded-full bg-void/70 px-2 py-0.5 font-body text-[10px] font-bold tabular-nums text-bone">
+              {Math.min(index, count - 1) + 1} / {count}
+            </span>
           </>
         )}
       </div>
@@ -402,6 +455,10 @@ export function UnitGallery({ images, label }) {
   )
 }
 
+// Shown outright on a touch screen, where there is no hover to reveal them and
+// a photograph with no visible way to the next one is a photograph with no
+// next one; revealed on hover or focus everywhere else, where they would
+// otherwise sit over the picture all the time.
 function GalleryArrow({ side, onClick }) {
   const Icon = side === 'left' ? CaretLeft : CaretRight
   return (
@@ -409,7 +466,7 @@ function GalleryArrow({ side, onClick }) {
       type="button"
       onClick={onClick}
       aria-label={side === 'left' ? 'Previous photograph' : 'Next photograph'}
-      className={`absolute top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-full bg-void/55 text-bone opacity-0 backdrop-blur-sm transition-opacity duration-200 hover:bg-void/75 focus-visible:opacity-100 group-hover:opacity-100 ${
+      className={`absolute top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-full bg-void/55 text-bone backdrop-blur-sm transition-opacity duration-200 hover:bg-void/75 focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:hover)]:opacity-0 ${
         side === 'left' ? 'left-2' : 'right-2'
       }`}
     >
@@ -421,7 +478,7 @@ function GalleryArrow({ side, onClick }) {
 /**
  * Who is in the space, for a unit that is no longer on offer.
  *
- * Sits above the description rather than in the specs list: on a let unit
+ * Sits above the description rather than in the facts list: on a let unit
  * this is the answer to the question the visitor actually clicked with, and
  * a tenant name buried as the sixth row of a definition list reads as
  * metadata about a vacancy.
@@ -434,7 +491,7 @@ export function TenantBlock({ name, logo, url, category, status }) {
   return (
     <Wrapper
       {...linkProps}
-      className={`mt-5 flex items-center gap-4 rounded-xl border border-[var(--color-line)] bg-surface-alt px-4 py-4 ${
+      className={`mt-5 flex items-center gap-3 rounded-xl border border-[var(--color-line)] bg-surface-alt px-3.5 py-3 ${
         href ? 'transition-colors duration-200 hover:border-accent/60' : ''
       }`}
     >
@@ -443,14 +500,14 @@ export function TenantBlock({ name, logo, url, category, status }) {
           src={sized(logo, 'thumb')}
           alt=""
           loading="lazy"
-          className="size-12 shrink-0 rounded-lg bg-white object-contain p-1.5"
+          className="size-11 shrink-0 rounded-lg bg-white object-contain p-1.5"
         />
       )}
       <div className="min-w-0 flex-1">
         <span className="block font-body text-[10px] font-bold uppercase tracking-[0.16em] text-content/45">
           {status === 'sold' ? 'Owner' : 'Tenant'}
         </span>
-        <span className="mt-1 block truncate font-display text-lg font-bold tracking-[-0.02em] text-content">{name}</span>
+        <span className="mt-0.5 block truncate font-display text-[16px] font-bold tracking-[-0.02em] text-content">{name}</span>
         {category && <span className="mt-0.5 block truncate font-body text-[13px] text-content/60">{category}</span>}
       </div>
       {href && <ArrowSquareOut aria-hidden className="size-4 shrink-0 text-content/45" />}
@@ -460,20 +517,27 @@ export function TenantBlock({ name, logo, url, category, status }) {
 
 // Beside the plan this space exists whether or not anything is selected, so it
 // earns its keep by answering the question a visitor arrives with — how much
-// is actually free here — rather than sitting empty until they click.
+// is actually free here, and how the rest is spoken for — rather than sitting
+// empty until they click.
 //
-// `totals` overrides the count with figures from elsewhere. Across a whole site
-// the unit list undercounts — a combined suite like "201+202+203+204" is one
-// row — so the site view passes the tracker's headline totals instead, the
-// same ones the hero and overview show.
-function EmptyPanel({ units, totals = null, maxHeight = '', hint = '' }) {
+// `totals` overrides the headline count with figures from elsewhere. Across a
+// whole site the unit list undercounts — a combined suite like
+// "201+202+203+204" is one row — so the site view passes the tracker's
+// headline totals instead, the same ones the hero and overview show.
+// `breakdown` does the same for the rows beneath it, for the same reason.
+function EmptyPanel({ units, totals = null, breakdown = null, maxHeight = '', hint = '' }) {
   const total = totals?.total ?? units.length
   const available = totals?.available ?? units.filter((unit) => unit.status === 'available').length
 
+  let rows = breakdown
+  if (!rows) {
+    const counts = countByStatus(units)
+    rows = UNIT_STATUSES.filter((s) => counts[s.value] > 0).map((s) => ({ ...s, count: counts[s.value] }))
+  }
+
   return (
-    <div className={`relative flex min-h-[18rem] flex-col justify-end gap-4 overflow-hidden rounded-2xl border border-[var(--color-line)] bg-surface px-7 py-8 shadow-[0_20px_55px_-40px_rgba(20,28,33,.5)] ${maxHeight}`}>
-      <span aria-hidden className="absolute -right-5 -top-10 font-display text-[8rem] font-bold leading-none text-accent/[0.07]">{available}</span>
-      <span className="eyebrow relative text-content/55">Unit details</span>
+    <div className={`flex min-h-[18rem] flex-col gap-4 overflow-y-auto rounded-2xl border border-[var(--color-line)] bg-surface px-5 py-6 ${maxHeight}`}>
+      <span className="eyebrow text-content/55">Unit details</span>
 
       {total > 0 && (
         <p className="font-display text-2xl leading-snug font-medium text-content/85">
@@ -488,7 +552,21 @@ function EmptyPanel({ units, totals = null, maxHeight = '', hint = '' }) {
         </p>
       )}
 
-      <p className="font-body text-sm leading-relaxed text-content/70">
+      {rows.length > 0 && (
+        <ul className="flex flex-col divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]">
+          {rows.map((row) => (
+            <li key={row.value} className="flex items-center justify-between gap-3 py-2.5">
+              <span className="inline-flex items-center gap-2.5 font-body text-[14px] font-semibold text-content/80">
+                <span aria-hidden className={`size-2 rounded-full ${row.swatch}`} />
+                {row.label}
+              </span>
+              <span className="font-display text-[15px] font-bold tabular-nums text-content">{row.count}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <p className="mt-auto font-body text-sm leading-relaxed text-content/70">
         {/* Every unit is selectable now, not just the free ones — so the
             instruction says "a unit", and a visitor who taps a let one gets
             its tenant and photographs rather than a dead end.

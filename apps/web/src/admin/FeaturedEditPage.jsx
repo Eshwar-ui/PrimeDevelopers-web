@@ -78,7 +78,7 @@ export default function FeaturedEditPage() {
   const unitOptions = properties.flatMap((p) =>
     listUnits(p).map(({ building, unit }) => ({
       value: `${p.slug}::${labelSlug(building.building)}/${labelSlug(unit.label)}`,
-      label: `${p.name} · ${building.building} · Unit ${formatUnitLabel(unit.label)}`,
+      label: `${p.name} · ${building.building} · Unit ${formatUnitLabel(unit.label)}${unit.hidden ? ' (hidden on website)' : ''}`,
     })),
   )
 
@@ -132,20 +132,19 @@ export default function FeaturedEditPage() {
         savedAt={savedAt}
         error={error}
         onSave={onSave}
-        maxWidth="max-w-5xl"
       >
         <p className="mt-2 text-sm text-bone-3">{statusText}</p>
       </EditorBar>
       <LeaveGuard when={dirty} onSave={onSave} />
 
-      <div className="mx-auto max-w-5xl">
+      <div>
         {error && (
-          <div className="mt-6">
+          <div className="mt-4">
             <Alert>{error}</Alert>
           </div>
         )}
 
-        <div className="mt-8">
+        <div className="mt-4">
           <p className="text-xs font-bold uppercase tracking-wide text-bone-3">Preview</p>
           {/* The real homepage card, on the site's own ground. */}
           <div className="mt-3 overflow-hidden rounded-2xl bg-base p-3 text-content sm:p-4">
@@ -157,7 +156,7 @@ export default function FeaturedEditPage() {
           </div>
         </div>
 
-        <div className="mt-8 flex flex-col gap-6">
+        <div className="mt-4 flex flex-col gap-4">
           <Section title="What it advertises" description="Its photos come from what it points at, unless you choose them below.">
             <SelectField label="Advertise" value={form.kind} onChange={(kind) => patch({ kind })} options={FEATURE_KINDS} />
             {form.kind === 'property' && (

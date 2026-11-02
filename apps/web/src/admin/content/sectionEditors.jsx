@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Section, TextField, TextAreaField, SelectField, CheckboxField } from '../components/Field'
-import ImageUploader from '../components/ImageUploader'
+import ImageUploader, { ImageFormatHint } from '../components/ImageUploader'
 import RepeatableList from '../components/RepeatableList'
 import { PLATFORM_KEYS } from '../../lib/platforms'
 import { TIERS } from '../../lib/interiors'
@@ -960,8 +960,10 @@ export const SECTIONS = [
                       onChange={(images) => set((it) => ({ ...it, images: resolveNext(images, it.images ?? []) }))}
                       makeItem={() => ''}
                       addLabel="Add image"
-                      renderItem={(url, setUrl) => <ImageUploader value={url} onChange={setUrl} folder="site/interiors" />}
+                      layout="grid"
+                      renderItem={(url, setUrl) => <ImageUploader value={url} onChange={setUrl} folder="site/interiors" hint={false} />}
                     />
+                    <ImageFormatHint className="mt-2" />
                   </div>
                 </div>
                 <TextAreaField label="Description" rows={4} value={item.description} onChange={(description) => set((it) => ({ ...it, description }))} />
@@ -1024,8 +1026,10 @@ export const SECTIONS = [
                       onChange={(photos) => set((it) => ({ ...it, photos: resolveNext(photos, it.photos ?? []) }))}
                       makeItem={() => ''}
                       addLabel="Add photo"
-                      renderItem={(url, setUrl) => <ImageUploader value={url} onChange={setUrl} folder="site/interiors-gallery" />}
+                      layout="grid"
+                      renderItem={(url, setUrl) => <ImageUploader value={url} onChange={setUrl} folder="site/interiors-gallery" hint={false} />}
                     />
+                    <ImageFormatHint className="mt-2" />
                   </div>
                 </div>
               </div>

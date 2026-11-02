@@ -463,7 +463,7 @@ const QUARTER_TURNS = [0, 90, 180, 270]
  * angle, and — once north is known — every unit can report which way it faces,
  * which is the question a retail tenant actually asks.
  */
-function OrientationControl({ model, setModel }) {
+export function OrientationControl({ model, setModel }) {
   const value = Number.isFinite(model.orientation) ? model.orientation : null
   const set = (next) =>
     setModel({ ...model, orientation: next == null ? null : ((next % 360) + 360) % 360 })
@@ -517,7 +517,7 @@ function OrientationControl({ model, setModel }) {
             type="number"
             min="0"
             max="359"
-            step="1"
+            step="0.1"
             value={value ?? ''}
             placeholder="—"
             onChange={(event) => {

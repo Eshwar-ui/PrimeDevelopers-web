@@ -347,6 +347,7 @@ function UnitsWorkspace({ units, building, siteModel, selected, onSelect, onAdd,
     const tags = [{ text: words.short, tone: `status-${u.status in STATUS_WORDS ? u.status : 'available'}` }]
     tags.push(unitHas3D(building, u, siteModel) ? { text: '3D', tone: 'three-d' } : { text: 'No 3D', tone: 'no-three-d' })
     if (missing.length) tags.push({ text: 'Need to fill details', tone: 'warn' })
+    if (u.hidden) tags.push({ text: 'Hidden', tone: 'neutral' })
     return { title: String(u.label ?? '').trim() ? `Unit ${String(u.label).trim()}` : `Unit ${i + 1}`, tags }
   })
 
@@ -371,7 +372,7 @@ function UnitsWorkspace({ units, building, siteModel, selected, onSelect, onAdd,
           aria-labelledby={`unit-tab-${index}`}
           className="rounded-xl border border-white/10 bg-black/15"
         >
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 py-1 pl-4 pr-1.5">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 py-0.5 pl-3 pr-1">
             <span className="flex items-center gap-2 text-xs font-bold tabular-nums text-bone-3">
               {index + 1}
               <span className="font-normal"> of {units.length}</span>
@@ -427,11 +428,11 @@ function UnitsWorkspace({ units, building, siteModel, selected, onSelect, onAdd,
             </span>
           </div>
           {missing.length > 0 && (
-            <p role="status" className="border-b border-white/5 bg-ember/10 px-4 py-2 text-xs text-ember">
+            <p role="status" className="border-b border-white/5 bg-ember/10 px-3 py-2 text-xs text-ember">
               <strong className="font-bold uppercase tracking-wide">Need to fill details:</strong> {missing.join(' · ')}
             </p>
           )}
-          <div className="p-4">{renderUnit(unit, index)}</div>
+          <div className="p-3">{renderUnit(unit, index)}</div>
         </div>
       ) : (
         <p className="rounded-xl border border-dashed border-white/15 p-6 text-sm text-bone-3">

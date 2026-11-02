@@ -149,14 +149,14 @@ export default function CapEditPage() {
       />
       <LeaveGuard when={dirty} onSave={onSave} />
 
-      <div className="mx-auto max-w-4xl">
+      <div>
         {error && (
-          <div className="mt-6">
+          <div className="mt-4">
             <Alert>{error}</Alert>
           </div>
         )}
 
-        <div className="mt-8 flex flex-col gap-6">
+        <div className="mt-4 flex flex-col gap-4">
           <Section title="The deal">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <SelectField label="Status" value={form.status} onChange={(s) => patch({ status: s })} options={CAP_STATUSES} />

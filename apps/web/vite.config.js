@@ -92,11 +92,27 @@ export default defineConfig(({ command, mode }) => {
     }
   }
 
+  /**
+   * Model files (/media/models/…) sit on the same CDN as the API but send no
+   * CORS headers, so a page on localhost cannot download them directly — see
+   * src/lib/modelUrl.js. Proxying /media beside /api puts them on the dev
+   * server's own origin; the origin is handed to the client so it knows which
+   * URLs to point there. Serve only: a build never defines it.
+   */
+  const devProxy = command === 'serve' && DEV_API_TARGET
+  const devMediaOrigin = devProxy ? new URL(DEV_API_TARGET).origin : ''
+
   return {
     plugins: [react(), tailwindcss(), selfHostedDraco()],
     build: { rolldownOptions: { output: { manualChunks } } },
+    define: devProxy ? { 'import.meta.env.VITE_DEV_MEDIA_ORIGIN': JSON.stringify(devMediaOrigin) } : {},
     server: DEV_API_TARGET
-      ? { proxy: { '/api': { target: DEV_API_TARGET, changeOrigin: true } } }
+      ? {
+          proxy: {
+            '/api': { target: DEV_API_TARGET, changeOrigin: true },
+            '/media': { target: DEV_API_TARGET, changeOrigin: true },
+          },
+        }
       : {},
   }
 })

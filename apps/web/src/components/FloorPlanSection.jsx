@@ -21,7 +21,7 @@ import { sized } from '../lib/images'
 // the two columns stop aligning and the whole layout looks accidental.
 //
 // lg is deliberately *shorter* than md rather than taller: md is still the
-// full-width stacked layout, while lg is the moment the panel takes a third of
+// full-width stacked layout, while lg is the moment the panel takes half of
 // the row away. Holding the md height there would leave the model in a tall
 // narrow slot, which is the worst shape to orbit a wide site plan in. The
 // height climbs again as the column gets its width back.
@@ -32,13 +32,6 @@ const PLAN_HEIGHT = 'h-[340px] sm:h-[420px] md:h-[500px] lg:h-[calc(100dvh-7rem)
 // routinely sparse, so the hollow case is the common one. Capped instead, the
 // panel sizes to what the unit actually has, the two columns still align along
 // the top edge, and only an unusually wordy unit ever scrolls.
-// A cap, not a height, despite what this used to say. `lg:h-` held the detail
-// card to the full height of the viewer beside it whatever was in it, so a
-// sparsely filled unit — a let one with no size, floor or frontage in the CMS
-// — ended in a few hundred pixels of nothing between its last line and the
-// bottom edge. As a max-height the card hugs its content, and the body still
-// scrolls with the action pinned under it the moment the content outgrows the
-// cap, which is the only thing the number was ever for.
 const PANEL_MAX = 'lg:max-h-[calc(100dvh-7rem)]'
 
 // Enough to be useful, few enough that each column stays wide enough to read.
@@ -354,7 +347,7 @@ function ViewerSkeleton({ poster }) {
   // lands. Matches the ground ModelViewer's own container paints.
   return (
     <div className={`relative overflow-hidden rounded-2xl border border-[var(--color-line)] bg-surface-alt ${PLAN_HEIGHT}`}>
-      {poster && <img src={sized(poster, 'card')} alt="" className="h-full w-full object-cover opacity-25" />}
+      {poster && <img src={sized(poster, 'card')} alt="" className="h-full w-full object-contain opacity-25" />}
       <div className="absolute inset-0 flex items-center justify-center">
         {/* "3D model", because the viewer now opens in 3D — it only loads
             once someone has pressed a button that says so. */}

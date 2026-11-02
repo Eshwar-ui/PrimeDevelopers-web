@@ -5,8 +5,9 @@ import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'
 import { BUILDING_HEX, ROAD_HEX, SCENERY_HEX, unitStatusMeta } from '../../lib/unitStatus'
-import { formatArea, formatBytes, groupBySharedVertices, meshUnitLabel, unitsByMeshName } from '../../lib/units'
+import { bearingLabel, formatArea, formatBytes, formatUnitLabel, groupBySharedVertices, meshUnitLabel, unitsByMeshName } from '../../lib/units'
 import { sized } from '../../lib/images'
+import { modelSrc } from '../../lib/modelUrl'
 import { prefersReducedMotion } from '../../lib/webgl'
 import { reportError } from '../../lib/reportError'
 import { useTheme } from '../../context/ThemeContext'
@@ -25,7 +26,16 @@ const MERGED_SCENERY = 'merged-scenery'
 // What a building drops back to once the visitor has drilled into a
 // different one. Dark enough to read as context rather than content,
 // light enough that the site's shape is still legible.
-const FOCUS_DIM_HEX = '#37424b'
+// What everything outside the open building recedes to, per theme. It was one
+// dark slate at 32% opacity, which over the dark page came out within a few
+// shades of the page itself — the whole context read as black boxes, and the
+// ground beneath them as a black void. Lighter on the dark theme and darker on
+// the light one, so the context stays a ghost of the site rather than a hole in
+// it.
+const FOCUS_DIM = {
+  dark: { hex: '#8a98a3', opacity: 0.4 },
+  light: { hex: '#5d6a74', opacity: 0.3 },
+}
 
 // A shared constant, not a `= []` default. A fresh literal per render would
 // change identity every time, and selection identity is what the material and
@@ -133,10 +143,231 @@ function mergeScenery(meshes) {
   }
 }
 
+/**
+ * The outer outline of a floor, as triangles — its holes closed.
+ *
+ * A floor here can have openings in it that no wall surrounds (a shaft, a
+ * stairwell). Copying the floor's own triangles up to make a roof copies those
+ * openings too, and from above each one is a dark slot in a roof that should be
+ * whole. So the roof is built from the boundary instead: every edge used by one
+ * triangle only, traced into loops, the biggest loop being the outline, then
+ * triangulated on its own.
+ *
+ * Null when the boundary is not made of simple loops (a vertex shared by two
+ * of them), where the caller keeps the floor's triangles as they are.
+ */
+function outlineTriangles(floor, [u, v]) {
+  const key = (p) => `${p.getComponent(u).toFixed(3)}|${p.getComponent(v).toFixed(3)}`
+  const at = new Map()
+  const counts = new Map()
+  const edge = (p, q) => {
+    const kp = key(p)
+    const kq = key(q)
+    at.set(kp, p)
+    at.set(kq, q)
+    const id = kp < kq ? `${kp}>${kq}` : `${kq}>${kp}`
+    counts.set(id, (counts.get(id) ?? 0) + 1)
+  }
+  for (const t of floor) {
+    edge(t.a, t.b)
+    edge(t.b, t.c)
+    edge(t.c, t.a)
+  }
+
+  const next = new Map()
+  for (const [id, n] of counts) {
+    if (n !== 1) continue
+    const [kp, kq] = id.split('>')
+    next.set(kp, [...(next.get(kp) ?? []), kq])
+    next.set(kq, [...(next.get(kq) ?? []), kp])
+  }
+  if (!next.size || [...next.values()].some((around) => around.length !== 2)) return null
+
+  const seen = new Set()
+  let outline = null
+  let largest = 0
+  for (const start of next.keys()) {
+    if (seen.has(start)) continue
+    const loop = []
+    let previous = null
+    let current = start
+    while (current && !seen.has(current)) {
+      seen.add(current)
+      loop.push(current)
+      const [first, second] = next.get(current)
+      const step = first !== previous ? first : second
+      previous = current
+      current = step
+    }
+    let twice = 0
+    for (let i = 0; i < loop.length; i++) {
+      const p = at.get(loop[i])
+      const q = at.get(loop[(i + 1) % loop.length])
+      twice += p.getComponent(u) * q.getComponent(v) - q.getComponent(u) * p.getComponent(v)
+    }
+    if (Math.abs(twice) > largest) {
+      largest = Math.abs(twice)
+      outline = loop
+    }
+  }
+  if (!outline || outline.length < 3) return null
+
+  const contour = outline.map((k) => new THREE.Vector2(at.get(k).getComponent(u), at.get(k).getComponent(v)))
+  const faces = THREE.ShapeUtils.triangulateShape(contour, [])
+  if (!faces.length) return null
+  return faces.map(([i, j, k]) => ({ a: at.get(outline[i]), b: at.get(outline[j]), c: at.get(outline[k]) }))
+}
+
+/**
+ * A roof for a shape that has none.
+ *
+ * Some of the site model's buildings arrive as a floor and walls and nothing
+ * above them — Building 10 has four. Seen from above they are open boxes, and
+ * what shows through the opening is the dimmed ground, which is the black box.
+ * The roof is rebuilt from the floor: each downward-facing triangle copied up to
+ * the top of the walls and turned over. A massing model's roof is its floor
+ * outline, so this is the shape the modeller left out rather than a guess.
+ *
+ * Returns a new geometry, never touching the given one — it is shared with
+ * useGLTF's cache — or null when the shape already has a roof.
+ */
+function capOpenTop(geometry, upAxis) {
+  const position = geometry?.getAttribute('position')
+  if (!position) return null
+  const index = geometry.index
+  const count = index ? index.count : position.count
+  const vertexAt = (n) => (index ? index.getX(n) : n)
+
+  const a = new THREE.Vector3()
+  const b = new THREE.Vector3()
+  const c = new THREE.Vector3()
+  const normal = new THREE.Vector3()
+  const triangles = []
+  let top = -Infinity
+  let bottom = Infinity
+  for (let n = 0; n < count; n += 3) {
+    a.fromBufferAttribute(position, vertexAt(n))
+    b.fromBufferAttribute(position, vertexAt(n + 1))
+    c.fromBufferAttribute(position, vertexAt(n + 2))
+    normal.crossVectors(b.clone().sub(a), c.clone().sub(a))
+    const area = normal.length() / 2
+    const along = area > 0 ? normal.getComponent(upAxis) / (2 * area) : 0
+    const height = (a.getComponent(upAxis) + b.getComponent(upAxis) + c.getComponent(upAxis)) / 3
+    top = Math.max(top, a.getComponent(upAxis), b.getComponent(upAxis), c.getComponent(upAxis))
+    bottom = Math.min(bottom, a.getComponent(upAxis), b.getComponent(upAxis), c.getComponent(upAxis))
+    triangles.push({ a: a.clone(), b: b.clone(), c: c.clone(), area, along, height })
+  }
+  if (!(top > bottom)) return null
+
+  // Floor: faces looking down in the lower half. Roof: anything facing up, or a
+  // downward face up in the top half (a roof wound the wrong way round — drawn
+  // regardless, as both sides are).
+  const middle = (top + bottom) / 2
+  let floorArea = 0
+  let roofArea = 0
+  const floor = []
+  for (const t of triangles) {
+    if (t.along > 0.7 || (t.along < -0.7 && t.height > middle)) roofArea += t.area
+    else if (t.along < -0.7) {
+      floorArea += t.area
+      floor.push(t)
+    }
+  }
+  if (!floor.length || roofArea > floorArea * 0.15) return null
+
+  const plan = [0, 1, 2].filter((axis) => axis !== upAxis)
+  const roof = outlineTriangles(floor, plan) ?? floor
+  const out = new Float32Array((triangles.length + roof.length) * 9)
+  let o = 0
+  const put = (v) => {
+    out[o++] = v.x
+    out[o++] = v.y
+    out[o++] = v.z
+  }
+  for (const t of triangles) {
+    put(t.a)
+    put(t.b)
+    put(t.c)
+  }
+  for (const t of roof) {
+    // Raised to the top of the walls, second and third corners swapped so the
+    // face looks up.
+    const up = (v) => v.clone().setComponent(upAxis, top)
+    put(up(t.a))
+    put(up(t.c))
+    put(up(t.b))
+  }
+  const capped = new THREE.BufferGeometry()
+  capped.setAttribute('position', new THREE.BufferAttribute(out, 3))
+  capped.computeBoundingBox()
+  capped.computeBoundingSphere()
+  return capped
+}
+
+/**
+ * Which way each unit of a whole-site model looks out, as a compass bearing.
+ *
+ * Out of its own building, not out of the site: measured against the centre of
+ * the whole model every unit "faces" the same few directions as its neighbours
+ * and none of them mean anything. Against its building, a unit on one side of a
+ * two-row block sits on one side of the footprint's short axis and faces that
+ * way. A unit in a single row has no side — it sits on the axis — and gets no
+ * answer, rather than one made up.
+ *
+ * Measured in the model's own frame, with the admin's orientation briefly
+ * undone, because the building's short side is a fact about the building; the
+ * turn is then taken off the bearing so it reads against true north.
+ */
+function siteFacings(meshes, unitByMesh) {
+  const turn = meshes.root.rotation.y
+  meshes.root.rotation.y = 0
+  meshes.root.updateMatrixWorld(true)
+
+  const own = new Map()
+  const blocks = new Map()
+  const blockOf = new Map()
+  for (const [name, entry] of unitByMesh) {
+    if (entry.buildingIndex == null) continue
+    const mesh = meshes.list.find((m) => m.name === name)
+    if (!mesh) continue
+    const box = new THREE.Box3().setFromObject(mesh)
+    const block = blocks.get(entry.buildingIndex)
+    if (block) block.union(box)
+    else blocks.set(entry.buildingIndex, box.clone())
+    if (entry.kind !== 'unit') continue
+    const mine = own.get(entry.index)
+    if (mine) mine.union(box)
+    else own.set(entry.index, box.clone())
+    blockOf.set(entry.index, entry.buildingIndex)
+  }
+
+  meshes.root.rotation.y = turn
+  meshes.root.updateMatrixWorld(true)
+
+  const facings = new Map()
+  const size = new THREE.Vector3()
+  const centre = new THREE.Vector3()
+  const here = new THREE.Vector3()
+  for (const [index, box] of own) {
+    const block = blocks.get(blockOf.get(index))
+    block.getSize(size)
+    block.getCenter(centre)
+    box.getCenter(here)
+    const across = size.x < size.z ? 'x' : 'z'
+    const offset = here[across] - centre[across]
+    // Within a fifth of the short side of the middle is no side at all.
+    if (!(size[across] > 0) || Math.abs(offset) < size[across] * 0.18) continue
+    // The model's own axes, before the turn: +x east, +z south, -z north.
+    const bearing = across === 'x' ? (offset > 0 ? 90 : 270) : offset > 0 ? 180 : 0
+    facings.set(index, (bearing - THREE.MathUtils.radToDeg(turn) + 360) % 360)
+  }
+  return facings
+}
+
 /* ── model ─────────────────────────────────────────────────────────────── */
 
-function Model({ url, units, bindings, siteEntries, focusMeshes, isolateFocus, labelKinds, rotation, selected, hoveredName, statusFilter, showLabels, flaggedMeshes, onHover, onSelect, onMeshClick, onReady, onFrames, onFacings }) {
-  const { scene } = useGLTF(url, DRACO_PATH, false, withMeshopt)
+function Model({ url, units, bindings, siteEntries, dark, focusMeshes, isolateFocus, labelKinds, rotation, selected, hoveredName, statusFilter, showLabels, flaggedMeshes, onHover, onSelect, onMeshClick, onReady, onFrames, onFacings }) {
+  const { scene } = useGLTF(modelSrc(url), DRACO_PATH, false, withMeshopt)
   const invalidate = useThree((state) => state.invalidate)
 
   // Read as a boolean rather than taking the camera itself: this only decides
@@ -176,6 +407,8 @@ function Model({ url, units, bindings, siteEntries, focusMeshes, isolateFocus, l
 
     const unitMeshes = []
     const sceneryMeshes = []
+    // Geometry made here — roofs — which nothing else will free.
+    const capped = []
     root.traverse((object) => {
       if (!object.isMesh) return
       ;(isAddressable(object) ? unitMeshes : sceneryMeshes).push(object)
@@ -218,6 +451,34 @@ function Model({ url, units, bindings, siteEntries, focusMeshes, isolateFocus, l
     // Only a genuine Z-up file gets rotated. Rotating one that is already Y-up
     // is what stands the building on its edge.
     const upAxis = isExtrusion ? shortest : 1
+
+    // Whole-site models only: two repairs to what the tagging handed us.
+    if (siteMeshNames) {
+      // A shape that is most of the model is the ground, however it was tagged.
+      // Centro Plaza's Building 2 carries the slab under the whole plot, which
+      // painted the ground in the building colour, answered every tap on the
+      // ground with "Building 2", and made that building's fly-to frame the
+      // entire site. Set back among the scenery — merged, grey, not
+      // addressable — it is what it looks like. Measured from the geometry
+      // rather than listed by name, so it holds for the next export too.
+      const modelRadius = box.getBoundingSphere(new THREE.Sphere()).radius
+      for (let i = unitMeshes.length - 1; i >= 0; i--) {
+        const mesh = unitMeshes[i]
+        const sphere = mesh.geometry?.boundingSphere?.clone().applyMatrix4(mesh.matrixWorld)
+        if (sphere && sphere.radius > modelRadius * OVERSIZE_SHARE) {
+          unitMeshes.splice(i, 1)
+          sceneryMeshes.push(mesh)
+        }
+      }
+      // And a roof for any building the modeller left open. See capOpenTop.
+      for (const mesh of unitMeshes) {
+        const roofed = capOpenTop(mesh.geometry, upAxis)
+        if (roofed) {
+          mesh.geometry = roofed
+          capped.push(roofed)
+        }
+      }
+    }
     const zUp = upAxis === 2
     const planAxes = [0, 1, 2].filter((axis) => axis !== upAxis)
 
@@ -299,6 +560,7 @@ function Model({ url, units, bindings, siteEntries, focusMeshes, isolateFocus, l
       zUp,
       groupOf,
       membersOf,
+      capped,
     }
     // `bindings` decides which meshes survive merging and `rotation` is baked
     // into the wrapper the bounds are measured from, so the scene graph has to
@@ -308,7 +570,13 @@ function Model({ url, units, bindings, siteEntries, focusMeshes, isolateFocus, l
 
   // The merged geometry is built here rather than loaded, so nothing else will
   // free it.
-  useEffect(() => () => meshes.merged?.geometry.dispose(), [meshes])
+  useEffect(
+    () => () => {
+      meshes.merged?.geometry.dispose()
+      for (const geometry of meshes.capped) geometry.dispose()
+    },
+    [meshes],
+  )
 
   // Mesh name -> resolved entry. `siteEntries` already IS that resolution
   // (reconcileSite() + toViewerEntries() in siteModel.js) for a whole-site
@@ -374,9 +642,10 @@ function Model({ url, units, bindings, siteEntries, focusMeshes, isolateFocus, l
       // more than the context.
       if (focusMeshes && !focusMeshes.has(mesh.name)) {
         mesh.visible = !isolateFocus
-        material.color.setHex(FOCUS_DIM_HEX)
+        const dim = dark ? FOCUS_DIM.dark : FOCUS_DIM.light
+        material.color.set(dim.hex)
         material.transparent = true
-        material.opacity = 0.32
+        material.opacity = dim.opacity
         material.emissive.setHex(0x000000)
         material.emissiveIntensity = 0
         continue
@@ -429,7 +698,7 @@ function Model({ url, units, bindings, siteEntries, focusMeshes, isolateFocus, l
       material.emissiveIntensity = isSelected ? 0.5 : isHovered ? 0.28 : 0
     }
     invalidate()
-  }, [meshes, unitByMesh, selected, hoveredName, statusFilter, flaggedMeshes, bindingMode, focusMeshes, isolateFocus, invalidate])
+  }, [meshes, unitByMesh, selected, hoveredName, statusFilter, flaggedMeshes, bindingMode, focusMeshes, isolateFocus, dark, invalidate])
 
   // Deliberately split from the frames effect below. Bounds drive the default
   // camera framing, so they must change only when the *model* changes — if
@@ -500,6 +769,10 @@ function Model({ url, units, bindings, siteEntries, focusMeshes, isolateFocus, l
     // every one of these buildings is — the offset from the centre is exactly
     // the right answer, and it degrades honestly: a unit sitting dead centre
     // reports no aspect at all rather than a made-up one.
+    if (siteEntries) {
+      onFacings?.(siteFacings(meshes, unitByMesh))
+      return
+    }
     const site = new THREE.Box3().setFromObject(meshes.root).getCenter(new THREE.Vector3())
     const span = new THREE.Box3().setFromObject(meshes.root).getSize(new THREE.Vector3())
     const reach = Math.max(span.x, span.z)
@@ -517,7 +790,7 @@ function Model({ url, units, bindings, siteEntries, focusMeshes, isolateFocus, l
       facings.set(index, bearing)
     }
     onFacings?.(facings)
-  }, [meshes, unitByMesh, onFrames, onFacings])
+  }, [meshes, unitByMesh, siteEntries, onFrames, onFacings])
 
   // One label per *unit*, not per mesh. A unit bound by block owns a dozen or
   // more wall panels, and labelling each of them buries the model under a heap
@@ -857,7 +1130,7 @@ function LabelDeclutter({ labels, nodes, selected, hoveredIndex, distanceFactor 
  * Only meaningful once an admin has said which way north is, so the caller
  * does not render it until then.
  */
-function CompassNeedle({ dialRef, bounds }) {
+function CompassNeedle({ dialRef, headingRef, bounds }) {
   const camera = useThree((state) => state.camera)
   const controls = useThree((state) => state.controls)
   // Reused across frames — this runs every frame of an orbit, and three
@@ -890,12 +1163,27 @@ function CompassNeedle({ dialRef, bounds }) {
     const dx = tip.current.x - base.current.x
     const dy = tip.current.y - base.current.y
     if (!Number.isFinite(dx) || !Number.isFinite(dy) || Math.hypot(dx, dy) < 1e-7) {
-      node.style.transform = 'rotate(0deg)'
+      node.style.setProperty('--rose', '0deg')
+      node.style.transform = 'rotate(var(--rose))'
       return
     }
+    const angle = THREE.MathUtils.radToDeg(Math.atan2(dx, dy))
     node.style.transformOrigin = '50% 50%'
-    node.style.transform = `rotate(${THREE.MathUtils.radToDeg(Math.atan2(dx, dy))}deg)`
-  }, [bounds, camera, dialRef])
+    // A variable rather than a bare rotation, so the letters on the rose can
+    // read it and turn back against it — a compass card turns, its lettering
+    // is meant to stay the right way up.
+    node.style.setProperty('--rose', `${angle}deg`)
+    node.style.transform = 'rotate(var(--rose))'
+
+    // Which way the view is looking: north sits `angle` degrees clockwise of
+    // screen-up, so screen-up is that far anticlockwise of north.
+    const label = headingRef?.current
+    if (label) {
+      const heading = (((-angle) % 360) + 360) % 360
+      const text = `View ${bearingLabel(heading)} ${Math.round(heading)}°`
+      if (label.textContent !== text) label.textContent = text
+    }
+  }, [bounds, camera, dialRef, headingRef])
 
   // Demand rendering does not guarantee a frame for every control change.
   // OrbitControls emits the change event after it updates the camera, so use
@@ -1063,7 +1351,119 @@ function fitDistance(radius, camera, size) {
   return radius / Math.sin(Math.min(vFov, hFov) / 2)
 }
 
-function CameraRig({ bounds, focus, mode, navMode, resetSignal, engaged, onDragStart, onDragEnd }) {
+/**
+ * How a viewer that has been told to frame the whole plaza, not the whole
+ * model, sits: a share of the distance that would just fit the buildings'
+ * bounding sphere. Under 1 for the reason TERRACE_FIT is — the sphere is sized
+ * by the plot's longest run, while what the camera has to cover is the flat
+ * footprint seen from an angle. Empirical, tuned against Centro Plaza.
+ */
+const HOME_FIT = 0.82
+
+// The largest share of the whole model a single shape may be and still count as
+// a building or a unit. Beyond it the shape is the ground: a slab under the whole
+// site that was tagged as a building by mistake. Used to keep it out of the
+// camera's default frame, and out of the buildings altogether — see Model.
+const OVERSIZE_SHARE = 0.35
+
+/**
+ * The frame that holds every frame in `picked` — as a sphere to fly the camera
+ * to, and as the box it grew from, which plan view needs for its fit.
+ */
+function unionFrames(picked) {
+  const box = new THREE.Box3()
+  const center = new THREE.Vector3()
+  for (const frame of picked) {
+    center.set(...frame.center)
+    box.expandByPoint(center.clone().subScalar(frame.radius))
+    box.expandByPoint(center.clone().addScalar(frame.radius))
+  }
+  const sphere = box.getBoundingSphere(new THREE.Sphere())
+  return {
+    center: sphere.center.toArray(),
+    radius: Math.max(sphere.radius, 0.5),
+    box: { min: box.min.toArray(), max: box.max.toArray() },
+  }
+}
+
+/**
+ * Where the camera rests before anything is picked. With a `home` — the
+ * buildings, without the miles of road and ground a whole-site export carries
+ * around them — it fits those; without one it fits the whole model, as it
+ * always has.
+ */
+function defaultDistance(bounds, home, camera, size) {
+  if (home) return fitDistance(home.radius, camera, size) * HOME_FIT
+  const fov = THREE.MathUtils.degToRad(camera.fov ?? 45)
+  return (bounds.radius / Math.sin(fov / 2)) * 1.05
+}
+
+/**
+ * What flying to `focus` asks of the camera: how far out it sits, and, in plan
+ * view, how far it is zoomed in. One function because the fly-to and the zoom
+ * limit have to agree — a limit worked out on its own is how the camera ends
+ * up clamped somewhere other than the frame it was just sent to.
+ */
+function focusGoal(focus, { siteRadius, isPlan, planFit, canvas, camera, fitAspect = false }) {
+  // Was 1.15, which cropped. `focus.radius` is a bounding *sphere*, and for
+  // a long shallow terrace that radius is already about its half-length — so
+  // scaling the site fit by siteRadius/focusRadius already lands near "this
+  // building fills the frame", and zooming a further 15% in on top pushed
+  // both ends of it off screen. A building cropped at both ends is the one
+  // thing this view exists to avoid.
+  //
+  // Empirical, like the sibling constants below, and checked against the two
+  // shapes Centro has: Building 1, a tall narrow stack, and Building 6, a
+  // wide twenty-unit terrace. Both sit fully in frame at this value with a
+  // little of their surroundings for context; much above ~0.7 and the tall
+  // one starts losing its ends again.
+  const PLAN_FILL = 0.62
+  const zoom = isPlan
+    ? Math.min(planFit * (siteRadius / Math.max(focus.radius, 1e-6)) * PLAN_FILL, planFit * 24)
+    : null
+  // Overhead in plan, so the only thing that changes is which part of
+  // the site is under the camera.
+  const fit = fitDistance(focus.radius, camera, canvas)
+  // Well under 1. `focus.radius` is a bounding *sphere*, and these
+  // buildings are long, shallow terraces seen from an isometric angle:
+  // the sphere is sized by the length, while what the camera actually
+  // has to cover is the much smaller projected footprint. Fitting the
+  // sphere therefore reserves roughly half the frame for empty ground
+  // and leaves the building looking distant. The factor is empirical —
+  // tuned against Centro Plaza's terraces — which is why it is a named
+  // constant rather than buried in the expression.
+  const TERRACE_FIT = 0.5
+  // That factor was tuned on a canvas wider than it is tall, where the vertical
+  // axis is the tight one and a terrace runs along the loose one. Narrow the
+  // canvas — a plan sharing the row with its detail panel — and the terrace's
+  // length lands on the tight axis instead, where half the distance crops both
+  // ends. So with `fitAspect` the factor eases back towards a full fit as the
+  // canvas narrows: unchanged at 1.3:1 and wider, 0.85 at 4:5 and narrower.
+  // Opt-in, so the per-building plans and the admin keep the framing they
+  // were tuned with.
+  const aspect = canvas.height > 0 ? canvas.width / canvas.height : 1
+  const terraceFit = fitAspect
+    ? TERRACE_FIT + (0.85 - TERRACE_FIT) * THREE.MathUtils.clamp((1.3 - aspect) / 0.5, 0, 1)
+    : TERRACE_FIT
+  // A floor on how tight the frame may close, and the reason it exists is
+  // the opposite of the factor above. Cropping is right for a terrace, which
+  // fills the frame with context of its own; it is wrong for one small unit.
+  // Fitted that tightly a shop is an anonymous coloured plane — no
+  // neighbours, no end of the building, no road — so the visitor cannot tell
+  // which unit they picked or where in the site it sits. The floor is a
+  // share of the site rather than an absolute, so it scales with exports
+  // measured in metres or in millimetres, and it only bites when the site is
+  // far larger than the thing being framed: a whole-site model focusing one
+  // unit. Per-building models, where a unit is already a sizeable fraction
+  // of the model, keep the framing they had.
+  const CONTEXT_RADIUS = siteRadius * 0.075
+  const distance = isPlan
+    ? siteRadius * 4
+    : Math.max(fit, fitDistance(CONTEXT_RADIUS, camera, canvas)) * terraceFit
+  return { distance, zoom }
+}
+
+function CameraRig({ bounds, focus, home, fixedZoom, mode, navMode, resetSignal, engaged, onDragStart, onDragEnd }) {
   const controls = useRef(null)
   const camera = useThree((state) => state.camera)
   const size = useThree((state) => state.size)
@@ -1085,9 +1485,22 @@ function CameraRig({ bounds, focus, mode, navMode, resetSignal, engaged, onDragS
     return Math.min(size.width / (width * 1.04), size.height / (depth * 1.04))
   }, [bounds, size.width, size.height])
 
+  // The same fit, for the buildings alone. Never below the whole-model fit, so
+  // a home bigger than the model (a stray frame) cannot zoom the plan out
+  // past what the zoom-out limit allows.
+  const homeFitZoom = useMemo(() => {
+    if (!home?.box || !size.width || !size.height) return planFitZoom
+    const width = Math.max(home.box.max[0] - home.box.min[0], 0.001)
+    const depth = Math.max(home.box.max[2] - home.box.min[2], 0.001)
+    // Looser than the whole-model fit's 4%: a picker sits over the top of the
+    // plan and the compass over a corner, and a building tucked under either
+    // is one the visitor cannot read.
+    return Math.max(planFitZoom, Math.min(size.width / (width * 1.22), size.height / (depth * 1.22)))
+  }, [home, planFitZoom, size.width, size.height])
+
   const frameDefault = useCallback(() => {
     if (!bounds || !controls.current) return
-    const target = new THREE.Vector3(...bounds.center)
+    const target = new THREE.Vector3(...(home ?? bounds).center)
     controls.current.target.copy(target)
 
     // Clip planes sized from the model rather than fixed. A fixed far plane
@@ -1115,10 +1528,9 @@ function CameraRig({ bounds, focus, mode, navMode, resetSignal, engaged, onDragS
 
     if (mode === '2d') {
       camera.position.set(target.x, target.y + bounds.radius * 4, target.z + 0.001)
-      camera.zoom = planFitZoom
+      camera.zoom = homeFitZoom
     } else {
-      const fov = THREE.MathUtils.degToRad(camera.fov ?? 45)
-      const distance = (bounds.radius / Math.sin(fov / 2)) * 1.05
+      const distance = defaultDistance(bounds, home, camera, size)
       camera.position.copy(target).add(new THREE.Vector3().setFromSphericalCoords(distance, ISO_POLAR, ISO_AZIMUTH))
     }
 
@@ -1129,7 +1541,7 @@ function CameraRig({ bounds, focus, mode, navMode, resetSignal, engaged, onDragS
     goal.current.active = false
     controls.current.update()
     invalidate()
-  }, [bounds, camera, size, mode, invalidate, planFitZoom])
+  }, [bounds, home, camera, size, mode, invalidate, homeFitZoom])
 
   const frameDefaultRef = useRef(frameDefault)
   frameDefaultRef.current = frameDefault
@@ -1147,10 +1559,15 @@ function CameraRig({ bounds, focus, mode, navMode, resetSignal, engaged, onDragS
   // clip planes: it sat at the R3F default looking at the origin, with the
   // site a thousand units off screen. Plan view rendered an empty frame every
   // time. Re-running on the camera swap is what makes the ortho view exist.
+  //
+  // `homeKey` is the home's numbers rather than the home: frames are rebuilt
+  // whenever unit data changes, with the same geometry in them, and a new
+  // object each time would snap the camera back to default on every update.
+  const homeKey = home ? `${home.center.map((n) => n.toFixed(1))}|${home.radius.toFixed(1)}` : ''
   useEffect(() => {
     frameDefaultRef.current()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bounds, mode, camera, resetSignal])
+  }, [bounds, mode, camera, resetSignal, homeKey])
 
 
   // Read through refs so the effect below can *use* the canvas size without
@@ -1187,51 +1604,14 @@ function CameraRig({ bounds, focus, mode, navMode, resetSignal, engaged, onDragS
     // means zoom: scaled off the fit that frames the whole site, so a
     // building a tenth of the plot ends up filling roughly the frame.
     const isPlan = mode === '2d'
-    const planFit = planFitZoomRef.current
-    const canvas = sizeRef.current
-    // Was 1.15, which cropped. `focus.radius` is a bounding *sphere*, and for
-    // a long shallow terrace that radius is already about its half-length — so
-    // scaling the site fit by siteRadius/focusRadius already lands near "this
-    // building fills the frame", and zooming a further 15% in on top pushed
-    // both ends of it off screen. A building cropped at both ends is the one
-    // thing this view exists to avoid.
-    //
-    // Empirical, like the sibling constants below, and checked against the two
-    // shapes Centro has: Building 1, a tall narrow stack, and Building 6, a
-    // wide twenty-unit terrace. Both sit fully in frame at this value with a
-    // little of their surroundings for context; much above ~0.7 and the tall
-    // one starts losing its ends again.
-    const PLAN_FILL = 0.62
-    const zoom = isPlan
-      ? Math.min(planFit * (siteRadius / Math.max(focus.radius, 1e-6)) * PLAN_FILL, planFit * 24)
-      : null
-    // Overhead in plan, so the only thing that changes is which part of
-    // the site is under the camera.
-    const fit = fitDistance(focus.radius, camera, canvas)
-    // Well under 1. `focus.radius` is a bounding *sphere*, and these
-    // buildings are long, shallow terraces seen from an isometric angle:
-    // the sphere is sized by the length, while what the camera actually
-    // has to cover is the much smaller projected footprint. Fitting the
-    // sphere therefore reserves roughly half the frame for empty ground
-    // and leaves the building looking distant. The factor is empirical —
-    // tuned against Centro Plaza's terraces — which is why it is a named
-    // constant rather than buried in the expression.
-    const TERRACE_FIT = 0.5
-    // A floor on how tight the frame may close, and the reason it exists is
-    // the opposite of the factor above. Cropping is right for a terrace, which
-    // fills the frame with context of its own; it is wrong for one small unit.
-    // Fitted that tightly a shop is an anonymous coloured plane — no
-    // neighbours, no end of the building, no road — so the visitor cannot tell
-    // which unit they picked or where in the site it sits. The floor is a
-    // share of the site rather than an absolute, so it scales with exports
-    // measured in metres or in millimetres, and it only bites when the site is
-    // far larger than the thing being framed: a whole-site model focusing one
-    // unit. Per-building models, where a unit is already a sizeable fraction
-    // of the model, keep the framing they had.
-    const CONTEXT_RADIUS = siteRadius * 0.075
-    const distance = isPlan
-      ? siteRadius * 4
-      : Math.max(fit, fitDistance(CONTEXT_RADIUS, camera, canvas)) * TERRACE_FIT
+    const { distance, zoom } = focusGoal(focus, {
+      siteRadius,
+      isPlan,
+      planFit: planFitZoomRef.current,
+      canvas: sizeRef.current,
+      camera,
+      fitAspect: fixedZoom,
+    })
 
     if (prefersReducedMotion()) {
       const direction = isPlan
@@ -1389,11 +1769,28 @@ function CameraRig({ bounds, focus, mode, navMode, resetSignal, engaged, onDragS
   // read a unit up close. With nothing focused it falls back to a small
   // fraction of the site. Both stay well clear of the near plane, which
   // `frameDefault` puts at `radius / 400`.
+  //
+  // `fixedZoom` replaces all of that with one rule: the closest the camera may
+  // come is the frame it is resting at — the buildings by default, the open
+  // building or unit once one is picked. Zooming out is free, up to
+  // `maxDistance`; zooming back in stops at the frame, so a scroll can neither
+  // lose the visitor in a wall nor leave them further in than the view
+  // they were given. A hair under, so the easing that settles on the frame
+  // is never clamped against it.
+  const zoomInLimit = useMemo(() => {
+    if (!fixedZoom || !bounds) return null
+    if (focus) {
+      return focusGoal(focus, { siteRadius: radius, isPlan: mode === '2d', planFit: planFitZoom, canvas: size, camera, fitAspect: true })
+    }
+    return { distance: defaultDistance(bounds, home, camera, size), zoom: homeFitZoom }
+  }, [fixedZoom, bounds, focus, home, radius, mode, planFitZoom, homeFitZoom, size, camera])
+
   const minDistance = useMemo(() => {
+    if (zoomInLimit) return zoomInLimit.distance * 0.97
     const siteFloor = radius * 0.02
     if (!focus) return siteFloor
     return Math.min(siteFloor, fitDistance(focus.radius, camera, size) * 0.25)
-  }, [radius, focus, camera, size])
+  }, [zoomInLimit, radius, focus, camera, size])
 
   // Which gesture the primary drag performs. Plan view is forced to pan
   // whatever the toggle says: rotation is disabled there, so leaving the
@@ -1463,7 +1860,7 @@ function CameraRig({ bounds, focus, mode, navMode, resetSignal, engaged, onDragS
       // framing sits at ~2.9x radius, so the old 4x ceiling gave almost no
       // room to pull back.
       minZoom={mode === '2d' ? planFitZoom : 0}
-      maxZoom={mode === '2d' ? planFitZoom * 6 : Infinity}
+      maxZoom={mode === '2d' ? (zoomInLimit ? Math.max(zoomInLimit.zoom ?? 0, planFitZoom) * 1.03 : planFitZoom * 6) : Infinity}
       minDistance={minDistance}
       maxDistance={radius * 6}
     />
@@ -1512,6 +1909,18 @@ export default function ModelViewer({
   // visitor steps back out of a building to the site as a whole, which
   // clears `focus` and would otherwise leave the camera where it was.
   resetToken = 0,
+  // Entry indexes the camera frames before anything is picked, in place of the
+  // whole model. A whole-site export is mostly road and ground — Centro
+  // Plaza's is a mile of it around a plaza a tenth the size — so framing the
+  // model's own bounds leaves the buildings a speck in the middle of the view.
+  // Null keeps the old behaviour, which is right for a single-building model.
+  homeIndexes = null,
+  // Stops the zoom-in at the frame the camera is resting at; zooming out stays
+  // free. Off by default: the admin tags units close up, and needs to.
+  fixedZoom = false,
+  // Drawn inside the viewer's own container, so it survives fullscreen. The
+  // caller positions it.
+  toolbar = null,
   // A whole-site export carries its own ground slab, so the viewer's apron
   // would sit inside it and z-fight. Set for site models, never for the
   // per-building ones, which genuinely have no ground of their own.
@@ -1563,6 +1972,15 @@ export default function ModelViewer({
     setResetSignal((n) => n + 1)
   }, [resetToken])
   const [frames, setFrames] = useState(null)
+  // Compass bearing each unit faces, once the model has measured them.
+  const [facings, setFacings] = useState(null)
+  const handleFacings = useCallback(
+    (next) => {
+      setFacings(next)
+      onFacings?.(next)
+    },
+    [onFacings],
+  )
   const [bounds, setBounds] = useState(null)
   // Which model has finished loading, rather than a boolean, so an admin who
   // replaces the file gets the overlay again instead of a blank canvas.
@@ -1694,16 +2112,21 @@ export default function ModelViewer({
     // so a single selection returns the stored frame rather than a copy of it.
     if (picked.length === 1) return picked[0]
 
-    const box = new THREE.Box3()
-    const center = new THREE.Vector3()
-    for (const frame of picked) {
-      center.set(...frame.center)
-      box.expandByPoint(center.clone().subScalar(frame.radius))
-      box.expandByPoint(center.clone().addScalar(frame.radius))
-    }
-    const sphere = box.getBoundingSphere(new THREE.Sphere())
-    return { center: sphere.center.toArray(), radius: Math.max(sphere.radius, 0.5) }
+    return unionFrames(picked)
   }, [frames, selection])
+
+  const home = useMemo(() => {
+    if (!frames || !bounds || !homeIndexes?.length) return null
+    // A frame that is most of the model by itself is not a building: it is a
+    // ground slab or a stretch of road that was tagged as one, and framing it
+    // frames the whole site — the thing `homeIndexes` exists to avoid. Centro
+    // Plaza's Building 2 carries one. Skipped here rather than trusted, so a
+    // single bad tag cannot undo the framing for the rest.
+    const picked = homeIndexes
+      .map((index) => frames.get(index))
+      .filter((frame) => frame && frame.radius < bounds.radius * OVERSIZE_SHARE)
+    return picked.length ? unionFrames(picked) : null
+  }, [frames, bounds, homeIndexes])
 
   useEffect(() => {
     const onChange = () => setIsFullscreen(document.fullscreenElement === containerRef.current)
@@ -1736,6 +2159,25 @@ export default function ModelViewer({
   // rather than truthiness.
   const hasOrientation = orientation != null && Number.isFinite(orientation)
   const dialRef = useRef(null)
+  const headingRef = useRef(null)
+
+  // What the compass says about the selection, which it can only do for one
+  // unit at a time — several at once face several ways.
+  const facing = useMemo(() => {
+    if (!hasOrientation || selection.length !== 1) return null
+    const index = selection[0]
+    const bearing = facings?.get(index)
+    if (!Number.isFinite(bearing)) return null
+    const label = siteEntries
+      ? siteEntries.find((entry) => entry.index === index && entry.kind === 'unit')?.label
+      : units?.find((unit) => unit.index === index)?.label
+    return { bearing, text: `${formatUnitLabel(label) || 'Unit'} faces ${bearingLabel(bearing)}` }
+  }, [hasOrientation, selection, facings, siteEntries, units])
+  const compassLabel = !hasOrientation
+    ? 'Compass — direction not set for this model'
+    : facing
+      ? `Compass. ${facing.text}`
+      : 'Compass — north is marked N'
 
   const chip = useMemo(() => {
     // A hover carrying no unit is a binding-mode highlight: it colours the
@@ -1840,6 +2282,7 @@ export default function ModelViewer({
               units={units}
               bindings={bindings}
               siteEntries={siteEntries}
+              dark={groundIsDark}
               focusMeshes={focusMeshes}
               isolateFocus={isolateFocus}
               labelKinds={labelKinds}
@@ -1857,7 +2300,7 @@ export default function ModelViewer({
               onMeshClick={onMeshClick}
               onReady={handleReady}
               onFrames={setFrames}
-              onFacings={onFacings}
+              onFacings={handleFacings}
             />
           </Suspense>
         </ModelErrorBoundary>
@@ -1865,6 +2308,8 @@ export default function ModelViewer({
         <CameraRig
           bounds={bounds}
           focus={focus}
+          home={home}
+          fixedZoom={fixedZoom}
           mode={mode}
           navMode={navMode}
           resetSignal={resetSignal}
@@ -1873,7 +2318,7 @@ export default function ModelViewer({
           onDragEnd={endDrag}
         />
 
-        {hasOrientation && <CompassNeedle dialRef={dialRef} bounds={bounds} />}
+        {hasOrientation && <CompassNeedle dialRef={dialRef} headingRef={headingRef} bounds={bounds} />}
       </Canvas>
 
       {failed ? (
@@ -1888,21 +2333,60 @@ export default function ModelViewer({
         readyUrl !== url && <LoadingOverlay poster={poster} fileSize={fileSize} />
       )}
 
-      {/* Always visible so every plan has a directional reference. When the
-          admin has calibrated orientation the needle follows the camera;
-          otherwise it remains a clearly labelled north-up reference. */}
+      {/* A compass, not a picture of one. Once the model's angle is set the rose
+          turns with the camera — in plan view and in 3D — so N is always the
+          real north on screen; the small mark at its top is the way the view is
+          looking. Pick one unit and an arrow on the rim shows which way it
+          faces, and the line beneath says so. Until the angle is set it is held
+          still and dimmed: it knows nothing, and says so, rather than pointing
+          up and calling it north. */}
       <div
         role="img"
-        aria-label={hasOrientation ? 'North indicator' : 'North reference — orientation not calibrated'}
-        title={hasOrientation ? 'North' : 'North reference — orientation not calibrated'}
-        className="pointer-events-none absolute bottom-4 right-4 z-10 flex size-14 items-center justify-center rounded-full border border-[var(--color-line-inv)] bg-void/85 shadow-[0_12px_30px_-18px_rgba(0,0,0,.8)] backdrop-blur"
+        aria-label={compassLabel}
+        title={compassLabel}
+        className="pointer-events-none absolute bottom-4 right-4 z-10 flex flex-col items-end gap-1.5"
       >
-        <div ref={dialRef} className="relative size-full transition-none">
-          <span className="absolute left-1/2 top-1.5 -translate-x-1/2 font-body text-[9px] font-bold tracking-[0.12em] text-accent-soft">N</span>
-          <span className="absolute left-1/2 top-[15px] h-3.5 w-px -translate-x-1/2 bg-accent-soft" />
-          <span className="absolute left-1/2 top-[13px] size-1.5 -translate-x-1/2 rotate-45 border-l border-t border-accent-soft" />
-          <span className="absolute bottom-[12px] left-1/2 h-3 w-px -translate-x-1/2 bg-bone/25" />
+        <div
+          className={`relative size-[4.75rem] rounded-full border border-[var(--color-line-inv)] bg-void/85 shadow-[0_12px_30px_-18px_rgba(0,0,0,.8)] backdrop-blur ${hasOrientation ? '' : 'opacity-60'}`}
+        >
+          <span aria-hidden className="absolute -top-1 left-1/2 size-2 -translate-x-1/2 rotate-45 border-b border-r border-bone/70 bg-void" />
+          <div ref={dialRef} className="absolute inset-0 transition-none">
+            <svg viewBox="0 0 100 100" aria-hidden className="absolute inset-0 size-full">
+              {[30, 60, 120, 150, 210, 240, 300, 330].map((deg) => (
+                <line key={deg} x1="50" y1="4" x2="50" y2="9" transform={`rotate(${deg} 50 50)`} className="stroke-bone/35" strokeWidth="1.4" strokeLinecap="round" />
+              ))}
+              {hasOrientation && (
+                <>
+                  <polygon points="50,29 55.5,50 44.5,50" className="fill-ember" />
+                  <polygon points="50,71 55.5,50 44.5,50" className="fill-bone/25" />
+                </>
+              )}
+              {facing && <path transform={`rotate(${facing.bearing} 50 50)`} d="M50 0.5 L57.5 13 L50 9 L42.5 13 Z" className="fill-accent-soft" />}
+            </svg>
+            {!hasOrientation && (
+              <span aria-hidden className="absolute inset-0 flex items-center justify-center font-display text-lg font-bold text-bone/50">
+                ?
+              </span>
+            )}
+            {(hasOrientation ? [
+              ['N', 'left-1/2 top-[8px] -translate-x-1/2', 'text-ember'],
+              ['E', 'right-[9px] top-1/2 -translate-y-1/2', 'text-bone/70'],
+              ['S', 'bottom-[8px] left-1/2 -translate-x-1/2', 'text-bone/70'],
+              ['W', 'left-[9px] top-1/2 -translate-y-1/2', 'text-bone/70'],
+            ] : []).map(([letter, place, tone]) => (
+              <span key={letter} aria-hidden className={`absolute ${place}`}>
+                <span className={`block font-body text-[9px] font-bold leading-none ${tone}`} style={{ transform: 'rotate(calc(var(--rose, 0deg) * -1))' }}>
+                  {letter}
+                </span>
+              </span>
+            ))}
+          </div>
         </div>
+        {hasOrientation && (
+          <div className="rounded-full border border-[var(--color-line-inv)] bg-void/85 px-2.5 py-1 font-body text-[10px] font-bold uppercase tracking-[0.1em] text-bone/80 backdrop-blur">
+            {facing ? <span className="text-accent-soft">{facing.text}</span> : <span ref={headingRef}>View N</span>}
+          </div>
+        )}
       </div>
 
       <div className="pointer-events-none absolute bottom-4 left-1/2 z-10 hidden -translate-x-1/2 rounded-full border border-[var(--color-line-inv)] bg-void/75 px-4 py-2 font-body text-[10px] font-bold uppercase tracking-[0.1em] text-bone/65 backdrop-blur sm:block">
@@ -1977,14 +2461,19 @@ export default function ModelViewer({
         type="button"
         onClick={() => setMode((m) => (m === '3d' ? '2d' : '3d'))}
         aria-label={mode === '2d' ? 'Switch to 3D' : 'Switch to 2D'}
-        className="group absolute left-4 top-4 z-30 flex min-h-11 items-center gap-2 overflow-hidden rounded-full border border-white/12 bg-black/58 px-4 py-2.5 font-body text-[11px] font-bold uppercase tracking-[0.12em] text-bone shadow-[0_14px_32px_-22px_rgba(0,0,0,.9)] backdrop-blur-xl transition-[background-color,border-color,transform] duration-300 ease-brand hover:-translate-y-0.5 hover:border-white/30 hover:bg-black/72 active:translate-y-0"
+        // Icon-only on a phone, so a toolbar beside it can share its line; and
+        // no hover-expanded label while there is one, which would slide under
+        // the first control in it.
+        className="group absolute left-4 top-4 z-30 flex min-h-11 items-center gap-2 overflow-hidden rounded-full border border-white/12 bg-black/58 px-4 py-2.5 font-body text-[11px] font-bold uppercase tracking-[0.12em] text-bone shadow-[0_14px_32px_-22px_rgba(0,0,0,.9)] backdrop-blur-xl transition-[background-color,border-color,transform] duration-300 ease-brand hover:-translate-y-0.5 hover:border-white/30 hover:bg-black/72 active:translate-y-0 max-sm:w-11 max-sm:justify-center max-sm:px-0"
       >
         <span className="transition-transform duration-300 ease-brand group-hover:rotate-12">{mode === '2d' ? <CubeIcon /> : <PlanIcon />}</span>
-        <span className="flex min-w-0 items-center overflow-hidden">
-          <span className="max-w-10 whitespace-nowrap opacity-100 transition-[max-width,opacity,transform] duration-300 ease-brand group-hover:max-w-0 group-hover:-translate-y-2 group-hover:opacity-0">{mode === '2d' ? '3D' : '2D'}</span>
-          <span className="max-w-0 translate-y-2 overflow-hidden whitespace-nowrap opacity-0 transition-[max-width,opacity,transform] duration-300 ease-brand group-hover:max-w-28 group-hover:translate-y-0 group-hover:opacity-100">{mode === '2d' ? 'Switch to 3D' : 'Switch to 2D'}</span>
+        <span className="flex min-w-0 items-center overflow-hidden max-sm:hidden">
+          <span className={`max-w-10 whitespace-nowrap opacity-100 transition-[max-width,opacity,transform] duration-300 ease-brand ${toolbar ? '' : 'group-hover:max-w-0 group-hover:-translate-y-2 group-hover:opacity-0'}`}>{mode === '2d' ? '3D' : '2D'}</span>
+          {!toolbar && <span className="max-w-0 translate-y-2 overflow-hidden whitespace-nowrap opacity-0 transition-[max-width,opacity,transform] duration-300 ease-brand group-hover:max-w-28 group-hover:translate-y-0 group-hover:opacity-100">{mode === '2d' ? 'Switch to 3D' : 'Switch to 2D'}</span>}
         </span>
       </button>
+
+      {toolbar}
     </div>
   )
 }
@@ -2069,7 +2558,7 @@ function LoadingOverlay({ poster, fileSize }) {
   const size = formatBytes(fileSize)
   return (
     <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-surface-alt">
-      {poster && <img src={sized(poster, 'card')} alt="" className="absolute inset-0 size-full object-cover opacity-25" />}
+      {poster && <img src={sized(poster, 'card')} alt="" className="absolute inset-0 size-full object-contain opacity-25" />}
       <div role="status" className="relative flex w-60 max-w-[80%] flex-col items-center gap-3 text-center">
         <span className="eyebrow text-content/75">{active ? 'Loading 3D model' : 'Preparing the model'}</span>
         <span className="relative h-1 w-full overflow-hidden rounded-full bg-content/15">

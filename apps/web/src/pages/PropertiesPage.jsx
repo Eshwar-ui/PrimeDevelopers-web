@@ -441,9 +441,12 @@ export default function PropertiesPage() {
               rather than push the buttons down onto the map pins; with no pins
               to protect it would only shrink the headline to make room for
               nothing (DESIGN.md §2). */}
-          <h2 className="mx-auto mt-5 max-w-[18ch] font-display font-bold uppercase leading-[1.03] tracking-tight text-content [font-size:clamp(1.85rem,4.2vw,3.4rem)]">
+          {/* The page's one h1 — the hero headline is its title, and the page
+              had no h1 at all, which search engines and screen readers both
+              use to say what a page is about. */}
+          <h1 className="mx-auto mt-5 max-w-[18ch] font-display font-bold uppercase leading-[1.03] tracking-tight text-content [font-size:clamp(1.85rem,4.2vw,3.4rem)]">
             <MaskedHeading text={p.heroHeading} accentClass="italic text-accent" />
-          </h2>
+          </h1>
 
           {p.heroParagraph && (
             /* Type comes from the homepage lede — same 15px, same leading, same

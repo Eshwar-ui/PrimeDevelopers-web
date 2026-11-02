@@ -179,6 +179,9 @@ export default function Properties() {
                 >
                   <img
                     src={sized(coverImage(p, 'homeTeaser'), 'card')}
+                    // Empty on purpose: the card's <h3> names the property, and
+                    // a second copy of the name here is noise to a screen reader.
+                    alt=""
                     // Tracks the frame's own class list above: full width while
                     // the card is stacked, `lg:w-[68%]` of it once the photo is
                     // bled in behind the copy.

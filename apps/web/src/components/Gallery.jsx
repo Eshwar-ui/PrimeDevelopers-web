@@ -68,6 +68,10 @@ function MobileGallery({ tiles, heading, paragraph, go }) {
           >
             <img
               src={sized(coverImage(property, 'mosaic'), 'card')}
+              // Empty on purpose: the link is named "View <property>" and the
+              // caption below says the name again, so a description here would
+              // only make a screen reader say it a third time.
+              alt=""
               // This branch is `md:hidden` — it only ever renders on a phone,
               // where the frame is the full column. One breakpoint, one width.
               srcSet={srcSetFor(coverImage(property, 'mosaic'), 'card')}
@@ -154,6 +158,9 @@ export default function Gallery() {
       >
         <img
           src={sized(coverImage(p, 'mosaic'), 'card')}
+          // Empty on purpose: the caption below names the link (it is only
+          // hidden visually until hover), so the photograph is decoration.
+          alt=""
           // The mosaic counterpart, which is `md:` and up: two columns inside
           // the content measure, so roughly half the viewport apiece.
           srcSet={srcSetFor(coverImage(p, 'mosaic'), 'card')}

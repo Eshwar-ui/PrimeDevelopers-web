@@ -54,6 +54,7 @@ const ESSENTIAL_LINKS = [
   { label: 'Expertise', href: '/enterprise' },
   { label: 'News', href: '/news' },
   { label: 'Learn', href: '/learn' },
+  { label: 'FAQ', href: '/faq' },
   { label: 'Contact', href: '/contact' },
 ]
 

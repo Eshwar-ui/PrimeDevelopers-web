@@ -341,6 +341,54 @@ export const labelSlug = (label) =>
 export const unitPath = (propertySlug, buildingLabel, unitLabel) =>
   `/properties/${propertySlug}/units/${labelSlug(buildingLabel)}/${labelSlug(unitLabel)}`
 
+// A unit's size as a plain number of square feet, or 0 when the field holds
+// nothing usable. Sorting and the size tiers both need a number; `formatArea`
+// above is the display form of the same field.
+export const unitSF = (size) => {
+  const n = Number(String(size ?? '').replace(/[^\d.]/g, ''))
+  return Number.isFinite(n) ? n : 0
+}
+
+/**
+ * Every unit in the portfolio as a flat list of `{ property, building, unit,
+ * sf }` rows — the shape every unit-wise surface reads.
+ *
+ * Every unit, every status. A list carrying availability alone meant a plaza
+ * that had let well showed four cards out of forty and read as an empty
+ * portfolio — the opposite of what a full plaza is evidence of. A let unit
+ * also has the thing an empty one doesn't: a tenant, a trade and photographs
+ * of the space in use, which is what a prospect weighing the unit next door is
+ * actually looking for.
+ *
+ * `building` rides along because the unit link needs it — unit labels are
+ * unique only within a building, so a deep link naming "101" alone is
+ * ambiguous the moment a property has two.
+ */
+export function collectUnits(properties) {
+  const rows = []
+  for (const property of properties ?? []) {
+    for (const building of getBuildings(property)) {
+      for (const unit of getUnits(building)) {
+        rows.push({ property, building, unit, sf: unitSF(unit.size) })
+      }
+    }
+  }
+  // Available first, then by size smallest-first within each status. Mixing
+  // statuses into one size-ordered list would bury what is actually bookable
+  // among what isn't; ordering by status keeps the list selling while the rest
+  // stays browsable behind it.
+  //
+  // Not UNIT_STATUSES' own order, which is the legend's (available, leased,
+  // coming-soon, sold). Here the axis is how close a unit is to being
+  // takeable, so "coming soon" belongs directly behind "available".
+  const ORDER = ['available', 'coming-soon', 'leased', 'sold']
+  const rank = (status) => {
+    const i = ORDER.indexOf(status)
+    return i === -1 ? ORDER.length : i
+  }
+  return rows.sort((a, b) => rank(a.unit.status) - rank(b.unit.status) || a.sf - b.sf)
+}
+
 /** Every unit in a property, with where it sits. */
 export const listUnits = (property) =>
   getBuildings(property).flatMap((building, buildingIndex) =>

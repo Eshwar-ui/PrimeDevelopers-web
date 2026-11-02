@@ -1,18 +1,14 @@
 import { useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
-import { Buildings, Camera, MapPin, Ruler, Stack, Tag } from '@phosphor-icons/react'
 import { useProperties, useSection } from '../context/ContentContext'
-import { getBuildings, getUnits, formatArea, formatUnitLabel, getUnitImages, unitPath } from '../lib/units'
+import { collectUnits } from '../lib/units'
+import { SIZE_TIERS } from '../lib/unitTiers'
 import { renderEmphasis } from '../lib/emphasis'
-import { unitStatusMeta } from '../lib/unitStatus'
-import { hasInfoPage } from '../lib/infoSets'
-import { sized } from '../lib/images'
 import ActionButton from './ActionButton'
 import ArrowRight from './ArrowRight'
-import { coverImage } from '../lib/covers'
+import UnitCard from './UnitCard'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -21,129 +17,10 @@ gsap.registerPlugin(ScrollTrigger)
 // properties" is the door to the rest.
 const TEASER_COUNT = 4
 
-// `name` is the card-facing size tier — the plain-English label a tenant
-// scans for ("Small", "Medium"...) — separate from `label`, the filter
-// pill's own wording. `all` carries no `name`: the overview tab shows every
-// unit under its own tier, not one shared name.
-//
-// There is no "Under 500 SF" pill — the client asked for it to go. A unit
-// that small still turns up under "Under 1,000 SF", which is what that
-// label says anyway, rather than becoming reachable from Overview alone.
-const SIZE_TIERS = [
-  { id: 'all', label: 'Overview', name: null, test: () => true },
-  { id: 'sm', label: 'Under 1,000 SF', name: 'Medium', test: (sf) => sf > 0 && sf < 1000 },
-  { id: 'md', label: '1,000 – 2,000 SF', name: 'Large', test: (sf) => sf >= 1000 && sf < 2000 },
-  { id: 'lg', label: '2,000 – 4,000 SF', name: 'X-Large', test: (sf) => sf >= 2000 && sf < 4000 },
-  { id: 'xl', label: '4,000+ SF', name: 'XX-Large', test: (sf) => sf >= 4000 },
-]
-
-// The card keeps calling a sub-500 unit "Small" even without a pill of its
-// own; the name describes the unit, not the filter it was found under.
-const tierNameFor = (sf) =>
-  sf > 0 && sf < 500 ? 'Small' : (SIZE_TIERS.slice(1).find((t) => t.test(sf))?.name ?? null)
-
-const parseSF = (size) => {
-  const n = Number(String(size ?? '').replace(/[^\d.]/g, ''))
-  return Number.isFinite(n) ? n : 0
-}
-
-/**
- * The per-unit facts that fit under the description, at most two.
- *
- * These occupy the slot the comp draws as amenity chips ("Ample Parking",
- * "High Visibility"). No amenity field exists on a unit or a property, and
- * inventing one would put an unverified claim about real leasable space on
- * every card — so the slot is filled with what the CMS actually holds per
- * unit instead. That is also the better content: four cards at the same
- * address, with the same photograph and the same fallback sentence, need the
- * fields that *differ* between them, not two more that don't.
- *
- * Both fields are free text in the admin, so a bare value would read as a
- * number with no noun. Numeric-looking input gets the noun; anything else is
- * already prose and is left alone.
- */
-const isNumeric = (value) => /^[\d.,\s]+$/.test(String(value ?? '').trim())
-
-function specChips(unit) {
-  const chips = []
-  const floor = String(unit.floor ?? '').trim()
-  const frontage = String(unit.frontage ?? '').trim()
-
-  if (floor) chips.push({ Icon: Stack, text: isNumeric(floor) ? `Floor ${floor}` : floor })
-  if (frontage) {
-    chips.push({ Icon: Ruler, text: isNumeric(frontage) ? `${frontage} ft frontage` : frontage })
-  }
-  return chips.slice(0, 2)
-}
-
-// Flattened once per render of the property list, not per filter click — the
-// filters above filter this array, they don't rebuild it.
-//
-// Every unit, every status. The section used to carry availability alone,
-// which meant a plaza that had let well showed four cards out of forty and
-// read as an empty portfolio — the opposite of what a full plaza is evidence
-// of. A let unit also has the thing an empty one doesn't: a tenant, a trade
-// and photographs of the space in use, which is what a prospect weighing the
-// unit next door is actually looking for.
-//
-// A unit with no size on file is still kept, but only ever appears under
-// "Overview": the size tiers are a question it cannot answer, and dropping it
-// outright hid real inventory over a blank admin field.
-//
-// `building` rides along because the unit link needs it — unit labels are
-// unique only within a building, so a deep link naming "101" alone is
-// ambiguous the moment a property has two.
-function collectUnits(properties) {
-  const rows = []
-  for (const property of properties) {
-    for (const building of getBuildings(property)) {
-      for (const unit of getUnits(building)) {
-        rows.push({ property, building, unit, sf: parseSF(unit.size) })
-      }
-    }
-  }
-  // Available first, then by size smallest-first within each status. Mixing
-  // statuses into one size-ordered list would bury what is actually bookable
-  // among what isn't; ordering by status keeps the section selling while the
-  // rest stays browsable behind it.
-  // Not UNIT_STATUSES' own order, which is the legend's (available, leased,
-  // coming-soon, sold). Here the axis is how close a unit is to being
-  // takeable, so "coming soon" belongs directly behind "available".
-  const ORDER = ['available', 'coming-soon', 'leased', 'sold']
-  const rank = (status) => {
-    const i = ORDER.indexOf(status)
-    return i === -1 ? ORDER.length : i
-  }
-  return rows.sort((a, b) => rank(a.unit.status) - rank(b.unit.status) || a.sf - b.sf)
-}
-
-/**
- * The chip that rides on the photograph — the status badge and "View photos"
- * are the same object in two places, so they are one component.
- *
- * A dark translucent lozenge rather than the solid status fill the leasing map
- * uses: these sit on an uncontrolled photograph, and a saturated green block
- * on a bright sky reads as a sticker rather than as part of the card. The
- * status keeps its colour as a dot, which is all it needs to carry here.
- */
-function PhotoChip({ children, className = '', ...props }) {
-  const Tag = props.onClick ? 'button' : 'span'
-  return (
-    <Tag
-      {...(Tag === 'button' ? { type: 'button' } : {})}
-      {...props}
-      className={`inline-flex items-center gap-2 rounded-full bg-void/75 px-3 py-1.5 font-body text-[11px] font-bold uppercase tracking-[0.08em] text-bone backdrop-blur-sm ${className}`}
-    >
-      {children}
-    </Tag>
-  )
-}
-
 export default function AvailableUnits() {
   const properties = useProperties()
   // Eyebrow, heading and intro — Site content → "Find your ideal space".
   const copy = useSection('units_home')
-  const navigate = useNavigate()
   const scope = useRef(null)
   const [tier, setTier] = useState('all')
   const allUnits = useMemo(() => collectUnits(properties), [properties])
@@ -334,194 +211,28 @@ export default function AvailableUnits() {
             style={{ '--uc': Math.min(shown.length, TEASER_COUNT) }}
             className="-mx-gutter mt-10 grid auto-cols-[85%] grid-flow-col snap-x snap-mandatory gap-6 overflow-x-auto overscroll-x-contain px-gutter py-3 scroll-px-gutter sm:auto-cols-[20rem] md:auto-cols-[21rem] lg:auto-cols-[22rem] xl:mx-0 xl:grid-flow-row xl:grid-cols-[repeat(var(--uc),minmax(0,23.25rem))] xl:justify-center xl:overflow-x-visible xl:px-0 xl:py-0"
           >
-            {shown.map(({ property, building, unit, sf }) => {
-              // The card's whole job is to hand the visitor *this* unit, not
-              // the property it happens to sit in. The plan section reads
-              // both parameters, focuses the building, selects the unit and
-              // scrolls itself into view — and falls back to the 2D plan, or
-              // to the unit's details alone, for a property with no model.
-              const href = unitPath(property.slug, building?.building, unit.label)
-              // The media set still hangs off the bare slug.
-              const propertyHref = `/properties/${property.slug}`
-              const open = (e) => {
-                e.preventDefault()
-                navigate(href)
-              }
-              const area = formatArea(unit.size)
-              const tierName = tierNameFor(sf)
-              const chips = specChips(unit)
-              const meta = unitStatusMeta(unit.status)
-              // The unit's own photograph wins over the property's. A card
-              // for unit 605 showing the plaza from the road is the same
-              // picture as the three cards beside it; the storefront is what
-              // tells them apart.
-              const photo = getUnitImages(unit)[0] ?? coverImage(property, 'unitFallback')
-              // Only a property with a real media set gets the button. Every
-              // other slug redirects straight back to its own listing, so the
-              // control would promise photographs and deliver the page the
-              // visitor is already looking at.
-              const hasPhotos = hasInfoPage(property)
-
-              return (
-                // The building has to be in the key. `unit.index` is the
-                // unit's position within *its own* building, so with every
-                // building in the list now, unit 6 of B-06 and unit 6 of B-07
-                // would collide on one key.
-                <article
-                  key={`${property.slug}-${building?.building}-${unit.index}`}
-                  data-unit-card
-                  className="group flex min-w-0 snap-start flex-col overflow-hidden rounded-panel border border-accent/45 bg-surface transition-[border-color,box-shadow] duration-500 ease-brand hover:border-accent/75 hover:shadow-[0_36px_80px_-52px_rgba(0,0,0,0.85)]"
-                >
-                  <div className="relative aspect-[4/3] overflow-hidden bg-surface-alt">
-                    {photo && (
-                      <img
-                        src={sized(photo, 'card')}
-                        alt={!getUnitImages(unit).length ? property.name : `Unit ${unit.label || ''} at ${property.name}`.trim()}
-                        loading="lazy"
-                        decoding="async"
-                        className="absolute inset-0 size-full object-cover transition-transform duration-700 ease-brand group-hover:scale-[1.04]"
-                      />
-                    )}
-
-                    {/* Both chips sit on an uncontrolled photograph. This is
-                        the floor under them — without it a pale sky leaves
-                        two translucent lozenges with nothing behind them. */}
-                    <span
-                      aria-hidden
-                      className="pointer-events-none absolute inset-0 bg-gradient-to-t from-void/45 via-transparent to-void/30"
-                    />
-
-                    <PhotoChip className="absolute left-3 top-3">
-                      <span
-                        aria-hidden
-                        className="size-2 shrink-0 rounded-full"
-                        style={{ backgroundColor: meta.hex }}
-                      />
-                      {/* "Available now" was the only wording this chip ever
-                          had, because it was the only status that reached it.
-                          With every status here the chip says the status and
-                          nothing more — "Leased now" would be nonsense. */}
-                      {unit.status === 'available' ? `${meta.label} now` : meta.label}
-                    </PhotoChip>
-
-                    {hasPhotos && (
-                      <PhotoChip
-                        onClick={(e) => {
-                          // Stops the card's own navigation: this goes to the
-                          // media set, not to the listing.
-                          e.stopPropagation()
-                          navigate(`${propertyHref}/info`)
-                        }}
-                        className="absolute bottom-3 right-3 outline-none transition-colors duration-200 ease-brand hover:bg-void focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                      >
-                        <Camera aria-hidden className="size-3.5 shrink-0" weight="fill" />
-                        View photos
-                        <span className="sr-only"> of {property.name}</span>
-                      </PhotoChip>
-                    )}
-                  </div>
-
-                  <div className="flex flex-1 flex-col gap-3 p-5">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        {/* A unit with no size on file now reaches this card
-                            rather than being dropped, so neither the tier nor
-                            the area is guaranteed. The heading falls back to
-                            the unit's own label — and when it does, the line
-                            below drops the label rather than printing it
-                            twice. */}
-                        <h3 className="font-display text-lg font-bold leading-tight text-content">
-                          {tierName ?? (unit.label ? `Unit ${formatUnitLabel(unit.label)}` : 'Unit')}
-                        </h3>
-                        {(area || (tierName && unit.label)) && (
-                          <p className="mt-0.5 font-body text-[13px] text-content/70">
-                            {area && <span className="numeral">{area}</span>}
-                            {area && tierName && unit.label && (
-                              <span aria-hidden className="px-1.5 text-content/40">
-                                ·
-                              </span>
-                            )}
-                            {tierName && unit.label && <span className="numeral">{formatUnitLabel(unit.label)}</span>}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Property-level, so every card in a single-property
-                          portfolio carries the same one — which is what the
-                          comp draws. It earns its place the moment a second
-                          property with a different use enters the list. */}
-                      {property.category && (
-                        <p className="flex shrink-0 items-center gap-1.5 pt-1 font-body text-[12px] text-content/70">
-                          <Buildings aria-hidden className="size-4 shrink-0 text-content/50" />
-                          {property.category}
-                        </p>
-                      )}
-                    </div>
-
-                    {property.address && (
-                      <p className="flex items-start gap-1.5 font-body text-[13px] leading-relaxed text-content/70">
-                        <MapPin aria-hidden className="mt-0.5 size-4 shrink-0 text-content/50" />
-                        {property.address}
-                      </p>
-                    )}
-
-                    <p className="line-clamp-2 font-body text-[13px] leading-relaxed text-content/65">
-                      {unit.description ||
-                        (unit.status === 'available' || unit.status === 'coming-soon'
-                          ? `Flexible space at ${property.name}, ready to move in.`
-                          : unit.tenant
-                            ? `${unit.tenant} at ${property.name}.`
-                            : `Part of ${property.name}.`)}
-                    </p>
-
-                    {chips.length > 0 && (
-                      <ul className="flex flex-wrap gap-2">
-                        {chips.map(({ Icon, text }) => (
-                          <li
-                            key={text}
-                            className="inline-flex items-center gap-1.5 rounded-full border border-content/20 px-3 py-1.5 font-body text-[12px] text-content/70"
-                          >
-                            <Icon aria-hidden className="size-3.5 shrink-0 text-content/50" />
-                            {text}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-
-                    <div className="mt-auto flex flex-col gap-3 pt-2">
-                      {/* Kept above the action rather than dropped, as the comp
-                          has it: the rate is the one field on this card that
-                          reliably differs from the card beside it, and it is
-                          what a tenant is scanning for. Guarded, because it is
-                          optional in the admin and an empty "Base price" row
-                          reads as a price of nothing. */}
-                      {/* Only while it is still an offer — see the same
-                          rule on the detail card. What a let space went for
-                          is not a price anyone can act on. */}
-                      {unit.rate && (unit.status === 'available' || unit.status === 'coming-soon') && (
-                        <p className="flex items-center gap-1.5 border-t border-content/10 pt-3 font-body text-[13px] text-content/70">
-                          <Tag aria-hidden className="size-4 shrink-0 text-content/50" />
-                          Base price
-                          <span className="numeral ml-auto font-bold text-content">{unit.rate}</span>
-                        </p>
-                      )}
-
-                      <ActionButton href={href} onClick={open} className="w-full">
-                        Explore unit
-                        <ArrowRight className="size-4 transition-transform duration-200 ease-brand group-hover:translate-x-0.5 motion-reduce:transform-none" />
-                      </ActionButton>
-                    </div>
-                  </div>
-                </article>
-              )
-            })}
+            {shown.map((row) => (
+              // The building has to be in the key. `unit.index` is the unit's
+              // position within *its own* building, so with every building in
+              // the list now, unit 6 of B-06 and unit 6 of B-07 would collide
+              // on one key.
+              <UnitCard
+                key={`${row.property.slug}-${row.building?.building}-${row.unit.index}`}
+                {...row}
+                className="snap-start"
+              />
+            ))}
           </div>
         )}
 
         {sizeFiltered.length > TEASER_COUNT && (
           <div className="mt-8 flex justify-center">
-            <ActionButton tone="ghost" href="/properties">
-              View all properties
+            {/* The unit-wise half of /properties, not the listings grid: this
+                section is units, and the visitor asking for more of it wants
+                the rest of the units rather than the developments holding
+                them. */}
+            <ActionButton tone="ghost" href="/properties?view=units">
+              View all units
               <ArrowRight className="size-4 transition-transform duration-200 ease-brand group-hover:translate-x-0.5 motion-reduce:transform-none" />
             </ActionButton>
           </div>

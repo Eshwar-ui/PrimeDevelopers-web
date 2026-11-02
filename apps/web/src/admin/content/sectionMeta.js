@@ -20,7 +20,7 @@ export const GROUPS = [
   {
     id: 'pages',
     label: 'Pages',
-    keys: ['about_page', 'contact_page', 'properties_page', 'news_page', 'academy'],
+    keys: ['about_page', 'contact_page', 'faq_page', 'properties_page', 'news_page', 'academy'],
   },
   {
     id: 'property',
@@ -61,6 +61,7 @@ export const SECTION_PATHS = {
   brochure_modal: '/',
   about_page: '/about',
   contact_page: '/contact',
+  faq_page: '/faq',
   properties_page: '/properties',
   news_page: '/news',
   academy: '/learn',

@@ -32,7 +32,14 @@ const PLAN_HEIGHT = 'h-[340px] sm:h-[420px] md:h-[500px] lg:h-[calc(100dvh-7rem)
 // routinely sparse, so the hollow case is the common one. Capped instead, the
 // panel sizes to what the unit actually has, the two columns still align along
 // the top edge, and only an unusually wordy unit ever scrolls.
-const PANEL_MAX = 'lg:h-[calc(100dvh-7rem)]'
+// A cap, not a height, despite what this used to say. `lg:h-` held the detail
+// card to the full height of the viewer beside it whatever was in it, so a
+// sparsely filled unit — a let one with no size, floor or frontage in the CMS
+// — ended in a few hundred pixels of nothing between its last line and the
+// bottom edge. As a max-height the card hugs its content, and the body still
+// scrolls with the action pinned under it the moment the content outgrows the
+// cap, which is the only thing the number was ever for.
+const PANEL_MAX = 'lg:max-h-[calc(100dvh-7rem)]'
 
 // Enough to be useful, few enough that each column stays wide enough to read.
 // Past this the table is a horizontal scroll of narrow slivers, which is worse
@@ -196,7 +203,12 @@ export default function FloorPlanSection({ building, propertyId }) {
           answer was below the fold entirely. Two columns keep the question and
           the answer in one glance. Below lg there is no room for that, so the
           panel falls back underneath, which is where it always was. */}
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(18rem,1fr)] lg:items-start">
+      {/* 2.2fr, not 3fr. The plan is still the larger half by a wide margin,
+          but at a 3:1 split the detail column came out at 366px on a 1680px
+          screen — narrow enough that the specs sat below the fold and the
+          unit's figures, which are the whole reason to click a unit, were
+          the part you had to scroll for. */}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,2.2fr)_minmax(21rem,1fr)] lg:items-start">
         <div className="relative min-w-0">
           <div className="absolute right-4 top-4 z-20 flex max-w-[calc(100%-6.5rem)] flex-nowrap justify-end gap-2 overflow-x-auto sm:right-5 sm:top-5">
             {UNIT_STATUSES.map((status) => {
@@ -294,6 +306,12 @@ export default function FloorPlanSection({ building, propertyId }) {
             units={units}
             aspect={aspectOf(primaryIndex)}
             onEnquire={enquire}
+            // Jumping between units from the card's foot, so a visitor who
+            // lands on a let one can reach a free one without hunting for it
+            // back on the plan. Non-additive, like a tap on the plan itself:
+            // this replaces what you were looking at rather than building a
+            // comparison.
+            onSelectUnit={(unit) => select(unit.index)}
             maxHeight={canShow3D ? PANEL_MAX : ''}
             detailsHref={selectedUnit && propertySlug ? unitPath(propertySlug, building?.building, selectedUnit.label) : null}
           />

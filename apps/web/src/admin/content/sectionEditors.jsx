@@ -789,6 +789,71 @@ export const SECTIONS = [
     ),
   },
   {
+    key: 'faq_page',
+    label: 'FAQ page',
+    description: 'The /faq page, under the About menu — hero, the questions themselves, and the closing band.',
+    Editor: ({ value, onChange }) => (
+      <>
+        <Section title="Hero">
+          <TextField label="Eyebrow" value={value.heroEyebrow} onChange={(heroEyebrow) => onChange({ heroEyebrow })} />
+          <TextAreaField label="Heading" rows={2} value={value.heroHeading} onChange={(heroHeading) => onChange({ heroHeading })} />
+          <p className="-mt-3 text-xs text-bone-3">{emphasisHint}</p>
+          <TextAreaField label="Paragraph" value={value.heroParagraph} onChange={(heroParagraph) => onChange({ heroParagraph })} />
+        </Section>
+        <Section
+          title="Questions"
+          description="Topic groups the page in the order the topics first appear here, so move a row to move it on the page. A question with no answer is left off the page and out of its structured data — fill both or delete the row."
+        >
+          <RepeatableList
+            items={value.items ?? []}
+            onChange={(items) => onChange({ items })}
+            makeItem={() => ({ category: '', question: '', answer: '' })}
+            addLabel="Add question"
+            renderItem={(item, set) => (
+              <div className="flex flex-col gap-3">
+                <TextField label="Topic" value={item.category} onChange={(category) => set((it) => ({ ...it, category }))} />
+                <TextAreaField label="Question" rows={2} value={item.question} onChange={(question) => set((it) => ({ ...it, question }))} />
+                <TextAreaField label="Answer" rows={5} value={item.answer} onChange={(answer) => set((it) => ({ ...it, answer }))} />
+                <p className="-mt-3 text-xs text-bone-3">
+                  Lead with the answer itself — the first sentence is what a search result or an AI assistant quotes, and it
+                  has to make sense on its own. Link to the page that covers it in full with [link text](/properties); an
+                  address starting with http opens in a new tab.
+                </p>
+              </div>
+            )}
+          />
+        </Section>
+        <Section title="Search and filter labels">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <TextField label="Search placeholder" value={value.searchPlaceholder} onChange={(searchPlaceholder) => onChange({ searchPlaceholder })} />
+            <TextField label={'"All topics" chip'} value={value.allLabel} onChange={(allLabel) => onChange({ allLabel })} />
+            <TextField label="No-results heading" value={value.emptyHeading} onChange={(emptyHeading) => onChange({ emptyHeading })} />
+            <TextField label="No-results reset link" value={value.emptyResetLabel} onChange={(emptyResetLabel) => onChange({ emptyResetLabel })} />
+          </div>
+        </Section>
+        <Section title="Closing band" description="Leave the heading blank to hide this band entirely.">
+          <TextField label="Eyebrow" value={value.closingEyebrow} onChange={(closingEyebrow) => onChange({ closingEyebrow })} />
+          <TextAreaField label="Heading" rows={2} value={value.closingHeading} onChange={(closingHeading) => onChange({ closingHeading })} />
+          <p className="-mt-3 text-xs text-bone-3">{emphasisHint}</p>
+          <TextAreaField label="Paragraph" value={value.closingParagraph} onChange={(closingParagraph) => onChange({ closingParagraph })} />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <TextField label="Primary label" value={value.ctaLabel} onChange={(ctaLabel) => onChange({ ctaLabel })} />
+            <TextField label="Primary link" value={value.ctaHref} onChange={(ctaHref) => onChange({ ctaHref })} />
+            <TextField label="Secondary label" value={value.ctaSecondaryLabel} onChange={(ctaSecondaryLabel) => onChange({ ctaSecondaryLabel })} />
+            <TextField label="Secondary link" value={value.ctaSecondaryHref} onChange={(ctaSecondaryHref) => onChange({ ctaSecondaryHref })} />
+          </div>
+        </Section>
+        <Section
+          title="Search engines"
+          description="Both optional — left blank, Google is given the hero heading and paragraph above. The questions are also published as FAQ structured data, which is what can put them straight into a search result."
+        >
+          <TextField label="Browser tab and search title" value={value.seoTitle} onChange={(seoTitle) => onChange({ seoTitle })} />
+          <TextAreaField label="Search description" value={value.seoDescription} onChange={(seoDescription) => onChange({ seoDescription })} />
+        </Section>
+      </>
+    ),
+  },
+  {
     key: 'enterprise_page',
     label: 'Enterprise page',
     description: 'The /enterprise page — hero, capabilities, record, and closing band.',

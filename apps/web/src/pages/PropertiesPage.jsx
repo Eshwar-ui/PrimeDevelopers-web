@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { flushSync } from 'react-dom'
 import { motion, AnimatePresence, useReducedMotion, useInView } from 'motion/react'
-import { useSection, useListings, useCategories } from '../context/ContentContext'
+import { useSection, useListings, useProperties, useCategories } from '../context/ContentContext'
 import { renderEmphasis } from '../lib/emphasis'
 import { sized } from '../lib/images'
 import { lenis } from '../hooks/useSmoothScroll'
@@ -11,6 +11,8 @@ import { rise, stagger, inViewOnce } from '../lib/motion'
 import PrimePill from '../components/PrimePill'
 import PropertiesHero from '../components/PropertiesHero'
 import ArrowRight from '../components/ArrowRight'
+import UnitCard from '../components/UnitCard'
+import { collectUnits } from '../lib/units'
 import { useCapListings, CapListingGrid } from '../components/CapListings'
 // import Marquee from '../components/Marquee'
 import Services from '../components/Services'
@@ -52,6 +54,22 @@ function sharedImages(properties) {
   return new Set([...seen].filter(([, count]) => count > 1).map(([src]) => src))
 }
 
+// The two ways the collection can be read. A development and the space inside
+// it are different things to be shopping for: a buyer wants the plaza, a
+// tenant wants the 1,200 sq ft next to the pharmacy. The page used to answer
+// only the first question, which left every unit in the portfolio reachable
+// solely by opening a property and scrolling to its plan.
+const VIEWS = [
+  { id: 'properties', label: 'Properties' },
+  { id: 'units', label: 'Units' },
+]
+
+// How many unit cards a click adds. The whole portfolio is several hundred
+// units — rendering them all would put a few hundred photographs on one page —
+// and three rows of four is a screenful on a desktop, which is the point at
+// which someone decides whether to keep going.
+const UNIT_PAGE = 12
+
 const IMAGE_INTERVAL = 4200
 // How far each column's first change lags the one to its left, so a row of
 // three never flips in unison — a grid changing all at once reads as the page
@@ -89,6 +107,34 @@ function RevealGroup({ className, children }) {
       variants={reduced ? undefined : stagger}
       initial={reduced ? undefined : 'hidden'}
       animate={reduced ? undefined : inView ? 'show' : 'hidden'}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
+/**
+ * One unit card's entrance. The property cards carry their own reveal; the
+ * unit card is shared with the homepage, which staggers its four with GSAP, so
+ * the lift lives out here rather than inside the card where the two pages
+ * would have to agree on it.
+ *
+ * `whileInView` for the same reason the property card uses it: twelve cards
+ * animating on mount means the twelfth finishes two screens below the fold and
+ * is simply *there* when the reader arrives. `h-full` so the card still fills
+ * its grid track through the wrapper.
+ */
+function UnitReveal({ children }) {
+  const reduced = useReducedMotion()
+  if (reduced) return <div className="h-full">{children}</div>
+
+  return (
+    <motion.div
+      className="h-full"
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={inViewOnce}
+      transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
     >
       {children}
     </motion.div>
@@ -259,8 +305,45 @@ export default function PropertiesPage() {
   const capTeaser = [...capListings.filter((l) => l.status === 'listed'), ...capListings.filter((l) => l.status !== 'listed')]
   const navigate = useNavigate()
 
+  // Every property record rather than the collapsed listings: a phase is its
+  // own record, and its units are real units a tenant can take. Collapsing
+  // them is right for the property grid — one card per development — and
+  // wrong here, where it would hide the inventory of every phase but the
+  // first.
+  const allProperties = useProperties()
+
   const [filter, setFilter] = useState('All')
+  // Which half of the collection is on screen, in the URL so a unit-wise view
+  // can be sent to someone — the homepage's unit teaser links straight into it.
+  // Replaced rather than pushed: toggling is reading the same collection two
+  // ways, and pushing would make the back button undo a glance instead of
+  // leaving the page.
+  const [params, setParams] = useSearchParams()
+  const setView = (next) => {
+    const nextParams = new URLSearchParams(params)
+    if (next === 'units') nextParams.set('view', 'units')
+    else nextParams.delete('view')
+    setParams(nextParams, { replace: true })
+  }
+
   const list = filter === 'All' ? properties : properties.filter((pr) => pr.category === filter)
+  // The category is a property of the development, so a unit inherits the one
+  // its property carries — the same pills filter both views.
+  const allUnits = useMemo(() => collectUnits(allProperties), [allProperties])
+  const units = useMemo(
+    () => (filter === 'All' ? allUnits : allUnits.filter((row) => row.property.category === filter)),
+    [allUnits, filter],
+  )
+  // No unit anywhere in the portfolio — the same call the homepage's unit
+  // panel makes. The toggle is withheld rather than offered and emptied: a
+  // "Units 0" tab is an invitation to a blank page.
+  const hasUnits = allUnits.length > 0
+  const view = hasUnits && params.get('view') === 'units' ? 'units' : 'properties'
+  const [unitsShown, setUnitsShown] = useState(UNIT_PAGE)
+  // A new filter is a new list, so the "show more" clicks spent on the old one
+  // don't carry over — otherwise switching to a category with six units would
+  // land on a page already scrolled past its own end.
+  useEffect(() => setUnitsShown(UNIT_PAGE), [filter, view])
   // Across every listing, not the filtered list: a photograph shared with a
   // listing that is filtered out is still not this one's own. Listings, not
   // records, so two phases of one development sharing photographs does not
@@ -449,46 +532,137 @@ export default function PropertiesPage() {
             )}
           </RevealGroup>
 
-          {/* Not in the Figma, which draws the grid unfiltered — kept because the
-            page already shipped with it and dropping it would quietly remove a
-            way to navigate the list. Restyled for the light ground. */}
-          {/* Not in the Figma, which draws the grid unfiltered — kept because the
-            page already shipped with it and dropping it would quietly remove a
-            way to navigate the list. Restyled for the light ground. */}
-          {categories.length > 2 && (
-            <RevealGroup className="mt-12 flex flex-wrap gap-2.5">
-              {categories.map((c) => {
-                const active = c === filter
-                return (
-                  // `variants` only — no `animate`. Clicking a pill re-renders the
-                  // row, and an explicit animate prop here would re-run the
-                  // entrance on every filter change; driven by the parent's
-                  // variant state it settles at `show` and stays there.
-                  <motion.button
-                    key={c}
-                    variants={rise}
-                    type="button"
-                    onClick={() => setFilter(c)}
-                    className={`min-h-11 rounded-full border px-5 py-2 font-body text-[13px] font-medium uppercase tracking-[0.1em] transition-colors duration-300 ${
-                      active
-                        ? 'border-accent bg-accent text-white dark:text-void'
-                        : 'border-[var(--color-line)] text-content/70 hover:border-content/35 hover:text-content'
-                    }`}
-                  >
-                    {c}
-                  </motion.button>
-                )
-              })}
+          {/* One row: what is being listed, then which use. They read as one
+            sentence — "units, retail" — and stacking them made the band look
+            like it had two unrelated filter bars. Both halves are the same
+            44px pill height so the line holds; the divider carries the
+            distinction that the stacking used to, and is dropped at the width
+            where the row wraps and the gap says it instead. */}
+          {(hasUnits || categories.length > 2) && (
+            <RevealGroup className="mt-12 flex flex-wrap items-center gap-x-4 gap-y-3">
+              {hasUnits && (
+                <motion.div
+                  variants={rise}
+                  role="group"
+                  aria-label="Browse the collection by"
+                  // Flush, not inset. A `p-1` well would make the control 8px
+                  // taller than the category pills beside it, which on one
+                  // line reads as a misalignment rather than as emphasis.
+                  className="inline-flex rounded-full border border-[var(--color-line)]"
+                >
+                  {VIEWS.map((v) => {
+                    const active = v.id === view
+                    const count = v.id === 'units' ? units.length : list.length
+                    return (
+                      <button
+                        key={v.id}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => setView(v.id)}
+                        className={`min-h-11 rounded-full px-6 font-body text-[13px] font-bold uppercase tracking-[0.1em] transition-colors duration-300 ${
+                          active
+                            ? 'bg-accent text-white dark:text-void'
+                            : 'text-content/65 hover:text-content'
+                        }`}
+                      >
+                        {v.label}
+                        <span className={`numeral ml-2 font-medium ${active ? 'opacity-75' : 'text-content/45'}`}>
+                          {count}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </motion.div>
+              )}
+
+              {hasUnits && categories.length > 2 && (
+                <motion.span
+                  variants={rise}
+                  aria-hidden
+                  className="hidden h-6 w-px bg-[var(--color-line)] sm:block"
+                />
+              )}
+
+              {/* Not in the Figma, which draws the grid unfiltered — kept
+                because the page already shipped with it and dropping it would
+                quietly remove a way to navigate the list. Restyled for the
+                light ground.
+
+                Filters both views: the category belongs to the development,
+                and a unit inherits its property's. */}
+              {categories.length > 2 &&
+                categories.map((c) => {
+                  const active = c === filter
+                  return (
+                    // `variants` only — no `animate`. Clicking a pill re-renders the
+                    // row, and an explicit animate prop here would re-run the
+                    // entrance on every filter change; driven by the parent's
+                    // variant state it settles at `show` and stays there.
+                    <motion.button
+                      key={c}
+                      variants={rise}
+                      type="button"
+                      onClick={() => setFilter(c)}
+                      className={`min-h-11 rounded-full border px-5 py-2 font-body text-[13px] font-medium uppercase tracking-[0.1em] transition-colors duration-300 ${
+                        active
+                          ? 'border-accent bg-accent text-white dark:text-void'
+                          : 'border-[var(--color-line)] text-content/70 hover:border-content/35 hover:text-content'
+                      }`}
+                    >
+                      {c}
+                    </motion.button>
+                  )
+                })}
             </RevealGroup>
           )}
 
-          <motion.div layout className="mt-12 grid grid-cols-1 gap-7 md:grid-cols-2 lg:grid-cols-3">
-            <AnimatePresence mode="popLayout">
-              {list.map((pr, i) => (
-                <Card key={pr.slug} p={pr} index={i} shared={shared} onOpen={() => openProperty(pr)} />
-              ))}
-            </AnimatePresence>
-          </motion.div>
+          {view === 'properties' ? (
+            <motion.div layout className="mt-12 grid grid-cols-1 gap-7 md:grid-cols-2 lg:grid-cols-3">
+              <AnimatePresence mode="popLayout">
+                {list.map((pr, i) => (
+                  <Card key={pr.slug} p={pr} index={i} shared={shared} onOpen={() => openProperty(pr)} />
+                ))}
+              </AnimatePresence>
+            </motion.div>
+          ) : units.length === 0 ? (
+            <p className="mt-12 font-body text-[15px] text-content/70">
+              No units are listed under {filter} yet — try another use, or browse the
+              properties themselves.
+            </p>
+          ) : (
+            <>
+              {/* A column narrower than the property grid's: a unit card is a
+                photograph, four short facts and one action, and at the
+                property card's width it runs out of content long before it
+                runs out of card. Four across the 1560px measure is the
+                23.25rem the same card is drawn at on the homepage. */}
+              <div className="mt-12 grid grid-cols-1 gap-7 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {units.slice(0, unitsShown).map((row) => (
+                  <UnitReveal
+                    // Building and unit both: `unit.index` counts within its
+                    // own building, so unit 6 of B-06 and unit 6 of B-07 would
+                    // otherwise collide on one key.
+                    key={`${row.property.slug}-${row.building?.building}-${row.unit.index}`}
+                  >
+                    <UnitCard {...row} className="h-full" />
+                  </UnitReveal>
+                ))}
+              </div>
+
+              {unitsShown < units.length && (
+                <div className="mt-12 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => setUnitsShown((n) => n + UNIT_PAGE)}
+                    className="inline-flex min-h-12 items-center gap-2.5 rounded-full border border-[var(--color-line)] px-7 font-body text-[14px] font-semibold uppercase tracking-[0.1em] text-content/75 transition-colors duration-300 hover:border-accent/60 hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-accent"
+                  >
+                    Show more units
+                    <span className="numeral text-content/50">{units.length - unitsShown} left</span>
+                  </button>
+                </div>
+              )}
+            </>
+          )}
 
           {/* ── Top CAP properties ──────────────────────────────────────────
               A teaser of the invest page's curated CAP / NNN list, not a second

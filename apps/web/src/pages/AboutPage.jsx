@@ -392,8 +392,13 @@ export default function AboutPage() {
           under a heavy scrim, not a surface, and the type over it is white in
           either theme. */}
       <section className="relative h-[64vh] min-h-[440px] overflow-hidden bg-void">
+        {/* Drifts and settles out of a slow push at once. A closing band is the
+            one place on the site where the photograph is the whole content
+            rather than a backdrop to something, so it can carry both without
+            competing with anything. The scale resolves rather than reverses —
+            scrubbed, a zoom that goes back out reads as a mistake. */}
         {p.closingImage && (
-          <Parallax speed={0.3} className="absolute inset-0 -top-[15%] h-[130%]">
+          <Parallax speed={0.3} scale={1.14} className="absolute inset-0 -top-[15%] h-[130%]">
             <img
               src={p.closingImage}
               alt="Prime Developers landmark"

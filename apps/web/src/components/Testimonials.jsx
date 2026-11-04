@@ -1,9 +1,14 @@
 import { useRef } from 'react'
-import { motion, useReducedMotion, useScroll, useTransform } from 'motion/react'
 import { Quotes, Star } from '@phosphor-icons/react'
+import gsap from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import { useGSAP } from '@gsap/react'
+import { parallax } from '../lib/parallax'
 import { useSection } from '../context/ContentContext'
 import { sized } from '../lib/images'
 import watermark from '../assets/watermark-p.svg'
+
+gsap.registerPlugin(ScrollTrigger)
 
 function Stars({ count = 5 }) {
   const filled = Math.max(0, Math.min(5, Math.round(count)))
@@ -52,22 +57,32 @@ function Avatar({ src, name }) {
 
 function ParallaxWatermark({ index }) {
   const frameRef = useRef(null)
-  const reducedMotion = useReducedMotion()
-  const { scrollYProgress } = useScroll({
-    target: frameRef,
-    offset: ['start end', 'end start'],
-  })
+  const markRef = useRef(null)
   const distance = 34 + (index % 3) * 8
-  const y = useTransform(scrollYProgress, [0, 1], [distance, -distance])
   const rotate = -13 + (index % 3) * 2
+
+  // Moved onto ScrollTrigger with the chapters. This watermark and the section
+  // it sits in used to drift on two different clocks — Motion's rAF here, the
+  // GSAP ticker there — so the mark and its own card disagreed by a frame about
+  // where the page was, which is visible precisely because they overlap.
+  useGSAP(
+    () => {
+      const layer = parallax(markRef.current, { depth: distance })
+      return () => layer?.kill()
+    },
+    { scope: frameRef, dependencies: [distance] }
+  )
 
   return (
     <span ref={frameRef} aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-      <motion.img
+      {/* The rotation is static and stays in CSS, so the scrub owns `y` alone
+          and never has to rebuild a transform it does not control. */}
+      <img
+        ref={markRef}
         src={watermark}
         alt=""
-        style={reducedMotion ? { rotate } : { y, rotate }}
-        className="absolute -bottom-24 -right-10 w-60 max-w-none opacity-[0.14] will-change-transform"
+        style={{ rotate: `${rotate}deg` }}
+        className="absolute -bottom-24 -right-10 w-60 max-w-none opacity-[0.14]"
       />
     </span>
   )
@@ -81,11 +96,40 @@ export default function Testimonials({ sectionKey = 'testimonials', id = 'testim
   // dropping the section, keeping its own eyebrow and heading. Adding real
   // ones under Content → <page> testimonials replaces the borrowed set.
   const items = ownItems?.length ? ownItems : homeItems
+  const scope = useRef(null)
+
+  // The card entrance, on the grid sections' numbers. The rail is wider than
+  // the viewport, so the cards past the right edge spend their stagger
+  // off-screen and are already resting by the time anyone scrolls to them —
+  // the sequence is only ever read on the two or three cards actually in
+  // frame, which is the same thing the grids above show.
+  //
+  // This runs on every page that mounts the section, not just the homepage.
+  // That is intended: the entrance belongs to the component, and a quote rail
+  // that animates on one route and not another is the inconsistency, not the
+  // fix for one.
+  useGSAP(
+    () => {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+      gsap.from('[data-quote-card]', {
+        y: 32,
+        opacity: 0,
+        duration: 0.7,
+        ease: 'power3.out',
+        stagger: 0.1,
+        clearProps: 'transform,opacity',
+        scrollTrigger: { trigger: scope.current, start: 'top 78%' },
+      })
+    },
+    // CMS-fed, so the tween is rebuilt once the quotes land rather than being
+    // built over an empty rail on the first pass.
+    { scope, dependencies: [items?.length ?? 0], revertOnUpdate: true }
+  )
 
   if (!items?.length) return null
 
   return (
-    <section id={id} className="bg-base px-gutter py-section text-content md:py-section-lg">
+    <section ref={scope} id={id} className="bg-base px-gutter py-section text-content md:py-section-lg">
       <div className="mx-auto max-w-[1560px]">
         <header className="mx-auto flex max-w-[1040px] flex-col items-center text-center">
           {eyebrow && (
@@ -128,6 +172,7 @@ export default function Testimonials({ sectionKey = 'testimonials', id = 'testim
           {items.map((testimonial, index) => (
             <li
               key={testimonial.name}
+              data-quote-card
               className="w-[88%] shrink-0 snap-start sm:w-[70%] md:w-[calc((100%-1.5rem)/2)] xl:w-[calc((100%-3.5rem)/3)]"
             >
               <figure className="group relative flex h-full min-h-[390px] flex-col overflow-hidden rounded-[20px] bg-[#141e22] px-8 py-9 shadow-[0_14px_40px_-28px_rgba(0,0,0,0.8)] transition-[transform,box-shadow] duration-500 ease-brand hover:-translate-y-1 hover:shadow-[0_24px_54px_-28px_rgba(0,0,0,0.95)] motion-reduce:transform-none md:px-9 md:py-10">

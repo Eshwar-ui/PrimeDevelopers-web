@@ -1,9 +1,15 @@
+import { useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import gsap from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import { useGSAP } from '@gsap/react'
 import { useSection } from '../context/ContentContext'
 import { sized } from '../lib/images'
 import { serviceImage } from '../lib/expertise'
 import watermark from '../assets/watermark-p.svg'
 import SectionIntro from './SectionIntro'
+
+gsap.registerPlugin(ScrollTrigger)
 
 /**
  * The four ways to work with Prime beyond buying or leasing a unit.
@@ -20,6 +26,32 @@ import SectionIntro from './SectionIntro'
 export default function Services() {
   const { eyebrow, heading, paragraph, items } = useSection('services_home')
   const navigate = useNavigate()
+  const scope = useRef(null)
+
+  // The same card entrance the units and properties teasers above use, on the
+  // same curve and the same stagger. Matching them is the point: three card
+  // grids on one page that each arrive differently read as three components
+  // that happen to sit together rather than as one page.
+  useGSAP(
+    () => {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+      gsap.from('[data-service-card]', {
+        y: 32,
+        opacity: 0,
+        duration: 0.7,
+        ease: 'power3.out',
+        stagger: 0.1,
+        // A `.from()` leaves its inline transform behind permanently, and an
+        // inline style always beats a utility class (DESIGN.md §9).
+        clearProps: 'transform,opacity',
+        scrollTrigger: { trigger: scope.current, start: 'top 78%' },
+      })
+    },
+    // Keyed to the card count for the reason Properties spells out: the items
+    // arrive from the CMS after mount, so a tween built on the first pass is
+    // built over nothing and never runs again.
+    { scope, dependencies: [items?.length ?? 0], revertOnUpdate: true }
+  )
 
   if (!items?.length) return null
 
@@ -33,6 +65,7 @@ export default function Services() {
     <section
       id="services"
       data-band="light"
+      ref={scope}
       className="bg-base px-gutter py-section text-content md:py-section-lg"
     >
       <div className="mx-auto max-w-[1560px]">
@@ -70,7 +103,7 @@ export default function Services() {
             // two pages now agree, and a CMS upload still overrides both.
             const image = serviceImage(item)
             return (
-              <li key={item.title}>
+              <li key={item.title} data-service-card>
                 <Tag
                   {...(item.href ? { href: item.href, onClick: go(item.href) } : {})}
                   className="group block outline-none"

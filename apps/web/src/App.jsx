@@ -139,36 +139,46 @@ function Home() {
     <div data-landing-page>
       <Hero />
       {/* The chapter's ground matches the section's darkest edge. The parallax
-          shifts the section a couple of dozen pixels inside a clipped box, so
-          whatever colour is set here is what shows at the seams. */}
-      <LandingParallaxChapter depth={28} className="bg-void">
+          shifts the section inside a clipped box, so whatever colour is set
+          here is what shows at the seams — and the seam is the only thing
+          limiting how far a chapter may travel.
+
+          Roughly doubled from the values this page launched with, which were
+          22-42px across a scroll pass of 1500-2500px. That is a differential of
+          about 3%, and the eye reads nothing below roughly 15% as depth: the
+          drift was running correctly and was simply invisible. Doubling is as
+          far as this particular effect goes without the seam becoming the thing
+          you notice. The parallax that actually reads on this page is inside
+          the frames — see the gallery mosaic, where an oversized layer can
+          travel several times further without ever showing an edge. */}
+      <LandingParallaxChapter depth={56} className="bg-void">
         <PartnerWall />
       </LandingParallaxChapter>
-      <LandingParallaxChapter depth={22}>
+      <LandingParallaxChapter depth={46}>
         <FeaturedProperty />
       </LandingParallaxChapter>
-      <LandingParallaxChapter depth={24} overflowVisible>
+      <LandingParallaxChapter depth={50} overflowVisible>
         <AvailableUnits />
       </LandingParallaxChapter>
-      <LandingParallaxChapter depth={26} overflowVisible>
+      <LandingParallaxChapter depth={54} overflowVisible>
         <Properties />
       </LandingParallaxChapter>
-      <LandingParallaxChapter depth={42}>
+      <LandingParallaxChapter depth={84}>
         <Gallery />
       </LandingParallaxChapter>
-      <LandingParallaxChapter depth={30}>
+      <LandingParallaxChapter depth={62}>
         <Services />
       </LandingParallaxChapter>
       {/* Neither of these two is in the comp either; both are kept by request
           and restyled to match. They sit after the design's own sections so the
           approved page reads end to end before the additions begin. */}
-      <LandingParallaxChapter depth={24}>
+      <LandingParallaxChapter depth={50}>
         <AcademyTeaser />
       </LandingParallaxChapter>
-      <LandingParallaxChapter depth={36}>
+      <LandingParallaxChapter depth={72}>
         <Testimonials />
       </LandingParallaxChapter>
-      <LandingParallaxChapter depth={26}>
+      <LandingParallaxChapter depth={54}>
         <LatestUpdates />
       </LandingParallaxChapter>
     </div>

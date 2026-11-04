@@ -167,10 +167,89 @@ It carries the same `*emphasis*` convention as `renderEmphasis` and takes an
 `accentClass` — the home hero passes nothing, where the flourish would fight a
 headline already in full display caps.
 
+**Split reveals** — [`useTextReveal`](apps/web/src/hooks/useTextReveal.js), built on
+GSAP SplitText. Opt in with an attribute; the hook scans its scope:
+
+| Attribute | Motion | For |
+|---|---|---|
+| `data-text-reveal` | masked word rise, 0.9s, 52ms stagger | headings |
+| `data-text-reveal="lines"` | masked line rise, 0.95s, 80ms stagger | body copy, ledes |
+| `data-text-reveal="chars"` | character cascade, 0.7s, 18ms stagger | short display type only |
+| `data-scramble` | digit decode, 1.1s | a figure in `.numeral` |
+
+`data-text-reveal-delay` offsets one element against another. `SectionIntro`
+carries the first two already, so the five home sections get them for free.
+
+This is **JS where the hero's is CSS**, and the distinction is the point. The
+hero cannot take the bet — it is the first paint, and a headline that fails to
+appear is the page failing. Below the fold the bet is already taken sixteen
+times over by ScrollTrigger. The hiding also happens inside `onSplit` rather
+than in a stylesheet, so if the bundle never loads or GSAP throws, nothing was
+hidden: the failure mode is *no animation*, never *no words*.
+
+`chars` is for two or three words at display size. On a sentence it is noise.
+`data-scramble` and `CountUp` must never share a stat block — one says the
+quantity is accumulating, the other says the figure is fixed.
+
+GSAP tweens use the registered `'brand'` ease (`CustomEase`), which is
+`--ease-brand` to the control point. Prefer it over `power3.out`, which is
+close to the token and not equal to it.
+
 **Block stagger** — the `rise` / `stagger` variant pair (`y: 26 → 0`, 0.85s,
 `staggerChildren: 0.09`, `delayChildren: 0.15`). A heading inside a stagger
 container must **not** be a motion child: a block-level lift would move each mask
 along with the word inside it, leaving nothing to rise out of.
+
+**Parallax** — [`lib/parallax.js`](apps/web/src/lib/parallax.js), with
+[`useParallax`](apps/web/src/hooks/useParallax.js) for the attribute form and
+[`Parallax`](apps/web/src/components/Parallax.jsx) for the wrapper form:
+
+| Attribute | Movement |
+|---|---|
+| `data-parallax="-0.3"` | drift, as a fraction of the element's own height |
+| `data-parallax-depth="28"` | drift, in pixels — for a tuned seam, not a layer |
+| `data-parallax-scale="1.12"` | settles from this scale to rest |
+
+Positive drifts up, against the scroll, which reads as nearer.
+
+**All parallax must go through this module.** It keeps a registry of live
+targets and zeroes them on ScrollTrigger's `refreshInit`. Without that, any
+trigger *inside* a drifting layer is measured while that layer is displaced —
+every card stagger and heading reveal on the homepage sits inside one — so the
+start points are wrong by up to the layer's full travel, and wrong by a
+different amount depending on where the reader was when the refresh fired. A
+layer moved by any other engine puts the bug straight back, because nothing
+here knows to zero it.
+
+`scrub: true`, never a spring. Lenis already lerps the scroll at 0.1 and
+ScrollTrigger reads that smoothed value; a spring on top is a second pass over
+an already-smoothed signal, which is what made the Motion-driven version feel
+like it trailed the page. Motion's `useScroll` is also a second rAF — layers on
+two clocks are a frame apart and visibly disagree. (The reading-progress bar in
+`NewsPostPage` keeps its spring: it is an indicator, not a depth layer.)
+
+`will-change` is toggled per layer by `onToggle`, not set in markup. It was
+pinned to nine full-page sections for the document's lifetime, which is nine
+compositor layers held to animate whichever one is on screen.
+
+**Tuning.** Travel has to reach roughly 15% of the moving element's height
+before it reads as depth at all. The page shipped at 22-42px over scroll passes
+of 1500-2500px — about 3% — which is why the parallax appeared to be missing
+entirely when it was in fact running correctly the whole time. Measure travel,
+do not eyeball it: the current gallery tiles move 68-193px, or 23-44% of their
+frames.
+
+A chapter's travel is capped by its seam — the drift uncovers the chapter's own
+ground at the edge of the clipped box, so past about double the current values
+the seam becomes the thing you notice. An in-frame layer has no such cap: its
+ceiling is the overscan. At `h-[150%]` with `-top-[25%]` there is 25% of
+headroom per edge, and a drift `d` moves the layer `d x 75%` of the frame, so
+`d <= 0.33` never exposes an edge. Raise the overscan before raising the drift
+past that.
+
+Drift a photograph inside its frame, not the frame. The gallery mosaic is three
+columns built to end level with each other, and moving the columns pulls the
+one thing the composition holds.
 
 **Page transition** — `AnimatePresence mode="wait"` in `App.jsx`, keyed on
 pathname. 0.3s out on `ease-exit`, 0.5s in on `ease-brand`. `mode="wait"` is

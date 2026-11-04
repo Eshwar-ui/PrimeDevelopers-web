@@ -1,9 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import gsap from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import { useGSAP } from '@gsap/react'
 import { useSection, useNews } from '../context/ContentContext'
 import SectionIntro from './SectionIntro'
 import SocialIcon from './SocialIcon'
 import { platformMeta } from '../lib/platforms'
+
+gsap.registerPlugin(ScrollTrigger)
 
 // One horizontal stream keeps the homepage composed while still surfacing six
 // updates. Responsive card widths leave the next item within reach instead of
@@ -65,6 +70,7 @@ export default function LatestUpdates() {
   const { socials: contactSocials = [] } = useSection('contact_page')
   const posts = useNews()
   const railRef = useRef(null)
+  const scope = useRef(null)
   const [railPosition, setRailPosition] = useState({ atStart: true, atEnd: false })
 
   // Blog posts and curated updates normalised to one shape before they are
@@ -148,12 +154,35 @@ export default function LatestUpdates() {
     rail.scrollBy({ left: direction * (card.getBoundingClientRect().width + gap), behavior: 'smooth' })
   }
 
+  // The card entrance the rest of the page uses. Triggered off the section
+  // rather than the rail so the sequence starts as the heading arrives, not
+  // once the cards themselves have cleared the fold — by then the rail is far
+  // enough up the screen that the stagger plays behind the reader.
+  useGSAP(
+    () => {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+      gsap.from('[data-update-card]', {
+        y: 32,
+        opacity: 0,
+        duration: 0.7,
+        ease: 'power3.out',
+        stagger: 0.1,
+        clearProps: 'transform,opacity',
+        scrollTrigger: { trigger: scope.current, start: 'top 78%' },
+      })
+    },
+    // The stream is assembled from CMS news and curated social rows, both of
+    // which land after mount.
+    { scope, dependencies: [stream.length], revertOnUpdate: true }
+  )
+
   if (stream.length === 0 && follow.length === 0) return null
 
   return (
     <section
       id="news"
       data-band="light"
+      ref={scope}
       className="bg-base px-gutter py-section text-content md:py-section-lg"
     >
       <div className="mx-auto max-w-[1560px]">
@@ -221,6 +250,7 @@ export default function LatestUpdates() {
               return (
                 <li
                   key={u.key}
+                  data-update-card
                   className="w-[86%] shrink-0 snap-start sm:w-[66%] md:w-[calc((100%-1.5rem)/2)] lg:w-[calc((100%-3rem)/3)]"
                 >
                   <Wrapper

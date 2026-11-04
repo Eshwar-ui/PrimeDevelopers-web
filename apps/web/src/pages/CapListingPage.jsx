@@ -1,10 +1,11 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { useProperty } from '../context/ContentContext'
 import { sized } from '../lib/images'
 import { capFigures, capStatus, formatSf, unitLine } from '../lib/capListings'
 import { getBuildings, getUnitImages, getUnits } from '../lib/units'
 import PrimePill from '../components/PrimePill'
+import { useTextReveal } from '../hooks/useTextReveal'
 import { CapListingGrid, CapStatusBadge, TenantLogo, useCapListings, useCapListingsSection } from '../components/CapListings'
 import { CapContactBand } from './CapListingsPage'
 
@@ -51,6 +52,14 @@ export default function CapListingPage() {
     const same = others.filter((l) => l.address === listing.address)
     return [...same, ...others.filter((l) => l.address !== listing.address)].slice(0, 3)
   }, [listings, listing])
+
+  // Above the early return, because everything below it is unreachable on a
+  // slug the CMS does not know and a hook skipped on one render and run on the
+  // next is a hook order violation. Keyed to the slug so switching between two
+  // deals scrambles the second one's figures rather than leaving the first
+  // one's reveal in place over new numbers.
+  const figuresScope = useRef(null)
+  useTextReveal(figuresScope, [listing?.slug])
 
   // An unknown or unpublished slug goes back to the list, not to a 404: these
   // links get forwarded, and a deal that was taken down should still land the
@@ -119,11 +128,32 @@ export default function CapListingPage() {
                 /* Wrapping tiles rather than a fixed grid: six figures fill two
                    rows of three, and a deal with fewer stretches its last row
                    instead of leaving an empty cell. */
-                <dl className="mt-8 flex flex-wrap gap-px overflow-hidden rounded-2xl border border-bone/15 bg-bone/15">
+                <dl
+                  ref={figuresScope}
+                  className="mt-8 flex flex-wrap gap-px overflow-hidden rounded-2xl border border-bone/15 bg-bone/15"
+                >
                   {figures.map(({ key, label, value }) => (
                     <div key={key} className="min-w-[9.5rem] flex-1 basis-[45%] bg-void px-5 py-6 md:basis-[30%]">
                       <dt className="font-body text-[11px] font-bold uppercase tracking-[0.16em] text-bone/60">{label}</dt>
-                      <dd className="numeral mt-2 font-display font-bold text-bone [font-size:clamp(1.4rem,2vw,1.9rem)]">{value}</dd>
+                      {/* Scrambled rather than counted. These are terms of a
+                          deal — a cap rate, a lease length, a price — and a
+                          figure that climbs from zero implies an accumulation
+                          that is not happening. CountUp belongs on the two
+                          portfolio bands, where the quantity really is growing;
+                          here the number is a fact that should land resolved. */}
+                      <dd
+                        // Remounted per value, for the reason SectionIntro
+                        // spells out: the scramble replaces this node's
+                        // children, so React must be made to rebuild it rather
+                        // than update text nodes that are no longer here.
+                        // Without it, following a "more deals" link leaves the
+                        // previous deal's figures on screen.
+                        key={value}
+                        data-scramble
+                        className="numeral mt-2 font-display font-bold text-bone [font-size:clamp(1.4rem,2vw,1.9rem)]"
+                      >
+                        {value}
+                      </dd>
                     </div>
                   ))}
                 </dl>

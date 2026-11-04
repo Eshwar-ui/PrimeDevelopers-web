@@ -708,6 +708,33 @@ html {
   animation: word-rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* ── Split text reveals (lib/textReveal.js) ─────────────────────
+   SplitText builds the pieces and GSAP animates them; the only thing CSS owns
+   here is the shape of the clipping box, because that is a type problem rather
+   than a motion one.
+
+   The mask wrapper is `overflow: clip` cut to the line box, which lands exactly
+   on the descender of a g or a y and shaves the underside of the cap line
+   besides. The pad/pull pair grows the clip in both directions and takes the
+   growth back off the layout, so nothing moves and nothing is sliced — the same
+   trick MaskedHeading does inline on the hero.
+
+   Class names come from SplitText, which suffixes `-mask` onto whatever class
+   it put on the piece itself. */
+.pd-word-mask,
+.pd-line-mask {
+  padding-bottom: 0.1em;
+  margin-bottom: -0.1em;
+}
+
+/* A masked line is clipped on the sides as well as top and bottom, which cuts
+   an italic's overhang off the end of a line. Only the vertical clip is doing
+   any work, so the horizontal one is given room to spare. */
+.pd-line-mask {
+  padding-right: 0.08em;
+  margin-right: -0.08em;
+}
+
 /* Uncovers top-to-bottom, against the copy rising on the other side. */
 @keyframes panel-wipe {
   from {
@@ -826,6 +853,16 @@ html.property-route-transition::view-transition-new(*) {
   .word-rise,
   .panel-wipe {
     animation: none;
+  }
+  /* useTextReveal bails before splitting, so these elements normally do not
+     exist under reduced motion. If a preference flips mid-session and a split
+     is already on the page, this guarantees the type is readable rather than
+     parked outside its own mask. */
+  .pd-word,
+  .pd-line,
+  .pd-char {
+    transform: none !important;
+    opacity: 1 !important;
   }
   /* Swap the palette outright rather than wiping a circle across the screen. */
   ::view-transition-new(root) {

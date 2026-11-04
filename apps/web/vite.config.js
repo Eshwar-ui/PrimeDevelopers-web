@@ -46,7 +46,16 @@ function selfHostedDraco() {
 const VENDOR = /[\\/]node_modules[\\/](react|react-dom|scheduler|react-router|react-router-dom|motion|motion-dom|motion-utils|framer-motion)[\\/]/
 const SHARED = /[\\/]src[\\/](context[\\/]|lib[\\/](api|images|covers|units|featured|expertise|emphasis)\.|components[\\/]ActionButton\.)/
 
+// Rolldown already split gsap's core out on its own; this only makes sure the
+// plugins land beside it. Left alone they were pulled into the entry chunk —
+// 26 kB of library that never changes, sitting in the one file every app-code
+// deploy invalidates, so a visitor re-downloaded SplitText because a heading's
+// copy was edited. Same first-load bytes either way; the difference is whether
+// they survive the next release.
+const GSAP = /[\/]node_modules[\/](gsap|@gsap[\/]react)[\/]/
+
 function manualChunks(id) {
+  if (GSAP.test(id)) return 'gsap'
   if (VENDOR.test(id)) return 'vendor'
   if (SHARED.test(id)) return 'shared'
   return undefined

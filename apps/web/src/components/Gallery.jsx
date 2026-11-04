@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { useSection, useListings } from '../context/ContentContext'
@@ -6,6 +6,7 @@ import { renderEmphasis } from '../lib/emphasis'
 import { sized, srcSetFor } from '../lib/images'
 import ArrowRight from './ArrowRight'
 import { coverImage } from '../lib/covers'
+import { useParallax } from '../hooks/useParallax'
 
 // Four frames in the mosaic — one under the copy, two stacked in the middle,
 // one down the right. A fifth has nowhere to go without breaking the column
@@ -139,7 +140,18 @@ export default function Gallery() {
   const navigate = useNavigate()
 
   const tiles = properties.filter((p) => coverImage(p, 'mosaic')).slice(0, TILES)
+
+  // Above the early return — a hook skipped on the render where the CMS has
+  // sent nothing yet and run on the render after is a hook order violation,
+  // and this section genuinely starts empty. Keyed to the tile count for the
+  // reason Properties and Services key their card tweens: the photographs
+  // arrive after mount, so layers built on the first pass are built over
+  // nothing and never run again.
+  const scope = useRef(null)
+  useParallax(scope, [tiles.length])
+
   if (tiles.length === 0) return null
+
 
   const go = (to) => (e) => {
     e.preventDefault()
@@ -149,26 +161,52 @@ export default function Gallery() {
   // One frame. `flex-1` inside its column, with a floor for the phone layout
   // where the columns have unstacked and there is no shared height left to
   // divide — `flex-1` of nothing is nothing, and the photographs would vanish.
-  const Tile = ({ p }) =>
+  const Tile = ({ p, drift = 0.12 }) =>
     p ? (
       <a
         href={`/properties/${p.slug}`}
         onClick={go(`/properties/${p.slug}`)}
         className="group relative block min-h-56 flex-1 overflow-hidden rounded-panel bg-surface-alt outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent md:min-h-0"
       >
-        <img
-          src={sized(coverImage(p, 'mosaic'), 'card')}
-          // Empty on purpose: the caption below names the link (it is only
-          // hidden visually until hover), so the photograph is decoration.
-          alt=""
-          // The mosaic counterpart, which is `md:` and up: two columns inside
-          // the content measure, so roughly half the viewport apiece.
-          srcSet={srcSetFor(coverImage(p, 'mosaic'), 'card')}
-          sizes="(min-width: 768px) 50vw, 100vw"
-          loading="lazy"
-          decoding="async"
-          className="absolute inset-0 size-full object-cover transition-transform duration-700 ease-brand group-hover:scale-[1.06]"
-        />
+        {/* The photograph drifts inside its frame; the frame does not move.
+            The composition above is three columns of different contents built
+            to end level with each other, and drifting the columns themselves
+            would pull the one thing it is constructed to hold. Depth has to
+            come from behind the frame edge instead — which is the better read
+            anyway: the mosaic becomes four windows onto something moving
+            rather than four pictures sliding about.
+
+            The overscan sets the ceiling on how far this can travel, and it is
+            the only thing that does. The layer is 150% of the frame and pulled
+            up 25%, leaving 25% of headroom at each edge; a drift of d moves it
+            d x 75% of the frame height, so anything up to 0.33 stays inside
+            the frame and never shows its own ground. The drifts below sit under
+            that with room to spare.
+
+            It was 118% and a 0.07-0.14 drift, which worked out to about 50px of
+            travel across a 1400px scroll pass — a 3% differential, well under
+            what the eye reads as depth at all. The effect was running the whole
+            time and was simply too small to see. */}
+        <span aria-hidden data-parallax={drift} className="absolute inset-x-0 -top-[25%] block h-[150%]">
+          <img
+            src={sized(coverImage(p, 'mosaic'), 'card')}
+            // Empty on purpose: the caption below names the link (it is only
+            // hidden visually until hover), so the photograph is decoration.
+            alt=""
+            // The mosaic counterpart, which is `md:` and up: two columns inside
+            // the content measure, so roughly half the viewport apiece.
+            srcSet={srcSetFor(coverImage(p, 'mosaic'), 'card')}
+            sizes="(min-width: 768px) 50vw, 100vw"
+            loading="lazy"
+            decoding="async"
+            // The hover scale stays on the image and the drift sits on the
+            // wrapper above it. Both on one element and they fight: GSAP writes
+            // an inline transform, and an inline transform beats the utility
+            // class outright, so the photograph would stop responding to hover
+            // the moment it first scrolled.
+            className="size-full object-cover transition-transform duration-700 ease-brand group-hover:scale-[1.06]"
+          />
+        </span>
         {/* The name arrives on hover or focus only. At rest the mosaic is
             photographs; a permanent caption on all four turns it back into a
             list of cards. */}
@@ -181,6 +219,7 @@ export default function Gallery() {
   return (
     <section
       id="gallery"
+      ref={scope}
       data-band="light"
       className="bg-base px-gutter py-section text-content md:py-section-lg"
     >
@@ -213,18 +252,21 @@ export default function Gallery() {
               </p>
             )}
           </div>
-          <Tile p={tiles[0]} />
+          <Tile p={tiles[0]} drift={0.22} />
         </div>
 
         {/* ── column two — two frames, evenly split ──────────────── */}
         <div className="flex flex-col gap-4">
-          <Tile p={tiles[1]} />
-          <Tile p={tiles[2]} />
+          {/* Four speeds rather than one. Moving together they read as a
+              single sheet behind four holes; a little apart, each frame reads
+              as its own window at its own distance. */}
+          <Tile p={tiles[1]} drift={0.3} />
+          <Tile p={tiles[2]} drift={0.15} />
         </div>
 
         {/* ── column three — one frame, and the way out ──────────── */}
         <div className="flex flex-col gap-4">
-          <Tile p={tiles[3]} />
+          <Tile p={tiles[3]} drift={0.26} />
           {/* Full column width and a real slab of height, as drawn. This is the
               section's only action and the last thing in its reading order, so
               it is sized to be what you land on rather than a link tucked under

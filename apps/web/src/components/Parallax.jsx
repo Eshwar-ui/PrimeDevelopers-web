@@ -1,36 +1,28 @@
 import { useRef } from 'react'
-import gsap from 'gsap'
-import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
-
-gsap.registerPlugin(ScrollTrigger)
+import { parallax } from '../lib/parallax'
 
 /**
  * Scroll-scrubbed parallax wrapper.
+ *
  * `speed` is the fraction of the element's height it travels across the full
  * scroll pass: positive = drifts up (foreground), negative = drifts down (bg).
+ *
+ * The movement itself now lives in `lib/parallax`, shared with the attribute
+ * API and with the landing chapters. One module has to own every parallax
+ * target on the page so they can all be zeroed before ScrollTrigger measures —
+ * the reason is written out there, and it is the whole reason this component
+ * stopped holding its own tween.
  */
-export default function Parallax({ speed = 0.2, as: Tag = 'div', className = '', children }) {
+export default function Parallax({ speed = 0.2, scale = 0, as: Tag = 'div', className = '', children }) {
   const ref = useRef(null)
 
   useGSAP(
     () => {
-      gsap.fromTo(
-        ref.current,
-        { yPercent: speed * 50 },
-        {
-          yPercent: -speed * 50,
-          ease: 'none',
-          scrollTrigger: {
-            trigger: ref.current,
-            start: 'top bottom',
-            end: 'bottom top',
-            scrub: true,
-          },
-        }
-      )
+      const layer = parallax(ref.current, { speed, scale })
+      return () => layer?.kill()
     },
-    { scope: ref }
+    { scope: ref, dependencies: [speed, scale] }
   )
 
   return (

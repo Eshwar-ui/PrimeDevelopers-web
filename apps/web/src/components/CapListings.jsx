@@ -1,10 +1,12 @@
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
+import { useGSAP } from '@gsap/react'
 import { useSection } from '../context/ContentContext'
 import { sized } from '../lib/images'
 import { capStatus, formatSf, unitLine } from '../lib/capListings'
 import { CAP_LISTINGS_DEFAULTS } from '../data/capListings'
 import ArrowRight from './ArrowRight'
+import { revealGroup } from '../lib/reveal'
 
 /**
  * The `cap_listings` section, merged over the shipped set.
@@ -125,9 +127,38 @@ export function CapListingCard({ listing }) {
 
 export function CapListingGrid({ items, limit, emptyState = null, className = '' }) {
   const shown = limit ? items.slice(0, limit) : items
+  const gridRef = useRef(null)
+
+  /* The cards deal in one after the other rather than arriving as a block.
+
+     A slower step and a longer travel than the partner wall's, because these
+     are read rather than scanned: each card carries a photograph, a tenant, an
+     address and two figures, and a sweep tight enough to suit a grid of logos
+     reads as a flicker across a grid of cards. `revealGroup` caps the wave
+     either way, so the seventeen-listing page does not spend two seconds
+     dealing after the last card is already on screen.
+
+     On the grid rather than on the card, so all four callers get it from one
+     place — this is the cap grid on the listings index, on a listing’s "more
+     like this", on the invest page and on the properties teaser. A reveal
+     written into the card would have been four sequences with no way to agree
+     on an order.
+
+     Depends on what is actually shown: these pages filter and slice, so the
+     children change without the component remounting. `revertOnUpdate` reverts
+     the previous tween before building the next, rather than leaving two
+     tweens fighting over one card. */
+  useGSAP(
+    () => {
+      const group = revealGroup(gridRef.current, { step: 0.09, y: 34, duration: 0.9 })
+      return () => group?.kill()
+    },
+    { scope: gridRef, dependencies: [shown.length], revertOnUpdate: true }
+  )
+
   if (shown.length === 0) return emptyState
   return (
-    <div className={`grid gap-6 sm:grid-cols-2 lg:grid-cols-3 ${className}`}>
+    <div ref={gridRef} className={`grid gap-6 sm:grid-cols-2 lg:grid-cols-3 ${className}`}>
       {shown.map((listing) => (
         <CapListingCard key={listing.id ?? listing.slug} listing={listing} />
       ))}

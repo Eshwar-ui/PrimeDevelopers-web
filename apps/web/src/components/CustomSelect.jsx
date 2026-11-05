@@ -91,11 +91,24 @@ export default function CustomSelect({
     setOpen(true)
   }
 
-  const focusOption = (index) => {
-    setActiveIndex((index + options.length) % options.length)
+  // Walks past options that can't be chosen rather than landing on them. A
+  // facet with no rows behind it is rendered rather than dropped — "Office
+  // (0)" is the answer to a question the visitor was about to ask — but
+  // arrowing onto one and pressing Enter would do nothing and read as a
+  // broken menu.
+  const focusOption = (index, step = 1) => {
+    const n = options.length
+    for (let i = 0; i < n; i += 1) {
+      const at = (((index + i * step) % n) + n) % n
+      if (!options[at]?.disabled) {
+        setActiveIndex(at)
+        return
+      }
+    }
   }
 
   const selectOption = (option) => {
+    if (option.disabled) return
     if (!controlled) setInternalValue(option.value)
     onChange?.(option.value)
     setOpen(false)
@@ -118,13 +131,13 @@ export default function CustomSelect({
       focusOption(index + 1)
     } else if (event.key === 'ArrowUp') {
       event.preventDefault()
-      focusOption(index - 1)
+      focusOption(index - 1, -1)
     } else if (event.key === 'Home') {
       event.preventDefault()
       focusOption(0)
     } else if (event.key === 'End') {
       event.preventDefault()
-      focusOption(options.length - 1)
+      focusOption(options.length - 1, -1)
     } else if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault()
       selectOption(options[index])
@@ -199,12 +212,17 @@ export default function CustomSelect({
                 type="button"
                 role="option"
                 aria-selected={selected}
+                aria-disabled={option.disabled || undefined}
                 tabIndex={index === activeIndex ? 0 : -1}
                 onClick={() => selectOption(option)}
                 onKeyDown={(event) => handleOptionKeyDown(event, index)}
                 className={
                   'flex min-h-10 w-full items-center justify-between gap-3 rounded-[9px] px-3 py-2 text-left font-body text-[14px] font-medium outline-none transition-colors ' +
-                  (selected ? 'bg-accent text-white dark:text-void' : styles.option)
+                  (selected
+                    ? 'bg-accent text-white dark:text-void'
+                    : option.disabled
+                      ? 'cursor-not-allowed opacity-40'
+                      : styles.option)
                 }
               >
                 <span>{option.label}</span>

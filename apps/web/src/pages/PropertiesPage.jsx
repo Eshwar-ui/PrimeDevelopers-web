@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { flushSync } from 'react-dom'
 import { motion, AnimatePresence, useReducedMotion, useInView } from 'motion/react'
@@ -12,7 +12,26 @@ import PrimePill from '../components/PrimePill'
 import PropertiesHero from '../components/PropertiesHero'
 import ArrowRight from '../components/ArrowRight'
 import UnitCard from '../components/UnitCard'
+import CollectionFilters from '../components/CollectionFilters'
 import { collectUnits } from '../lib/units'
+import { SIZE_TIERS } from '../lib/unitTiers'
+import { phaseOf } from '../lib/phases'
+import {
+  EMPTY_FILTERS,
+  activeCount as countActive,
+  countBy,
+  filterProperties,
+  filterUnits,
+  propertyFields,
+  readFilters,
+  tenantText,
+  searchRows,
+  sortProperties,
+  sortUnits,
+  statusOptions,
+  unitFields,
+  writeFilters,
+} from '../lib/collectionSearch'
 import { useCapListings, CapListingGrid } from '../components/CapListings'
 // import Marquee from '../components/Marquee'
 import Services from '../components/Services'
@@ -138,6 +157,60 @@ function UnitReveal({ children }) {
     >
       {children}
     </motion.div>
+  )
+}
+
+/**
+ * What the grid becomes when nothing survives the controls.
+ *
+ * It does three things a bare sentence can't. It repeats what was actually
+ * typed, so a mis-keyed search is visible rather than mysterious. It checks
+ * the *other* half of the collection and offers it, because "centro" finding
+ * no properties while matching twenty-two units is the single most likely way
+ * to land here — the reader asked a good question in the wrong tab. And it
+ * clears, which is the only other way out.
+ */
+function NoResults({ view, filters, otherCount, hasUnits, onView, onClear }) {
+  const query = filters.q.trim()
+  const other = view === 'units' ? 'properties' : 'units'
+
+  return (
+    <div className="mt-6 rounded-panel border border-[var(--color-line)] bg-surface px-6 py-14 text-center">
+      <p className="font-display text-[1.35rem] font-bold leading-tight text-content">
+        {query ? (
+          <>
+            Nothing in the collection matches <span className="text-accent">“{query}”</span>
+          </>
+        ) : (
+          'Nothing matches those filters'
+        )}
+      </p>
+      <p className="mx-auto mt-3 max-w-[44ch] font-body text-[15px] leading-relaxed text-content/65">
+        {query
+          ? 'Try a tenant, a town, a unit number or a size — or widen the filters beside the search.'
+          : 'The filters above have narrowed this to nothing. Widen one, or clear them and start again.'}
+      </p>
+
+      <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+        {hasUnits && otherCount > 0 && (
+          <button
+            type="button"
+            onClick={() => onView(other)}
+            className="inline-flex min-h-12 items-center gap-2.5 rounded-full bg-accent px-7 font-body text-[14px] font-semibold uppercase tracking-[0.1em] text-white transition-opacity duration-300 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-accent dark:text-void"
+          >
+            {otherCount} matching {otherCount === 1 ? other.slice(0, -1) : other}
+            <ArrowRight className="size-4" />
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onClear}
+          className="inline-flex min-h-12 items-center rounded-full border border-[var(--color-line)] px-7 font-body text-[14px] font-semibold uppercase tracking-[0.1em] text-content/75 transition-colors duration-300 hover:border-accent/60 hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-accent"
+        >
+          Clear filters
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -312,38 +385,157 @@ export default function PropertiesPage() {
   // first.
   const allProperties = useProperties()
 
-  const [filter, setFilter] = useState('All')
-  // Which half of the collection is on screen, in the URL so a unit-wise view
-  // can be sent to someone — the homepage's unit teaser links straight into it.
-  // Replaced rather than pushed: toggling is reading the same collection two
-  // ways, and pushing would make the back button undo a glance instead of
-  // leaving the page.
+  // Which half of the collection is on screen, and how it is narrowed — all
+  // of it in the URL so a filtered view can be sent to someone. That is the
+  // point of the controls: "every available unit over 2,000 sq ft at POW
+  // Leander" is a link a leasing agent pastes into an email, not a sequence
+  // of clicks they have to describe.
+  //
+  // Held in React state and written back on a short delay rather than driven
+  // from the URL directly. Every keystroke in the search field would otherwise
+  // be a router update, and the input would render a frame behind the typing.
+  // Replaced rather than pushed, for the reason the view toggle always was:
+  // narrowing a list is reading one page, and pushing would turn the back
+  // button into an undo for every character typed.
   const [params, setParams] = useSearchParams()
-  const setView = (next) => {
-    const nextParams = new URLSearchParams(params)
-    if (next === 'units') nextParams.set('view', 'units')
-    else nextParams.delete('view')
-    setParams(nextParams, { replace: true })
-  }
+  // Read once, on mount. The URL is where a filtered view is *published*, not
+  // where it is kept: after mount this state is the source and the URL follows
+  // it, so re-reading would fight the debounce below.
+  const [filters, setFilters] = useState(() => readFilters(params))
+  const [viewState, setViewState] = useState(() =>
+    params.get('view') === 'units' ? 'units' : 'properties',
+  )
 
-  const list = filter === 'All' ? properties : properties.filter((pr) => pr.category === filter)
   // The category is a property of the development, so a unit inherits the one
   // its property carries — the same pills filter both views.
   const allUnits = useMemo(() => collectUnits(allProperties), [allProperties])
-  const units = useMemo(
-    () => (filter === 'All' ? allUnits : allUnits.filter((row) => row.property.category === filter)),
-    [allUnits, filter],
-  )
   // No unit anywhere in the portfolio — the same call the homepage's unit
   // panel makes. The toggle is withheld rather than offered and emptied: a
   // "Units 0" tab is an invitation to a blank page.
   const hasUnits = allUnits.length > 0
-  const view = hasUnits && params.get('view') === 'units' ? 'units' : 'properties'
+  const view = hasUnits && viewState === 'units' ? 'units' : 'properties'
+
+  const paramsRef = useRef(params)
+  paramsRef.current = params
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      const next = writeFilters(paramsRef.current, filters)
+      if (view === 'units') next.set('view', 'units')
+      else next.delete('view')
+      if (next.toString() !== paramsRef.current.toString()) setParams(next, { replace: true })
+    }, 220)
+    return () => window.clearTimeout(id)
+  }, [filters, view, setParams])
+
+  // What the grid is filtered by, which lags what the field shows by at most
+  // a frame. The search field has to stay at the speed of typing; the grid
+  // below it is a few dozen photographs and can arrive a beat later without
+  // anyone noticing. React drops intermediate values on its own, so a fast
+  // typist never renders a grid for a half-typed word.
+  const applied = useDeferredValue(filters)
+
+  /* The pipeline, run for both halves of the collection whether or not the
+     reader is looking at them: the view toggle carries each one's count, and a
+     search that finds nothing under Properties but eleven units should say so
+     on the tab rather than leaving the reader to go and look. Five listings
+     and a few hundred units is nothing to score twice. */
+  /* A phased development is one card and several records, and the card is the
+     first phase — which carries only that phase's units. Looking the tenants
+     up per development rather than per record is what keeps a shop in Phase II
+     findable from the card that represents it. Keyed by the phase base, with
+     an unphased property keyed by its own slug, which is its own group of
+     one. */
+  const tenantsFor = useMemo(() => {
+    const phaseFor = phaseOf(allProperties)
+    const byBase = new Map()
+    for (const record of allProperties) {
+      const key = phaseFor(record)?.base ?? record.slug
+      byBase.set(key, `${byBase.get(key) ?? ''} ${tenantText(record)}`)
+    }
+    return (listing) => byBase.get(phaseFor(listing)?.base ?? listing.slug) ?? ''
+  }, [allProperties])
+
+  const propertyHits = useMemo(
+    () => searchRows(properties, applied.q, (row) => propertyFields(row, tenantsFor(row))),
+    [properties, applied.q, tenantsFor],
+  )
+  const unitHits = useMemo(() => searchRows(allUnits, applied.q, unitFields), [allUnits, applied.q])
+  const propertyRanks = useMemo(() => new Map(propertyHits.map((h) => [h.row, h.rank])), [propertyHits])
+  const unitRanks = useMemo(() => new Map(unitHits.map((h) => [h.row, h.rank])), [unitHits])
+  const propertyFound = useMemo(() => propertyHits.map((h) => h.row), [propertyHits])
+  const unitFound = useMemo(() => unitHits.map((h) => h.row), [unitHits])
+
+  // An unset sort means each view's own default — the admin's order for
+  // properties, availability-then-size for units — unless something was
+  // typed, where the only order that makes sense is how well each row answers
+  // it.
+  const sort = applied.sort || (applied.q.trim() ? 'relevance' : '')
+
+  const list = useMemo(() => {
+    const rows = filterProperties(propertyFound, applied)
+    return sortProperties(
+      rows.map((row) => ({ row, rank: propertyRanks.get(row) ?? 0 })),
+      sort,
+    ).map((entry) => entry.row)
+  }, [propertyFound, propertyRanks, applied, sort])
+
+  const units = useMemo(() => {
+    const rows = filterUnits(unitFound, applied)
+    return sortUnits(
+      rows.map((row) => ({ row, rank: unitRanks.get(row) ?? 0 })),
+      sort,
+    ).map((entry) => entry.row)
+  }, [unitFound, unitRanks, applied, sort])
+
+  /* Facet counts: how many rows each option would return with every *other*
+     control still applied. Without them a visitor picks "Office" on a list
+     already narrowed to one plaza, gets nothing, and cannot tell whether the
+     portfolio has no offices or whether they simply chose two things that do
+     not overlap. See countBy. */
+  const categoryCounts = useMemo(
+    () =>
+      view === 'units'
+        ? countBy(filterUnits(unitFound, applied, 'category'), (row) => row.property.category)
+        : countBy(filterProperties(propertyFound, applied, 'category'), (row) => row.category),
+    [view, unitFound, propertyFound, applied],
+  )
+  const statusCounts = useMemo(
+    () => countBy(filterUnits(unitFound, applied, 'status'), (row) => row.unit.status || 'available'),
+    [unitFound, applied],
+  )
+  const sizeCounts = useMemo(() => {
+    const rows = filterUnits(unitFound, applied, 'size')
+    return new Map(SIZE_TIERS.map((t) => [t.id, rows.filter((row) => t.test(row.sf)).length]))
+  }, [unitFound, applied])
+  const propertyCounts = useMemo(
+    () => countBy(filterUnits(unitFound, applied, 'property'), (row) => row.property.slug),
+    [unitFound, applied],
+  )
+
+  // Only developments that actually hold units, named A–Z — the select is a
+  // way to get to a known plaza's inventory, and a listing with nothing in it
+  // is an option that can only ever empty the grid.
+  const unitProperties = useMemo(() => {
+    const seen = new Map()
+    for (const row of allUnits) if (!seen.has(row.property.slug)) seen.set(row.property.slug, row.property)
+    return [...seen.values()].sort((a, b) => String(a.name).localeCompare(String(b.name)))
+  }, [allUnits])
+  const unitStatusList = useMemo(() => statusOptions(allUnits), [allUnits])
+
+  const active = countActive(applied, view)
+  const total = view === 'units' ? allUnits.length : properties.length
+  const shown = view === 'units' ? units.length : list.length
+  // "71 units" until something is set, then "12 of 71 units" — the
+  // denominator is what says the controls are doing something, and printing
+  // it before they are would be noise.
+  const counted = view === 'units' ? plural(total, 'unit', 'units') : plural(total, 'property', 'properties')
+  const summary = active === 0 ? counted : `${shown} of ${counted}`
+
   const [unitsShown, setUnitsShown] = useState(UNIT_PAGE)
   // A new filter is a new list, so the "show more" clicks spent on the old one
   // don't carry over — otherwise switching to a category with six units would
   // land on a page already scrolled past its own end.
-  useEffect(() => setUnitsShown(UNIT_PAGE), [filter, view])
+  useEffect(() => setUnitsShown(UNIT_PAGE), [applied, view])
   // Across every listing, not the filtered list: a photograph shared with a
   // listing that is filtered out is still not this one's own. Listings, not
   // records, so two phases of one development sharing photographs does not
@@ -535,103 +727,55 @@ export default function PropertiesPage() {
             )}
           </RevealGroup>
 
-          {/* One row: what is being listed, then which use. They read as one
-            sentence — "units, retail" — and stacking them made the band look
-            like it had two unrelated filter bars. Both halves are the same
-            44px pill height so the line holds; the divider carries the
-            distinction that the stacking used to, and is dropped at the width
-            where the row wraps and the gap says it instead. */}
-          {(hasUnits || categories.length > 2) && (
-            <RevealGroup className="mt-12 flex flex-wrap items-center gap-x-4 gap-y-3">
-              {hasUnits && (
-                <motion.div
-                  variants={rise}
-                  role="group"
-                  aria-label="Browse the collection by"
-                  // Flush, not inset. A `p-1` well would make the control 8px
-                  // taller than the category pills beside it, which on one
-                  // line reads as a misalignment rather than as emphasis.
-                  className="inline-flex rounded-full border border-[var(--color-line)]"
-                >
-                  {VIEWS.map((v) => {
-                    const active = v.id === view
-                    const count = v.id === 'units' ? units.length : list.length
-                    return (
-                      <button
-                        key={v.id}
-                        type="button"
-                        aria-pressed={active}
-                        onClick={() => setView(v.id)}
-                        className={`min-h-11 rounded-full px-6 font-body text-[13px] font-bold uppercase tracking-[0.1em] transition-colors duration-300 ${
-                          active
-                            ? 'bg-accent text-white dark:text-void'
-                            : 'text-content/65 hover:text-content'
-                        }`}
-                      >
-                        {v.label}
-                        <span className={`numeral ml-2 font-medium ${active ? 'opacity-75' : 'text-content/45'}`}>
-                          {count}
-                        </span>
-                      </button>
-                    )
-                  })}
-                </motion.div>
-              )}
+          {/* Search and filters. One `variants={rise}` child rather than a
+            staggered row of controls: a filter bar that deals itself in piece
+            by piece is a bar you cannot use until it has finished, and this
+            one is the first thing a visitor who knows what they want reaches
+            for. */}
+          <RevealGroup className="mt-12">
+            <motion.div variants={rise}>
+              <CollectionFilters
+                views={hasUnits ? VIEWS : [VIEWS[0]]}
+                view={view}
+                onView={setViewState}
+                viewCounts={{ properties: list.length, units: units.length }}
+                categories={categories}
+                categoryCounts={categoryCounts}
+                filters={filters}
+                onChange={setFilters}
+                onClear={() => setFilters({ ...EMPTY_FILTERS, sort: filters.sort })}
+                statuses={unitStatusList}
+                statusCounts={statusCounts}
+                sizeCounts={sizeCounts}
+                properties={unitProperties}
+                propertyCounts={propertyCounts}
+                activeCount={active}
+                summary={summary}
+              />
+            </motion.div>
+          </RevealGroup>
 
-              {hasUnits && categories.length > 2 && (
-                <motion.span
-                  variants={rise}
-                  aria-hidden
-                  className="hidden h-6 w-px bg-[var(--color-line)] sm:block"
-                />
-              )}
-
-              {/* Not in the Figma, which draws the grid unfiltered — kept
-                because the page already shipped with it and dropping it would
-                quietly remove a way to navigate the list. Restyled for the
-                light ground.
-
-                Filters both views: the category belongs to the development,
-                and a unit inherits its property's. */}
-              {categories.length > 2 &&
-                categories.map((c) => {
-                  const active = c === filter
-                  return (
-                    // `variants` only — no `animate`. Clicking a pill re-renders the
-                    // row, and an explicit animate prop here would re-run the
-                    // entrance on every filter change; driven by the parent's
-                    // variant state it settles at `show` and stays there.
-                    <motion.button
-                      key={c}
-                      variants={rise}
-                      type="button"
-                      onClick={() => setFilter(c)}
-                      className={`min-h-11 rounded-full border px-5 py-2 font-body text-[13px] font-medium uppercase tracking-[0.1em] transition-colors duration-300 ${
-                        active
-                          ? 'border-accent bg-accent text-white dark:text-void'
-                          : 'border-[var(--color-line)] text-content/70 hover:border-content/35 hover:text-content'
-                      }`}
-                    >
-                      {c}
-                    </motion.button>
-                  )
-                })}
-            </RevealGroup>
-          )}
-
-          {view === 'properties' ? (
-            <motion.div layout className="mt-12 grid grid-cols-1 gap-7 md:grid-cols-2 lg:grid-cols-3">
+          {shown === 0 ? (
+            <NoResults
+              view={view}
+              filters={applied}
+              otherCount={view === 'units' ? list.length : units.length}
+              hasUnits={hasUnits}
+              onView={setViewState}
+              onClear={() => setFilters({ ...EMPTY_FILTERS, sort: filters.sort })}
+            />
+          ) : view === 'properties' ? (
+            /* mt-6, not mt-12. The results line directly above is this grid's
+               caption — it counts these cards and orders them — so it binds
+               tight to them, and the generous interval sits above it, between
+               the controls and what they produced. */
+            <motion.div layout className="mt-6 grid grid-cols-1 gap-7 md:grid-cols-2 lg:grid-cols-3">
               <AnimatePresence mode="popLayout">
                 {list.map((pr, i) => (
                   <Card key={pr.slug} p={pr} index={i} shared={shared} onOpen={() => openProperty(pr)} />
                 ))}
               </AnimatePresence>
             </motion.div>
-          ) : units.length === 0 ? (
-            <p className="mt-12 font-body text-[15px] text-content/70">
-              No units are listed under {filter} yet — try another use, or browse the
-              properties themselves.
-            </p>
           ) : (
             <>
               {/* A column narrower than the property grid's: a unit card is a
@@ -639,7 +783,7 @@ export default function PropertiesPage() {
                 property card's width it runs out of content long before it
                 runs out of card. Four across the 1560px measure is the
                 23.25rem the same card is drawn at on the homepage. */}
-              <div className="mt-12 grid grid-cols-1 gap-7 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <div className="mt-6 grid grid-cols-1 gap-7 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {units.slice(0, unitsShown).map((row) => (
                   <UnitReveal
                     // Building and unit both: `unit.index` counts within its

@@ -1,40 +1,33 @@
-import { motion, useReducedMotion } from 'motion/react'
+import { useRef } from 'react'
+import { useGSAP } from '@gsap/react'
 import { useSection } from '../context/ContentContext'
 import { sized, srcSetFor } from '../lib/images'
+import { revealGroup } from '../lib/reveal'
 
 /**
- * `columns` is the grid's column count at the size the stagger is tuned for,
- * so each row deals itself out left to right: the delay is the tile's position
- * in its own row, not its absolute index, because every tile animates on its
- * own entry into view — `index * step` would leave the twentieth tile blank
- * for over a second after it was already on screen.
+ * One partner mark on a white panel.
+ *
+ * No longer a motion component, and no longer holding its own reveal. Each
+ * tile used to carry a `whileInView` of its own with a delay of
+ * `(index % columns) * 0.08` — the tile's position in its own row — which
+ * dealt each row out left to right but could not sequence the wall, because
+ * every row that entered the viewport in the same frame started in the same
+ * frame. On a desktop that is the whole wall at once, four rows deep, four
+ * sweeps running side by side.
+ *
+ * The sequence moved up to the grid, where one trigger can put twenty tiles in
+ * a line: see `revealGroup`, which deals them out in DOM order — across the
+ * first row, then across the second. The `columns` prop went with it, and so
+ * did the grid's one piece of duplicated knowledge, since nothing here has to
+ * agree with the breakpoint any more.
  */
-function LogoTile({ logo, index, columns }) {
-  const reduced = useReducedMotion()
-
-  // Dropped entirely under `prefers-reduced-motion` rather than shortened.
-  const reveal = reduced
-    ? {}
-    : {
-        initial: { opacity: 0, y: 24 },
-        whileInView: { opacity: 1, y: 0 },
-        viewport: { once: true, margin: '-10% 0px' },
-        transition: {
-          duration: 0.85,
-          ease: [0.25, 0.46, 0.45, 0.94],
-          delay: (index % columns) * 0.08,
-        },
-        // Through motion rather than a `hover:-translate-y` class: the reveal
-        // owns this element's inline transform, and would override the class.
-        // Its own transition, so the lift doesn't inherit the reveal's delay.
-        whileHover: { y: -6, transition: { duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] } },
-      }
-
+function LogoTile({ logo }) {
   return (
-    <motion.div
-      {...reveal}
-      className="flex aspect-5/3 items-center justify-center bg-white p-4 transition-shadow duration-300 hover:shadow-[0_18px_36px_-16px_rgba(0,115,164,.55)]"
-    >
+    // The lift is a class again rather than a `whileHover`. It was motion-driven
+    // because the reveal owned this element's inline transform and would have
+    // beaten any utility class; `revealGroup` clears its props on completion, so
+    // by the time a tile can be hovered the transform is the stylesheet's again.
+    <div className="flex aspect-5/3 items-center justify-center bg-white p-4 transition-[transform,box-shadow] duration-300 ease-brand hover:-translate-y-1.5 hover:shadow-[0_18px_36px_-16px_rgba(0,115,164,.55)] motion-reduce:transition-none motion-reduce:hover:translate-y-0">
       {/* The supplied artwork is framed with its padding already balanced per
           mark, so it is allowed nearly the whole tile rather than trimmed to a
           box of its own. */}
@@ -48,13 +41,35 @@ function LogoTile({ logo, index, columns }) {
         decoding="async"
         className="max-h-full max-w-full object-contain"
       />
-    </motion.div>
+    </div>
   )
 }
 
 export default function PartnerWall() {
   const { logos = [] } = useSection('marquee')
   const visibleLogos = logos.filter((logo) => logo.image)
+  const gridRef = useRef(null)
+
+  /* The wall deals itself out, one mark after the next.
+   *
+   * 0.07 rather than the shared default: these are small tiles in a tight grid
+   * with nothing to read on them, so the sweep is the only thing giving the
+   * wall a shape, and a step that lands under the eye's own saccade reads as
+   * one flicker rather than as a sequence. `revealGroup` caps the total wave
+   * regardless, so a client adding a twenty-fifth logo cannot turn this into
+   * two seconds of dealing.
+   *
+   * Depends on the logo list: it arrives from the CMS after first paint, so the
+   * first run has no children to collect and has to be able to run again.
+   * `revertOnUpdate` is what makes that safe — the previous tween is reverted
+   * before the next is built, rather than two tweens fighting over one tile. */
+  useGSAP(
+    () => {
+      const group = revealGroup(gridRef.current, { step: 0.07, y: 26 })
+      return () => group?.kill()
+    },
+    { scope: gridRef, dependencies: [visibleLogos.length], revertOnUpdate: true }
+  )
 
   if (!visibleLogos.length) return null
 
@@ -64,9 +79,9 @@ export default function PartnerWall() {
           it there is no entry in the page outline, and a screen reader reaches
           a run of partner marks with nothing saying what they are. */}
       <h2 className="sr-only">Our Partners</h2>
-      <div className="mx-auto grid max-w-300 grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+      <div ref={gridRef} className="mx-auto grid max-w-300 grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
         {visibleLogos.map((logo, index) => (
-          <LogoTile key={logo.image + '-' + index} logo={logo} index={index} columns={5} />
+          <LogoTile key={logo.image + '-' + index} logo={logo} />
         ))}
       </div>
     </section>

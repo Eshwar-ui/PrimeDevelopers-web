@@ -115,7 +115,7 @@ export default function PropertyDetailNav({ property }) {
        retired for one fluid `--spacing-gutter` because the jump at `md` was
        taking width away at the exact pixel it was meant to add it. A section
        reaching for a second value is a section disagreeing with the page. */
-    <nav aria-label="Property details" className="sticky top-[68px] z-30 border-b border-line bg-base/95 px-gutter backdrop-blur-xl md:top-[72px] lg:top-[76px]">
+    <nav aria-label="Property details" className="sticky top-[76px] z-30 border-b border-line bg-base/95 px-gutter backdrop-blur-md lg:backdrop-blur-xl md:top-[72px] lg:top-[76px]">
       <div className="mx-auto flex max-w-[1560px] items-center gap-4 py-2.5">
         {/* The bar is the section links alone — no Enquire button of its own;
             the site header's Enquire is already pinned above it. The negative

@@ -6,6 +6,7 @@ import ArrowRight from './ArrowRight'
 import Honeypot from './Honeypot'
 import { useFormClock } from '../hooks/useFormClock'
 import { spamSignals } from '../lib/spamSignals'
+import { useScrollLock } from '../hooks/useScrollLock'
 
 const FIELD = 'w-full border-b border-[var(--color-line)] bg-transparent pb-2.5 font-body text-[16px] text-content outline-none transition-colors placeholder:text-content/30 focus:border-accent'
 
@@ -19,12 +20,11 @@ export default function BrochureRequestModal({ property, onClose }) {
     dialog.current?.focus()
     const onKey = (event) => event.key === 'Escape' && onClose()
     document.addEventListener('keydown', onKey)
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = ''
-    }
+    return () => document.removeEventListener('keydown', onKey)
   }, [onClose])
+
+  // Body overflow plus a stopped Lenis — see hooks/useScrollLock.
+  useScrollLock()
 
   const submit = async (event) => {
     event.preventDefault()
@@ -53,7 +53,7 @@ export default function BrochureRequestModal({ property, onClose }) {
   // anything `fixed` beneath it — the overlay then covered and centred on that
   // section instead of the screen.
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-charcoal/70 px-4 py-[max(1rem,env(safe-area-inset-top))] backdrop-blur-sm sm:items-center sm:px-5 sm:py-8" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div data-lenis-prevent className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto overscroll-contain bg-charcoal/70 px-4 py-[max(1rem,env(safe-area-inset-top))] backdrop-blur-sm sm:items-center sm:px-5 sm:py-8" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby="brochure-title" tabIndex={-1} className="relative w-full max-w-xl rounded-3xl bg-surface p-6 sm:p-7 shadow-2xl outline-none md:p-10">
         <button type="button" onClick={onClose} aria-label="Close brochure request" className="absolute right-4 top-4 flex size-11 sm:right-5 sm:top-5 items-center justify-center rounded-full border border-[var(--color-line)] text-xl text-content/70 hover:text-content">×</button>
         {status === 'sent' || status === 'received' ? (

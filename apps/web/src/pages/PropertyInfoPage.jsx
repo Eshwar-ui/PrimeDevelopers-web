@@ -6,6 +6,7 @@ import { useProperty, useSection } from '../context/ContentContext'
 import { rise, stagger, inViewOnce } from '../lib/motion'
 import { sized } from '../lib/images'
 import { buildingKey, isInfoLive, resolveInfo, telHref } from '../lib/propertyInfo'
+import { useScrollLock } from '../hooks/useScrollLock'
 import { countByStatus, getBuildings, getUnits } from '../lib/units'
 
 // Section kicker — the accent dash and letter-spaced label the rest of the site
@@ -460,14 +461,11 @@ function Lightbox({ images, index, onClose, onStep }) {
       if (event.key === 'ArrowLeft') onStep(-1)
     }
     document.addEventListener('keydown', onKey)
-    // Matches BrochureRequestModal: Lenis drives the window scroller, and
-    // locking the body is what stops the page creeping behind the overlay.
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = ''
-    }
+    return () => document.removeEventListener('keydown', onKey)
   }, [onClose, onStep])
+
+  // Body overflow plus a stopped Lenis — see hooks/useScrollLock.
+  useScrollLock()
 
   return (
     <motion.div
@@ -475,7 +473,8 @@ function Lightbox({ images, index, onClose, onStep }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.25 }}
-      className="fixed inset-0 z-[100] flex flex-col bg-charcoal/92 backdrop-blur-sm"
+      data-lenis-prevent
+      className="fixed inset-0 z-[100] flex flex-col overscroll-contain bg-charcoal/92 backdrop-blur-sm"
       onMouseDown={(event) => event.target === event.currentTarget && onClose()}
     >
       <div

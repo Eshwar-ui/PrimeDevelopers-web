@@ -11,7 +11,7 @@ export function useSectionNav() {
   return (target) => {
     if (target === '/') {
       if (pathname !== '/') navigate('/')
-      else lenis.current?.scrollTo(0)
+      else lenis.current?.scrollTo(0, { force: true })
       return
     }
     if (target.startsWith('/')) {
@@ -21,9 +21,9 @@ export function useSectionNav() {
     // section anchor
     if (pathname !== '/') {
       navigate('/')
-      setTimeout(() => lenis.current?.scrollTo(target, { offset: -20 }), 140)
+      setTimeout(() => lenis.current?.scrollTo(target, { offset: -20, force: true }), 140)
     } else {
-      lenis.current?.scrollTo(target, { offset: -20 })
+      lenis.current?.scrollTo(target, { offset: -20, force: true })
     }
   }
 }

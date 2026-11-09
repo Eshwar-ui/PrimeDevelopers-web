@@ -62,7 +62,7 @@ export default function PropertyHero({ property, soldPct, onEnquire }) {
   const availability = property.available > 0 ? `${property.available} available` : 'Fully reserved'
 
   return (
-    <section ref={scope} data-property-hero={property.slug} className="relative min-h-[100dvh] overflow-hidden bg-void text-white">
+    <section ref={scope} data-property-hero={property.slug} className="relative min-h-[100svh] overflow-hidden bg-void text-white">
       {coverImage(property, 'detailHero') && (
         <div className="bleed-fill overflow-hidden">
           <img
@@ -91,7 +91,7 @@ export default function PropertyHero({ property, soldPct, onEnquire }) {
         </div>
       )}
 
-      <div className="relative mx-auto flex min-h-[100dvh] max-w-[1560px] flex-col px-gutter pb-8 pt-28 md:pb-10 md:pt-36">
+      <div className="relative mx-auto flex min-h-[100svh] max-w-[1560px] flex-col px-gutter pb-8 pt-28 md:pb-10 md:pt-36">
         {/* Breadcrumb trail, mirrored by the BreadcrumbList in
             usePropertyHead. It replaces the old "← All properties" link,
             which the middle crumb still is. */}

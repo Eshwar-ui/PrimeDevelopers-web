@@ -103,7 +103,7 @@ export default function PropertyStrip({ slides = [], delay = 380 }) {
       // Panel width is a division of the viewport so roughly four sit across it
       // at any size, the ones at each edge running off frame the way the design
       // draws them.
-      className="h-[clamp(10rem,30dvh,21.25rem)] w-full overflow-hidden bg-surface-alt [--panel:clamp(14rem,26vw,26rem)]"
+      className="h-[clamp(10rem,30svh,21.25rem)] w-full overflow-hidden bg-surface-alt [--panel:clamp(14rem,26vw,26rem)]"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >

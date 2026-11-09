@@ -1,8 +1,9 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation, useNavigationType, useParams } from 'react-router-dom'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useSmoothScroll, lenis } from './hooks/useSmoothScroll'
+import { useRememberScroll, savedScroll } from './lib/scrollMemory'
 import Navbar from './components/Navbar'
 import Hero from './components/Hero'
 import PartnerWall from './components/PartnerWall'
@@ -100,7 +101,7 @@ import RequireAuth from './admin/RequireAuth'
 // on screen it *is* the page. Without it the navbar spends the chunk download
 // dressed for a dark ground it is no longer standing on.
 function RouteFallback() {
-  return <div data-band="light" className="min-h-[100dvh] bg-base" />
+  return <div data-band="light" className="min-h-[100svh] bg-base" />
 }
 
 // The Suspense every route tree sits in, with an error boundary around it.
@@ -212,14 +213,57 @@ const PAGE = {
 // which leaves every `gsap.from(..., { opacity: 0 })` section stuck invisible.
 // That is the blank page below a correct navbar, and why a second load fixed
 // it: with everything cached the first measurement was already right.
+//
+// Back and Forward are the exception: they return to where the reader was on
+// that entry (see lib/scrollMemory). The page is often still shorter than the
+// saved position when it mounts — images and lazy sections have yet to
+// reserve their height — so the jump is re-issued for a short window until
+// the document is tall enough to hold it, and abandoned the moment the reader
+// touches, wheels or presses a key.
+//
+// `force: true` because a scroll lock (an open menu or dialog) stops Lenis,
+// and a stopped Lenis ignores scrollTo — the route would then open wherever
+// the last page was left.
+const RESTORE_MS = 1500
+
+function scrollToNow(y) {
+  if (lenis.current) lenis.current.scrollTo(y, { immediate: true, force: true })
+  else window.scrollTo(0, y)
+}
+
 function ScrollTop() {
+  const { key } = useLocation()
+  const navigationType = useNavigationType()
+
   useEffect(() => {
-    lenis.current?.scrollTo(0, { immediate: true })
+    const saved = navigationType === 'POP' ? savedScroll(key) : undefined
+    scrollToNow(saved ?? 0)
 
     // Next frame, so the refresh reads a laid-out page rather than the one
     // being committed around it.
     const raf = requestAnimationFrame(() => ScrollTrigger.refresh())
-    return () => cancelAnimationFrame(raf)
+    if (!saved) return () => cancelAnimationFrame(raf)
+
+    let timer
+    const started = performance.now()
+    const stop = () => {
+      clearTimeout(timer)
+      for (const type of ['wheel', 'touchstart', 'keydown']) window.removeEventListener(type, stop)
+    }
+    const settle = () => {
+      if (Math.abs(window.scrollY - saved) <= 4 || performance.now() - started > RESTORE_MS) return stop()
+      scrollToNow(saved)
+      timer = setTimeout(settle, 120)
+    }
+    for (const type of ['wheel', 'touchstart', 'keydown']) window.addEventListener(type, stop, { passive: true })
+    timer = setTimeout(settle, 120)
+
+    return () => {
+      cancelAnimationFrame(raf)
+      stop()
+    }
+    // Mount only: this subtree is keyed by pathname, so it remounts per page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   return null
 }
@@ -262,6 +306,7 @@ function RedirectId({ to }) {
 
 function PublicSite() {
   useSmoothScroll() // Lenis + GSAP ScrollTrigger, mounted once at the root
+  useRememberScroll() // per-entry scroll positions for Back / Forward
   const location = useLocation()
   const reduced = useReducedMotion()
   const [sharedPropertyTransition, setSharedPropertyTransition] = useState(false)
@@ -312,7 +357,7 @@ function PublicSite() {
       <SectionRevealController />
       {/* Holds the page open through the frame where neither route is mounted.
           Without it the footer flies up to meet the header and drops back. */}
-      <main className="min-h-dvh">
+      <main className="min-h-svh">
         {/* Suspense sits ABOVE AnimatePresence, and the order is load-bearing.
             Nested the other way the two deadlock: AnimatePresence mounts the
             incoming page, that page suspends immediately on its route chunk,

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { lenis } from '../hooks/useSmoothScroll'
+import { useScrollLock } from '../hooks/useScrollLock'
 import { useSection } from '../context/ContentContext'
 import { useTheme } from '../context/ThemeContext'
 import ArrowRight from './ArrowRight'
@@ -95,15 +96,13 @@ export default function Navbar() {
       setMobileSubmenu(null)
       return undefined
     }
-    const previousOverflow = document.body.style.overflow
     const onKeyDown = (event) => event.key === 'Escape' && setMenuOpen(false)
-    document.body.style.overflow = 'hidden'
     document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.body.style.overflow = previousOverflow
-      document.removeEventListener('keydown', onKeyDown)
-    }
+    return () => document.removeEventListener('keydown', onKeyDown)
   }, [menuOpen])
+
+  // Body overflow plus a stopped Lenis — see hooks/useScrollLock.
+  useScrollLock(menuOpen)
 
   useEffect(() => {
     if (!whatsappOpen) return undefined
@@ -151,7 +150,7 @@ export default function Navbar() {
     e.preventDefault()
     setMenuOpen(false)
     if (pathname !== '/') navigate('/')
-    else lenis.current?.scrollTo(0)
+    else lenis.current?.scrollTo(0, { force: true }) // force: the menu's scroll lock is still releasing
   }
 
   const goContact = (e) => {
@@ -355,8 +354,8 @@ export default function Navbar() {
   const shell = !surfaced
     ? 'bg-transparent'
     : onLight
-      ? 'bg-white/85 shadow-[0_1px_0_var(--color-line),0_10px_30px_-24px_rgba(0,0,0,0.45)] backdrop-blur-xl'
-      : 'bg-void/80 shadow-[0_1px_0_var(--color-line-inv),0_10px_30px_-24px_rgba(0,0,0,0.7)] backdrop-blur-xl'
+      ? 'bg-white/85 shadow-[0_1px_0_var(--color-line),0_10px_30px_-24px_rgba(0,0,0,0.45)] backdrop-blur-md lg:backdrop-blur-xl'
+      : 'bg-void/80 shadow-[0_1px_0_var(--color-line-inv),0_10px_30px_-24px_rgba(0,0,0,0.7)] backdrop-blur-md lg:backdrop-blur-xl'
 
   return (
     <>

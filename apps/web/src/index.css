@@ -30,6 +30,22 @@
     filter 0.72s var(--ease-brand);
 }
 
+/* Phones: the fade and wipe stay, the blur goes. Blurring a whole section is
+   a full-section repaint every frame of the transition, and it lands exactly
+   while the reader is mid-swipe — on slower Android hardware that is the
+   stutter. `filter: none` also stops the section being promoted to its own
+   compositing layer while it waits. */
+@media (max-width: 767px) {
+  [data-section-reveal] {
+    filter: none !important;
+  }
+  [data-section-reveal="revealed"] {
+    transition:
+      opacity 0.72s var(--ease-brand),
+      clip-path 0.9s var(--ease-brand);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   [data-section-reveal] {
     opacity: 1;

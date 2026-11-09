@@ -190,6 +190,7 @@ export function propertySchema({ property, origin, url, title, description }) {
         '@type': 'Place',
         '@id': `${url}#place`,
         name: property.name,
+        alternateName: seo.alternateName || undefined,
         description: seo.placeDescription,
         address,
         geo: hasGeo ? { '@type': 'GeoCoordinates', latitude: seo.latitude, longitude: seo.longitude } : undefined,

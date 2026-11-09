@@ -692,6 +692,24 @@ export default function PropertyDetailPage() {
           </div>
         </section>
       )}
+      {/* No buildings on the record yet, but a rate sheet and an intro: the
+          section still opens on the intro and the pricing tables, without the
+          building figures and tabs that have nothing to describe. POW Leander
+          is the first such property — its building records are still to come. */}
+      {!hasSiteModel(property) &&
+        !(d?.floorPlans?.buildings?.length > 0) &&
+        (d?.pricing?.units?.rows?.length > 0 || d?.pricing?.capRate?.rows?.length > 0) && (
+          <section
+            data-band="light"
+            id="floor-plans"
+            className="scroll-mt-24 bg-surface-alt px-gutter pb-16 pt-8 md:pb-20 md:pt-10"
+          >
+            <div className="mx-auto max-w-[1560px]">
+              {floorIntro}
+              <PropertyPricingTables pricing={d?.pricing} />
+            </div>
+          </section>
+        )}
 
       {/* ── Gateway for growth ───────────────────────────────────
           `bg-bone` / `text-ink` before this: fixed pigments, not role tokens.

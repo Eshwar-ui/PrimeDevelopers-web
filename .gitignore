@@ -83,3 +83,5 @@ test-model.glb
 # Staging for scripts/aws/*.sh — build artifacts and data exports, never committed.
 .aws-stage/
 reagan-crossing-drive-photos/
+reagan-crossing-web-photos/
+reagan-crossing-gallery-upload-progress.json

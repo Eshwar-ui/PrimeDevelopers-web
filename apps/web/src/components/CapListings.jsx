@@ -6,7 +6,7 @@ import { sized } from '../lib/images'
 import { capStatus, formatSf, unitLine } from '../lib/capListings'
 import { CAP_LISTINGS_DEFAULTS } from '../data/capListings'
 import ArrowRight from './ArrowRight'
-import { revealGroup } from '../lib/reveal'
+import { dealCards } from '../lib/reveal'
 
 /**
  * The `cap_listings` section, merged over the shipped set.
@@ -93,7 +93,7 @@ export function CapListingCard({ listing }) {
       <div className="flex flex-1 flex-col p-6">
         <div className="flex items-start justify-between gap-3">
           <h3 className="font-display text-lg font-bold leading-tight text-content">{listing.tenant}</h3>
-          <ArrowRight className="mt-1 size-4 shrink-0 text-content/40 transition-[color,transform] duration-300 ease-brand group-hover:translate-x-1 group-hover:text-ember" />
+          <ArrowRight className="mt-1 size-4 shrink-0 text-content/40 transition-[color,transform,translate,scale,rotate] duration-300 ease-brand group-hover:translate-x-1 group-hover:text-ember" />
         </div>
         {listing.address && (
           <p className="mt-2 flex items-start gap-1.5 font-body text-[13px] leading-snug text-content/60">
@@ -134,7 +134,7 @@ export function CapListingGrid({ items, limit, emptyState = null, className = ''
      A slower step and a longer travel than the partner wall's, because these
      are read rather than scanned: each card carries a photograph, a tenant, an
      address and two figures, and a sweep tight enough to suit a grid of logos
-     reads as a flicker across a grid of cards. `revealGroup` caps the wave
+     reads as a flicker across a grid of cards. the batching keeps the wave
      either way, so the seventeen-listing page does not spend two seconds
      dealing after the last card is already on screen.
 
@@ -150,8 +150,9 @@ export function CapListingGrid({ items, limit, emptyState = null, className = ''
      tweens fighting over one card. */
   useGSAP(
     () => {
-      const group = revealGroup(gridRef.current, { step: 0.09, y: 34, duration: 0.9 })
-      return () => group?.kill()
+      // The homepage's card entrance (lib/reveal `dealCards`), row by row.
+      const deal = dealCards(gridRef.current?.children)
+      return () => deal?.kill()
     },
     { scope: gridRef, dependencies: [shown.length], revertOnUpdate: true }
   )

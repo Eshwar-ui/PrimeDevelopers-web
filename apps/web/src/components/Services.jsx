@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
+import { dealCards } from '../lib/reveal'
 import { useSection } from '../context/ContentContext'
 import { sized } from '../lib/images'
 import { serviceImage } from '../lib/expertise'
@@ -35,17 +36,8 @@ export default function Services() {
   useGSAP(
     () => {
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-      gsap.from('[data-service-card]', {
-        y: 32,
-        opacity: 0,
-        duration: 0.7,
-        ease: 'power3.out',
-        stagger: 0.1,
-        // A `.from()` leaves its inline transform behind permanently, and an
-        // inline style always beats a utility class (DESIGN.md §9).
-        clearProps: 'transform,opacity',
-        scrollTrigger: { trigger: scope.current, start: 'top 78%' },
-      })
+      const deal = dealCards(scope.current?.querySelectorAll('[data-service-card]'))
+      return () => deal?.kill()
     },
     // Keyed to the card count for the reason Properties spells out: the items
     // arrive from the CMS after mount, so a tween built on the first pass is
@@ -63,6 +55,7 @@ export default function Services() {
 
   return (
     <section
+      data-section-reveal="off"
       id="services"
       data-band="light"
       ref={scope}
@@ -115,6 +108,7 @@ export default function Services() {
                         alt=""
                         loading="lazy"
                         decoding="async"
+                        data-unveil
                         className="aspect-4/3 w-full object-cover transition-transform duration-700 ease-brand group-hover:scale-[1.06]"
                       />
                     ) : (

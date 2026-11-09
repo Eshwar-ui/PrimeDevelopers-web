@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
+import { dealCards } from '../lib/reveal'
 import { useSection } from '../context/ContentContext'
 import ArrowRight from './ArrowRight'
 import SectionIntro from './SectionIntro'
@@ -31,15 +32,8 @@ export default function AcademyTeaser() {
   useGSAP(
     () => {
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-      gsap.from('[data-term-row]', {
-        y: 18,
-        opacity: 0,
-        duration: 0.55,
-        ease: 'power3.out',
-        stagger: 0.07,
-        clearProps: 'transform,opacity',
-        scrollTrigger: { trigger: scope.current, start: 'top 82%' },
-      })
+      const deal = dealCards(scope.current?.querySelectorAll('[data-term-row]'), { y: 28, step: 0.08 })
+      return () => deal?.kill()
     },
     // The terms come from the CMS after mount, so the tween has to be rebuilt
     // once they land or it is built over an empty list and never runs.
@@ -50,6 +44,7 @@ export default function AcademyTeaser() {
 
   return (
     <section
+      data-section-reveal="off"
       data-band="light"
       ref={scope}
       className="bg-base px-gutter py-section text-content md:py-section-lg"
@@ -83,7 +78,7 @@ export default function AcademyTeaser() {
                 <span className="font-body text-[14px] leading-[1.7] text-content/55">
                   {item.shortDefinition}
                 </span>
-                <ArrowRight className="size-4 text-content/40 transition-[transform,color] duration-300 ease-brand group-hover:translate-x-1 group-hover:text-accent motion-reduce:transform-none" />
+                <ArrowRight className="size-4 text-content/40 transition-[transform,translate,scale,rotate,color] duration-300 ease-brand group-hover:translate-x-1 group-hover:text-accent motion-reduce:transform-none" />
               </Link>
             </li>
           ))}

@@ -267,7 +267,7 @@ export function AlsoAvailable({ units = [], current, onSelect }) {
                   <CaretRight
                     aria-hidden
                     weight="bold"
-                    className="size-3.5 text-content/35 transition-[color,transform] duration-200 group-hover:translate-x-0.5 group-hover:text-accent"
+                    className="size-3.5 text-content/35 transition-[color,transform,translate,scale,rotate] duration-200 group-hover:translate-x-0.5 group-hover:text-accent"
                   />
                 )}
               </span>

@@ -54,6 +54,25 @@
     transition: none;
   }
 }
+/* Photo unveil, every public page (lib/siteMotion.js). The scrubbed push-in rides
+   `transform`; the hover zoom rides Tailwind v4's individual `scale`, so the
+   two multiply. The transition is narrowed to `scale` so the scrubbed value is
+   applied per frame rather than eased a second time. Unlayered on purpose: it
+   has to outrank the `transition-transform` utility on the same img. */
+main img[data-unveil] {
+  transform: scale(var(--unveil, 1));
+  /* `opacity` and `filter` stay in the list: some card photos crossfade
+     (the /properties cards cycle their stack by opacity), and dropping them
+     here would turn that crossfade into a cut. */
+  transition-property: scale, translate, opacity, filter;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  main img[data-unveil] {
+    transform: none;
+  }
+}
+
 /* Branded bootstrap state: the official logomark resolves from a quiet
    silhouette into full colour without a generic spinner or layout shift. */
 .prime-logo-loader {
@@ -82,6 +101,10 @@
   box-shadow: 0 0 0.75rem rgb(0 115 164 / 0.65);
   animation: prime-loader-line 1.8s cubic-bezier(0.65, 0, 0.35, 1) infinite;
 }
+/* While the splash intro plays, the header's logo is laid out but unseen: the
+   splash lockup flies onto its box and the real one is revealed beneath it. */
+html[data-splash] [data-nav-logo] { opacity: 0; }
+
 @keyframes prime-loader-reveal {
   0%, 12% { clip-path: inset(100% 0 0); }
   62%, 82% { clip-path: inset(0); }
@@ -739,8 +762,8 @@ html {
    it put on the piece itself. */
 .pd-word-mask,
 .pd-line-mask {
-  padding-bottom: 0.1em;
-  margin-bottom: -0.1em;
+  padding-bottom: 0.16em;
+  margin-bottom: -0.16em;
 }
 
 /* A masked line is clipped on the sides as well as top and bottom, which cuts

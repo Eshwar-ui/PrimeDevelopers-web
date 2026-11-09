@@ -69,7 +69,7 @@ export default function LearnPage() {
           </div>
 
           {visible.length ? (
-            <ol>
+            <ol data-deal="rows">
               {visible.map((term, index) => (
                 <li key={term.slug}>
                   <Link to={`/learn/${term.slug}`} onPointerEnter={(event) => showPreview(event, term)} onPointerMove={positionPreview} onPointerLeave={() => setPreviewTerm(null)} className="group grid gap-4 border-b border-line py-8 transition-colors duration-300 hover:text-accent md:grid-cols-[5rem_minmax(13rem,0.7fr)_1.3fr_8rem_auto] md:items-center md:gap-8">

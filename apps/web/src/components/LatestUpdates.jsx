@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
+import { dealCards } from '../lib/reveal'
 import { useSection, useNews } from '../context/ContentContext'
 import SectionIntro from './SectionIntro'
 import SocialIcon from './SocialIcon'
@@ -161,15 +162,8 @@ export default function LatestUpdates() {
   useGSAP(
     () => {
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-      gsap.from('[data-update-card]', {
-        y: 32,
-        opacity: 0,
-        duration: 0.7,
-        ease: 'power3.out',
-        stagger: 0.1,
-        clearProps: 'transform,opacity',
-        scrollTrigger: { trigger: scope.current, start: 'top 78%' },
-      })
+      const deal = dealCards(scope.current?.querySelectorAll('[data-update-card]'))
+      return () => deal?.kill()
     },
     // The stream is assembled from CMS news and curated social rows, both of
     // which land after mount.
@@ -180,6 +174,7 @@ export default function LatestUpdates() {
 
   return (
     <section
+      data-section-reveal="off"
       id="news"
       data-band="light"
       ref={scope}
@@ -202,7 +197,7 @@ export default function LatestUpdates() {
                   disabled={railPosition.atStart}
                   aria-label="Previous updates"
                   aria-controls="latest-updates-rail"
-                  className="group grid size-11 place-items-center rounded-full border border-content/20 text-content outline-none transition-[color,border-color,background-color,transform,opacity] duration-300 ease-brand hover:border-content hover:bg-content hover:text-base focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-95 disabled:pointer-events-none disabled:opacity-30"
+                  className="group grid size-11 place-items-center rounded-full border border-content/20 text-content outline-none transition-[color,border-color,background-color,transform,translate,scale,rotate,opacity] duration-300 ease-brand hover:border-content hover:bg-content hover:text-base focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-95 disabled:pointer-events-none disabled:opacity-30"
                 >
                   <svg viewBox="0 0 24 24" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="size-4 transition-transform duration-300 ease-brand group-hover:-translate-x-0.5 motion-reduce:transform-none">
                     <path d="m14.5 5-7 7 7 7" />
@@ -214,7 +209,7 @@ export default function LatestUpdates() {
                   disabled={railPosition.atEnd}
                   aria-label="Next updates"
                   aria-controls="latest-updates-rail"
-                  className="group grid size-11 place-items-center rounded-full border border-content/20 text-content outline-none transition-[color,border-color,background-color,transform,opacity] duration-300 ease-brand hover:border-content hover:bg-content hover:text-base focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-95 disabled:pointer-events-none disabled:opacity-30"
+                  className="group grid size-11 place-items-center rounded-full border border-content/20 text-content outline-none transition-[color,border-color,background-color,transform,translate,scale,rotate,opacity] duration-300 ease-brand hover:border-content hover:bg-content hover:text-base focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:scale-95 disabled:pointer-events-none disabled:opacity-30"
                 >
                   <svg viewBox="0 0 24 24" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="size-4 transition-transform duration-300 ease-brand group-hover:translate-x-0.5 motion-reduce:transform-none">
                     <path d="m9.5 5 7 7-7 7" />
@@ -255,7 +250,7 @@ export default function LatestUpdates() {
                 >
                   <Wrapper
                     {...linkProps}
-                    className="group flex h-full flex-col overflow-hidden rounded-frame border border-content/10 bg-surface p-5 outline-none transition-[border-color,box-shadow] duration-500 ease-brand hover:border-accent/40 hover:shadow-[0_30px_70px_-50px_rgba(0,0,0,0.85)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                    className="group flex h-full flex-col overflow-hidden rounded-frame border border-content/10 bg-surface p-5 outline-none transition-[border-color,box-shadow,translate] duration-500 ease-brand hover:-translate-y-0.5 hover:border-accent/40 motion-reduce:translate-none hover:shadow-[0_30px_70px_-50px_rgba(0,0,0,0.85)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                   >
                     <div className="relative overflow-hidden rounded-panel bg-surface-alt">
                       {u.image ? (
@@ -264,6 +259,7 @@ export default function LatestUpdates() {
                           alt=""
                           loading="lazy"
                           decoding="async"
+                          data-unveil
                           className="aspect-16/10 w-full object-cover transition-transform duration-700 ease-brand group-hover:scale-[1.05]"
                         />
                       ) : (

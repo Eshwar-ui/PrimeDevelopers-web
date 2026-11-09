@@ -207,7 +207,7 @@ export default function Footer() {
           y: 44,
           opacity: 0,
           duration: 0.95,
-          ease: 'power3.out',
+          ease: 'brand',
           clearProps: 'transform,opacity',
         })
         .from(
@@ -216,7 +216,7 @@ export default function Footer() {
             y: 22,
             opacity: 0,
             duration: 0.7,
-            ease: 'power3.out',
+            ease: 'brand',
             stagger: 0.08,
             clearProps: 'transform,opacity',
           },
@@ -374,140 +374,63 @@ export default function Footer() {
               viewAllLabel={viewAllLabel}
             />
 
-            <div className="grid gap-12 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1.6fr)] lg:gap-16">
-              {/* ── Identity ─────────────────────────────────────────────── */}
-              <div data-col>
-                {/* Unfiltered: this file is already the on-dark lockup — CG Blue
-                    mark, near-white wordmark — and the navbar renders the same
-                    asset untouched on the same page. */}
-                <img
-                  src={logo}
-                  alt="Prime Developers"
-                  width="576"
-                  height="144"
-                  className="h-9 w-auto select-none sm:h-10"
-                />
+            {/* Four columns on desktop: the brand, the two directories, and the
+                way to reach a person, which closes the row on the right.
 
-                {addressLines.length > 0 && (
-                  <address className="mt-6 max-w-[24ch] font-body text-[15px] not-italic leading-[1.7] text-bone/60">
-                    {addressLines.map((line, i) => (
-                      <span key={line} className={i ? 'block' : undefined}>
-                        {line}
-                      </span>
-                    ))}
-                  </address>
-                )}
+                The old layout gave the identity block the widest column and
+                then filled it with three short lines, ran Quick links eight
+                rows deep beside a six-row Portfolio, and left the right third
+                to a Social column that is empty until a profile is entered in
+                the CMS — so the plate read as one heavy column and a hole.
+                Now Quick links folds into two short columns, phone and email
+                get a column of their own, and the socials become an icon row
+                under the address, so nothing depends on whether they exist.
 
-                <dl className="mt-7 flex flex-wrap gap-x-12 gap-y-5">
-                  {phone && (
-                    <div>
-                      <dt className="font-body text-[13px] text-bone-3">Phone number</dt>
-                      <dd className="mt-1.5">
-                        <a
-                          href={`tel:${phone.replace(/[^\d+]/g, '')}`}
-                          className="font-body text-[15px] text-bone transition-colors duration-300 hover:text-accent-soft focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
-                        >
-                          {phone}
-                        </a>
-                      </dd>
-                    </div>
-                  )}
-                  {email && (
-                    <div>
-                      <dt className="font-body text-[13px] text-bone-3">Email</dt>
-                      <dd className="mt-1.5">
-                        <a
-                          href={`mailto:${email}`}
-                          className="font-body text-[15px] text-bone transition-colors duration-300 hover:text-accent-soft focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
-                        >
-                          {email}
-                        </a>
-                      </dd>
-                    </div>
-                  )}
-                </dl>
+                Tablet keeps the brand as a full-width row and puts the three
+                directories under it; a phone stacks everything, Quick links
+                still in two columns so it is four rows, not eight. */}
+            <div className="grid gap-x-10 gap-y-12 md:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1.35fr)_minmax(0,1fr)_auto] lg:gap-x-14 xl:gap-x-20">
+              {/* ── Brand ────────────────────────────────────────────────── */}
+              <div data-col className="flex flex-col gap-6 md:col-span-3 md:flex-row md:items-end md:justify-between lg:col-span-1 lg:flex-col lg:items-start lg:justify-start">
+                <div>
+                  {/* Unfiltered: this file is already the on-dark lockup — CG
+                      Blue mark, near-white wordmark — and the navbar renders the
+                      same asset untouched on the same page. */}
+                  <img
+                    src={logo}
+                    alt="Prime Developers"
+                    width="576"
+                    height="144"
+                    className="h-9 w-auto select-none sm:h-10"
+                  />
 
-                {/* Blank unless a licence is entered in the CMS, which is the
-                    only reason this rule exists — an empty divider under the
-                    contact details would just be a stray line. */}
-                {licenseLine && (
-                  <div className="mt-9 border-t border-[var(--color-line-subtle)] pt-6">
-                    <span className="font-body text-[12px] leading-tight text-bone-3">
-                      {licenseLine}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* ── Directory ────────────────────────────────────────────── */}
-              {/* Three columns, and the third is Portfolio rather than the
-                  reference's Legal. Privacy and Terms exist now and are linked,
-                  but from the copyright bar: they are footnotes a visitor goes
-                  looking for deliberately, and giving them equal weight to the
-                  portfolio would spend the width on the one column nobody came
-                  here to read. The properties are real, editable, and the thing
-                  a visitor here is shopping for. */}
-              <div className="grid grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-3">
-                {directoryLinks.length > 0 && (
-                  <nav data-col aria-label="Quick links" className="flex flex-col gap-5">
-                    <ColumnTitle>{quickLinksHeading}</ColumnTitle>
-                    <ul className="flex flex-col gap-1">
-                      {directoryLinks.map((l) => (
-                        <li key={`${l.href}|${l.label}`}>
-                          <FooterLink href={l.href} label={l.label} onNavigate={handleNav} />
-                        </li>
+                  {addressLines.length > 0 && (
+                    <address className="mt-5 max-w-[26ch] font-body text-[15px] not-italic leading-[1.7] text-bone/60">
+                      {addressLines.map((line, i) => (
+                        <span key={line} className={i ? 'block' : undefined}>
+                          {line}
+                        </span>
                       ))}
-                    </ul>
-                  </nav>
-                )}
-
-                {portfolio.length > 0 && (
-                  <nav data-col aria-label="Portfolio" className="flex flex-col gap-5">
-                    <ColumnTitle>{portfolioHeading}</ColumnTitle>
-                    <ul className="flex flex-col gap-1">
-                      {portfolio.map((p) => (
-                        <li key={p.slug}>
-                          <Link
-                            to={`/properties/${p.slug}`}
-                            className="inline-flex min-h-9 items-center font-body text-[15px] text-bone/75 transition-colors duration-300 hover:text-bone focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
-                          >
-                            {p.name}
-                          </Link>
-                        </li>
-                      ))}
-                      <li>
-                        <Link
-                          to="/properties"
-                          className="group inline-flex min-h-9 items-center gap-2 font-body text-[15px] text-accent-soft transition-colors duration-300 hover:text-bone focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
-                        >
-                          {allPropertiesLabel}
-                          <ArrowIcon className="size-3.5 transition-transform duration-300 ease-brand group-hover:translate-x-1" />
-                        </Link>
-                      </li>
-                    </ul>
-                  </nav>
-                )}
+                    </address>
+                  )}
+                </div>
 
                 {liveSocials.length > 0 && (
-                  <nav data-col aria-label="Social" className="flex flex-col gap-5">
-                    <ColumnTitle>{socialHeading}</ColumnTitle>
-                    <ul className="flex flex-col gap-1">
+                  <nav aria-label={socialHeading || 'Social'}>
+                    <ul className="flex flex-wrap gap-2">
                       {/* Keyed on href *and* label because neither alone is
                           unique: two entries may share a name or a URL. */}
                       {liveSocials.map((l) => (
                         <li key={`${l.href}|${l.label}`}>
                           <a
                             href={l.href}
+                            aria-label={l.label}
                             {...(isExternal(l.href)
                               ? { target: '_blank', rel: 'noreferrer' }
                               : { onClick: (e) => handleNav(e, l.href) })}
-                            className="group inline-flex min-h-9 items-center gap-2.5 font-body text-[15px] text-bone/75 transition-colors duration-300 hover:text-bone focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+                            className="grid size-11 place-items-center rounded-full border border-bone/15 text-bone/70 transition-[color,border-color,background-color,translate] duration-300 ease-brand hover:-translate-y-0.5 hover:border-accent-soft/60 hover:bg-accent-soft/10 hover:text-bone focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent motion-reduce:translate-none"
                           >
-                            <SocialIcon
-                              platform={l.label}
-                              className="size-4 shrink-0 text-bone-3 transition-colors duration-300 group-hover:text-accent-soft"
-                            />
-                            {l.label}
+                            <SocialIcon platform={l.label} className="size-4" />
                           </a>
                         </li>
                       ))}
@@ -515,6 +438,105 @@ export default function Footer() {
                   </nav>
                 )}
               </div>
+
+              {/* ── Quick links, in two short columns ────────────────────── */}
+              {directoryLinks.length > 0 && (
+                <nav data-col aria-label="Quick links" className="grid grid-cols-2 content-start gap-x-8 gap-y-4">
+                  {/* A title over each half, so the second column does not
+                      read as a stray list. The repeat is visual only: a screen
+                      reader hears the heading once. */}
+                  <ColumnTitle>{quickLinksHeading}</ColumnTitle>
+                  <p aria-hidden className="font-body text-[13px] font-medium text-bone-3">
+                    {quickLinksHeading}
+                  </p>
+                  {/* Column-major, so the list reads down the first column and
+                      then the second, in the order it is authored. Same two
+                      tracks and gap as the titles above, so each half sits
+                      under its own title. */}
+                  <ul
+                    className="col-span-2 grid grid-flow-col grid-cols-2 gap-x-8 gap-y-1"
+                    style={{ gridTemplateRows: `repeat(${Math.ceil(directoryLinks.length / 2)}, auto)` }}
+                  >
+                    {directoryLinks.map((l) => (
+                      <li key={`${l.href}|${l.label}`}>
+                        <FooterLink href={l.href} label={l.label} onNavigate={handleNav} />
+                      </li>
+                    ))}
+                  </ul>
+                </nav>
+              )}
+
+              {/* ── Portfolio ────────────────────────────────────────────── */}
+              {portfolio.length > 0 && (
+                <nav data-col aria-label="Portfolio" className="flex flex-col gap-4">
+                  <ColumnTitle>{portfolioHeading}</ColumnTitle>
+                  <ul className="flex flex-col gap-1">
+                    {portfolio.map((p) => (
+                      <li key={p.slug}>
+                        <Link
+                          to={`/properties/${p.slug}`}
+                          className="inline-flex min-h-9 items-center font-body text-[15px] text-bone/75 transition-colors duration-300 hover:text-bone focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+                        >
+                          {p.name}
+                        </Link>
+                      </li>
+                    ))}
+                    <li>
+                      <Link
+                        to="/properties"
+                        className="group inline-flex min-h-9 items-center gap-2 font-body text-[15px] text-accent-soft transition-colors duration-300 hover:text-bone focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+                      >
+                        {allPropertiesLabel}
+                        <ArrowIcon className="size-3.5 transition-transform duration-300 ease-brand group-hover:translate-x-1" />
+                      </Link>
+                    </li>
+                  </ul>
+                </nav>
+              )}
+
+              {/* ── Contact ──────────────────────────────────────────────── */}
+              {/* An `auto` track: sized to the email address, the longest thing
+                  in it, so the address never wraps mid-word. */}
+              {(phone || email) && (
+                <div data-col className="flex flex-col gap-4">
+                  <ColumnTitle>Contact</ColumnTitle>
+                  <dl className="flex flex-col gap-4">
+                    {phone && (
+                      <div>
+                        <dt className="font-body text-[12px] uppercase tracking-[0.14em] text-bone-3">Phone</dt>
+                        <dd>
+                          <a
+                            href={`tel:${phone.replace(/[^\d+]/g, '')}`}
+                            className="inline-flex min-h-9 items-center font-body text-[15px] text-bone transition-colors duration-300 hover:text-accent-soft focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+                          >
+                            {phone}
+                          </a>
+                        </dd>
+                      </div>
+                    )}
+                    {email && (
+                      <div>
+                        <dt className="font-body text-[12px] uppercase tracking-[0.14em] text-bone-3">Email</dt>
+                        <dd>
+                          <a
+                            href={`mailto:${email}`}
+                            className="inline-flex min-h-9 items-center font-body text-[15px] text-bone transition-colors duration-300 hover:text-accent-soft focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+                          >
+                            {email}
+                          </a>
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
+
+                  {/* Blank unless a licence is entered in the CMS. */}
+                  {licenseLine && (
+                    <p className="mt-2 border-t border-[var(--color-line-subtle)] pt-4 font-body text-[12px] leading-tight text-bone-3">
+                      {licenseLine}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* The bar the whole page ends on.

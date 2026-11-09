@@ -63,7 +63,7 @@ export default function AboutPage() {
         y: 44,
         opacity: 0,
         duration: 1,
-        ease: 'power3.out',
+        ease: 'brand',
         stagger: 0.12,
       })
       // On the image rather than the panel: the panel carries the bay, and
@@ -73,7 +73,7 @@ export default function AboutPage() {
         scale: 1.12,
         opacity: 0,
         duration: 1.3,
-        ease: 'power3.out',
+        ease: 'brand',
       })
 
       gsap.utils.toArray('[data-reveal]').forEach((el) => {
@@ -84,7 +84,7 @@ export default function AboutPage() {
             y: 0,
             opacity: 1,
             duration: 0.9,
-            ease: 'power3.out',
+            ease: 'brand',
             scrollTrigger: { trigger: el, start: 'top 82%' },
           }
         )

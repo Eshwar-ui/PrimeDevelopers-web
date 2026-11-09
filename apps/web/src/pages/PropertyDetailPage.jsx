@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import CountUp from '../components/CountUp'
-import { rise, stagger, inViewOnce } from '../lib/motion'
+import { rise, stagger, inViewOnce, cardRise, cardStagger } from '../lib/motion'
 import { useProperty, useSection } from '../context/ContentContext'
 import { useSectionNav } from '../hooks/useSectionNav'
 import PrimePill from '../components/PrimePill'
@@ -789,7 +789,7 @@ export default function PropertyDetailPage() {
                   // `flex-grow` is the animated property, not `transform`. Every
                   // `scale-*` utility in Tailwind v4 compiles to the standalone
                   // `scale:` property rather than into `transform:`, so a
-                  // `transition-[transform]` on a scaled element animates nothing
+                  // `transition-[transform,translate,scale,rotate]` on a scaled element animates nothing
                   // and the change lands in a single frame.
                   className="group overflow-hidden rounded-2xl bg-surface-alt transition-[flex-grow] duration-700 ease-brand motion-reduce:transition-none md:min-w-0 md:flex-1 md:hover:flex-[2.6]"
                 >
@@ -1009,7 +1009,7 @@ export default function PropertyDetailPage() {
 
                 {others.length > 0 && (
                   <motion.div
-                    variants={stagger}
+                    variants={cardStagger}
                     initial="hidden"
                     whileInView="show"
                     viewport={inViewOnce}
@@ -1038,7 +1038,7 @@ export default function PropertyDetailPage() {
                       return (
                         <motion.a
                           key={`other-${i}`}
-                          variants={rise}
+                          variants={cardRise}
                           href={link.url}
                           target="_blank"
                           rel="noreferrer"

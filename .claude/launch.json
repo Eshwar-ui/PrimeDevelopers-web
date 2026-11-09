@@ -4,15 +4,37 @@
     {
       "name": "prime-dev",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@prime-developers/web", "dev"],
+      "runtimeArgs": [
+        "--filter",
+        "@prime-developers/web",
+        "dev"
+      ],
       "port": 5173,
       "autoPort": true
     },
     {
       "name": "prime-api",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@prime-developers/api", "dev"],
+      "runtimeArgs": [
+        "--filter",
+        "@prime-developers/api",
+        "dev"
+      ],
       "port": 3001,
+      "autoPort": false
+    },
+    {
+      "name": "prime-dev-alt",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@prime-developers/web",
+        "exec",
+        "vite",
+        "--port",
+        "5180"
+      ],
+      "port": 5180,
       "autoPort": false
     }
   ]

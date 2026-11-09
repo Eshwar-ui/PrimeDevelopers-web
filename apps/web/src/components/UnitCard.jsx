@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Buildings, Camera, MapPin, Ruler, Stack, Tag } from '@phosphor-icons/react'
 import { formatArea, formatUnitLabel, getUnitImages, unitPath } from '../lib/units'
@@ -6,6 +7,7 @@ import { unitStatusMeta } from '../lib/unitStatus'
 import { hasInfoPage } from '../lib/infoSets'
 import { sized } from '../lib/images'
 import { coverImage } from '../lib/covers'
+import { attachTilt } from '../lib/tilt'
 import ActionButton from './ActionButton'
 import ArrowRight from './ArrowRight'
 
@@ -91,8 +93,16 @@ export default function UnitCard({ property, building, unit, sf, className = '' 
   // photographs and deliver the page the visitor is already looking at.
   const hasPhotos = hasInfoPage(property)
 
+  // The same perspective shift as the homepage property cards (lib/tilt),
+  // scaled for a card that is narrow and tall: more side-to-side lean, less
+  // vertical, and a shorter photo slide to stay inside the 1.04 hover zoom's
+  // headroom on a ~370px photograph.
+  const cardRef = useRef(null)
+  useEffect(() => attachTilt(cardRef.current, { maxX: 3.5, maxY: 6, shift: 7 }), [])
+
   return (
     <article
+      ref={cardRef}
       data-unit-card
       className={`group flex min-w-0 flex-col overflow-hidden rounded-panel border border-accent/45 bg-surface transition-[border-color,box-shadow] duration-500 ease-brand hover:border-accent/75 hover:shadow-[0_36px_80px_-52px_rgba(0,0,0,0.85)] ${className}`}
     >
@@ -229,9 +239,18 @@ export default function UnitCard({ property, building, unit, sf, className = '' 
             </p>
           )}
 
-          <ActionButton href={href} onClick={open} className="w-full">
+          {/* Label left, arrow disc right: a full-width bar with its content
+              huddled in the middle read as a banner, not a control. The disc
+              fills white on hover and the arrow slides, so the whole card's
+              one action answers the pointer at its point of contact. */}
+          <ActionButton href={href} onClick={open} className="w-full justify-between! pr-1.5 pl-5 text-[14px]">
             Explore unit
-            <ArrowRight className="size-4 transition-transform duration-200 ease-brand group-hover:translate-x-0.5 motion-reduce:transform-none" />
+            <span
+              aria-hidden
+              className="grid size-8 place-items-center rounded-full bg-white/15 transition-[background-color,color] duration-200 ease-brand group-hover:bg-white group-hover:text-[#0073a4]"
+            >
+              <ArrowRight className="size-4 transition-transform duration-200 ease-brand group-hover:translate-x-0.5 motion-reduce:transform-none" />
+            </span>
           </ActionButton>
         </div>
       </div>

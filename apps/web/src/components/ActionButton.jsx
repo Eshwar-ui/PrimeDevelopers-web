@@ -13,13 +13,20 @@
 // `group` so a caller can hang a hover on an icon it passes as a child — the
 // arrow on the featured panel's primary action is the reason.
 const BASE =
-  'group inline-flex w-full sm:w-auto min-h-11 shrink-0 items-center justify-center gap-2 rounded-full px-5 font-body text-[13px] font-bold outline-none transition-[background-color,border-color,color,transform,box-shadow] duration-200 ease-brand active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transform-none'
+  'group inline-flex w-full sm:w-auto min-h-11 shrink-0 items-center justify-center gap-2 rounded-full px-5 font-body text-[13px] font-bold outline-none transition-[background-color,border-color,color,transform,translate,scale,rotate,box-shadow] duration-200 ease-brand active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transform-none'
 
 const TONES = {
-  // `text-white` rather than `text-invert-fg`: the accent fill is CG Blue in
-  // both themes, so its foreground has to be fixed too. A role token here goes
-  // near-black on the blue the moment the theme flips.
-  accent: 'bg-accent text-white hover:bg-prime-deep hover:-translate-y-0.5 shadow-[0_10px_24px_-14px_var(--color-accent)]',
+  // Brand CG Blue as a fixed pigment, not the `accent` role token. Under the
+  // dark theme `accent` lifts to #63b4dc — right for blue *text* on a dark
+  // ground, wrong for a fill: white on it measured ~2.2:1 and read as a washed
+  // out pill, and `prime-deep` (its hover) lifts too, so hovering made it
+  // paler. #0073a4 carries white at 5.2:1 in both themes and deepens on hover.
+  //
+  // Depth from three layers rather than one soft glow: a top-down sheen and a
+  // 1px inner highlight so the face reads as lit, a tight contact shadow so it
+  // sits on the card, and a blue drop shadow that grows with the hover lift.
+  accent:
+    'bg-[#0073a4] bg-[linear-gradient(180deg,rgb(255_255_255/0.14)_0%,rgb(255_255_255/0)_55%)] text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.22),0_1px_2px_rgb(0_0_0/0.3),0_10px_22px_-12px_rgb(0_115_164/0.9)] hover:-translate-y-0.5 hover:bg-[#00628c] hover:shadow-[inset_0_1px_0_rgb(255_255_255/0.22),0_2px_4px_rgb(0_0_0/0.3),0_16px_30px_-14px_rgb(0_115_164/1)] active:translate-y-0',
   // The solid pairing with `accent` — the comp draws it white on the dark
   // property cards. Role tokens, not `bg-white`: the card under it is
   // `bg-surface`, which is white in the light theme, and a white button on a

@@ -7,6 +7,8 @@ import { sized, srcSetFor } from '../lib/images'
 import ArrowRight from './ArrowRight'
 import { coverImage } from '../lib/covers'
 import { useParallax } from '../hooks/useParallax'
+import { useGSAP } from '@gsap/react'
+import { dealCards } from '../lib/reveal'
 
 // Four frames in the mosaic — one under the copy, two stacked in the middle,
 // one down the right. A fifth has nowhere to go without breaking the column
@@ -149,6 +151,15 @@ export default function Gallery() {
   // nothing and never run again.
   const scope = useRef(null)
   useParallax(scope, [tiles.length])
+  // The frames deal in one after the other; the photographs keep drifting
+  // inside them. Only the frames move here, never the parallax layers.
+  useGSAP(
+    () => {
+      const deal = dealCards(scope.current?.querySelectorAll('[data-gallery-tile]'), { y: 48 })
+      return () => deal?.kill()
+    },
+    { scope, dependencies: [tiles.length], revertOnUpdate: true }
+  )
 
   if (tiles.length === 0) return null
 
@@ -164,6 +175,7 @@ export default function Gallery() {
   const Tile = ({ p, drift = 0.12 }) =>
     p ? (
       <a
+        data-gallery-tile
         href={`/properties/${p.slug}`}
         onClick={go(`/properties/${p.slug}`)}
         className="group relative block min-h-56 flex-1 overflow-hidden rounded-panel bg-surface-alt outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent md:min-h-0"
@@ -218,6 +230,7 @@ export default function Gallery() {
 
   return (
     <section
+      data-section-reveal="off"
       id="gallery"
       ref={scope}
       data-band="light"

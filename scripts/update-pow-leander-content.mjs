@@ -11,7 +11,7 @@
 //   PRIME_ADMIN_EMAIL=… PRIME_ADMIN_PASSWORD=… node scripts/update-pow-leander-content.mjs
 //   PRIME_ADMIN_EMAIL=… PRIME_ADMIN_PASSWORD=… node scripts/update-pow-leander-content.mjs --commit
 //   … --with-pricing                 also sends the Rate Master tables and priced copy
-//   PHOTO_DIR=<dir> …                uploads whichever of FILES/GALLERY are in <dir>
+//   POW_PHOTO_DIR=<dir> …            photo folder (default pow-leander-web-photos/, from prepare-pow-leander-photos.mjs)
 //
 // Merges into the live record. Untouched on purpose: address, floorPlans.buildings
 // (the unit inventory — Prime Tracker owns it), the headline totals
@@ -55,7 +55,9 @@ const SLUG = 'pow-leander'
 const API = `${(process.env.PRIME_API ?? 'https://dtw8rs0oq8bpp.cloudfront.net').replace(/\/$/, '')}/api`
 const ADDRESS = '15901 Ronald Reagan Blvd, Leander, TX 78641'
 const FOLDER = 'projects/pow-leander/drive'
-const PHOTO_DIR = process.env.PHOTO_DIR ?? ''
+// Defaults to the output of prepare-pow-leander-photos.mjs; a different folder
+// only via POW_PHOTO_DIR, so a PHOTO_DIR left set for another script can't leak in.
+const PHOTO_DIR = process.env.POW_PHOTO_DIR ?? (existsSync('pow-leander-web-photos') ? 'pow-leander-web-photos' : '')
 
 // Slot → prepared file name and alt text (Drive source in the comment).
 const FILES = {
@@ -87,6 +89,18 @@ const GALLERY = [
   'Units 360 and 370 at POW Leander', // LEN-360-370/LcaVisualStudios-33
   'Units 480 and 490 at POW Leander', // LEN-480-490/LcaVisualStudios-6
 ].map((alt, i) => [`pow-leander-gallery-${String(i + 1).padStart(2, '0')}.webp`, alt])
+// One storefront per LEN-<units> folder not already pictured above (110,
+// 325-335, 380-390, 445-455, 330-320, 340-350, 360-370, 480-490 are). The page
+// has no unit records yet, so these join the gallery; once units exist they
+// become the unit-card photos. Drive's "LEN-420-230" folder shows units 420 and
+// 430 on the glass, so its alt says 430. LEN-440-450 uses -16, not -20 (lift in frame).
+const UNIT_GROUPS = ['300-310', '305-315', '345-335', '355-365', '375-385-395', '400-410', '405-415', '420-230', '425-435', '440-450', '470', '470-460', '475-465', '485-495']
+const unitsAlt = (group) => {
+  const units = (group === '420-230' ? '420-430' : group).split('-')
+  const list = units.length === 1 ? units[0] : `${units.slice(0, -1).join(', ')} and ${units.at(-1)}`
+  return `Unit${units.length > 1 ? 's' : ''} ${list} storefront at POW Leander`
+}
+const UNITS = UNIT_GROUPS.map((g) => [`pow-leander-unit-${g}.webp`, unitsAlt(g)])
 
 // Word for word in the visible FAQ and the FAQPage markup — both read this list.
 const FAQS = [
@@ -264,14 +278,14 @@ const fullPatch = (detail, img) => ({
   ],
 })
 
-const altFor = (key) => FILES[key]?.[1] ?? GALLERY.find(([name]) => name === key)?.[1] ?? ''
+const altFor = (key) => FILES[key]?.[1] ?? [...GALLERY, ...UNITS].find(([name]) => name === key)?.[1] ?? ''
 
 // Order matters to the page: the first three (after the hero) fill the overview
 // mosaic, the next four become "Businesses already open", the rest the gallery.
-const GALLERY_ORDER = ['aerial', 'flexRow', 'site', 'bawarchi', 'britepro', 'fitness', 'overheadDoor', ...GALLERY.map(([n]) => n), 'map']
+const GALLERY_ORDER = ['aerial', 'flexRow', 'site', 'bawarchi', 'britepro', 'fitness', 'overheadDoor', ...GALLERY.map(([n]) => n), ...UNITS.map(([n]) => n), 'map']
 
 // ── Images on hand ────────────────────────────────────────────────────────
-const files = { ...Object.fromEntries(Object.entries(FILES).map(([k, [name]]) => [k, name])), ...Object.fromEntries(GALLERY.map(([n]) => [n, n])) }
+const files = { ...Object.fromEntries(Object.entries(FILES).map(([k, [name]]) => [k, name])), ...Object.fromEntries([...GALLERY, ...UNITS].map(([n]) => [n, n])) }
 const onHand = PHOTO_DIR ? Object.keys(files).filter((k) => existsSync(join(PHOTO_DIR, files[k]))) : []
 const missing = Object.keys(files).filter((k) => !onHand.includes(k))
 

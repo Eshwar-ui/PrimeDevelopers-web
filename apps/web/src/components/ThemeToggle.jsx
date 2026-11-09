@@ -29,7 +29,7 @@ export default function ThemeToggle({ className = '', tone = 'dark' }) {
       aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
       aria-pressed={isDark}
       title={isDark ? 'Light mode' : 'Dark mode'}
-      className={`group relative grid size-11 shrink-0 place-items-center rounded-full outline-none transition-[color,background-color,transform] duration-200 ease-brand hover:-translate-y-0.5 active:translate-y-0 active:scale-90 focus-visible:ring-2 focus-visible:ring-current focus-visible:ring-offset-2 motion-reduce:transform-none ${ring} ${className}`}
+      className={`group relative grid size-11 shrink-0 place-items-center rounded-full outline-none transition-[color,background-color,transform,translate,scale,rotate] duration-200 ease-brand hover:-translate-y-0.5 active:translate-y-0 active:scale-90 focus-visible:ring-2 focus-visible:ring-current focus-visible:ring-offset-2 motion-reduce:transform-none ${ring} ${className}`}
     >
       <svg
         viewBox="0 0 24 24"

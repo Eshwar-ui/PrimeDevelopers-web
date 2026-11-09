@@ -642,7 +642,7 @@ export default function Hero() {
 
                   MaskedHeading emits a trailing space after every word, so the gap
                   before this is already there. */}
-              <span className="inline-block overflow-hidden pb-[0.08em] align-bottom -mb-[0.08em]">
+              <span className="inline-block overflow-hidden pb-[0.16em] align-bottom -mb-[0.16em]">
                 <span
                   className="word-rise inline-block"
                   style={{ animationDelay: `${wordCount(hero.heading) * WORD_STAGGER}s` }}

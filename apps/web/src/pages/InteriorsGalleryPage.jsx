@@ -84,7 +84,7 @@ export default function InteriorsGalleryPage() {
             </div>
 
             {visible.length > 0 ? (
-              <div className="mt-8 grid gap-4 sm:mt-10 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
+              <div data-deal className="mt-8 grid gap-4 sm:mt-10 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
                 {visible.map((entry) => {
                   const usedOptions = parseSlugList(entry.optionSlugs)
                     .map((s) => options.find((o) => o.slug === s))

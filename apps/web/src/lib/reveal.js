@@ -32,6 +32,56 @@ export const prefersReducedMotion = () =>
 const MAX_WAVE = 1.1
 
 /**
+ * The landing page's card entrance: Apple-style, one card after the other.
+ *
+ * Each card rises 56px, settles up from .96 and (on desktop) clears a light
+ * blur, 1s on the brand curve, 0.12s apart. `ScrollTrigger.batch` groups the
+ * cards by the moment they reach the viewport, so a grid deals row by row as
+ * the reader scrolls down it instead of the whole set firing off the section's
+ * top edge — which is what made the old stagger finish before the lower rows
+ * were even on screen. A horizontal rail's off-screen cards share their row's
+ * batch and are already in place when swiped to.
+ *
+ * The hidden state is set here, by script, so if GSAP never runs nothing was
+ * hidden. Props are cleared on completion: the `translate` hover lifts and the
+ * `scale` image zooms never touch `transform`, but a leftover inline style
+ * would still outrank any future utility on it (DESIGN.md §9).
+ */
+export function dealCards(cards, { y = 56, step = 0.12, start = 'top 88%' } = {}) {
+  const items = Array.from(cards ?? [])
+  if (!items.length || prefersReducedMotion()) return undefined
+
+  const blur = window.matchMedia('(min-width: 768px)').matches
+  const hidden = { y, scale: 0.96, opacity: 0, ...(blur ? { filter: 'blur(6px)' } : {}) }
+  gsap.set(items, hidden)
+
+  const triggers = ScrollTrigger.batch(items, {
+    start,
+    once: true,
+    onEnter: (batch) =>
+      gsap.to(batch, {
+        y: 0,
+        scale: 1,
+        opacity: 1,
+        ...(blur ? { filter: 'blur(0px)' } : {}),
+        duration: 1,
+        ease: 'brand',
+        stagger: step,
+        overwrite: true,
+        onComplete: () => gsap.set(batch, { clearProps: 'transform,opacity,filter' }),
+      }),
+  })
+
+  return {
+    kill() {
+      triggers.forEach((t) => t.kill())
+      gsap.killTweensOf(items)
+      gsap.set(items, { clearProps: 'transform,opacity,filter' })
+    },
+  }
+}
+
+/**
  * Deals a group of elements into view one after the other.
  *
  * Order is DOM order, which in a CSS grid is row-major — so a wall of logos

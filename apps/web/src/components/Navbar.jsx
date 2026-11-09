@@ -385,6 +385,7 @@ export default function Navbar() {
           <a href="/" onClick={goHome} className="shrink-0" aria-label="Prime Developer — home">
             <img
               src={logo}
+              data-nav-logo
               alt="Prime Developer"
               className="h-8 w-auto transition-opacity duration-500 md:h-10"
             />
@@ -438,7 +439,7 @@ export default function Navbar() {
                         isActive(link) ? current : idle
                       }`}
                     >
-                      <span aria-hidden className="pointer-events-none absolute inset-x-1 top-1/2 h-5 -translate-y-1/2 scale-x-75 rounded-full bg-accent/15 opacity-0 blur-md transition-[opacity,transform] duration-500 ease-brand group-hover:scale-x-110 group-hover:opacity-100 group-focus-visible:scale-x-110 group-focus-visible:opacity-100 motion-reduce:transition-opacity" />
+                      <span aria-hidden className="pointer-events-none absolute inset-x-1 top-1/2 h-5 -translate-y-1/2 scale-x-75 rounded-full bg-accent/15 opacity-0 blur-md transition-[opacity,transform,translate,scale,rotate] duration-500 ease-brand group-hover:scale-x-110 group-hover:opacity-100 group-focus-visible:scale-x-110 group-focus-visible:opacity-100 motion-reduce:transition-opacity" />
                       <RollingNavLabel>{link.label}</RollingNavLabel>
                       {hasSubmenu && (
                         <svg
@@ -456,10 +457,12 @@ export default function Navbar() {
                       )}
                       <span
                         aria-hidden
-                        className={`absolute inset-x-0 bottom-0 h-px origin-left bg-current transition-[transform,opacity] duration-500 ease-brand motion-reduce:transition-none ${
+                        // Rests anchored right and flips to the left on hover, so the line
+                        // draws in from the left and leaves off to the right.
+                        className={`absolute inset-x-0 bottom-0 h-px bg-current transition-[scale,opacity] duration-500 ease-brand motion-reduce:transition-none ${
                           isActive(link)
-                            ? 'scale-x-100 opacity-100'
-                            : 'scale-x-0 opacity-0 group-hover:scale-x-100 group-hover:opacity-100 group-focus-visible:scale-x-100 group-focus-visible:opacity-100'
+                            ? 'origin-left scale-x-100 opacity-100'
+                            : 'origin-right scale-x-0 opacity-0 group-hover:origin-left group-hover:scale-x-100 group-hover:opacity-100 group-focus-visible:origin-left group-focus-visible:scale-x-100 group-focus-visible:opacity-100'
                         }`}
                       />
                     </a>
@@ -470,22 +473,37 @@ export default function Navbar() {
                       // that gap the pointer leaving the link's box on its way
                       // down closes the menu before it ever reaches it.
                       <div
-                        className={`absolute left-1/2 top-full w-56 -translate-x-1/2 pt-3 transition-[opacity,transform] duration-200 ease-brand ${
-                          open ? 'visible translate-y-0 opacity-100' : 'invisible translate-y-1 opacity-0'
+                        // `visibility` is in the transition list so a closing panel fades
+                        // out before it goes invisible, rather than vanishing.
+                        className={`absolute left-1/2 top-full w-56 -translate-x-1/2 origin-top pt-3 transition-[opacity,translate,scale,visibility] ease-brand motion-reduce:transition-none ${
+                          open
+                            ? 'visible -translate-y-0 scale-100 opacity-100 duration-300'
+                            : 'invisible -translate-y-1.5 scale-[0.97] opacity-0 duration-150'
                         }`}
                       >
                         <ul className="overflow-hidden rounded-2xl border border-line bg-surface p-1.5 shadow-[0_30px_70px_-30px_rgba(0,0,0,0.45)]">
-                          {link.children.map((section) => (
-                            <li key={section.to}>
+                          {link.children.map((section, i) => (
+                            // Each row slides in a beat after the one above
+                            // while the panel opens; closing, they go together.
+                            <li
+                              key={section.to}
+                              style={{ transitionDelay: open ? `${60 + i * 35}ms` : '0ms' }}
+                              className={`transition-[opacity,translate] duration-300 ease-brand motion-reduce:transition-none ${
+                                open ? 'translate-y-0 opacity-100' : '-translate-y-1 opacity-0'
+                              }`}
+                            >
                               <a
                                 href={section.to}
                                 onClick={(e) => {
                                   setSubmenu(null)
                                   handleNav(e, section)
                                 }}
-                                className="block rounded-xl px-4 py-2.5 font-body text-[14px] font-semibold text-content/70 transition-colors duration-150 hover:bg-accent/10 hover:text-accent"
+                                className="group/item flex items-center justify-between rounded-xl px-4 py-2.5 font-body text-[14px] font-semibold text-content/70 transition-colors duration-150 hover:bg-accent/10 hover:text-accent"
                               >
                                 {section.label}
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden className="size-3.5 -translate-x-1.5 opacity-0 transition-[opacity,translate] duration-200 ease-brand group-hover/item:translate-x-0 group-hover/item:opacity-100 group-focus-visible/item:translate-x-0 group-focus-visible/item:opacity-100 motion-reduce:transition-none">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14m-6-6 6 6-6 6" />
+                                </svg>
                               </a>
                             </li>
                           ))}
@@ -518,7 +536,7 @@ export default function Navbar() {
                 onClick={() => setWhatsappOpen(true)}
                 aria-label="Open WhatsApp options"
                 aria-haspopup="dialog"
-                className={`group hidden size-11 items-center justify-center rounded-full border transition-[color,background-color,border-color,transform,box-shadow] duration-300 ease-brand hover:scale-105 hover:border-[#25D366] hover:bg-[#25D366] hover:text-white hover:shadow-[0_10px_24px_-10px_rgba(37,211,102,0.9)] focus-visible:border-[#25D366] focus-visible:bg-[#25D366] focus-visible:text-white active:scale-95 lg:inline-flex ${
+                className={`group hidden size-11 items-center justify-center rounded-full border transition-[color,background-color,border-color,transform,translate,scale,rotate,box-shadow] duration-300 ease-brand hover:scale-105 hover:border-[#25D366] hover:bg-[#25D366] hover:text-white hover:shadow-[0_10px_24px_-10px_rgba(37,211,102,0.9)] focus-visible:border-[#25D366] focus-visible:bg-[#25D366] focus-visible:text-white active:scale-95 lg:inline-flex ${
                   onLight ? 'border-charcoal/20 text-charcoal/70' : 'border-bone/25 text-bone/80'
                 }`}
               >
@@ -529,7 +547,7 @@ export default function Navbar() {
             <a
               href="/contact"
               onClick={goContact}
-              className={`group relative isolate hidden min-h-12 shrink-0 items-center gap-5 overflow-hidden rounded-full border bg-white px-6 font-body text-[15px] font-semibold tracking-[-0.01em] text-charcoal transition-[color,transform,box-shadow] duration-300 ease-brand hover:-translate-y-px hover:text-white focus-visible:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent active:translate-y-px active:scale-[0.985] motion-reduce:transform-none lg:inline-flex ${enquire}`}
+              className={`group relative isolate hidden min-h-12 shrink-0 items-center gap-5 overflow-hidden rounded-full border bg-white px-6 font-body text-[15px] font-semibold tracking-[-0.01em] text-charcoal transition-[color,transform,translate,scale,rotate,box-shadow] duration-300 ease-brand hover:-translate-y-px hover:text-white focus-visible:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent active:translate-y-px active:scale-[0.985] motion-reduce:transform-none lg:inline-flex ${enquire}`}
             >
               <span aria-hidden className="absolute inset-0 z-0 origin-right scale-x-0 rounded-full bg-charcoal transition-transform duration-300 ease-brand group-hover:scale-x-100 group-focus-visible:scale-x-100 motion-reduce:transition-none" />
               <span className="relative z-10 transition-transform duration-300 ease-brand group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5 motion-reduce:transform-none">{nav.enquireLabel}</span>

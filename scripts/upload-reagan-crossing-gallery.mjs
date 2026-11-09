@@ -108,13 +108,23 @@ const password = process.env.PRIME_ADMIN_PASSWORD
 if (!email || !password) throw new Error('Set PRIME_ADMIN_EMAIL and PRIME_ADMIN_PASSWORD (an admin login for the site)')
 
 async function call(path, { token, ...init } = {}) {
-  const res = await fetch(`${API}${path}`, {
-    ...init,
-    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...init.headers },
-  })
-  const body = await res.text()
-  if (!res.ok) throw new Error(`${init.method ?? 'GET'} ${path} → ${res.status} ${body.slice(0, 300)}`)
-  return body ? JSON.parse(body) : null
+  // The API rate-limits uploads (429 after ~100 in a row). Wait it out and
+  // retry rather than stopping; the progress file covers a hard stop anyway.
+  for (let attempt = 1; ; attempt++) {
+    const res = await fetch(`${API}${path}`, {
+      ...init,
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...init.headers },
+    })
+    const body = await res.text()
+    if (res.status === 429 && attempt <= 10) {
+      const wait = (Number(res.headers.get('retry-after')) || 30 * attempt) * 1000
+      console.log(`  rate-limited on ${path}; waiting ${Math.round(wait / 1000)}s (attempt ${attempt}/10)`)
+      await new Promise((r) => setTimeout(r, wait))
+      continue
+    }
+    if (!res.ok) throw new Error(`${init.method ?? 'GET'} ${path} → ${res.status} ${body.slice(0, 300)}`)
+    return body ? JSON.parse(body) : null
+  }
 }
 
 const { accessToken: token } = await call('/auth/login', {

@@ -7,7 +7,8 @@ import { renderEmphasis } from '../lib/emphasis'
 import { sized } from '../lib/images'
 import { lenis } from '../hooks/useSmoothScroll'
 import MaskedHeading from '../components/MaskedHeading'
-import { rise, stagger, inViewOnce } from '../lib/motion'
+import { rise, stagger, inViewOnce, cardRise } from '../lib/motion'
+import { useMotionTilt } from '../hooks/useMotionTilt'
 import PrimePill from '../components/PrimePill'
 import PropertiesHero from '../components/PropertiesHero'
 import ArrowRight from '../components/ArrowRight'
@@ -150,10 +151,10 @@ function UnitReveal({ children }) {
   return (
     <motion.div
       className="h-full"
-      initial={{ opacity: 0, y: 24 }}
-      whileInView={{ opacity: 1, y: 0 }}
+      // The homepage's card entrance (lib/motion `cardRise`).
+      initial={cardRise.hidden}
+      whileInView={cardRise.show}
       viewport={inViewOnce}
-      transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
     >
       {children}
     </motion.div>
@@ -217,6 +218,9 @@ function NoResults({ view, filters, otherCount, hasUnits, onView, onClear }) {
 function Card({ p, index, shared, onOpen }) {
   const reduced = useReducedMotion()
   const ref = useRef(null)
+  // The homepage cards' perspective shift, through Motion's own rotate values
+  // because Motion already owns this card's transform (hooks/useMotionTilt).
+  const tilt = useMotionTilt()
   const inView = useInView(ref, { amount: 0.4 })
   // The cover first, then the property's own gallery — without anything it
   // shares with another listing (see `sharedImages`).
@@ -253,8 +257,10 @@ function Card({ p, index, shared, onOpen }) {
   const reveal = reduced
     ? {}
     : {
-        initial: { opacity: 0, y: 24 },
-        whileInView: { opacity: 1, y: 0 },
+        // The homepage's card entrance; its own transition rides inside
+        // `show`, so the 0.55s below still governs layout and exit only.
+        initial: cardRise.hidden,
+        whileInView: cardRise.show,
         viewport: inViewOnce,
       }
 
@@ -263,6 +269,8 @@ function Card({ p, index, shared, onOpen }) {
       ref={ref}
       layout
       {...reveal}
+      style={tilt.style}
+      {...tilt.handlers}
       // `whileInView`, not `animate`. On mount every card in the list animated
       // at once, so a card six rows down finished its entrance while it was
       // still two screens below the fold and was simply *there* when the reader
@@ -317,7 +325,7 @@ function Card({ p, index, shared, onOpen }) {
               // something were still on its way.
               onLoad={i === 0 ? () => setImageLoaded(true) : undefined}
               onError={i === 0 ? () => setImageLoaded(true) : undefined}
-              className={`absolute inset-0 h-full w-full object-cover transition-[transform,opacity] duration-700 ease-out group-hover:scale-[1.04] ${
+              className={`absolute inset-0 h-full w-full object-cover transition-[transform,translate,scale,rotate,opacity] duration-700 ease-out group-hover:scale-[1.04] ${
                 shown && imageLoaded ? 'opacity-100' : 'opacity-0'
               }`}
             />

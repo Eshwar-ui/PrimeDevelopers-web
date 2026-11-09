@@ -19,7 +19,7 @@ export default function PropertyHero({ property, soldPct, onEnquire }) {
     const isSharedTransition = document.documentElement.classList.contains('property-route-transition')
     const timeline = gsap.timeline({
       delay: isSharedTransition ? 0.78 : 0,
-      defaults: { ease: 'power3.out' },
+      defaults: { ease: 'brand' },
     })
     // The phase switch, tagline and socials only render when the property has
     // them, and the photograph only once it has a cover — GSAP warns on every
@@ -129,7 +129,7 @@ export default function PropertyHero({ property, soldPct, onEnquire }) {
                   without it the heading's text — what crawlers and screen
                   readers get — was "CentroPlaza". It trails inside the
                   inline-block, where it collapses and costs no width. */}
-              {words.map((word, index) => <span key={`${word}-${index}`} className="mr-[0.2em] inline-block overflow-hidden align-top"><span className="inline-block">{word}</span>{index < words.length - 1 ? ' ' : ''}</span>)}
+              {words.map((word, index) => <span key={`${word}-${index}`} className="mr-[0.2em] -mb-[0.16em] inline-block overflow-hidden pb-[0.16em] align-top"><span className="inline-block">{word}</span>{index < words.length - 1 ? ' ' : ''}</span>)}
             </h1>
             {/* Phase switch. Sits directly under the title because it belongs
                 to it — these are two records describing one development, and

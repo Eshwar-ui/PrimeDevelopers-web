@@ -13,7 +13,7 @@ const HEIGHT = 'h-14'
 // once so a solid pill and an inverted one cannot drift into two subtly
 // different shapes.
 const LOZENGE =
-  'primary-button-flood group relative inline-flex items-center gap-4 overflow-hidden rounded-full py-1.5 pl-7 pr-1.5 outline-none transition-[color,transform,box-shadow] duration-200 ease-brand hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] motion-reduce:transform-none'
+  'primary-button-flood group relative inline-flex items-center gap-4 overflow-hidden rounded-full py-1.5 pl-7 pr-1.5 outline-none transition-[color,transform,translate,scale,rotate,box-shadow] duration-200 ease-brand hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] motion-reduce:transform-none'
 
 /**
  * The site's primary call to action: a CG Blue lozenge with a white arrow disc
@@ -44,7 +44,7 @@ export default function PrimePill({
       <a
         href={href}
         onClick={onClick}
-        className={`inline-flex items-center justify-center rounded-full border border-content/25 px-8 text-content outline-none transition-[color,border-color,background-color,transform] duration-200 ease-brand hover:-translate-y-0.5 hover:border-accent hover:bg-accent/5 hover:text-accent active:translate-y-0 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-3 focus-visible:ring-offset-base motion-reduce:transform-none ${HEIGHT} ${LABEL} ${className}`}
+        className={`inline-flex items-center justify-center rounded-full border border-content/25 px-8 text-content outline-none transition-[color,border-color,background-color,transform,translate,scale,rotate] duration-200 ease-brand hover:-translate-y-0.5 hover:border-accent hover:bg-accent/5 hover:text-accent active:translate-y-0 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-3 focus-visible:ring-offset-base motion-reduce:transform-none ${HEIGHT} ${LABEL} ${className}`}
       >
         {children}
       </a>
@@ -63,7 +63,7 @@ export default function PrimePill({
             that stayed white would dissolve into it halfway through the hover
             and take the arrow's counter-shape with it; swapping the disc to
             charcoal keeps the mark legible across the whole transition. */}
-        <span className="flex size-11 items-center justify-center rounded-full bg-white text-charcoal transition-[background-color,color,transform] duration-200 ease-brand group-hover:bg-charcoal group-hover:text-white group-hover:translate-x-0.5 group-focus-visible:bg-charcoal group-focus-visible:text-white group-active:scale-95 motion-reduce:transform-none">
+        <span className="flex size-11 items-center justify-center rounded-full bg-white text-charcoal transition-[background-color,color,transform,translate,scale,rotate] duration-200 ease-brand group-hover:bg-charcoal group-hover:text-white group-hover:translate-x-0.5 group-focus-visible:bg-charcoal group-focus-visible:text-white group-active:scale-95 motion-reduce:transform-none">
           <ArrowRight className="size-4 -rotate-45 transition-transform duration-200 ease-brand group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-active:translate-x-0 motion-reduce:transform-none" />
         </span>
       </a>

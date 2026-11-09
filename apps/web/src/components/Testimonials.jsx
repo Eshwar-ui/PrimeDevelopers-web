@@ -3,6 +3,7 @@ import { Quotes, Star } from '@phosphor-icons/react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
+import { dealCards } from '../lib/reveal'
 import { parallax } from '../lib/parallax'
 import { useSection } from '../context/ContentContext'
 import { sized } from '../lib/images'
@@ -111,15 +112,8 @@ export default function Testimonials({ sectionKey = 'testimonials', id = 'testim
   useGSAP(
     () => {
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-      gsap.from('[data-quote-card]', {
-        y: 32,
-        opacity: 0,
-        duration: 0.7,
-        ease: 'power3.out',
-        stagger: 0.1,
-        clearProps: 'transform,opacity',
-        scrollTrigger: { trigger: scope.current, start: 'top 78%' },
-      })
+      const deal = dealCards(scope.current?.querySelectorAll('[data-quote-card]'))
+      return () => deal?.kill()
     },
     // CMS-fed, so the tween is rebuilt once the quotes land rather than being
     // built over an empty rail on the first pass.
@@ -129,7 +123,8 @@ export default function Testimonials({ sectionKey = 'testimonials', id = 'testim
   if (!items?.length) return null
 
   return (
-    <section ref={scope} id={id} className="bg-base px-gutter py-section text-content md:py-section-lg">
+    <section
+      data-section-reveal="off" ref={scope} id={id} className="bg-base px-gutter py-section text-content md:py-section-lg">
       <div className="mx-auto max-w-[1560px]">
         <header className="mx-auto flex max-w-[1040px] flex-col items-center text-center">
           {eyebrow && (
@@ -175,7 +170,7 @@ export default function Testimonials({ sectionKey = 'testimonials', id = 'testim
               data-quote-card
               className="w-[88%] shrink-0 snap-start sm:w-[70%] md:w-[calc((100%-1.5rem)/2)] xl:w-[calc((100%-3.5rem)/3)]"
             >
-              <figure className="group relative flex h-full min-h-[390px] flex-col overflow-hidden rounded-[20px] bg-[#141e22] px-8 py-9 shadow-[0_14px_40px_-28px_rgba(0,0,0,0.8)] transition-[transform,box-shadow] duration-500 ease-brand hover:-translate-y-1 hover:shadow-[0_24px_54px_-28px_rgba(0,0,0,0.95)] motion-reduce:transform-none md:px-9 md:py-10">
+              <figure className="group relative flex h-full min-h-[390px] flex-col overflow-hidden rounded-[20px] bg-[#141e22] px-8 py-9 shadow-[0_14px_40px_-28px_rgba(0,0,0,0.8)] transition-[transform,translate,scale,rotate,box-shadow] duration-500 ease-brand hover:-translate-y-1 hover:shadow-[0_24px_54px_-28px_rgba(0,0,0,0.95)] motion-reduce:transform-none md:px-9 md:py-10">
                 <ParallaxWatermark index={index} />
 
                 <Quotes aria-hidden className="relative size-8 text-[#006a9d]" />

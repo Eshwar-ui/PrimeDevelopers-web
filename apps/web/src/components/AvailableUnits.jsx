@@ -2,6 +2,8 @@ import { useMemo, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
+import { motion, useReducedMotion } from 'motion/react'
+import { dealCards } from '../lib/reveal'
 import { useProperties, useSection } from '../context/ContentContext'
 import { collectUnits } from '../lib/units'
 import { SIZE_TIERS } from '../lib/unitTiers'
@@ -23,6 +25,10 @@ export default function AvailableUnits() {
   const copy = useSection('units_home')
   const scope = useRef(null)
   const [tier, setTier] = useState('all')
+  // Set by a filter click, so the cards that follow swap in quickly rather
+  // than replaying the full scroll entrance (see the deal below).
+  const filtered = useRef(false)
+  const reduceMotion = useReducedMotion()
   const allUnits = useMemo(() => collectUnits(properties), [properties])
 
   const sizeFiltered = useMemo(() => {
@@ -67,15 +73,11 @@ export default function AvailableUnits() {
   useGSAP(
     () => {
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-      gsap.from('[data-unit-card]', {
-        y: 32,
-        opacity: 0,
-        duration: 0.7,
-        ease: 'power3.out',
-        stagger: 0.1,
-        clearProps: 'transform,opacity',
-        scrollTrigger: { trigger: scope.current, start: 'top 78%' },
-      })
+      const deal = dealCards(
+        scope.current?.querySelectorAll('[data-unit-card]'),
+        filtered.current ? { y: 20, step: 0.06 } : undefined
+      )
+      return () => deal?.kill()
     },
     {
       scope,
@@ -96,6 +98,7 @@ export default function AvailableUnits() {
 
   return (
     <section
+      data-section-reveal="off"
       data-band="light"
       ref={scope}
       aria-labelledby="available-units-heading"
@@ -120,7 +123,10 @@ export default function AvailableUnits() {
           </p>
         </div>
 
-        <div
+        {/* `layoutScroll` so the pill measures correctly inside the phone's
+            horizontally scrolling row. */}
+        <motion.div
+          layoutScroll
           className="-mx-gutter mt-8 flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-gutter pb-2 scroll-px-gutter sm:mx-0 sm:flex-wrap sm:justify-center sm:overflow-visible sm:px-0 sm:pb-0"
           role="group"
           aria-label="Filter units by size"
@@ -132,18 +138,31 @@ export default function AvailableUnits() {
                 key={t.id}
                 type="button"
                 aria-pressed={isActive}
-                onClick={() => setTier(t.id)}
-                className={`min-h-11 shrink-0 snap-start rounded-full border px-5 font-body text-[13px] font-bold transition-colors duration-200 ease-brand ${
+                onClick={() => {
+                  filtered.current = true
+                  setTier(t.id)
+                }}
+                className={`relative isolate min-h-11 shrink-0 snap-start rounded-full border px-5 font-body text-[13px] font-bold transition-colors duration-200 ease-brand ${
                   isActive
-                    ? 'border-accent bg-accent text-white'
+                    ? 'border-accent text-white'
                     : 'border-content/20 text-content/70 hover:border-accent hover:text-accent'
                 }`}
               >
+                {/* One pill shared by every filter: it slides from the old
+                    choice to the new one instead of the fill jumping across. */}
+                {isActive && (
+                  <motion.span
+                    layoutId="unit-tier-pill"
+                    aria-hidden
+                    className="absolute -inset-px -z-10 rounded-full bg-accent"
+                    transition={reduceMotion ? { duration: 0 } : { type: 'spring', bounce: 0, duration: 0.5 }}
+                  />
+                )}
                 {t.label}
               </button>
             )
           })}
-        </div>
+        </motion.div>
 
         {shown.length === 0 ? (
           <p className="mt-12 text-center font-body text-sm text-content/70">

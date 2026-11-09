@@ -3,7 +3,7 @@ import { Navigate, useParams } from 'react-router-dom'
 import { motion, AnimatePresence, useInView, useReducedMotion } from 'motion/react'
 import { DEFAULT_INFO } from '../data/centroPlazaInfo'
 import { useProperty, useSection } from '../context/ContentContext'
-import { rise, stagger, inViewOnce } from '../lib/motion'
+import { cardRise, cardStagger, inViewOnce } from '../lib/motion'
 import { sized } from '../lib/images'
 import { buildingKey, isInfoLive, resolveInfo, telHref } from '../lib/propertyInfo'
 import { useScrollLock } from '../hooks/useScrollLock'
@@ -40,7 +40,7 @@ function Reveal({ className, children }) {
     <motion.div
       ref={ref}
       className={className}
-      variants={reduced ? undefined : stagger}
+      variants={reduced ? undefined : cardStagger}
       initial={reduced ? undefined : 'hidden'}
       animate={reduced ? undefined : inView ? 'show' : 'hidden'}
     >
@@ -187,7 +187,7 @@ function ImageRows({ images, kind, startIndex, onOpen, dark }) {
  */
 function Plate({ image, ratio, onRatio, kind, dark, onOpen, style }) {
   return (
-    <motion.figure variants={rise} style={style} className="min-w-0">
+    <motion.figure variants={cardRise} style={style} className="min-w-0">
       <button
         type="button"
         onClick={onOpen}
@@ -396,7 +396,7 @@ function BuildingExplorer({ items, unitsFor, indexOf, onOpen }) {
                     decoding="async"
                     onLoad={() => markLoaded(current.photo)}
                     onError={() => markLoaded(current.photo)}
-                    className={`aspect-[4/3] w-full object-cover transition-[transform,opacity] duration-[900ms] ease-brand group-hover:scale-[1.03] ${
+                    className={`aspect-[4/3] w-full object-cover transition-[transform,translate,scale,rotate,opacity] duration-[900ms] ease-brand group-hover:scale-[1.03] ${
                       loaded.has(current.photo) ? 'opacity-100' : 'opacity-0'
                     }`}
                   />
@@ -423,7 +423,7 @@ function BuildingExplorer({ items, unitsFor, indexOf, onOpen }) {
                     decoding="async"
                     onLoad={() => markLoaded(current.plan)}
                     onError={() => markLoaded(current.plan)}
-                    className={`absolute inset-0 size-full object-contain transition-[transform,opacity] duration-[900ms] ease-brand group-hover:scale-[1.03] ${
+                    className={`absolute inset-0 size-full object-contain transition-[transform,translate,scale,rotate,opacity] duration-[900ms] ease-brand group-hover:scale-[1.03] ${
                       loaded.has(current.plan) ? 'opacity-100' : 'opacity-0'
                     }`}
                   />

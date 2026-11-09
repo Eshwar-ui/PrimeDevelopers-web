@@ -47,7 +47,7 @@ export default function MaskedHeading({ text, startIndex = 0, accentClass = '' }
                 <Fragment key={n}>
                   {/* pb/-mb pair: overflow-hidden would otherwise shave
                       descenders and the underside of the cap line. */}
-                  <span className="inline-block overflow-hidden pb-[0.08em] align-bottom -mb-[0.08em]">
+                  <span className="inline-block overflow-hidden pb-[0.16em] align-bottom -mb-[0.16em]">
                     <span
                       className={`word-rise inline-block ${accented ? accentClass : ''}`}
                       style={{ animationDelay: `${delay}s` }}

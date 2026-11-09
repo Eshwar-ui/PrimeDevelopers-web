@@ -26,8 +26,11 @@ import { useHead } from './hooks/useHead'
 import { staticHead } from './lib/seo'
 import { websiteSchema } from './lib/structuredData'
 import { BRAND_NAME, SITE_ORIGIN } from './lib/site'
+import SplashIntro from './components/SplashIntro'
 import SectionRevealController from './components/SectionRevealController'
+import ImageFadeController from './components/ImageFadeController'
 import LandingParallaxChapter from './components/LandingParallaxChapter'
+import { initSiteMotion } from './lib/siteMotion'
 
 // The home page's sections stay eagerly imported above: they are what the
 // overwhelming majority of visits render, and deferring them would only add a
@@ -306,6 +309,9 @@ function RedirectId({ to }) {
 
 function PublicSite() {
   useSmoothScroll() // Lenis + GSAP ScrollTrigger, mounted once at the root
+  // Photo unveil and press feedback on every public page (lib/siteMotion).
+  // Mounted on <main>, which this component renders, so it is there by now.
+  useEffect(() => initSiteMotion(document.querySelector('main')), [])
   useRememberScroll() // per-entry scroll positions for Back / Forward
   const location = useLocation()
   const reduced = useReducedMotion()
@@ -354,7 +360,9 @@ function PublicSite() {
   return (
     <>
       <Navbar />
+      <SplashIntro />
       <SectionRevealController />
+      <ImageFadeController />
       {/* Holds the page open through the frame where neither route is mounted.
           Without it the footer flies up to meet the header and drops back. */}
       <main className="min-h-svh">

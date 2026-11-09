@@ -102,12 +102,12 @@ export default function InvestPage() {
   useGSAP(
     () => {
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-      gsap.from('[data-hero-copy] > *', { y: 28, opacity: 0, duration: 0.8, ease: 'power3.out', stagger: 0.1 })
+      gsap.from('[data-hero-copy] > *', { y: 28, opacity: 0, duration: 0.8, ease: 'brand', stagger: 0.1 })
       gsap.from('[data-hero-visual]', {
         scale: 1.1,
         opacity: 0,
         duration: 1.2,
-        ease: 'power3.out',
+        ease: 'brand',
         // A `.from()` leaves its inline transform behind for good, and a layer
         // that still carries one stays composited — which is what antialiases
         // its clipped bottom edge into a hairline over the section below.
@@ -117,7 +117,7 @@ export default function InvestPage() {
         gsap.fromTo(
           el,
           { y: 32, opacity: 0 },
-          { y: 0, opacity: 1, duration: 0.7, ease: 'power3.out', scrollTrigger: { trigger: el, start: 'top 84%' } }
+          { y: 0, opacity: 1, duration: 0.7, ease: 'brand', scrollTrigger: { trigger: el, start: 'top 84%' } }
         )
       })
     },

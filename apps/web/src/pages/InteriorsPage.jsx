@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
+import { dealCards } from '../lib/reveal'
 import { useSection } from '../context/ContentContext'
 import ArrowRight from '../components/ArrowRight'
 import CustomSelect from '../components/CustomSelect'
@@ -47,15 +48,9 @@ export default function InteriorsPage() {
 
   useGSAP(
     () => {
-      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-      gsap.from('[data-catalog-card]', {
-        y: 28,
-        opacity: 0,
-        duration: 0.6,
-        ease: 'power3.out',
-        stagger: 0.06,
-        clearProps: 'transform,opacity',
-      })
+      // The homepage's card entrance, row by row as the catalogue scrolls.
+      const deal = dealCards(scope.current?.querySelectorAll('[data-catalog-card]'))
+      return () => deal?.kill()
     },
     { scope, dependencies: [visible.map((o) => o.slug).join(',')] }
   )

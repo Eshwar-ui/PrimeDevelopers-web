@@ -2464,12 +2464,12 @@ export default function ModelViewer({
         // Icon-only on a phone, so a toolbar beside it can share its line; and
         // no hover-expanded label while there is one, which would slide under
         // the first control in it.
-        className="group absolute left-4 top-4 z-30 flex min-h-11 items-center gap-2 overflow-hidden rounded-full border border-white/12 bg-black/58 px-4 py-2.5 font-body text-[11px] font-bold uppercase tracking-[0.12em] text-bone shadow-[0_14px_32px_-22px_rgba(0,0,0,.9)] backdrop-blur-xl transition-[background-color,border-color,transform] duration-300 ease-brand hover:-translate-y-0.5 hover:border-white/30 hover:bg-black/72 active:translate-y-0 max-sm:w-11 max-sm:justify-center max-sm:px-0"
+        className="group absolute left-4 top-4 z-30 flex min-h-11 items-center gap-2 overflow-hidden rounded-full border border-white/12 bg-black/58 px-4 py-2.5 font-body text-[11px] font-bold uppercase tracking-[0.12em] text-bone shadow-[0_14px_32px_-22px_rgba(0,0,0,.9)] backdrop-blur-xl transition-[background-color,border-color,transform,translate,scale,rotate] duration-300 ease-brand hover:-translate-y-0.5 hover:border-white/30 hover:bg-black/72 active:translate-y-0 max-sm:w-11 max-sm:justify-center max-sm:px-0"
       >
         <span className="transition-transform duration-300 ease-brand group-hover:rotate-12">{mode === '2d' ? <CubeIcon /> : <PlanIcon />}</span>
         <span className="flex min-w-0 items-center overflow-hidden max-sm:hidden">
-          <span className={`max-w-10 whitespace-nowrap opacity-100 transition-[max-width,opacity,transform] duration-300 ease-brand ${toolbar ? '' : 'group-hover:max-w-0 group-hover:-translate-y-2 group-hover:opacity-0'}`}>{mode === '2d' ? '3D' : '2D'}</span>
-          {!toolbar && <span className="max-w-0 translate-y-2 overflow-hidden whitespace-nowrap opacity-0 transition-[max-width,opacity,transform] duration-300 ease-brand group-hover:max-w-28 group-hover:translate-y-0 group-hover:opacity-100">{mode === '2d' ? 'Switch to 3D' : 'Switch to 2D'}</span>}
+          <span className={`max-w-10 whitespace-nowrap opacity-100 transition-[max-width,opacity,transform,translate,scale,rotate] duration-300 ease-brand ${toolbar ? '' : 'group-hover:max-w-0 group-hover:-translate-y-2 group-hover:opacity-0'}`}>{mode === '2d' ? '3D' : '2D'}</span>
+          {!toolbar && <span className="max-w-0 translate-y-2 overflow-hidden whitespace-nowrap opacity-0 transition-[max-width,opacity,transform,translate,scale,rotate] duration-300 ease-brand group-hover:max-w-28 group-hover:translate-y-0 group-hover:opacity-100">{mode === '2d' ? 'Switch to 3D' : 'Switch to 2D'}</span>}
         </span>
       </button>
 

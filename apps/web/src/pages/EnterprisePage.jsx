@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
+import { dealCards } from '../lib/reveal'
 import ArrowRight from '../components/ArrowRight'
 import ActionButton from '../components/ActionButton'
 import { useListings, useSection } from '../context/ContentContext'
@@ -30,7 +31,7 @@ export default function EnterprisePage() {
         y: 24,
         duration: 0.75,
         stagger: 0.1,
-        ease: 'power3.out',
+        ease: 'brand',
         clearProps: 'opacity,transform',
         ...options,
       })
@@ -40,9 +41,8 @@ export default function EnterprisePage() {
       if (heroImage) reveal(heroImage, { delay: 0.3, duration: 1, y: 16 })
 
       root.querySelectorAll('[data-expertise-reveal]').forEach((group) => {
-        reveal(group.children, {
-          scrollTrigger: { trigger: group, start: 'top 88%', once: true },
-        })
+        // Card groups take the homepage's card entrance (lib/reveal).
+        dealCards(group.children)
       })
     })
     return () => media.revert()

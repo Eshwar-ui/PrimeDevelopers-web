@@ -1,8 +1,10 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
+import { dealCards } from '../lib/reveal'
+import { attachTilt } from '../lib/tilt'
 import { useSection, useListings } from '../context/ContentContext'
 import { sized, srcSetFor } from '../lib/images'
 import { renderEmphasis } from '../lib/emphasis'
@@ -47,9 +49,16 @@ function DownloadIcon() {
  */
 function chipsFor(p, unitsLabel) {
   const units = p.buildings ? { value: String(p.buildings), label: unitsLabel } : null
+  // The same unit tokens the detail page fills in (PropertyDetailPage
+  // `unitTokens`). Unfilled here, Centro's "{totalUnits}" stat printed raw.
+  const tokens = (text) =>
+    String(text ?? '')
+      .replace('{totalUnits}', p.buildings ?? '')
+      .replace('{availableUnits}', p.available ?? '')
+      .replace('{reservedUnits}', p.sold ?? '')
   const stats = (p.detail?.overview?.stats ?? []).map((s) => ({
-    value: String(s.value ?? ''),
-    label: s.label ?? '',
+    value: tokens(s.value),
+    label: tokens(s.label),
   }))
 
   // A property's own statistics often restate the unit count under a different
@@ -91,17 +100,8 @@ export default function Properties() {
   useGSAP(
     () => {
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-      gsap.from('[data-card]', {
-        y: 48,
-        opacity: 0,
-        duration: 0.9,
-        ease: 'power3.out',
-        stagger: 0.12,
-        // A `.from()` leaves its inline transform behind permanently, and an
-        // inline style always beats a utility class (DESIGN.md §9).
-        clearProps: 'transform,opacity',
-        scrollTrigger: { trigger: scope.current, start: 'top 75%' },
-      })
+      const deal = dealCards(scope.current?.querySelectorAll('[data-card]'))
+      return () => deal?.kill()
     },
     // Keyed to the card count, and that is what makes this animation exist at
     // all. The properties arrive from the CMS after mount, so on the first pass
@@ -112,10 +112,19 @@ export default function Properties() {
     { scope, dependencies: [properties.length], revertOnUpdate: true }
   )
 
+  // Each card leans toward the pointer and its photograph slides the other
+  // way (lib/tilt). Keyed to the count because the cards arrive from the CMS.
+  useEffect(() => {
+    const cards = scope.current?.querySelectorAll('[data-card]') ?? []
+    const detach = Array.from(cards, (card) => attachTilt(card, { photo: 'img[data-unveil]' }))
+    return () => detach.forEach((off) => off())
+  }, [properties.length])
+
   if (properties.length === 0) return null
 
   return (
     <section
+      data-section-reveal="off"
       id="properties"
       data-band="light"
       ref={scope}
@@ -155,7 +164,7 @@ export default function Properties() {
               // are the page's primary content and the border is what separates
               // a card from the page ground behind it, which is nearly the same
               // colour.
-              className="group relative flex min-w-0 flex-col basis-[85%] shrink-0 snap-start overflow-hidden rounded-panel md:basis-auto border border-accent/45 bg-surface transition-[border-color,box-shadow] duration-500 ease-brand hover:border-accent/75 hover:shadow-[0_36px_80px_-52px_rgba(0,0,0,0.85)] focus-within:border-accent/75"
+              className="group relative flex min-w-0 flex-col basis-[85%] shrink-0 snap-start overflow-hidden rounded-panel md:basis-auto border border-accent/45 bg-surface transition-[border-color,box-shadow,translate] duration-500 ease-brand hover:-translate-y-0.5 hover:border-accent/75 motion-reduce:translate-none hover:shadow-[0_36px_80px_-52px_rgba(0,0,0,0.85)] focus-within:border-accent/75"
             >
               {coverImage(p, 'homeTeaser') && (
                 // A block in the flow on a phone, lifted out of it from `md` up.
@@ -189,6 +198,7 @@ export default function Properties() {
                     sizes="(min-width: 1024px) 68vw, 100vw"
                     loading="lazy"
                     decoding="async"
+                    data-unveil
                     className="absolute inset-0 size-full object-cover transition-transform duration-700 ease-brand group-hover:scale-[1.04]"
                   />
                   {/* The stacked card's answer to `card-photo-fade`, turned a

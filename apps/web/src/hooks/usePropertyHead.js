@@ -2,6 +2,8 @@ import { useHead } from './useHead'
 import { SITE_ORIGIN } from '../lib/site'
 import { faqSchema, propertySchema } from '../lib/structuredData'
 import { propertyHead } from '../lib/seo'
+import { useProperties } from '../context/ContentContext'
+import { phaseTrail } from '../lib/phases'
 
 /**
  * Title, description, canonical, Open Graph / X cards, geo tags and JSON-LD
@@ -21,6 +23,7 @@ import { propertyHead } from '../lib/seo'
  */
 export function usePropertyHead(property) {
   const spec = propertyHead(property)
+  const phase = phaseTrail(useProperties(), property)
 
   useHead(
     spec
@@ -33,6 +36,7 @@ export function usePropertyHead(property) {
               url: `${SITE_ORIGIN}${spec.path}`,
               title: spec.title,
               description: spec.description,
+              phase,
             }),
             faqSchema(property.detail?.faqs),
           ].filter(Boolean),

@@ -141,6 +141,23 @@ export function collapsePhases(properties) {
   })
 }
 
+/**
+ * Where a later phase sits under its development, for breadcrumbs:
+ * `{ label: 'Phase II', parent: { slug, name } }`, the parent being the
+ * development's first phase. Null on the first phase and on unphased
+ * properties, whose trail ends at their own name.
+ *
+ * Breadcrumbs and markup only — headings keep the bare development name on
+ * every phase, so the phase is never repeated in an H1.
+ */
+export function phaseTrail(properties, current) {
+  const siblings = phaseSiblings(properties, current)
+  const self = siblings.find((s) => s.isCurrent)
+  if (!self || siblings[0] === self) return null
+  const first = (properties ?? []).find((p) => p.slug === siblings[0].slug)
+  return { label: self.label, parent: { slug: first.slug, name: first.name.trim() } }
+}
+
 export function phaseSiblings(properties, current) {
   const phaseFor = phaseOf(properties)
   const self = phaseFor(current)

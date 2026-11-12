@@ -252,6 +252,10 @@ export function propertyHead(property) {
     // reused as one does not.
     imageSized: Boolean(seo.ogImage),
     imageAlt: seo.ogImageAlt || seo.heroAlt || property.name,
+    // A page whose content is not ready yet (POW Lewisville Phase II until its
+    // own record landed) asks to stay out of the index on every host. Unset,
+    // the host decides: indexable in production, noindex on staging.
+    robots: seo.noindex ? 'noindex, nofollow' : undefined,
     extraMeta: {
       'geo.region': seo.geoRegion,
       'geo.placename': seo.geoPlacename,

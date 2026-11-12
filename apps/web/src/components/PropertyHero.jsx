@@ -6,13 +6,17 @@ import SocialIcon from './SocialIcon'
 import ArrowRight from './ArrowRight'
 import { imageAlt, sized, srcSetFor } from '../lib/images'
 import { useProperties } from '../context/ContentContext'
-import { phaseSiblings } from '../lib/phases'
+import { phaseSiblings, phaseTrail } from '../lib/phases'
 import { coverImage } from '../lib/covers'
 
 export default function PropertyHero({ property, soldPct, onEnquire }) {
   const scope = useRef(null)
   const image = useRef(null)
-  const phases = phaseSiblings(useProperties(), property)
+  const properties = useProperties()
+  const phases = phaseSiblings(properties, property)
+  // A later phase adds its development as a crumb and ends on "Phase II";
+  // the H1 below keeps the bare development name on every phase.
+  const trail = phaseTrail(properties, property)
 
   useGSAP(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
@@ -100,6 +104,7 @@ export default function PropertyHero({ property, soldPct, onEnquire }) {
             {[
               ['Home', '/'],
               ['Properties', '/properties'],
+              ...(trail ? [[trail.parent.name, `/properties/${trail.parent.slug}`]] : []),
             ].map(([label, href]) => (
               <li key={href} className="flex items-center gap-2.5">
                 <Link to={href} className="inline-flex min-h-11 items-center transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
@@ -108,7 +113,7 @@ export default function PropertyHero({ property, soldPct, onEnquire }) {
                 <span aria-hidden className="text-white/40">›</span>
               </li>
             ))}
-            <li aria-current="page" className="text-white">{property.name}</li>
+            <li aria-current="page" className="text-white">{trail ? trail.label : property.name}</li>
           </ol>
         </nav>
 

@@ -636,8 +636,10 @@ export default function PropertyDetailPage() {
                 the tabs directly beneath already name the building. */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {[
-                ['Total Area', `${d.floorPlans.buildings[tab].area} sq ft`],
-                ['Total Units', d.floorPlans.buildings[tab].units],
+                // A blank area reads as "—", not " sq ft". Unit count falls back
+                // to the building's own unit records.
+                ['Total Area', d.floorPlans.buildings[tab].area ? `${d.floorPlans.buildings[tab].area} sq ft` : '—'],
+                ['Total Units', d.floorPlans.buildings[tab].units ?? d.floorPlans.buildings[tab].unitList?.length ?? '—'],
                 ['Available Units', d.floorPlans.buildings[tab].available],
                 ['Parking', d.floorPlans.buildings[tab].parking],
               ].map(([label, value]) => (

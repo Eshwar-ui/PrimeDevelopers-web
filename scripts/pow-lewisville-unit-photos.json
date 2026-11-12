@@ -1,0 +1,903 @@
+{
+ "101": [
+  {
+   "file": "units/pow-lewisville-unit-101-1.webp",
+   "source": "Units/LEW-Unit-101/LEW-Unit-233.jpg",
+   "score": 1142
+  },
+  {
+   "file": "units/pow-lewisville-unit-101-2.webp",
+   "source": "Units/LEW-Unit-101/LEW-Unit-230.jpg",
+   "score": 1002
+  }
+ ],
+ "102": [
+  {
+   "file": "units/pow-lewisville-unit-102-1.webp",
+   "source": "Units/LEW-Unit-102/LEW-Unit-227.jpg",
+   "score": 1345
+  },
+  {
+   "file": "units/pow-lewisville-unit-102-2.webp",
+   "source": "Units/LEW-Unit-102/LEW-Unit-226.jpg",
+   "score": 961
+  },
+  {
+   "file": "units/pow-lewisville-unit-102-3.webp",
+   "source": "Units/LEW-Unit-102/LEW-Unit-223.jpg",
+   "score": 925
+  }
+ ],
+ "103": [
+  {
+   "file": "units/pow-lewisville-unit-103-1.webp",
+   "source": "Units/LEW-Unit-103/LEW-Unit-238.jpg",
+   "score": 953
+  },
+  {
+   "file": "units/pow-lewisville-unit-103-2.webp",
+   "source": "Units/LEW-Unit-103/LEW-Unit-235.jpg",
+   "score": 928
+  }
+ ],
+ "104": [
+  {
+   "file": "units/pow-lewisville-unit-104-1.webp",
+   "source": "Units/LEW-Unit-104/LEW-Unit-219.jpg",
+   "score": 1068
+  },
+  {
+   "file": "units/pow-lewisville-unit-104-2.webp",
+   "source": "Units/LEW-Unit-104/LEW-Unit-221.jpg",
+   "score": 1056
+  },
+  {
+   "file": "units/pow-lewisville-unit-104-3.webp",
+   "source": "Units/LEW-Unit-104/LEW-Unit-222.jpg",
+   "score": 1019
+  }
+ ],
+ "105": [
+  {
+   "file": "units/pow-lewisville-unit-105-1.webp",
+   "source": "Units/LEW-Unit-105/LEW-Unit-236.jpg",
+   "score": 1109
+  },
+  {
+   "file": "units/pow-lewisville-unit-105-2.webp",
+   "source": "Units/LEW-Unit-105/LEW-Unit-244.jpg",
+   "score": 1078
+  },
+  {
+   "file": "units/pow-lewisville-unit-105-3.webp",
+   "source": "Units/LEW-Unit-105/LEW-Unit-239.jpg",
+   "score": 995
+  }
+ ],
+ "106": [
+  {
+   "file": "units/pow-lewisville-unit-106-1.webp",
+   "source": "Units/LEW-Unit-106/LEW-Unit-214.jpg",
+   "score": 1085
+  }
+ ],
+ "107": [
+  {
+   "file": "units/pow-lewisville-unit-107-1.webp",
+   "source": "Units/LEW-Unit-107/LEW-Unit-248.jpg",
+   "score": 1391
+  },
+  {
+   "file": "units/pow-lewisville-unit-107-2.webp",
+   "source": "Units/LEW-Unit-107/LEW-Unit-243.jpg",
+   "score": 1216
+  },
+  {
+   "file": "units/pow-lewisville-unit-107-3.webp",
+   "source": "Units/LEW-Unit-107/LEW-Unit-237.jpg",
+   "score": 1172
+  }
+ ],
+ "108": [
+  {
+   "file": "units/pow-lewisville-unit-108-1.webp",
+   "source": "Units/LEW-Unit-108/LEW-Unit-212.jpg",
+   "score": 1154
+  },
+  {
+   "file": "units/pow-lewisville-unit-108-2.webp",
+   "source": "Units/LEW-Unit-108/LEW-Unit-213.jpg",
+   "score": 1141
+  },
+  {
+   "file": "units/pow-lewisville-unit-108-3.webp",
+   "source": "Units/LEW-Unit-108/LEW-Unit-217.jpg",
+   "score": 1088
+  }
+ ],
+ "109": [
+  {
+   "file": "units/pow-lewisville-unit-109-1.webp",
+   "source": "Units/LEW-Unit-109/LEW-Unit-245.jpg",
+   "score": 1424
+  },
+  {
+   "file": "units/pow-lewisville-unit-109-2.webp",
+   "source": "Units/LEW-Unit-109/LEW-Unit-250.jpg",
+   "score": 1344
+  },
+  {
+   "file": "units/pow-lewisville-unit-109-3.webp",
+   "source": "Units/LEW-Unit-109/LEW-Unit-247.jpg",
+   "score": 1325
+  }
+ ],
+ "110": [
+  {
+   "file": "units/pow-lewisville-unit-110-1.webp",
+   "source": "Units/LEW-Unit-110/LEW-Unit-211.jpg",
+   "score": 1271
+  },
+  {
+   "file": "units/pow-lewisville-unit-110-2.webp",
+   "source": "Units/LEW-Unit-110/LEW-Unit-209.jpg",
+   "score": 1090
+  }
+ ],
+ "111": [
+  {
+   "file": "units/pow-lewisville-unit-111-1.webp",
+   "source": "Units/LEW-Unit-111/LEW-Unit-242.jpg",
+   "score": 1298
+  },
+  {
+   "file": "units/pow-lewisville-unit-111-2.webp",
+   "source": "Units/LEW-Unit-111/LEW-Unit-249.jpg",
+   "score": 992
+  }
+ ],
+ "112": [
+  {
+   "file": "units/pow-lewisville-unit-112-1.webp",
+   "source": "Units/LEW-Unit-112/LEW-Unit-200.jpg",
+   "score": 1361
+  },
+  {
+   "file": "units/pow-lewisville-unit-112-2.webp",
+   "source": "Units/LEW-Unit-112/LEW-Unit-207.jpg",
+   "score": 1277
+  },
+  {
+   "file": "units/pow-lewisville-unit-112-3.webp",
+   "source": "Units/LEW-Unit-112/LEW-Unit-203.jpg",
+   "score": 1270
+  }
+ ],
+ "114": [
+  {
+   "file": "units/pow-lewisville-unit-114-1.webp",
+   "source": "Units/LEW-Unit-114/LEW-Unit-199.jpg",
+   "score": 1536
+  },
+  {
+   "file": "units/pow-lewisville-unit-114-2.webp",
+   "source": "Units/LEW-Unit-114/LEW-Unit-208.jpg",
+   "score": 1288
+  },
+  {
+   "file": "units/pow-lewisville-unit-114-3.webp",
+   "source": "Units/LEW-Unit-114/LEW-Unit-202.jpg",
+   "score": 1206
+  }
+ ],
+ "116": [
+  {
+   "file": "units/pow-lewisville-unit-116-1.webp",
+   "source": "Units/LEW-Unit-116/LEW-Unit-196.jpg",
+   "score": 1549
+  },
+  {
+   "file": "units/pow-lewisville-unit-116-2.webp",
+   "source": "Units/LEW-Unit-116/LEW-Unit-198.jpg",
+   "score": 1535
+  },
+  {
+   "file": "units/pow-lewisville-unit-116-3.webp",
+   "source": "Units/LEW-Unit-116/LEW-Unit-204.jpg",
+   "score": 1243
+  }
+ ],
+ "118": [
+  {
+   "file": "units/pow-lewisville-unit-118-1.webp",
+   "source": "Units/LEW-Unit-118/LEW-Unit-197.jpg",
+   "score": 1126
+  },
+  {
+   "file": "units/pow-lewisville-unit-118-2.webp",
+   "source": "Units/LEW-Unit-118/LEW-Unit-194.jpg",
+   "score": 1025
+  }
+ ],
+ "201": [
+  {
+   "file": "units/pow-lewisville-unit-201-1.webp",
+   "source": "Units/LEW-Unit-201/LEW-Unit-173.jpg",
+   "score": 984
+  },
+  {
+   "file": "units/pow-lewisville-unit-201-2.webp",
+   "source": "Units/LEW-Unit-201/LEW-Unit-166.jpg",
+   "score": 905
+  },
+  {
+   "file": "units/pow-lewisville-unit-201-3.webp",
+   "source": "Units/LEW-Unit-201/LEW-Unit-168.jpg",
+   "score": 796
+  }
+ ],
+ "202": [
+  {
+   "file": "units/pow-lewisville-unit-202-1.webp",
+   "source": "Units/LEW-Unit-202/LEW-Unit-116.jpg",
+   "score": 1102
+  },
+  {
+   "file": "units/pow-lewisville-unit-202-2.webp",
+   "source": "Units/LEW-Unit-202/LEW-Unit-123.jpg",
+   "score": 1088
+  },
+  {
+   "file": "units/pow-lewisville-unit-202-3.webp",
+   "source": "Units/LEW-Unit-202/LEW-Unit-111.jpg",
+   "score": 1006
+  }
+ ],
+ "203": [
+  {
+   "file": "units/pow-lewisville-unit-203-1.webp",
+   "source": "Units/LEW-Unit-203/LEW-Unit-169.jpg",
+   "score": 1053
+  },
+  {
+   "file": "units/pow-lewisville-unit-203-2.webp",
+   "source": "Units/LEW-Unit-203/LEW-Unit-172.jpg",
+   "score": 1020
+  },
+  {
+   "file": "units/pow-lewisville-unit-203-3.webp",
+   "source": "Units/LEW-Unit-203/LEW-Unit-177.jpg",
+   "score": 836
+  }
+ ],
+ "204": [
+  {
+   "file": "units/pow-lewisville-unit-204-1.webp",
+   "source": "Units/LEW-Unit-204/LEW-Unit-110.jpg",
+   "score": 1278
+  },
+  {
+   "file": "units/pow-lewisville-unit-204-2.webp",
+   "source": "Units/LEW-Unit-204/LEW-Unit-119.jpg",
+   "score": 1191
+  },
+  {
+   "file": "units/pow-lewisville-unit-204-3.webp",
+   "source": "Units/LEW-Unit-204/LEW-Unit-115.jpg",
+   "score": 1053
+  }
+ ],
+ "205": [
+  {
+   "file": "units/pow-lewisville-unit-205-1.webp",
+   "source": "Units/LEW-Unit-205/LEW-Unit-170.jpg",
+   "score": 1113
+  },
+  {
+   "file": "units/pow-lewisville-unit-205-2.webp",
+   "source": "Units/LEW-Unit-205/LEW-Unit-174.jpg",
+   "score": 985
+  },
+  {
+   "file": "units/pow-lewisville-unit-205-3.webp",
+   "source": "Units/LEW-Unit-205/LEW-Unit-181.jpg",
+   "score": 939
+  }
+ ],
+ "206": [
+  {
+   "file": "units/pow-lewisville-unit-206-1.webp",
+   "source": "Units/LEW-Unit-206/LEW-Unit-107.jpg",
+   "score": 1382
+  },
+  {
+   "file": "units/pow-lewisville-unit-206-2.webp",
+   "source": "Units/LEW-Unit-206/LEW-Unit-103.jpg",
+   "score": 1297
+  },
+  {
+   "file": "units/pow-lewisville-unit-206-3.webp",
+   "source": "Units/LEW-Unit-206/LEW-Unit-117.jpg",
+   "score": 1210
+  }
+ ],
+ "207": [
+  {
+   "file": "units/pow-lewisville-unit-207-1.webp",
+   "source": "Units/LEW-Unit-207/LEW-Unit-171.jpg",
+   "score": 1119
+  },
+  {
+   "file": "units/pow-lewisville-unit-207-2.webp",
+   "source": "Units/LEW-Unit-207/LEW-Unit-175.jpg",
+   "score": 1033
+  },
+  {
+   "file": "units/pow-lewisville-unit-207-3.webp",
+   "source": "Units/LEW-Unit-207/LEW-Unit-178.jpg",
+   "score": 972
+  }
+ ],
+ "208": [
+  {
+   "file": "units/pow-lewisville-unit-208-1.webp",
+   "source": "Units/LEW-Unit-208/LEW-Unit-112.jpg",
+   "score": 1239
+  },
+  {
+   "file": "units/pow-lewisville-unit-208-2.webp",
+   "source": "Units/LEW-Unit-208/LEW-Unit-104.jpg",
+   "score": 1169
+  },
+  {
+   "file": "units/pow-lewisville-unit-208-3.webp",
+   "source": "Units/LEW-Unit-208/LEW-Unit-105.jpg",
+   "score": 983
+  }
+ ],
+ "209": [
+  {
+   "file": "units/pow-lewisville-unit-209-1.webp",
+   "source": "Units/LEW-Unit-209/LEW-Unit-185.jpg",
+   "score": 1014
+  }
+ ],
+ "210": [
+  {
+   "file": "units/pow-lewisville-unit-210-1.webp",
+   "source": "Units/LEW-Unit-210/LEW-Unit-106.jpg",
+   "score": 1329
+  },
+  {
+   "file": "units/pow-lewisville-unit-210-2.webp",
+   "source": "Units/LEW-Unit-210/LEW-Unit-100.jpg",
+   "score": 1300
+  },
+  {
+   "file": "units/pow-lewisville-unit-210-3.webp",
+   "source": "Units/LEW-Unit-210/LEW-Unit-101.jpg",
+   "score": 1024
+  }
+ ],
+ "211": [
+  {
+   "file": "units/pow-lewisville-unit-211-1.webp",
+   "source": "Units/LEW-Unit-211/LEW-Unit-182.jpg",
+   "score": 1168
+  },
+  {
+   "file": "units/pow-lewisville-unit-211-2.webp",
+   "source": "Units/LEW-Unit-211/LEW-Unit-184.jpg",
+   "score": 1089
+  }
+ ],
+ "212": [
+  {
+   "file": "units/pow-lewisville-unit-212-1.webp",
+   "source": "Units/LEW-Unit-212/LEW-Unit-94.jpg",
+   "score": 1441
+  },
+  {
+   "file": "units/pow-lewisville-unit-212-2.webp",
+   "source": "Units/LEW-Unit-212/LEW-Unit-98.jpg",
+   "score": 1128
+  }
+ ],
+ "213": [
+  {
+   "file": "units/pow-lewisville-unit-213-1.webp",
+   "source": "Units/LEW-Unit-213/LEW-Unit-190.jpg",
+   "score": 1403
+  },
+  {
+   "file": "units/pow-lewisville-unit-213-2.webp",
+   "source": "Units/LEW-Unit-213/LEW-Unit-186.jpg",
+   "score": 1268
+  }
+ ],
+ "214": [
+  {
+   "file": "units/pow-lewisville-unit-214-1.webp",
+   "source": "Units/LEW-Unit-214/LEW-Unit-102.jpg",
+   "score": 1633
+  },
+  {
+   "file": "units/pow-lewisville-unit-214-2.webp",
+   "source": "Units/LEW-Unit-214/LEW-Unit-91.jpg",
+   "score": 1466
+  },
+  {
+   "file": "units/pow-lewisville-unit-214-3.webp",
+   "source": "Units/LEW-Unit-214/LEW-Unit-90.jpg",
+   "score": 1437
+  }
+ ],
+ "215": [
+  {
+   "file": "units/pow-lewisville-unit-215-1.webp",
+   "source": "Units/LEW-Unit-215/LEW-Unit-189.jpg",
+   "score": 1438
+  },
+  {
+   "file": "units/pow-lewisville-unit-215-2.webp",
+   "source": "Units/LEW-Unit-215/LEW-Unit-187.jpg",
+   "score": 1079
+  }
+ ],
+ "216": [
+  {
+   "file": "units/pow-lewisville-unit-216-1.webp",
+   "source": "Units/LEW-Unit-216/LEW-Unit-92.jpg",
+   "score": 1165
+  },
+  {
+   "file": "units/pow-lewisville-unit-216-2.webp",
+   "source": "Units/LEW-Unit-216/LEW-Unit-95.jpg",
+   "score": 978
+  }
+ ],
+ "301": [
+  {
+   "file": "units/pow-lewisville-unit-301-1.webp",
+   "source": "Units/LEW-Unit-301/LEW-Unit-151.jpg",
+   "score": 1067
+  },
+  {
+   "file": "units/pow-lewisville-unit-301-2.webp",
+   "source": "Units/LEW-Unit-301/LEW-Unit-155.jpg",
+   "score": 921
+  },
+  {
+   "file": "units/pow-lewisville-unit-301-3.webp",
+   "source": "Units/LEW-Unit-301/LEW-Unit-147.jpg",
+   "score": 888
+  }
+ ],
+ "302": [
+  {
+   "file": "units/pow-lewisville-unit-302-1.webp",
+   "source": "Units/LEW-Unit-302/LEW-Unit-138.jpg",
+   "score": 1250
+  },
+  {
+   "file": "units/pow-lewisville-unit-302-2.webp",
+   "source": "Units/LEW-Unit-302/LEW-Unit-145.jpg",
+   "score": 1231
+  },
+  {
+   "file": "units/pow-lewisville-unit-302-3.webp",
+   "source": "Units/LEW-Unit-302/LEW-Unit-45.jpg",
+   "score": 1099
+  }
+ ],
+ "303": [
+  {
+   "file": "units/pow-lewisville-unit-303-1.webp",
+   "source": "Units/LEW-Unit-303/LEW-Unit-158.jpg",
+   "score": 1052
+  },
+  {
+   "file": "units/pow-lewisville-unit-303-2.webp",
+   "source": "Units/LEW-Unit-303/LEW-Unit-154.jpg",
+   "score": 1049
+  },
+  {
+   "file": "units/pow-lewisville-unit-303-3.webp",
+   "source": "Units/LEW-Unit-303/LEW-Unit-152.jpg",
+   "score": 1027
+  }
+ ],
+ "304": [
+  {
+   "file": "units/pow-lewisville-unit-304-1.webp",
+   "source": "Units/LEW-Unit-304/LEW-Unit-135.jpg",
+   "score": 1028
+  }
+ ],
+ "305": [
+  {
+   "file": "units/pow-lewisville-unit-305-1.webp",
+   "source": "Units/LEW-Unit-305/LEW-Unit-159.jpg",
+   "score": 1093
+  },
+  {
+   "file": "units/pow-lewisville-unit-305-2.webp",
+   "source": "Units/LEW-Unit-305/LEW-Unit-156.jpg",
+   "score": 1012
+  },
+  {
+   "file": "units/pow-lewisville-unit-305-3.webp",
+   "source": "Units/LEW-Unit-305/LEW-Unit-153.jpg",
+   "score": 991
+  }
+ ],
+ "306": [
+  {
+   "file": "units/pow-lewisville-unit-306-1.webp",
+   "source": "Units/LEW-Unit-306/LEW-Unit-141.jpg",
+   "score": 1219
+  },
+  {
+   "file": "units/pow-lewisville-unit-306-2.webp",
+   "source": "Units/LEW-Unit-306/LEW-Unit-132.jpg",
+   "score": 1097
+  }
+ ],
+ "307": [
+  {
+   "file": "units/pow-lewisville-unit-307-1.webp",
+   "source": "Units/LEW-Unit-307/LEW-Unit-163.jpg",
+   "score": 1117
+  },
+  {
+   "file": "units/pow-lewisville-unit-307-2.webp",
+   "source": "Units/LEW-Unit-307/LEW-Unit-157.jpg",
+   "score": 1062
+  }
+ ],
+ "308": [
+  {
+   "file": "units/pow-lewisville-unit-308-1.webp",
+   "source": "Units/LEW-Unit-308/LEW-Unit-131.jpg",
+   "score": 1083
+  }
+ ],
+ "309": [
+  {
+   "file": "units/pow-lewisville-unit-309-1.webp",
+   "source": "Units/LEW-Unit-309/LEW-Unit-161.jpg",
+   "score": 1090
+  },
+  {
+   "file": "units/pow-lewisville-unit-309-2.webp",
+   "source": "Units/LEW-Unit-309/LEW-Unit-167.jpg",
+   "score": 1037
+  },
+  {
+   "file": "units/pow-lewisville-unit-309-3.webp",
+   "source": "Units/LEW-Unit-309/LEW-Unit-162.jpg",
+   "score": 942
+  }
+ ],
+ "310": [
+  {
+   "file": "units/pow-lewisville-unit-310-1.webp",
+   "source": "Units/LEW-Unit-310/LEW-Unit-133.jpg",
+   "score": 1109
+  },
+  {
+   "file": "units/pow-lewisville-unit-310-2.webp",
+   "source": "Units/LEW-Unit-310/LEW-Unit-128.jpg",
+   "score": 988
+  }
+ ],
+ "312": [
+  {
+   "file": "units/pow-lewisville-unit-312-1.webp",
+   "source": "Units/LEW-Unit-312/LEW-Unit-122.jpg",
+   "score": 1197
+  },
+  {
+   "file": "units/pow-lewisville-unit-312-2.webp",
+   "source": "Units/LEW-Unit-312/LEW-Unit-130.jpg",
+   "score": 1106
+  },
+  {
+   "file": "units/pow-lewisville-unit-312-3.webp",
+   "source": "Units/LEW-Unit-312/LEW-Unit-124.jpg",
+   "score": 1092
+  }
+ ],
+ "314": [
+  {
+   "file": "units/pow-lewisville-unit-314-1.webp",
+   "source": "Units/LEW-Unit-314/LEW-Unit-120.jpg",
+   "score": 1129
+  },
+  {
+   "file": "units/pow-lewisville-unit-314-2.webp",
+   "source": "Units/LEW-Unit-314/LEW-Unit-126.jpg",
+   "score": 1081
+  },
+  {
+   "file": "units/pow-lewisville-unit-314-3.webp",
+   "source": "Units/LEW-Unit-314/LEW-Unit-121.jpg",
+   "score": 1001
+  }
+ ],
+ "402": [
+  {
+   "file": "units/pow-lewisville-unit-402-1.webp",
+   "source": "Units/LEW-Unit-402/LEW-Unit-13.jpg",
+   "score": 991
+  }
+ ],
+ "404": [
+  {
+   "file": "units/pow-lewisville-unit-404-1.webp",
+   "source": "Units/LEW-Unit-404/LEW-Unit-12.jpg",
+   "score": 956
+  }
+ ],
+ "501": [
+  {
+   "file": "units/pow-lewisville-unit-501-1.webp",
+   "source": "Units/LEW-Unit-501/LEW-Unit-49.jpg",
+   "score": 1041
+  },
+  {
+   "file": "units/pow-lewisville-unit-501-2.webp",
+   "source": "Units/LEW-Unit-501/LEW-Unit-50.jpg",
+   "score": 1039
+  },
+  {
+   "file": "units/pow-lewisville-unit-501-3.webp",
+   "source": "Units/LEW-Unit-501/LEW-Unit-48.jpg",
+   "score": 651
+  }
+ ],
+ "502": [
+  {
+   "file": "units/pow-lewisville-unit-502-1.webp",
+   "source": "Units/LEW-Unit-502/LEW-Unit-37.jpg",
+   "score": 1509
+  },
+  {
+   "file": "units/pow-lewisville-unit-502-2.webp",
+   "source": "Units/LEW-Unit-502/LEW-Unit-39.jpg",
+   "score": 1175
+  },
+  {
+   "file": "units/pow-lewisville-unit-502-3.webp",
+   "source": "Units/LEW-Unit-502/LEW-Unit-42.jpg",
+   "score": 972
+  }
+ ],
+ "503": [
+  {
+   "file": "units/pow-lewisville-unit-503-1.webp",
+   "source": "Units/LEW-Unit-503/LEW-Unit-59.jpg",
+   "score": 879
+  },
+  {
+   "file": "units/pow-lewisville-unit-503-2.webp",
+   "source": "Units/LEW-Unit-503/LEW-Unit-52.jpg",
+   "score": 856
+  }
+ ],
+ "504": [
+  {
+   "file": "units/pow-lewisville-unit-504-1.webp",
+   "source": "Units/LEW-Unit-504/LEW-Unit-34.jpg",
+   "score": 1412
+  },
+  {
+   "file": "units/pow-lewisville-unit-504-2.webp",
+   "source": "Units/LEW-Unit-504/LEW-Unit-36.jpg",
+   "score": 1412
+  }
+ ],
+ "505": [
+  {
+   "file": "units/pow-lewisville-unit-505-1.webp",
+   "source": "Units/LEW-Unit-505/LEW-Unit-54.jpg",
+   "score": 897
+  },
+  {
+   "file": "units/pow-lewisville-unit-505-2.webp",
+   "source": "Units/LEW-Unit-505/LEW-Unit-51.jpg",
+   "score": 872
+  },
+  {
+   "file": "units/pow-lewisville-unit-505-3.webp",
+   "source": "Units/LEW-Unit-505/LEW-Unit-56.jpg",
+   "score": 706
+  }
+ ],
+ "506": [
+  {
+   "file": "units/pow-lewisville-unit-506-1.webp",
+   "source": "Units/LEW-Unit-506/LEW-Unit-30.jpg",
+   "score": 1333
+  },
+  {
+   "file": "units/pow-lewisville-unit-506-2.webp",
+   "source": "Units/LEW-Unit-506/LEW-Unit-33.jpg",
+   "score": 1298
+  }
+ ],
+ "507": [
+  {
+   "file": "units/pow-lewisville-unit-507-1.webp",
+   "source": "Units/LEW-Unit-507/LEW-Unit-60.jpg",
+   "score": 1119
+  },
+  {
+   "file": "units/pow-lewisville-unit-507-2.webp",
+   "source": "Units/LEW-Unit-507/LEW-Unit-67.jpg",
+   "score": 968
+  },
+  {
+   "file": "units/pow-lewisville-unit-507-3.webp",
+   "source": "Units/LEW-Unit-507/LEW-Unit-55.jpg",
+   "score": 946
+  }
+ ],
+ "508": [
+  {
+   "file": "units/pow-lewisville-unit-508-1.webp",
+   "source": "Units/LEW-Unit-508/LEW-Unit-35.jpg",
+   "score": 1486
+  },
+  {
+   "file": "units/pow-lewisville-unit-508-2.webp",
+   "source": "Units/LEW-Unit-508/LEW-Unit-29.jpg",
+   "score": 1425
+  },
+  {
+   "file": "units/pow-lewisville-unit-508-3.webp",
+   "source": "Units/LEW-Unit-508/LEW-Unit-32.jpg",
+   "score": 1187
+  }
+ ],
+ "509": [
+  {
+   "file": "units/pow-lewisville-unit-509-1.webp",
+   "source": "Units/LEW-Unit-509/LEW-Unit-61.jpg",
+   "score": 1050
+  },
+  {
+   "file": "units/pow-lewisville-unit-509-2.webp",
+   "source": "Units/LEW-Unit-509/LEW-Unit-64.jpg",
+   "score": 939
+  },
+  {
+   "file": "units/pow-lewisville-unit-509-3.webp",
+   "source": "Units/LEW-Unit-509/LEW-Unit-66.jpg",
+   "score": 698
+  }
+ ],
+ "510": [
+  {
+   "file": "units/pow-lewisville-unit-510-1.webp",
+   "source": "Units/LEW-Unit-510/LEW-Unit-26.jpg",
+   "score": 1486
+  },
+  {
+   "file": "units/pow-lewisville-unit-510-2.webp",
+   "source": "Units/LEW-Unit-510/LEW-Unit-31.jpg",
+   "score": 1082
+  }
+ ],
+ "511": [
+  {
+   "file": "units/pow-lewisville-unit-511-1.webp",
+   "source": "Units/LEW-Unit-511/LEW-Unit-62.jpg",
+   "score": 941
+  },
+  {
+   "file": "units/pow-lewisville-unit-511-2.webp",
+   "source": "Units/LEW-Unit-511/LEW-Unit-73.jpg",
+   "score": 925
+  }
+ ],
+ "512": [
+  {
+   "file": "units/pow-lewisville-unit-512-1.webp",
+   "source": "Units/LEW-Unit-512/LEW-Unit-27.jpg",
+   "score": 1447
+  },
+  {
+   "file": "units/pow-lewisville-unit-512-2.webp",
+   "source": "Units/LEW-Unit-512/LEW-Unit-23.jpg",
+   "score": 1394
+  },
+  {
+   "file": "units/pow-lewisville-unit-512-3.webp",
+   "source": "Units/LEW-Unit-512/LEW-Unit-20.jpg",
+   "score": 1380
+  }
+ ],
+ "513": [
+  {
+   "file": "units/pow-lewisville-unit-513-1.webp",
+   "source": "Units/LEW-Unit-513/LEW-Unit-70.jpg",
+   "score": 804
+  }
+ ],
+ "514": [
+  {
+   "file": "units/pow-lewisville-unit-514-1.webp",
+   "source": "Units/LEW-Unit-514/LEW-Unit-28.jpg",
+   "score": 1590
+  },
+  {
+   "file": "units/pow-lewisville-unit-514-2.webp",
+   "source": "Units/LEW-Unit-514/LEW-Unit-18.jpg",
+   "score": 1323
+  },
+  {
+   "file": "units/pow-lewisville-unit-514-3.webp",
+   "source": "Units/LEW-Unit-514/LEW-Unit-25.jpg",
+   "score": 1059
+  }
+ ],
+ "515": [
+  {
+   "file": "units/pow-lewisville-unit-515-1.webp",
+   "source": "Units/LEW-Unit-515/LEW-Unit-80.jpg",
+   "score": 859
+  },
+  {
+   "file": "units/pow-lewisville-unit-515-2.webp",
+   "source": "Units/LEW-Unit-515/LEW-Unit-76.jpg",
+   "score": 692
+  }
+ ],
+ "516": [
+  {
+   "file": "units/pow-lewisville-unit-516-1.webp",
+   "source": "Units/LEW-Unit-516/LEW-Unit-16.jpg",
+   "score": 1425
+  },
+  {
+   "file": "units/pow-lewisville-unit-516-2.webp",
+   "source": "Units/LEW-Unit-516/LEW-Unit-17.jpg",
+   "score": 1114
+  },
+  {
+   "file": "units/pow-lewisville-unit-516-3.webp",
+   "source": "Units/LEW-Unit-516/LEW-Unit-21.jpg",
+   "score": 966
+  }
+ ],
+ "517": [
+  {
+   "file": "units/pow-lewisville-unit-517-1.webp",
+   "source": "Units/LEW-Unit-517/LEW-Unit-75.jpg",
+   "score": 757
+  },
+  {
+   "file": "units/pow-lewisville-unit-517-2.webp",
+   "source": "Units/LEW-Unit-517/LEW-Unit-78.jpg",
+   "score": 744
+  }
+ ],
+ "518": [
+  {
+   "file": "units/pow-lewisville-unit-518-1.webp",
+   "source": "Units/LEW-Unit-518/LEW-Unit-22.jpg",
+   "score": 1599
+  },
+  {
+   "file": "units/pow-lewisville-unit-518-2.webp",
+   "source": "Units/LEW-Unit-518/LEW-Unit-16.jpg",
+   "score": 1425
+  },
+  {
+   "file": "units/pow-lewisville-unit-518-3.webp",
+   "source": "Units/LEW-Unit-518/LEW-Unit-17.jpg",
+   "score": 1114
+  }
+ ]
+}

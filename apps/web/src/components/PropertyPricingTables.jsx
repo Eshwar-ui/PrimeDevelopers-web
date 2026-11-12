@@ -7,16 +7,24 @@ import Prose from './Prose'
 // the sheet doesn't. These tables are not the unit inventory: availability
 // lives in `floorPlans.buildings[].unitList`, mirrored from Prime Tracker.
 
+// `type`, `building` and `mezzanine` are optional: a column shows only when
+// some row on the sheet fills it (POW Leander has types; POW Lewisville
+// Phase II has buildings and mezzanine limits instead).
 const UNIT_COLUMNS = [
   ['unit', 'Unit'],
-  ['type', 'Type'],
+  ['type', 'Type', true],
+  ['building', 'Building', true],
   ['size', 'Size (SF)'],
   ['salePrice', 'Sale price'],
   ['salePsf', 'Sale ($/SF)'],
   ['lease', 'Lease ($/SF/yr)'],
   ['nnn', 'NNN ($/SF/yr)'],
   ['annualRent', 'Annual rent incl. NNN'],
+  ['mezzanine', 'Max mezzanine (SF)', true],
 ]
+
+const usedColumns = (columns, rows = []) =>
+  columns.filter(([key, , optional]) => !optional || rows.some((row) => row?.[key]))
 
 // `tenant` is resolved per row below: the tenant's name only while
 // `showTenantNames` is on, its business type otherwise. Names need the
@@ -96,7 +104,7 @@ export default function PropertyPricingTables({ pricing }) {
   const showNames = Boolean(pricing.capRate?.showTenantNames)
   return (
     <div className="mt-16 md:mt-20">
-      <PriceTable table={pricing.units} columns={UNIT_COLUMNS} />
+      <PriceTable table={pricing.units} columns={usedColumns(UNIT_COLUMNS, pricing.units?.rows)} />
       <PriceTable
         table={pricing.capRate}
         columns={CAP_COLUMNS}

@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { collapsePhases, phaseSiblings } from '../src/lib/phases.js'
+import { collapsePhases, phaseSiblings, phaseTrail } from '../src/lib/phases.js'
 
 const record = (slug, name, extra = {}) => ({ slug, name, buildings: 1, sold: 0, available: 1, ...extra })
 
@@ -24,4 +24,11 @@ test('a shared prefix alone still groups nothing', () => {
   const list = [record('a', 'Rio Ranch 1 Acre Lots'), record('b', 'Rio Ranch Phase 2')]
   assert.equal(collapsePhases(list).length, 2)
   assert.deepEqual(phaseSiblings(list, list[0]), [])
+})
+
+test('a later phase sits under its first phase in the breadcrumb trail; the first phase does not', () => {
+  const list = [record('pow-lewisville', 'POW Lewisville '), record('pow-lewisville-phase-ii', 'POW Lewisville Phase II'), record('other', 'POW Leander')]
+  assert.deepEqual(phaseTrail(list, list[1]), { label: 'Phase II', parent: { slug: 'pow-lewisville', name: 'POW Lewisville' } })
+  assert.equal(phaseTrail(list, list[0]), null)
+  assert.equal(phaseTrail(list, list[2]), null)
 })

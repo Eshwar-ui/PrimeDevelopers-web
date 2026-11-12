@@ -88,3 +88,7 @@ reagan-crossing-gallery-upload-progress.json
 pow-leander-drive-photos/
 pow-leander-web-photos/
 pow-leander-content-backup-*.json
+pow-lewisville-drive-photos/
+pow-lewisville-web-photos/
+pow-lewisville*-content-backup-*.json
+tmp/*.preview.json

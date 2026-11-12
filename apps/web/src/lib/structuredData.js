@@ -149,11 +149,20 @@ function postalAddress(line) {
  * No Offer or price markup, deliberately: prices change by the unit and the
  * client has not signed off on them as structured data.
  */
-export function propertySchema({ property, origin, url, title, description }) {
+export function propertySchema({ property, origin, url, title, description, phase }) {
   const seo = property.detail?.seo ?? {}
   const org = { '@id': `${origin}/#organization` }
   const address = postalAddress(property.address)
   const hasGeo = Number.isFinite(seo.latitude) && Number.isFinite(seo.longitude)
+  const image = absolute(origin, property.detail?.covers?.detailHero || property.image)
+  // A later phase (see phaseTrail) sits under its development: one more crumb,
+  // and its Place is contained in the first phase's rather than the city.
+  const parentUrl = phase?.parent ? `${origin}/properties/${phase.parent.slug}` : undefined
+  const crumbs = [
+    { name: 'Home', item: `${origin}/` },
+    { name: 'Properties', item: `${origin}/properties` },
+    ...(parentUrl ? [{ name: phase.parent.name, item: parentUrl }, { name: phase.label }] : [{ name: property.name }]),
+  ]
 
   return prune({
     '@context': 'https://schema.org',
@@ -176,28 +185,29 @@ export function propertySchema({ property, origin, url, title, description }) {
         about: { '@id': `${url}#place` },
         publisher: org,
         breadcrumb: { '@id': `${url}#breadcrumb` },
+        primaryImageOfPage: image,
       },
       {
         '@type': 'BreadcrumbList',
         '@id': `${url}#breadcrumb`,
-        itemListElement: [
-          { '@type': 'ListItem', position: 1, name: 'Home', item: `${origin}/` },
-          { '@type': 'ListItem', position: 2, name: 'Properties', item: `${origin}/properties` },
-          { '@type': 'ListItem', position: 3, name: property.name },
-        ],
+        itemListElement: crumbs.map((crumb, i) => ({ '@type': 'ListItem', position: i + 1, ...crumb })),
       },
       {
         '@type': 'Place',
         '@id': `${url}#place`,
-        name: property.name,
+        // The stored name, phase included: two phases are two places.
+        name: property.fullName || property.name,
         alternateName: seo.alternateName || undefined,
         description: seo.placeDescription,
+        image,
         address,
         geo: hasGeo ? { '@type': 'GeoCoordinates', latitude: seo.latitude, longitude: seo.longitude } : undefined,
         hasMap: hasGeo ? `https://www.google.com/maps?q=${seo.latitude},${seo.longitude}` : undefined,
-        containedInPlace: address
-          ? { '@type': 'City', name: `${address.addressLocality}, ${address.addressRegion}` }
-          : undefined,
+        containedInPlace: parentUrl
+          ? { '@id': `${parentUrl}#place` }
+          : address
+            ? { '@type': 'City', name: `${address.addressLocality}, ${address.addressRegion}` }
+            : undefined,
         amenityFeature: (seo.amenities ?? []).map((name) => ({
           '@type': 'LocationFeatureSpecification',
           name,

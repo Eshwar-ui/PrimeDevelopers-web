@@ -92,3 +92,4 @@ pow-lewisville-drive-photos/
 pow-lewisville-web-photos/
 pow-lewisville*-content-backup-*.json
 tmp/*.preview.json
+tmp/uploads-*.json

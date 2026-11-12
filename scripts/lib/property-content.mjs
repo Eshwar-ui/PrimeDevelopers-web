@@ -97,16 +97,40 @@ export async function applyContent({ slug, folder, photoDir, files, galleryOrder
   writeFileSync(backup, JSON.stringify({ takenAt: new Date().toISOString(), property }, null, 2))
   console.log(`\nbacked up previous state to ${backup}`)
 
+  // Uploads are remembered in tmp/uploads-<slug>.json, so a run cut short (the
+  // API allows 100 requests a minute) picks up where it stopped instead of
+  // uploading every photo again. A 429 waits out the minute and retries.
+  const cacheFile = join('tmp', `uploads-${slug}.json`)
+  const uploaded = existsSync(cacheFile) ? JSON.parse(readFileSync(cacheFile, 'utf8')) : {}
+  mkdirSync('tmp', { recursive: true })
   const img = {}
+  let reused = 0
   for (const key of onHand) {
     const name = files[key]
-    const form = new FormData()
-    form.append('folder', folder)
-    const type = name.endsWith('.webp') ? 'image/webp' : 'image/jpeg'
-    form.append('file', new Blob([readFileSync(join(photoDir, name))], { type }), basename(name))
-    img[key] = (await call('/uploads/image', { token, method: 'POST', body: form })).url
+    if (uploaded[name]) {
+      img[key] = uploaded[name]
+      reused++
+      continue
+    }
+    for (let attempt = 1; ; attempt++) {
+      const form = new FormData()
+      form.append('folder', folder)
+      const type = name.endsWith('.webp') ? 'image/webp' : 'image/jpeg'
+      form.append('file', new Blob([readFileSync(join(photoDir, name))], { type }), basename(name))
+      try {
+        img[key] = (await call('/uploads/image', { token, method: 'POST', body: form })).url
+        break
+      } catch (e) {
+        if (!/→ 429/.test(e.message) || attempt === 5) throw e
+        console.log('rate limited — waiting 65s…')
+        await new Promise((r) => setTimeout(r, 65_000))
+      }
+    }
+    uploaded[name] = img[key]
+    writeFileSync(cacheFile, JSON.stringify(uploaded, null, 1))
     console.log(`uploaded ${name} → ${img[key]}`)
   }
+  if (reused) console.log(`reused ${reused} photos uploaded by an earlier run`)
 
   await call(`/admin/properties/${property.id}`, {
     token,

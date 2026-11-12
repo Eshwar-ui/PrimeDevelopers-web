@@ -111,10 +111,14 @@ export default function UnitPage() {
               <p className="eyebrow font-body text-[13px] text-accent-soft">
                 {building.building} · {property.name}
               </p>
-              <h1 className="mt-3 flex flex-wrap items-center gap-4 [--color-content:var(--color-bone)]">
-                <UnitLabel label={unit.label} />
+              {/* The status chip sits beside the heading, not in it, so the H1
+                  reads "101" rather than "101Leased". */}
+              <div className="mt-3 flex flex-wrap items-center gap-4 [--color-content:var(--color-bone)]">
+                <h1>
+                  <UnitLabel label={unit.label} />
+                </h1>
                 <span className={`rounded-full px-4 py-2 font-body text-[12px] font-bold ${meta.chip}`}>{meta.label}</span>
-              </h1>
+              </div>
               {property.address && <p className="mt-4 font-body text-[15px] text-bone/75">{property.address}</p>}
 
               {isTenanted && tenant && (

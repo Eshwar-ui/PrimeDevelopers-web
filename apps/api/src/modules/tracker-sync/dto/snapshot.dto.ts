@@ -17,13 +17,14 @@ import {
 import { SNAPSHOT_VERSIONS } from '../tracker-merge';
 
 /**
- * The snapshot Prime Tracker pushes, versions 1 and 2 — see
+ * The snapshot Prime Tracker pushes, versions 1 to 3 — see
  * docs/tracker-sync-and-aws-plan.md. Signed, so these bounds are not about
  * hostile input; they keep a tracker bug from writing a malformed row into the
  * public site's unit list.
  *
- * Version 2 only adds optional fields, so both arrive here. The website must
- * accept a version before the tracker sends it: deploy the website first.
+ * Versions 2 and 3 only add optional fields, so all three arrive here. The
+ * website must accept a version before the tracker sends it: deploy the
+ * website first.
  */
 export class SnapshotUnitDto {
   @IsString() @MinLength(1) @MaxLength(64)
@@ -61,10 +62,9 @@ export class SnapshotUnitDto {
   @IsOptional() @IsString() @MaxLength(200)
   unitType?: string | null;
 
-  // Accepted so a version 2 push validates, then dropped by the merge: the
-  // public property GET serves `detail` as stored, so asking figures are held
-  // until the client approves publishing them. Phase 2 adds public-read
-  // filtering of `tracker` data.
+  // Written to the row as the unit's lease and sale price. The public GET
+  // filters them by the unit's status, so they are not public until it is an
+  // offer (public-property.ts).
   @IsOptional() @IsNumber({ allowNaN: false, allowInfinity: false }) @Min(0)
   askingRent?: number | null;
 
@@ -73,6 +73,16 @@ export class SnapshotUnitDto {
 
   @IsOptional() @IsISO8601()
   availableSince?: string | null;
+
+  // ── Version 3 ──
+
+  // Per sq ft per month of the lease in place; written as the lease price.
+  @IsOptional() @IsNumber({ allowNaN: false, allowInfinity: false }) @Min(0)
+  leaseRent?: number | null;
+
+  // What a SOLD unit sold for.
+  @IsOptional() @IsNumber({ allowNaN: false, allowInfinity: false }) @Min(0)
+  soldPrice?: number | null;
 }
 
 export class SnapshotBuildingDto {

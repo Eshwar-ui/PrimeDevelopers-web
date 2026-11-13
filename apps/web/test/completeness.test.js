@@ -1,9 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { buildingMissing, summarise, unitMissing } from '../src/admin/completeness.js'
-import { trackerOwnedFields } from '../src/admin/unitChecks.js'
 
-const full = { label: '101', status: 'available', size: '900', floor: 'G', rate: '$1', description: 'd', images: ['a.jpg'] }
+const full = { label: '101', status: 'available', size: '900', clearHeight: '24 ft', leasePrice: '28', description: 'd', images: ['a.jpg'] }
 
 test('a filled-in unit has nothing missing', () => {
   assert.deepEqual(unitMissing(full), [])
@@ -13,9 +12,30 @@ test('a leased unit also needs its tenant', () => {
   assert.deepEqual(unitMissing({ ...full, status: 'leased' }), ['Tenant'])
 })
 
-test('tracker-owned fields are not asked of the editor', () => {
-  const synced = { ...full, label: '', size: '', trackerUnitIds: ['t1'] }
+test('what the tracker will fill in is not asked of the editor', () => {
+  // The label is the tracker's alone; the size and prices arrive with the sync.
+  const synced = {
+    ...full,
+    label: '',
+    size: '',
+    leasePrice: '',
+    trackerUnitIds: ['t1'],
+    tracker: { values: { size: '900', leasePrice: '28' } },
+  }
   assert.deepEqual(unitMissing(synced), [])
+})
+
+test('any one price will do, and the older free-text rate counts', () => {
+  const unpriced = { ...full, leasePrice: '' }
+  assert.deepEqual(unitMissing(unpriced), ['Price'])
+  assert.deepEqual(unitMissing({ ...unpriced, salePrice: '650000' }), [])
+  assert.deepEqual(unitMissing({ ...unpriced, status: 'sold', soldPrice: '610000', tenant: 'Owner' }), [])
+  assert.deepEqual(unitMissing({ ...unpriced, rate: '$28 / SF / yr' }), [])
+})
+
+test('clear height is asked for instead of floor', () => {
+  assert.deepEqual(unitMissing({ ...full, clearHeight: '' }), ['Clear height'])
+  assert.deepEqual(unitMissing({ ...full, clearHeight: '', floor: 'Ground' }), ['Clear height'])
 })
 
 test('a building needs a name, area, number and at least one unit', () => {
@@ -32,23 +52,19 @@ test('summarise counts status, completeness and pending', () => {
   assert.equal(s.counts.sold, 1)
 })
 
-test('the tracker owns only what it has data for; the CMS keeps the rest', () => {
+test('a field the tracker has no data for is the editor to fill, even on a synced unit', () => {
   const synced = { ...full, trackerUnitIds: ['t1'] }
   // No square footage in the tracker: the sync keeps the website's size, so the editor may fill it.
-  const noSqft = { ...synced, size: '', tracker: { sqft: null, occupant: null } }
-  assert.equal(trackerOwnedFields(noSqft).size, false)
+  const noSqft = { ...synced, size: '', tracker: { values: { status: 'available' } } }
   assert.deepEqual(unitMissing(noSqft), ['Size'])
-  assert.equal(trackerOwnedFields({ ...synced, tracker: { sqft: 1510 } }).size, true)
-
-  // Tenant: cleared by the sync while available, the lease's while leased with one on record,
-  // and the CMS's when the tracker names nobody or the unit is sold.
-  assert.equal(trackerOwnedFields({ ...synced, tracker: {} }).tenant, true)
-  assert.equal(trackerOwnedFields({ ...synced, status: 'leased', tracker: { occupant: 'JB Sree' } }).tenant, true)
-  assert.equal(trackerOwnedFields({ ...synced, status: 'leased', tracker: { occupant: null } }).tenant, false)
-  assert.equal(trackerOwnedFields({ ...synced, status: 'sold', tracker: { occupant: null } }).tenant, false)
-
-  // Synced before row.tracker existed: locked as before.
-  assert.deepEqual(trackerOwnedFields({ ...synced, status: 'leased' }), { label: true, status: true, size: true, tenant: true })
-  // Not synced at all: everything is the CMS's.
-  assert.deepEqual(trackerOwnedFields(full), { label: false, status: false, size: false, tenant: false })
+  assert.deepEqual(unitMissing({ ...synced, size: '', tracker: { values: { size: '1,510' } } }), [])
+  // Switched off for this unit: the tracker feeds nothing, so everything is asked.
+  assert.deepEqual(unitMissing({ ...synced, size: '', trackerSync: false, tracker: { values: { size: '1,510' } } }), ['Size'])
+  // Overridden: the editor's value stands, so a blank one is the editor's to fill.
+  assert.deepEqual(
+    unitMissing({ ...synced, size: '', trackerOverrides: ['size'], tracker: { values: { size: '1,510' } } }),
+    ['Size'],
+  )
+  // Synced before the tracker's values were recorded: it fed the size as it always did.
+  assert.deepEqual(unitMissing({ ...synced, size: '', tracker: { sqft: 1510 } }), [])
 })

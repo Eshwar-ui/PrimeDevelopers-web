@@ -34,7 +34,7 @@ const unit = (id: string, unitNumber: string, status: SnapshotUnit['status'], ex
   ...extra,
 });
 
-const snapshot = (buildings: SnapshotBuilding[], version: 1 | 2 = 1): TrackerSnapshot => ({
+const snapshot = (buildings: SnapshotBuilding[], version: 1 | 2 | 3 = 1): TrackerSnapshot => ({
   version,
   generatedAt: '2026-10-23T10:00:00.000Z',
   project: { id: 'proj-centro', name: 'Centro Plaza', websiteSlug: 'centro-plaza' },
@@ -1181,13 +1181,16 @@ const v2Body = {
   ],
 };
 
-test('the DTO accepts version 1 and version 2, and still rejects the unknown', async () => {
+test('the DTO accepts versions 1 to 3, and still rejects the unknown', async () => {
   assert.deepEqual(await validateLikeMain(v1Body), []);
   assert.deepEqual(await validateLikeMain(v2Body), []);
+  const v3Unit = { ...v1Body.buildings[0].units[0], leaseRent: 2.5, soldPrice: 610000 };
+  assert.deepEqual(await validateLikeMain({ ...v1Body, version: 3, buildings: [{ ...v1Body.buildings[0], units: [v3Unit] }] }), []);
+  assert.notDeepEqual(await validateLikeMain({ ...v1Body, version: 3, buildings: [{ ...v1Body.buildings[0], units: [{ ...v3Unit, soldPrice: -1 }] }] }), []);
   // A status a newer tracker added is the merge's to handle, not a 400.
   assert.deepEqual(await validateLikeMain({ ...v1Body, buildings: [{ ...v1Body.buildings[0], units: [{ ...v1Body.buildings[0].units[0], status: 'RESERVED' }] }] }), []);
 
-  assert.notDeepEqual(await validateLikeMain({ ...v1Body, version: 3 }), []);
+  assert.notDeepEqual(await validateLikeMain({ ...v1Body, version: 4 }), []);
   const withBuyer = { ...v1Body, buildings: [{ ...v1Body.buildings[0], units: [{ ...v1Body.buildings[0].units[0], buyer: 'Sai Reddy' }] }] };
   assert.notDeepEqual(await validateLikeMain(withBuyer), []);
   assert.notDeepEqual(await validateLikeMain({ ...v1Body, buildings: [{ ...v1Body.buildings[0], units: [{ ...v1Body.buildings[0].units[0], status: 'leased' }] }] }), []);
@@ -1210,8 +1213,6 @@ test('v2 values go under row.tracker; the fields the site reads are written exac
             unit('u', '203', 'AVAILABLE', {
               sqft: 1510,
               unitType: 'RETAIL',
-              askingRent: 24.5,
-              askingPrice: 650000,
               availableSince: '2026-09-16T00:00:00.000Z',
               dealUnitIds: [],
               mergedFromIds: [],
@@ -1236,20 +1237,183 @@ test('v2 values go under row.tracker; the fields the site reads are written exac
     unitType: 'RETAIL',
     availableSince: '2026-09-16T00:00:00.000Z',
     occupant: null,
+    values: { status: 'available', size: '1,510', tenant: '' },
     syncedAt: '2026-10-23T10:00:00.000Z',
   });
   assert.deepEqual(v2.floorPlans.buildings[0].tracker, { id: 'b2', name: 'Building 2', totalSqft: 9500, stories: 1 });
   assert.equal(v2.report.version, 2);
 });
 
-test('asking rent and price are accepted but never stored — detail is public as stored', () => {
-  const { floorPlans: next, report } = mergeSnapshot(
-    { buildings: [{ building: 'Building 2', unitList: [] }] },
-    ZERO,
-    snapshot([{ id: 'b2', name: 'Building 2', units: [unit('u', '202', 'AVAILABLE', { askingRent: 30, askingPrice: 500000 })] }], 2),
+// ── Prices, and what the editor keeps ───────────────────────────────────────
+//
+// The tracker feeds a unit's status, size, tenant and three prices
+// (TRACKED_FIELDS). Per unit the editor can switch the tracker off
+// (`trackerSync: false`) or change a single field (`trackerOverrides`), and the
+// sync leaves what they chose alone while still recording what the tracker says.
+
+const one = (u: SnapshotUnit, generatedAt = '2026-11-03T10:00:00.000Z'): TrackerSnapshot => ({
+  ...snapshot([{ id: 'b1', name: 'Building 1', units: [u] }], 3),
+  generatedAt,
+});
+const unitList = (list: any[]) => ({ buildings: [{ building: 'Building 1', unitList: list }] });
+const mergedUnit = (u: SnapshotUnit, prior: any[] = []) => mergeSnapshot(unitList(prior), ZERO, one(u)).floorPlans.buildings[0].unitList[0];
+
+test('prices follow the tracker by the unit’s stage: lease per year, sale and sold as totals', () => {
+  // Monthly in the tracker, yearly on the site.
+  const available = mergedUnit(unit('a', '101', 'AVAILABLE', { askingRent: 2.5, askingPrice: 650000 }));
+  assert.equal(available.leasePrice, '30');
+  assert.equal(available.salePrice, '650000');
+  assert.equal(available.soldPrice, '');
+
+  // A let unit's price is the lease in place, not the asking rent it once had.
+  const leased = mergedUnit(unit('l', '102', 'LEASED', { askingRent: 9, askingPrice: 1, leaseRent: 2.75, occupant: 'Lava Coffee' }));
+  assert.equal(leased.leasePrice, '33');
+  assert.equal(leased.salePrice, '');
+
+  // A sold unit's is what it sold for; the asking price is history.
+  const sold = mergedUnit(unit('s', '103', 'SOLD', { askingPrice: 700000, soldPrice: 610000.5 }));
+  assert.equal(sold.soldPrice, '610000.5');
+  assert.equal(sold.salePrice, '');
+  assert.equal(sold.leasePrice, '');
+
+  // Under contract has no closing price yet.
+  assert.equal(mergedUnit(unit('c', '104', 'UNDER_CONTRACT', { soldPrice: 600000 })).soldPrice, '');
+});
+
+test('a row of units let or sold together has one lease price if they agree, and a total if every unit is priced', () => {
+  const pair = (a: Partial<SnapshotUnit>, b: Partial<SnapshotUnit>, status: string, ref: string) =>
+    mergeSnapshot(
+      unitList([]),
+      ZERO,
+      snapshot([{ id: 'b1', name: 'Building 1', units: [unit('u3', '203', status, { dealRef: ref, ...a }), unit('u4', '204', status, { dealRef: ref, ...b })] }], 3),
+    ).floorPlans.buildings[0].unitList[0];
+
+  const same = pair({ leaseRent: 2, occupant: 'JB' }, { leaseRent: 2 }, 'LEASED', 'LEASE:x');
+  assert.equal(same.label, '203+204');
+  assert.equal(same.leasePrice, '24');
+  // Two rents are no single rate: left blank, not averaged into a number nobody agreed to.
+  assert.equal(pair({ leaseRent: 2 }, { leaseRent: 3 }, 'LEASED', 'LEASE:x').leasePrice, '');
+
+  assert.equal(pair({ soldPrice: 300000 }, { soldPrice: 310000 }, 'SOLD', 'SALE:x').soldPrice, '610000');
+  // A partial sum would understate the deal.
+  assert.equal(pair({ soldPrice: 300000 }, { soldPrice: null }, 'SOLD', 'SALE:x').soldPrice, '');
+});
+
+test('a price the tracker does not send is never blanked, and a tracker without prices writes none', () => {
+  const kept = mergedUnit(unit('u', '101', 'AVAILABLE', { sqft: 900 }), [
+    { label: '101', status: 'available', leasePrice: '28', salePrice: '500000', trackerUnitIds: ['u'] },
+  ]);
+  assert.equal(kept.leasePrice, '28');
+  assert.equal(kept.salePrice, '500000');
+  assert.deepEqual(kept.tracker.values, { status: 'available', size: '900', tenant: '' });
+
+  // A version 1 snapshot has no prices to write.
+  const v1 = mergeSnapshot(unitList([]), ZERO, snapshot([{ id: 'b1', name: 'Building 1', units: [unit('u', '101', 'AVAILABLE')] }], 1));
+  const created = v1.floorPlans.buildings[0].unitList[0];
+  assert.deepEqual([created.leasePrice, created.salePrice, created.soldPrice, created.clearHeight], ['', '', '', '']);
+});
+
+test('prices are recorded under row.tracker.values and a push that changes nothing is still no write', () => {
+  const first = mergeSnapshot(unitList([]), ZERO, one(unit('u', '101', 'AVAILABLE', { sqft: 1200, askingRent: 2.5, askingPrice: 650000 })));
+  assert.deepEqual(first.floorPlans.buildings[0].unitList[0].tracker.values, {
+    status: 'available',
+    size: '1,200',
+    tenant: '',
+    leasePrice: '30',
+    salePrice: '650000',
+  });
+
+  // What Postgres hands back reorders every object's keys; the hourly push
+  // must still compare equal to it.
+  const stored = jsonbRoundTrip(first.floorPlans);
+  const again = mergeSnapshot(stored, first.totals, one(unit('u', '101', 'AVAILABLE', { sqft: 1200, askingRent: 2.5, askingPrice: 650000 }), '2026-11-03T11:00:00.000Z'), {
+    trackerCounts: first.trackerCounts,
+  });
+  assert.equal(again.report.changed, false);
+  assert.equal(again.floorPlans.buildings[0].unitList[0].tracker.syncedAt, '2026-11-03T10:00:00.000Z');
+
+  // A new asking rent is a change.
+  const moved = mergeSnapshot(stored, first.totals, one(unit('u', '101', 'AVAILABLE', { sqft: 1200, askingRent: 3, askingPrice: 650000 }), '2026-11-03T12:00:00.000Z'), {
+    trackerCounts: first.trackerCounts,
+  });
+  assert.equal(moved.report.changed, true);
+  assert.equal(moved.floorPlans.buildings[0].unitList[0].leasePrice, '36');
+});
+
+test('trackerSync: false keeps every fed field as the editor has it — and keeps the unit linked and counted', () => {
+  const prior = {
+    label: '101',
+    status: 'available',
+    size: '900',
+    tenant: '',
+    leasePrice: '25',
+    images: ['front.jpg'],
+    trackerSync: false,
+    trackerUnitIds: ['u'],
+  };
+  const result = mergeSnapshot(
+    unitList([prior]),
+    { buildings: 1, sold: 0, available: 1 },
+    one(unit('u', '101', 'SOLD', { sqft: 1200, soldPrice: 610000 })),
   );
-  const json = JSON.stringify({ next, report });
-  for (const leaked of ['askingRent', 'askingPrice', '500000']) assert.equal(json.includes(leaked), false, leaked);
+  const out = result.floorPlans.buildings[0].unitList[0];
+  assert.equal(out.status, 'available');
+  assert.equal(out.size, '900');
+  assert.equal(out.leasePrice, '25');
+  assert.equal(out.soldPrice, undefined);
+  assert.deepEqual(out.images, ['front.jpg']);
+  assert.equal(out.trackerSync, false);
+  assert.deepEqual(out.trackerUnitIds, ['u']);
+  // The tracker's word is recorded for the admin to show, not applied.
+  assert.equal(out.tracker.status, 'SOLD');
+  assert.deepEqual(out.tracker.values, { status: 'sold', size: '1,200', soldPrice: '610000' });
+  // The row did not change status, so the report says nothing did, and the
+  // headline still counts the unit as the site shows it.
+  assert.deepEqual(result.report.buildings[0].statusChanged, []);
+  assert.deepEqual(result.report.buildings[0].relabelled, []);
+  assert.deepEqual(result.totals, { buildings: 1, sold: 0, available: 1 });
+});
+
+test('trackerSync: false still follows a renumbering — the tracker owns the label and the link', () => {
+  const prior = { label: '101', status: 'available', size: '900', images: ['front.jpg'], trackerSync: false, trackerUnitIds: ['u'] };
+  const out = mergeSnapshot(unitList([prior]), ZERO, one(unit('u', '102', 'AVAILABLE', { sqft: 1200 }))).floorPlans.buildings[0].unitList[0];
+  assert.equal(out.label, '102');
+  assert.deepEqual(out.images, ['front.jpg']);
+  assert.equal(out.size, '900');
+});
+
+test('an edited field is held while the rest follow; clearing the edit lets the tracker back in', () => {
+  const prior = {
+    label: '101',
+    status: 'available',
+    size: '1,000',
+    tenant: '',
+    trackerOverrides: ['size'],
+    trackerUnitIds: ['u'],
+    tracker: { ids: ['u'], unitNumber: '101', status: 'AVAILABLE', sqft: 900, unitType: null, availableSince: null, occupant: null, syncedAt: '2026-11-01T00:00:00.000Z' },
+  };
+  const sold = unit('u', '101', 'SOLD', { sqft: 1500, soldPrice: 610000 });
+  const held = mergeSnapshot(unitList([prior]), { buildings: 1, sold: 0, available: 1 }, one(sold));
+  const out = held.floorPlans.buildings[0].unitList[0];
+  assert.equal(out.size, '1,000', 'the edited size is the editor’s');
+  assert.equal(out.status, 'sold', 'the status was not edited, so it follows');
+  assert.equal(out.soldPrice, '610000');
+  assert.equal(out.tracker.values.size, '1,500', 'what the tracker says is still recorded');
+  assert.deepEqual(held.report.buildings[0].statusChanged, [{ label: '101', from: 'available', to: 'sold' }]);
+
+  // The editor ticks "replace my edits": the overrides go and the size is the
+  // tracker's. The next push then has nothing left to change.
+  const { trackerOverrides: _gone, ...cleared } = { ...out, size: out.tracker.values.size };
+  const stored = jsonbRoundTrip(held.floorPlans);
+  stored.buildings[0].unitList[0] = cleared;
+  const after = mergeSnapshot(stored, held.totals, one(sold), { trackerCounts: held.trackerCounts });
+  assert.equal(after.floorPlans.buildings[0].unitList[0].size, '1,500');
+  assert.equal(after.report.changed, false);
+});
+
+test('a leased row with no tenant on record still has a tenant field, as before', () => {
+  const out = mergedUnit(unit('u', '101', 'LEASED', { leaseRent: 2 }), [{ label: '101', status: 'leased', trackerUnitIds: ['u'] }]);
+  assert.equal(out.tenant, '');
 });
 
 test('row.tracker.syncedAt moves only when a tracker value changes', () => {

@@ -18,33 +18,107 @@ export const isTrackerUnit = (unit) => (unit?.trackerUnitIds ?? []).length > 0
  */
 export const isTrackerBuilding = (building) => Boolean(building?.trackerBuildingId)
 
-const NOT_SYNCED = Object.freeze({ label: false, status: false, size: false, tenant: false })
+/**
+ * The unit fields Prime Tracker feeds, mirroring TRACKED_FIELDS in the API's
+ * tracker-merge.ts. A fed field follows the tracker until the editor changes it
+ * (it then becomes an override the sync leaves alone) or turns the tracker off
+ * for the unit. The label is not among them: it is how a unit is matched to
+ * its tracker units and its 3D shape, so a renumbering is made in the tracker.
+ */
+export const TRACKED_FIELDS = ['status', 'size', 'tenant', 'leasePrice', 'salePrice', 'soldPrice']
+
+/** Fields compared as numbers, so "1,510" and "1510" are one size. */
+const NUMERIC_FIELDS = new Set(['size', 'leasePrice', 'salePrice', 'soldPrice'])
+
+/** Whether the tracker feeds this unit: it is linked, and the editor has not switched the tracker off for it. */
+export const followsTracker = (unit) => isTrackerUnit(unit) && unit?.trackerSync !== false
 
 /**
- * Which of a unit's details the tracker sync writes, so the editor locks
- * exactly what the next sync would overwrite and leaves the CMS everything the
- * tracker has no data for. Mirrors mergeRow() in the API's tracker-merge.ts:
- * - label and status are always the tracker's;
- * - size only once the tracker has a square footage — it never blanks one;
- * - tenant while the unit is available or coming soon (the sync clears it) or
- *   leased with a tenant on record in the tracker. A leased unit the tracker
- *   names no tenant for, and every sold unit, keep what the CMS says.
- * A row synced before `row.tracker` existed has no record of what was sent,
- * so it locks size and tenant as it always did.
+ * What the tracker last said for each fed field, in the website's own terms
+ * (`row.tracker.values`, written by the sync), or null before the first sync
+ * that records it. A field is absent where the tracker has no opinion.
  */
-export function trackerOwnedFields(unit) {
-  if (!isTrackerUnit(unit)) return NOT_SYNCED
-  const sent = unit.tracker
-  const status = unit.status
-  return {
-    label: true,
-    status: true,
-    size: sent ? sent.sqft != null : true,
-    tenant:
-      status === 'available' ||
-      status === 'coming-soon' ||
-      (status === 'leased' && (sent ? Boolean(String(sent.occupant ?? '').trim()) : true)),
+export const trackerValues = (unit) => {
+  const values = isTrackerUnit(unit) ? unit.tracker?.values : null
+  return values && typeof values === 'object' ? values : null
+}
+
+const toNumber = (value) => {
+  const text = String(value ?? '').trim()
+  if (!text) return null
+  const n = Number(text.replace(/[^\d.]/g, ''))
+  return Number.isFinite(n) ? n : null
+}
+
+/** Two values of one fed field are the same: numbers by value, text trimmed. */
+export function sameTrackedValue(field, a, b) {
+  if (NUMERIC_FIELDS.has(field)) {
+    const x = toNumber(a)
+    const y = toNumber(b)
+    if (x !== null && y !== null) return x === y
   }
+  return String(a ?? '').trim() === String(b ?? '').trim()
+}
+
+/**
+ * Whether the next sync will write this field of the unit: the tracker feeds
+ * the unit, has a value for the field, and the editor has not overridden it.
+ * Fields the tracker has no data for stay the website's, and an editor may fill
+ * them without any of this applying.
+ */
+export function unitFed(unit, field) {
+  if (!followsTracker(unit) || (unit.trackerOverrides ?? []).includes(field)) return false
+  const values = trackerValues(unit)
+  if (values) return field in values
+  // Synced before the tracker's values were recorded: the next push fills them.
+  return field === 'size' && unit.tracker?.sqft != null
+}
+
+/**
+ * `unit` with `trackerOverrides` brought up to date after an edit: the fed
+ * fields whose value differs from the tracker's. Run on every change in the
+ * unit form, so the list is always a fact about the unit as it stands — change
+ * a field back to the tracker's value and it follows the tracker again.
+ *
+ * `previous` is the unit before the edit. It matters only for a unit synced
+ * before the tracker's values were recorded: there is nothing to compare to, so
+ * each field the edit touched is taken as an override, and the next push keeps
+ * it instead of overwriting it.
+ *
+ * Returns `unit` itself when nothing changes, and leaves a unit the editor
+ * switched the tracker off for alone — the sync ignores its list.
+ */
+export function withTrackerOverrides(unit, previous = unit) {
+  if (!followsTracker(unit)) return unit
+  const values = trackerValues(unit)
+  const stored = unit.trackerOverrides ?? []
+  const overrides = values
+    ? TRACKED_FIELDS.filter((field) => field in values && !sameTrackedValue(field, unit[field], values[field]))
+    : [...new Set([...stored, ...TRACKED_FIELDS.filter((field) => !sameTrackedValue(field, unit[field], previous?.[field]))])]
+  if (overrides.length === stored.length && overrides.every((field) => stored.includes(field))) return unit
+  return { ...unit, trackerOverrides: overrides }
+}
+
+/** The unit with every fed field put back to the tracker's value and no overrides. A unit with no recorded values is returned as it is. */
+export function replaceWithTracker(unit) {
+  const values = trackerValues(unit)
+  if (!values) return unit
+  const { trackerOverrides: _dropped, ...rest } = unit
+  const fed = Object.fromEntries(TRACKED_FIELDS.filter((field) => field in values).map((field) => [field, values[field]]))
+  return { ...rest, ...fed }
+}
+
+/**
+ * The unit with the tracker switched back on: every fed field takes the
+ * tracker's value and the edits are dropped, so ticking the box means "use the
+ * tracker's data for this unit" rather than "start following it from here".
+ *
+ * A unit with no recorded tracker values yet has nothing to take, so its
+ * overrides are cleared instead and the next sync writes the tracker's data.
+ */
+export function turnTrackerOn(unit) {
+  const { trackerOverrides: _dropped, ...rest } = replaceWithTracker({ ...unit, trackerSync: true })
+  return rest
 }
 
 const norm = (value) => String(value ?? '').trim().toLowerCase()

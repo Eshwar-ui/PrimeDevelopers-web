@@ -43,8 +43,21 @@ export const makeUnit = (label = '') => ({
   status: 'available',
   tenant: '',
   size: '',
-  floor: '',
+  // The ceiling height inside the unit, as typed — "24 ft", or just "24".
+  // Replaced `floor` ("Ground", "Level 2"), which told a tenant nothing a
+  // plan does not; rows written before still carry `floor`, unread.
+  clearHeight: '',
+  // Older free-text rate ("$28 / SF / yr"). Superseded by `leasePrice`, but a
+  // unit that has one keeps showing it where it has no lease price.
   rate: '',
+  // Three prices, each a plain number as text so the unit list can filter on
+  // them. Lease price is per sq ft per year, the other two are totals. Prime
+  // Tracker feeds all three (see TRACKED_FIELDS in admin/unitChecks.js); the
+  // public API shows each only while its status says it is an offer, or the
+  // unit's `publishRate` is ticked (public-property.ts).
+  leasePrice: '',
+  salePrice: '',
+  soldPrice: '',
   frontage: '',
   description: '',
   x: null,
@@ -322,6 +335,61 @@ export const formatArea = (size) => {
   }
   const n = parseArea(text)
   return n ? `${n.toLocaleString()} sq ft` : null
+}
+
+// A positive number from a typed price — "$28", "28.50", "1,250,000", "$1.2M"
+// is not understood and reads as no price. Null for anything else.
+export const parsePrice = (value) => {
+  const text = String(value ?? '').trim()
+  if (!text) return null
+  const n = Number(text.replace(/[^\d.]/g, ''))
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
+const dollars = (n, fractionDigits) =>
+  n.toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  })
+
+/** "$30" or "$30.50 / SF / yr" — a whole number drops its cents. Null when there is no price. */
+export const formatLeasePrice = (value) => {
+  const n = parsePrice(value)
+  return n === null ? null : `${dollars(n, Number.isInteger(n) ? 0 : 2)} / SF / yr`
+}
+
+/** "$1,250,000" for a sale or sold price. Null when there is no price. */
+export const formatTotalPrice = (value) => {
+  const n = parsePrice(value)
+  return n === null ? null : dollars(n, Number.isInteger(n) ? 0 : 2)
+}
+
+/**
+ * What a unit costs, as the lines a visitor reads. A unit holds up to three;
+ * the API sends only those its status makes public, so whatever is here is
+ * fair to show. The older free-text `rate` stands in for a lease price the unit
+ * does not have, so a unit priced before the structured fields existed keeps
+ * its price.
+ */
+export function unitPrices(unit) {
+  const lease = formatLeasePrice(unit?.leasePrice) ?? (String(unit?.rate ?? '').trim() || null)
+  return {
+    lease,
+    sale: formatTotalPrice(unit?.salePrice),
+    sold: formatTotalPrice(unit?.soldPrice),
+  }
+}
+
+/**
+ * Ceiling height as display text. A bare number is feet — "24" → "24 ft" —
+ * and anything else ("24 ft, 28 ft at the ridge") is already prose and kept.
+ */
+export const formatClearHeight = (value) => {
+  const text = String(value ?? '').trim()
+  if (!text) return null
+  return /^\d+(\.\d+)?$/.test(text) ? `${text} ft` : text
 }
 
 export const formatBytes = (bytes) => {

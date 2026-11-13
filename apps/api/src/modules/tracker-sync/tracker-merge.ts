@@ -5,12 +5,23 @@
  * is which, what changes, what is refused — is decided here, so all of it can
  * be tested without a database. See docs/tracker-sync-and-aws-plan.md.
  *
- * The tracker owns a unit row's label, status, size and (for leased units)
- * tenant, and everything under `row.tracker`. Everything else on the row —
- * photographs, pins, logo, rate, description, and whether it is shown on the
- * website at all (`hidden`) — belongs to the website and is carried over
- * untouched, including when the tracker renumbers a unit, moves it to another
- * building, or splits or combines units.
+ * The tracker owns a unit row's label and everything under `row.tracker`, and
+ * *feeds* its status, size, tenant (for leased units) and prices
+ * (TRACKED_FIELDS). Everything else on the row — photographs, pins, logo, clear
+ * height, description, and whether it is shown on the website at all
+ * (`hidden`) — belongs to the website and is carried over untouched, including
+ * when the tracker renumbers a unit, moves it to another building, or splits
+ * or combines units.
+ *
+ * A fed field is the tracker's only until an editor says otherwise, per unit:
+ * - `trackerSync: false` — the unit is still linked to its tracker units (so a
+ *   renumbering, split or combine still carries its photographs), but none of
+ *   its fed fields is written;
+ * - `trackerOverrides: [field, …]` — the fields the editor changed away from
+ *   the tracker's value (the admin works the list out; see
+ *   apps/web/src/admin/unitChecks.js). Those are left alone, the rest follow.
+ * What the tracker last said is kept in `row.tracker.values` either way, so the
+ * admin can show it and put it back.
  */
 
 /** Prime Tracker's `UnitStatus` enum, verbatim. */
@@ -25,8 +36,8 @@ export const TRACKER_UNIT_STATUSES = [
 ] as const;
 export type TrackerUnitStatus = (typeof TRACKER_UNIT_STATUSES)[number];
 
-/** Snapshot versions this file merges. Version 2 only adds optional fields. */
-export const SNAPSHOT_VERSIONS = [1, 2] as const;
+/** Snapshot versions this file merges. Versions 2 and 3 only add optional fields. */
+export const SNAPSHOT_VERSIONS = [1, 2, 3] as const;
 
 export type WebsiteUnitStatus = 'available' | 'leased' | 'coming-soon' | 'sold';
 
@@ -79,14 +90,21 @@ export interface SnapshotUnit {
   unitType?: string | null;
   /**
    * Per sq ft per month, and the asking price: sent for units on the market
-   * only. Accepted and dropped. `detail` is served by the public property GET
-   * as stored, and publishing asking figures waits for the client's approval;
-   * phase 2 adds public-read filtering of `tracker` data, and only then are
-   * they written.
+   * only. Written to the row as `leasePrice` (per sq ft per YEAR — the site
+   * quotes rent annually) and `salePrice`. The public GET filters them by
+   * status (public-property.ts), so a figure the tracker sends is not public
+   * until the unit's status says it is an offer.
    */
   askingRent?: number | null;
   askingPrice?: number | null;
   availableSince?: string | null;
+
+  // Version 3. Optional, so a version 1 or 2 snapshot is merged exactly as before.
+
+  /** Per sq ft per month, of the lease in place. Sent for let units only; written as `leasePrice`. */
+  leaseRent?: number | null;
+  /** What the unit sold for. Sent for SOLD units only; written as `soldPrice`. */
+  soldPrice?: number | null;
 }
 
 export interface SnapshotBuilding {
@@ -106,9 +124,27 @@ export interface TrackerSnapshot {
 }
 
 /**
+ * The unit-row fields the tracker feeds. A fed field follows the tracker unless
+ * the unit opts out (`trackerSync: false`) or the editor overrode it
+ * (`trackerOverrides`). Mirrored by TRACKED_FIELDS in
+ * apps/web/src/admin/unitChecks.js.
+ */
+export const TRACKED_FIELDS = ['status', 'size', 'tenant', 'leasePrice', 'salePrice', 'soldPrice'] as const;
+export type TrackedField = (typeof TRACKED_FIELDS)[number];
+
+/**
+ * What the tracker says each fed field should be, in the website's own terms
+ * (status mapped, size and prices formatted). A field is absent when the tracker
+ * has no opinion — no square footage, no price for this stage of the unit, a
+ * sold unit's tenant — and the website's value is then left alone, never
+ * blanked.
+ */
+export type TrackerValues = Partial<Record<TrackedField, string>>;
+
+/**
  * What the sync last wrote about a row, under `row.tracker`. Written only by
- * the sync; the top-level fields the public site and CMS read are still
- * written exactly as before, so nothing reads this yet.
+ * the sync. The admin reads `values` to show what the tracker says and to put
+ * it back; the public site reads none of it.
  */
 export interface RowTrackerFields {
   ids: string[];
@@ -124,6 +160,8 @@ export interface RowTrackerFields {
    * any other was typed in the CMS and stays.
    */
   occupant: string | null;
+  /** Absent on a row last synced before prices were fed; the next push adds it. */
+  values?: TrackerValues;
   /**
    * The snapshot that last changed the values above. Not every push: the
    * hourly push must compare equal to what is stored, or it would be a write.
@@ -137,6 +175,10 @@ export type WebsiteUnit = Record<string, any> & {
   status?: string;
   trackerUnitIds?: string[];
   tracker?: RowTrackerFields;
+  /** False: the editor turned the tracker's data off for this unit. Absent or true: it feeds the fed fields. */
+  trackerSync?: boolean;
+  /** Fed fields the editor changed away from the tracker's value. */
+  trackerOverrides?: string[];
 };
 
 export type WebsiteBuilding = Record<string, any> & {
@@ -400,8 +442,11 @@ const blankUnit = (label: string): WebsiteUnit => ({
   status: 'available',
   tenant: '',
   size: '',
-  floor: '',
+  clearHeight: '',
   rate: '',
+  leasePrice: '',
+  salePrice: '',
+  soldPrice: '',
   frontage: '',
   description: '',
   x: null,
@@ -705,11 +750,77 @@ const agreed = <T>(values: (T | null | undefined)[]): T | null => {
 };
 
 const trackerKeyOf = (t: Partial<RowTrackerFields> | undefined) =>
-  JSON.stringify([t?.ids, t?.unitNumber, t?.status, t?.sqft, t?.unitType, t?.availableSince, t?.occupant]);
+  JSON.stringify([t?.ids, t?.unitNumber, t?.status, t?.sqft, t?.unitType, t?.availableSince, t?.occupant, canonical(t?.values)]);
 
-function trackerFields(row: TrackerRow, previous: RowTrackerFields | undefined, syncedAt: string): RowTrackerFields {
-  // No asking rent or price: held until the client approves publishing them —
-  // see SnapshotUnit.askingRent.
+/** Tracker statuses on the market, the only ones whose asking figures mean anything. */
+const ON_MARKET = new Set(['AVAILABLE', 'UNDER_CONSTRUCTION']);
+/** Tracker statuses with a lease in place or about to be. */
+const LET = new Set(['LEASED', 'OCCUPIED', 'LEASE_PENDING']);
+
+const positive = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0;
+
+/** "30", "30.5", "1250000" — plain, so the admin's text field and the filters read it as a number. */
+const money = (value: number) => String(Math.round(value * 100) / 100);
+
+/**
+ * The row's rent per sq ft per YEAR. The tracker quotes it per month; the site
+ * quotes rent annually ("$28 / SF / yr"). One figure only: units of a row with
+ * different rents have no single rate, so the tracker has no opinion.
+ */
+function leasePriceOf(row: TrackerRow): string | undefined {
+  const rents = row.units.map((u) => (ON_MARKET.has(u.status) ? u.askingRent : LET.has(u.status) ? u.leaseRent : null));
+  if (!rents.every(positive) || new Set(rents).size !== 1) return undefined;
+  return money(rents[0] * 12);
+}
+
+/** The row's total — a deal's units are priced separately, so they add up. Undefined unless every unit is priced. */
+function totalOf(row: TrackerRow, priceOf: (unit: SnapshotUnit) => number | null | undefined): string | undefined {
+  const prices = row.units.map(priceOf);
+  return prices.every(positive) ? money((prices as number[]).reduce((sum, p) => sum + p, 0)) : undefined;
+}
+
+/**
+ * The tenant is the tracker's only while a lease says who it is. A sold
+ * unit's text is left to the website — the tracker's party there is a buyer,
+ * which is never published, and an owner-occupier's trading name is the
+ * website's to write. A row whose units are all LEASE_PENDING has no lease
+ * in place: the tracker moves LEASED → LEASE_PENDING when a successor signs
+ * while the sitting tenant leaves, so the name the sync wrote goes too — but
+ * only that name. One typed in the CMS, which the sync never sent, stays.
+ */
+function tenantOf(row: TrackerRow, prior: WebsiteUnit | undefined): string | undefined {
+  if (row.status === 'available' || row.status === 'coming-soon') return '';
+  if (row.status !== 'leased') return undefined;
+  if (row.occupant) return row.occupant;
+  const pendingOnly = row.units.every((u) => u.status === 'LEASE_PENDING');
+  const lastSent = prior?.tracker?.occupant ?? null;
+  const syncWrote = lastSent !== null && prior?.tenant === lastSent;
+  return pendingOnly && syncWrote ? '' : undefined;
+}
+
+/**
+ * What the tracker says this row's fed fields are. Only where it knows:
+ * blanking a size, price or status the site already has would be a loss, not
+ * a mirror. An unknown status keeps the row's last one — see websiteStatusOf().
+ */
+function trackerValues(row: TrackerRow, prior: WebsiteUnit | undefined): TrackerValues {
+  const values: Record<TrackedField, string | undefined> = {
+    status: row.status ?? undefined,
+    size: row.sqft !== null ? row.sqft.toLocaleString('en-US') : undefined,
+    tenant: tenantOf(row, prior),
+    leasePrice: leasePriceOf(row),
+    salePrice: totalOf(row, (u) => (ON_MARKET.has(u.status) ? u.askingPrice : null)),
+    soldPrice: totalOf(row, (u) => (u.status === 'SOLD' ? u.soldPrice : null)),
+  };
+  return Object.fromEntries(Object.entries(values).filter(([, value]) => value !== undefined)) as TrackerValues;
+}
+
+function trackerFields(
+  row: TrackerRow,
+  values: TrackerValues,
+  previous: RowTrackerFields | undefined,
+  syncedAt: string,
+): RowTrackerFields {
   const fields = {
     ids: row.ids,
     unitNumber: row.units.map((u) => String(u.unitNumber).trim()).join('+'),
@@ -718,6 +829,7 @@ function trackerFields(row: TrackerRow, previous: RowTrackerFields | undefined, 
     unitType: agreed(row.units.map((u) => u.unitType)),
     availableSince: agreed(row.units.map((u) => u.availableSince)),
     occupant: row.occupant,
+    values,
   };
   const unchanged = previous?.syncedAt && trackerKeyOf(previous) === trackerKeyOf(fields);
   return { ...fields, syncedAt: unchanged ? previous.syncedAt : syncedAt };
@@ -727,33 +839,24 @@ function mergeRow(prior: WebsiteUnit | undefined, row: TrackerRow, donors: Donor
   const next: WebsiteUnit = {
     ...(prior ?? blankUnit(row.label)),
     label: row.label,
-    // An unknown status keeps the row's last one — see websiteStatusOf().
-    status: row.status ?? prior?.status,
     trackerUnitIds: row.ids,
   };
   const carried = carryMedia(next, donors);
 
-  // Only where the tracker knows the size: blanking one the site already has
-  // would be a loss, not a mirror.
-  if (row.sqft !== null) next.size = row.sqft.toLocaleString('en-US');
+  // A unit the editor took off the tracker keeps every fed field as it is, and
+  // so does a field the editor changed — but both stay linked, so the row is
+  // still paired, relabelled and carried like any other.
+  const values = trackerValues(row, prior);
+  const follows = prior?.trackerSync !== false;
+  const overridden = new Set<string>(Array.isArray(prior?.trackerOverrides) ? prior!.trackerOverrides : []);
+  for (const field of TRACKED_FIELDS) {
+    const value = values[field];
+    if (value !== undefined && follows && !overridden.has(field)) next[field] = value;
+  }
+  // A let row has a tenant field even where the tracker names nobody.
+  if (row.status === 'leased') next.tenant ??= '';
 
-  // The tenant is the tracker's only while a lease says who it is. A sold
-  // unit's text is left to the website — the tracker's party there is a buyer,
-  // which is never published, and an owner-occupier's trading name is the
-  // website's to write. A row whose units are all LEASE_PENDING has no lease
-  // in place: the tracker moves LEASED → LEASE_PENDING when a successor signs
-  // while the sitting tenant leaves, so the name the sync wrote goes too — but
-  // only that name. One typed in the CMS, which the sync never sent, stays.
-  const pendingOnly = row.units.every((u) => u.status === 'LEASE_PENDING');
-  const lastSent = prior?.tracker?.occupant ?? null;
-  const syncWrote = lastSent !== null && prior?.tenant === lastSent;
-  if (row.status === 'leased') {
-    if (row.occupant) next.tenant = row.occupant;
-    else if (pendingOnly && syncWrote) next.tenant = '';
-    else next.tenant = prior?.tenant ?? '';
-  } else if (row.status === 'available' || row.status === 'coming-soon') next.tenant = '';
-
-  next.tracker = trackerFields(row, prior?.tracker, syncedAt);
+  next.tracker = trackerFields(row, values, prior?.tracker, syncedAt);
   return { next, carried };
 }
 
@@ -1050,9 +1153,6 @@ export function mergeSnapshot(
         }
         const was = String(prior.label ?? '');
         if (was !== row.label) report.relabelled.push({ from: was, to: row.label });
-        if (row.status !== null && prior.status !== row.status) {
-          report.statusChanged.push({ label: row.label, from: String(prior.status ?? ''), to: row.status });
-        }
       }
 
       const donors = donorsOf.get(slot) ?? [];
@@ -1062,6 +1162,11 @@ export function mergeSnapshot(
         donors.map((d) => ({ unit: d.unit, givesPin: d.b === b && continuedBy.get(d)?.b !== d.b })),
         syncedAt,
       );
+      // Read off the result, not the tracker's row: a unit the editor took off
+      // the tracker, or whose status they set, keeps its own and did not change.
+      if (prior && prior.status !== next.status) {
+        report.statusChanged.push({ label: row.label, from: String(prior.status ?? ''), to: String(next.status ?? '') });
+      }
       merged.set(slot, next);
       if (carried) report.carried.push({ label: row.label, from: donors.map((d) => String(d.unit.label ?? '')) });
       if (next.status === 'available') report.available += row.ids.length;

@@ -3,6 +3,8 @@ import { Link, Navigate, useParams } from 'react-router-dom'
 import { useProperty } from '../context/ContentContext'
 import { sized } from '../lib/images'
 import { capFigures, capStatus, formatSf, unitLine } from '../lib/capListings'
+import { calculatorSettings, canRunNumbers } from '../lib/capCalculator'
+import CapCalculator from '../components/CapCalculator'
 import { getBuildings, getUnitImages, getUnits } from '../lib/units'
 import PrimePill from '../components/PrimePill'
 import { useTextReveal } from '../hooks/useTextReveal'
@@ -73,6 +75,9 @@ export default function CapListingPage() {
   const enquire = new URLSearchParams({ source: 'invest', from: `/cap-properties/${listing.slug}` })
   if (listing.units) enquire.set('unit', listing.units)
   if (property?.id) enquire.set('property', property.id)
+  // Not on a sold deal — there is nothing left to finance — nor on one missing
+  // the price or rent every row is worked from.
+  const showCalculator = canRunNumbers(listing, calculatorSettings(section.calculator))
 
   return (
     <div>
@@ -182,8 +187,22 @@ export default function CapListingPage() {
         </div>
       </section>
 
+      {/* Straight after the figures it is worked from, and before the prose:
+          an investor who has read the cap rate wants to know next what the
+          deal costs them each month. */}
+      {showCalculator && (
+        <CapCalculator
+          listing={listing}
+          section={section}
+          cta={{ label: 'Talk to us about financing', href: `/contact?${enquire.toString()}` }}
+        />
+      )}
+
       {(listing.summary || highlights.length > 0 || photos.length > 0) && (
-        <section data-band="light" className="bg-base px-gutter py-16 text-content md:py-20">
+        <section
+          data-band="light"
+          className={`bg-base px-gutter py-16 text-content md:py-20 ${showCalculator ? 'border-t border-line' : ''}`}
+        >
           <div className="mx-auto grid max-w-[1360px] gap-12 lg:grid-cols-12">
             {(listing.summary || highlights.length > 0) && (
               <div className="lg:col-span-5">

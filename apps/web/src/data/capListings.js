@@ -16,6 +16,7 @@
  */
 
 import { MEDIA_BASE } from '../lib/images'
+import { CALCULATOR_DEFAULTS } from '../lib/capCalculator'
 
 const IMG = `${MEDIA_BASE}/images/cap/`
 const photo = (key) => `${IMG}${key}/photo.jpg`
@@ -56,6 +57,9 @@ export const CAP_LISTINGS_DEFAULTS = {
   email: 'sales@theprimedeveloper.com',
   disclaimer:
     'Real estate investments are subject to risk, and no assurance of returns is made; investors should seek independent legal, tax, and financial advice before investing.',
+  // The deal-page calculator's loan options and assumptions — the client's
+  // Loan Price Sheet. Edited on the admin's CAP / NNN page settings.
+  calculator: CALCULATOR_DEFAULTS,
   items: [
     deal({ id: 'cap-ns-retail-516', slug: 'ns-retail-e-commerce-unit-516', status: 'listed', tenant: 'N & S', tagline: 'Retail e-commerce', photo: photo('ns-retail-e-commerce'), address: LEWISVILLE, propertySlug: 'pow-lewisville-phase-i', units: '516', sf: 1815, price: 695750, capRate: 6.5, leaseTerm: 3, rent: 41745, nnn: 23595 }),
     deal({ id: 'cap-ojas-102', slug: 'ojas-natural-foods-unit-102', status: 'listed', tenant: 'OJAS Natural Foods', tagline: 'Organic · Artisanal · Premium', logo: logo('ojas-natural-foods'), photo: photo('ojas-natural-foods'), address: LEANDER_15101, units: '102', sf: 1430, price: 884000, capRate: 5.5, leaseTerm: 15, rent: 48620, nnn: 18590 }),

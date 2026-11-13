@@ -742,17 +742,6 @@ export default function PropertyDetailPage() {
                 label={property.name}
                 altFor={(src) => imageAlt(property, src)}
               />
-              {gallery.length > 0 && (
-                <Link
-                  to={`/properties/${property.slug}/gallery`}
-                  className="group mt-5 inline-flex min-h-11 items-center gap-3 font-body text-[12px] font-bold uppercase tracking-[0.16em] text-accent transition-colors hover:text-prime-deep focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
-                >
-                  View full gallery
-                  <span aria-hidden className="transition-transform duration-300 group-hover:translate-x-1">
-                    →
-                  </span>
-                </Link>
-              )}
             </div>
 
             <div className="flex min-w-0 flex-col justify-center lg:pl-4">
@@ -764,6 +753,15 @@ export default function PropertyDetailPage() {
               <div className="mt-6 max-w-[58ch] font-body text-[16px] leading-[1.7] text-content/70">
                 <Prose text={d.location.body} />
               </div>
+              {/* The carousel shows one frame at a time; the gallery page has
+                  every photograph, paged. */}
+              {gallery.length > 0 && (
+                <div className="mt-8">
+                  <PrimePill href={`/properties/${property.slug}/gallery`} variant="outline">
+                    View gallery
+                  </PrimePill>
+                </div>
+              )}
             </div>
           </div>
         </section>

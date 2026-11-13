@@ -736,11 +736,24 @@ export default function PropertyDetailPage() {
                 the other 130 reachable only through the admin. */}
             {/* Opens on a photograph the page hasn't shown yet; the ones the
                 hero and mosaic used move to the end rather than leave. */}
-            <PropertyGallery
-              images={[...unseen, ...gallery.filter((src) => shown.has(src))]}
-              label={property.name}
-              altFor={(src) => imageAlt(property, src)}
-            />
+            <div className="min-w-0">
+              <PropertyGallery
+                images={[...unseen, ...gallery.filter((src) => shown.has(src))]}
+                label={property.name}
+                altFor={(src) => imageAlt(property, src)}
+              />
+              {gallery.length > 0 && (
+                <Link
+                  to={`/properties/${property.slug}/gallery`}
+                  className="group mt-5 inline-flex min-h-11 items-center gap-3 font-body text-[12px] font-bold uppercase tracking-[0.16em] text-accent transition-colors hover:text-prime-deep focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+                >
+                  View full gallery
+                  <span aria-hidden className="transition-transform duration-300 group-hover:translate-x-1">
+                    →
+                  </span>
+                </Link>
+              )}
+            </div>
 
             <div className="flex min-w-0 flex-col justify-center lg:pl-4">
               <SectionTag>{d.location.eyebrow}</SectionTag>

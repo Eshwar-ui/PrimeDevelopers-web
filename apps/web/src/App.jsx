@@ -51,6 +51,7 @@ const InvestPage = lazy(() => import('./pages/InvestPage'))
 const PropertiesPage = lazy(() => import('./pages/PropertiesPage'))
 const PropertyDetailPage = lazy(() => import('./pages/PropertyDetailPage'))
 const PropertyInfoPage = lazy(() => import('./pages/PropertyInfoPage'))
+const PropertyGalleryPage = lazy(() => import('./pages/PropertyGalleryPage'))
 const InvestmentPage = lazy(() => import('./pages/InvestmentPage'))
 const UnitPage = lazy(() => import('./pages/UnitPage'))
 const CapListingsPage = lazy(() => import('./pages/CapListingsPage'))
@@ -424,6 +425,9 @@ function PublicSite() {
                     be added to `data/centroPlazaInfo` without a new route; a
                     slug with no set redirects back to its listing. */}
                 <Route path="/properties/:slug/info" element={<PropertyInfoPage />} />
+                {/* Every photograph of a property — its own gallery plus each
+                    unit's shoot, grouped by building — in one grid. */}
+                <Route path="/properties/:slug/gallery" element={<PropertyGalleryPage />} />
                 {/* One building as an asset — asking price, yield, lease terms
                     and the unit schedule. Slugged by building label rather than
                     index for the reason the `?building=` handler gives: an

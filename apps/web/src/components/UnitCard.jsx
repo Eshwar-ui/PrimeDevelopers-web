@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Buildings, Camera, MapPin, Ruler, Stack, Tag } from '@phosphor-icons/react'
-import { formatArea, formatUnitLabel, getUnitImages, unitPath } from '../lib/units'
+import { ArrowsVertical, Buildings, Camera, MapPin, Ruler, Tag } from '@phosphor-icons/react'
+import { formatArea, formatClearHeight, formatUnitLabel, getUnitImages, unitPath, unitPrices } from '../lib/units'
 import { tierNameFor } from '../lib/unitTiers'
 import { unitStatusMeta } from '../lib/unitStatus'
 import { hasInfoPage } from '../lib/infoSets'
@@ -34,10 +34,10 @@ const isNumeric = (value) => /^[\d.,\s]+$/.test(String(value ?? '').trim())
 
 function specChips(unit) {
   const chips = []
-  const floor = String(unit.floor ?? '').trim()
+  const clearHeight = formatClearHeight(unit.clearHeight)
   const frontage = String(unit.frontage ?? '').trim()
 
-  if (floor) chips.push({ Icon: Stack, text: isNumeric(floor) ? `Floor ${floor}` : floor })
+  if (clearHeight) chips.push({ Icon: ArrowsVertical, text: `${clearHeight} clear` })
   if (frontage) {
     chips.push({ Icon: Ruler, text: isNumeric(frontage) ? `${frontage} ft frontage` : frontage })
   }
@@ -81,8 +81,14 @@ export default function UnitCard({ property, building, unit, sf, className = '' 
     navigate(href)
   }
   const area = formatArea(unit.size)
+  const prices = unitPrices(unit)
   const tierName = tierNameFor(sf)
   const chips = specChips(unit)
+  const priceLines = [
+    ['Lease price', prices.lease],
+    ['Sale price', prices.sale],
+    ['Sold price', prices.sold],
+  ].filter(([, value]) => value)
   const meta = unitStatusMeta(unit.status)
   // The unit's own photograph wins over the property's. A card for unit 605
   // showing the plaza from the road is the same picture as the three cards
@@ -222,21 +228,25 @@ export default function UnitCard({ property, building, unit, sf, className = '' 
         )}
 
         <div className="mt-auto flex flex-col gap-3 pt-2">
-          {/* Kept above the action rather than dropped, as the comp has it: the
-              rate is the one field on this card that reliably differs from the
-              card beside it, and it is what a tenant is scanning for. Guarded,
-              because it is optional in the admin and an empty "Base price" row
-              reads as a price of nothing.
+          {/* Kept above the action rather than dropped, as the comp has it:
+              the price is the one field on this card that reliably differs from
+              the card beside it, and it is what a tenant is scanning for.
+              Guarded, because every price is optional in the admin and an
+              empty row reads as a price of nothing.
 
-              Only while it is still an offer — see the same rule on the detail
-              card. What a let space went for is not a price anyone can act
-              on. */}
-          {unit.rate && (unit.status === 'available' || unit.status === 'coming-soon') && (
-            <p className="flex items-center gap-1.5 border-t border-content/10 pt-3 font-body text-[13px] text-content/70">
-              <Tag aria-hidden className="size-4 shrink-0 text-content/50" />
-              Base price
-              <span className="numeral ml-auto font-bold text-content">{unit.rate}</span>
-            </p>
+              Whatever the API sent is shown: it sends a lease or sale price
+              while the unit is an offer, and the price of a let or sold unit
+              only when the editor ticked "show the price" on it. */}
+          {priceLines.length > 0 && (
+            <dl className="flex flex-col gap-1.5 border-t border-content/10 pt-3">
+              {priceLines.map(([term, value]) => (
+                <div key={term} className="flex items-center gap-1.5 font-body text-[13px] text-content/70">
+                  <Tag aria-hidden className="size-4 shrink-0 text-content/50" />
+                  <dt>{term}</dt>
+                  <dd className="numeral ml-auto font-bold text-content">{value}</dd>
+                </div>
+              ))}
+            </dl>
           )}
 
           {/* Label left, arrow disc right: a full-width bar with its content

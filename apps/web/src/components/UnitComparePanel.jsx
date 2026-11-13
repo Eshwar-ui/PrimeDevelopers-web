@@ -1,5 +1,5 @@
 import { unitStatusMeta } from '../lib/unitStatus'
-import { formatArea, formatUnitLabel } from '../lib/units'
+import { formatArea, formatClearHeight, formatUnitLabel, unitPrices } from '../lib/units'
 
 // The specs a visitor actually chooses between. Description is deliberately
 // absent: it is a paragraph, and a paragraph in a table cell wrecks the row
@@ -7,8 +7,10 @@ import { formatArea, formatUnitLabel } from '../lib/units'
 // panel beside the plan still carries it for whichever unit is primary.
 const SPECS = [
   ['Size', (unit) => formatArea(unit.size)],
-  ['Floor', (unit) => unit.floor],
-  ['Rate', (unit) => unit.rate],
+  ['Clear height', (unit) => formatClearHeight(unit.clearHeight)],
+  ['Lease price', (unit) => unitPrices(unit).lease],
+  ['Sale price', (unit) => unitPrices(unit).sale],
+  ['Sold price', (unit) => unitPrices(unit).sold],
   ['Frontage', (unit) => unit.frontage],
   // Comes from the model's geometry, not the unit record — see `aspectOf` in
   // FloorPlanSection. Comparing aspect is one of the few rows where every unit

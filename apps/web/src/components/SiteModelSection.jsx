@@ -35,8 +35,8 @@ const TOOLBAR_OVER_PLAN = 'absolute inset-x-4 top-4 z-30'
 const SITE = '__site'
 const ALL = '__all'
 
-// A cap rather than a height — see the note on FloorPlanSection's PANEL_MAX.
-const PANEL_MAX = 'lg:max-h-[max(30rem,calc(100dvh-9rem))]'
+// Exactly the plan's height — see the note on FloorPlanSection's PANEL_HEIGHT.
+const PANEL_HEIGHT = 'lg:h-[max(30rem,calc(100dvh-9rem))]'
 
 const norm = (value) => String(value ?? '').trim().toLowerCase()
 
@@ -318,6 +318,13 @@ export default function SiteModelSection({ property }) {
   // WebGL is checked on that press, not here. This line runs on every render,
   // and the probe it used to make created a fresh context each time.
   const viewer = useViewerState(modelUrl)
+  // Which view the visitor asked for on the launch poster. The viewer mounts
+  // in it and the 2D/3D toggle inside still switches.
+  const [launchMode, setLaunchMode] = useState('3d')
+  const launch = (mode) => () => {
+    setLaunchMode(mode)
+    viewer.activate()
+  }
   const { Viewer } = viewer
   const canShow3D = Boolean(modelUrl) && !isLocalhostUrl && !viewer.failure
   const unavailableReason = viewer.failure?.reason ?? (isLocalhostUrl ? 'unavailable' : null)
@@ -546,7 +553,8 @@ export default function SiteModelSection({ property }) {
             <ViewerLaunch
               poster={siteModel?.poster}
               height={PLAN_HEIGHT}
-              onLaunch={viewer.activate}
+              onLaunch={launch('3d')}
+              onLaunch2D={launch('2d')}
               onPrefetch={loadViewer}
             />
           ) : canShow3D ? (
@@ -579,7 +587,7 @@ export default function SiteModelSection({ property }) {
                   poster={siteModel?.poster}
                   fileSize={siteModel?.fileSize}
                   // Straight into 3D: the button said "3D model".
-                  defaultMode="3d"
+                  defaultMode={launchMode}
                   height={PLAN_HEIGHT}
                 />
               </Suspense>
@@ -636,7 +644,7 @@ export default function SiteModelSection({ property }) {
             // unit is only ever selected while one is focused — so the units
             // offered here are always that building's own.
             onSelectUnit={selectUnit}
-            maxHeight={canShow3D ? PANEL_MAX : ''}
+            height={canShow3D ? PANEL_HEIGHT : ''}
             detailsHref={selectedUnit && focusedBuilding ? unitPath(property.slug, focusedBuilding.label, selectedUnit.label) : null}
             emptyHint={
               focusedBuilding

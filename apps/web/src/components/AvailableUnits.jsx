@@ -250,7 +250,7 @@ export default function AvailableUnits() {
                 section is units, and the visitor asking for more of it wants
                 the rest of the units rather than the developments holding
                 them. */}
-            <ActionButton tone="ghost" href="/properties?view=units">
+            <ActionButton tone="ghost" href={`/properties?view=units${tier === 'all' ? '' : `&size=${tier}`}`}>
               View all units
               <ArrowRight className="size-4 transition-transform duration-200 ease-brand group-hover:translate-x-0.5 motion-reduce:transform-none" />
             </ActionButton>

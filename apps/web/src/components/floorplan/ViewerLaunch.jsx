@@ -1,4 +1,4 @@
-import { Cube } from '@phosphor-icons/react'
+import { Cube, SquaresFour } from '@phosphor-icons/react'
 import ActionButton from '../ActionButton'
 import { sized, srcSetFor } from '../../lib/images'
 
@@ -18,7 +18,7 @@ import { sized, srcSetFor } from '../../lib/images'
  * hundred milliseconds before the click — enough that most of it is already
  * in by the time the skeleton would have shown.
  */
-export default function ViewerLaunch({ poster, height, onLaunch, onPrefetch }) {
+export default function ViewerLaunch({ poster, height, onLaunch, onLaunch2D, onPrefetch }) {
   return (
     <div
       className={`relative isolate overflow-hidden rounded-2xl border border-line bg-surface-alt ${height}`}
@@ -58,6 +58,9 @@ export default function ViewerLaunch({ poster, height, onLaunch, onPrefetch }) {
       {/* A light scrim, so the button reads against whatever the picture
           happens to be without hiding the picture. Theme-keyed. */}
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-surface-alt/20 p-6 text-center">
+        {/* Two doors into the same viewer: 3D to orbit the model, 2D for the
+            flat plan. The second is shown only where the caller can open it. */}
+        <div className="flex w-full flex-col items-center justify-center gap-3 sm:w-auto sm:flex-row">
         <ActionButton
           as="button"
           type="button"
@@ -71,8 +74,22 @@ export default function ViewerLaunch({ poster, height, onLaunch, onPrefetch }) {
           <Cube aria-hidden weight="bold" className="size-4 shrink-0" />
           View 3D model
         </ActionButton>
+        {onLaunch2D && (
+          <ActionButton
+            as="button"
+            type="button"
+            onClick={onLaunch2D}
+            onPointerEnter={onPrefetch}
+            onFocus={onPrefetch}
+            className="max-w-max"
+          >
+            <SquaresFour aria-hidden weight="bold" className="size-4 shrink-0" />
+            View 2D plan
+          </ActionButton>
+        )}
+        </div>
         <p className="rounded-full bg-surface-alt/75 px-3 py-1 font-body text-[12px] text-content/80 backdrop-blur-sm">
-          Rotate, zoom and select a unit
+          {onLaunch2D ? 'Rotate in 3D, or open the flat plan' : 'Rotate, zoom and select a unit'}
         </p>
       </div>
     </div>

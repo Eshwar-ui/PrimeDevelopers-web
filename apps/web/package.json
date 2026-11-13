@@ -7,7 +7,7 @@
     "dev": "vite --port 5173 --strictPort",
     "build": "vite build",
     "lint": "oxlint",
-    "test": "node --test \"test/*.test.js\"",
+    "test": "node --test test/*.test.js",
     "preview": "vite preview"
   },
   "dependencies": {

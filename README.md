@@ -39,6 +39,19 @@ pnpm --filter @prime-developers/web dev
 
 If the API exits at startup it names the missing variables.
 
+### Checks (CI)
+
+Every pull request to `main`, and every push to it, runs [`.github/workflows/ci.yml`](.github/workflows/ci.yml). None of it needs secrets or a database, and it deploys nothing. To run the same checks before you push:
+
+```bash
+pnpm --filter @prime-developers/web test
+pnpm --filter @prime-developers/web lint
+VITE_API_BASE_URL=https://dtw8rs0oq8bpp.cloudfront.net pnpm --filter @prime-developers/web build
+pnpm --filter @prime-developers/api exec prisma generate
+pnpm --filter @prime-developers/api test
+pnpm --filter @prime-developers/api exec tsc --noEmit
+```
+
 ### Troubleshooting
 
 | Symptom | Cause |

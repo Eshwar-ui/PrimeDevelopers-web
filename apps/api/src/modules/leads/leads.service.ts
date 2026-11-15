@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BrochureRequestDto, CreateLeadDto, ListLeadsQueryDto, SpamSignalsDto } from './dto/lead.dto';
 import { MailService } from '../mail/mail.service';
+import { fetchPublicPdf } from './safe-fetch';
 
 // How a brochure request reads in the leads list — also how one is recognised when
 // counting recent requests to the same address.
@@ -100,25 +101,8 @@ export function brochureUrlFor(detail: unknown): string | null {
   return usable.find((l) => /\.pdf(\?|$)/i.test(l.url))?.url ?? null;
 }
 
-export async function readCapped(res: Response, max: number): Promise<Buffer | null> {
-  const declared = Number(res.headers.get('content-length'));
-  if (Number.isFinite(declared) && declared > max) return null;
-  if (!res.body) return Buffer.alloc(0);
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  const reader = res.body.getReader();
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
-    if (total > max) {
-      await reader.cancel();
-      return null;
-    }
-    chunks.push(value);
-  }
-  return Buffer.concat(chunks);
-}
+// Lives with the fetch that uses it; re-exported so existing callers and tests keep their import.
+export { readCapped } from './safe-fetch';
 
 @Injectable()
 export class LeadsService {
@@ -247,27 +231,13 @@ export class LeadsService {
       // enormous file would otherwise hold the request open and push a
       // multi-megabyte buffer through the mail path. SES caps a message at
       // 40 MB; well under that is the only sane budget for a brochure.
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 10_000);
-      try {
-        const res = await fetch(flyerUrl, { signal: controller.signal });
-        if (res.ok) {
-          const buf = await readCapped(res, BROCHURE_MAX_BYTES);
-          if (buf) {
-            const name = decodeURIComponent(new URL(flyerUrl).pathname.split('/').pop() || 'brochure.pdf');
-            attachment = {
-              filename: /\.[a-z0-9]+$/i.test(name) ? name : `${name}.pdf`,
-              contentType: res.headers.get('content-type') ?? 'application/pdf',
-              content: buf,
-            };
-          } else {
-            this.logger.warn(`Brochure for ${property.name} is over ${BROCHURE_MAX_BYTES} bytes — too large to attach.`);
-          }
-        } else {
-          this.logger.warn(`Brochure fetch for ${property.name} returned ${res.status}.`);
-        }
-      } finally {
-        clearTimeout(timer);
+      // fetchPublicPdf also refuses private addresses and anything that is not
+      // a real PDF, and never throws: a refusal costs the attachment, not the email.
+      const pdf = await fetchPublicPdf(flyerUrl, { maxBytes: BROCHURE_MAX_BYTES, timeoutMs: 10_000 });
+      if (pdf.ok) {
+        attachment = { filename: pdf.filename, contentType: 'application/pdf', content: pdf.body };
+      } else {
+        this.logger.warn(`Brochure for ${property.name} not attached: ${pdf.reason}.`);
       }
     }
 

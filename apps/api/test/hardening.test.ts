@@ -100,6 +100,28 @@ test('a brochure request for a property whose flyer is "#" still emails the visi
   assert.match(toVisitor.text, /send the brochure across shortly/);
 });
 
+test('a brochure link pointing at the EC2 metadata service is not fetched, and the visitor is still emailed', async () => {
+  const { LeadsService } = await import('../src/modules/leads/leads.service');
+  const sent: any[] = [];
+  const prisma: any = {
+    property: {
+      findUnique: async () => ({
+        id: 'p1', name: 'Centro Plaza', slug: 'centro-plaza', address: null, published: true,
+        detail: { overview: { flyer: 'https://169.254.169.254/latest/meta-data/iam/security-credentials/' } },
+      }),
+    },
+    websiteLead: { count: async () => 0, create: async () => ({ id: 'lead-2' }) },
+  };
+  const mail: any = { send: async (message: any) => (sent.push(message), true) };
+  const service = new LeadsService(prisma, mail, { get: () => undefined } as any);
+
+  const result = await service.requestBrochure({ name: 'Ana', email: 'ana@example.test', propertyId: 'p1' } as any);
+
+  assert.deepEqual(result, { id: 'lead-2', emailed: true, hasBrochure: true });
+  const toVisitor = sent.find((m) => m.to === 'ana@example.test');
+  assert.equal(toVisitor.attachments, undefined, 'nothing from the metadata service is attached');
+});
+
 function authWith(row: any, updateCount = 1) {
   const calls: { updateMany: any[] } = { updateMany: [] };
   const prisma: any = {

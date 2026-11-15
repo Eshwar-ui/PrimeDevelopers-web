@@ -63,14 +63,14 @@ the DNS-rebinding window. It follows at most 3 redirects, each re-checked. It ke
 "no attachment" email.
 
 **Acceptance criteria:**
-- [ ] URLs that resolve to a blocked range, including after a redirect, are refused before any bytes are sent
-- [ ] A 200 `text/html` response (today's Google, LoopNet and bit.ly links) is not attached
-- [ ] The 10-second timeout and the 8 MB `readCapped` limit are kept; the existing `readCapped` tests still pass
+- [x] URLs that resolve to a blocked range, including after a redirect, are refused before any bytes are sent
+- [x] A 200 `text/html` response (today's Google, LoopNet and bit.ly links) is not attached
+- [x] The 10-second timeout and the 8 MB `readCapped` limit are kept; the existing `readCapped` tests still pass
 
 **Verification:**
-- [ ] Unit tests for the address classifier (IPv4, IPv6, IPv4-mapped IPv6) and for redirect,
+- [x] Unit tests for the address classifier (IPv4, IPv6, IPv4-mapped IPv6) and for redirect,
       non-PDF and oversize cases, using a local HTTPS stub
-- [ ] Full API suite and build pass
+- [x] Full API suite and build pass
 
 **Dependencies:** Task 1
 **Files:** `apps/api/src/modules/leads/safe-fetch.ts` (new), `leads.service.ts`, `apps/api/test/safe-fetch.test.ts` (new)

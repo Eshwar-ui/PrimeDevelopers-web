@@ -93,7 +93,7 @@ Full task detail (acceptance criteria, verification, files, scope) is in [todo.m
 - [x] Task 2: Brochure fetch cannot reach private addresses or attach non-PDFs
 - [x] Task 3: Brochure endpoint has a per-IP daily cap and a global daily ceiling
 - [x] Task 4: Admin login locks an account after repeated failures
-- [ ] Task 5: API runtime dependencies upgraded past the critical and high advisories
+- [x] Task 5: API runtime dependencies upgraded past the critical and high advisories
 
 ### Checkpoint A: after Tasks 1–5 (deploy the API)
 - [ ] API tests and build green; `pnpm audit --prod` shows no critical or high advisories under `apps__api`

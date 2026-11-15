@@ -126,12 +126,12 @@ single-process assumption (pm2 fork, `02-deploy-api.sh:258`).
 `pnpm.overrides` only where the range won't move. No NestJS major version bump.
 
 **Acceptance criteria:**
-- [ ] `pnpm audit --prod` shows no critical or high advisories with an `apps__api` path
-- [ ] Image upload, `/api/img` resize (WebP output, EXIF rotate) and `.glb` upload behave as before
-- [ ] The production install resolves a `sharp` binary for the EC2 host (linux-arm64)
+- [x] `pnpm audit --prod` shows no critical or high advisories with an `apps__api` path
+- [x] Image upload, `/api/img` resize (WebP output, EXIF rotate) and `.glb` upload behave as before
+- [x] The production install resolves a `sharp` binary for the EC2 host (linux-arm64)
 
 **Verification:**
-- [ ] `apps/api/test/media.test.ts` and the full suite pass; the build passes
+- [x] `apps/api/test/media.test.ts` and the full suite pass; the build passes
 - [ ] After the API deploy: `/api/health/ready` returns 200, an `/api/img/...?width=600&quality=75`
       request returns `image/webp`, and an admin upload of one JPEG works. If any of these fails,
       roll back with `scripts/aws/rollback-api.sh`.

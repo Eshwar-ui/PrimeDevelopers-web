@@ -85,14 +85,14 @@ existing per-address limit. Over either limit, the lead is saved, the email is w
 are notified with the reason. This is the existing path, reused.
 
 **Acceptance criteria:**
-- [ ] The 21st brochure request from one IP within 24 hours gets 429; other routes are unaffected
-- [ ] Above the global ceiling, the lead row is still written and staff are still notified, with the reason
-- [ ] Must not change: the per-address limit of 3 per day and the 10-per-minute throttle
+- [x] The 21st brochure request from one IP within 24 hours gets 429; other routes are unaffected
+- [x] Above the global ceiling, the lead row is still written and staff are still notified, with the reason
+- [x] Must not change: the per-address limit of 3 per day and the 10-per-minute throttle
 
 **Verification:**
-- [ ] Tests for the ceiling logic. One test sends 50 requests to `GET /properties` through the
+- [x] Tests for the ceiling logic. One test sends 50 requests to `GET /properties` through the
       guard and asserts it is not throttled by `daily`.
-- [ ] Full API suite and build pass
+- [x] Full API suite and build pass
 
 **Dependencies:** Task 2 (same file)
 **Files:** `apps/api/src/app.module.ts`, `leads.controller.ts`, `leads.service.ts`, `apps/api/.env.example`, a test file

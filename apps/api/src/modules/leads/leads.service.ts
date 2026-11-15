@@ -10,6 +10,13 @@ import { fetchPublicPdf } from './safe-fetch';
 // counting recent requests to the same address.
 const BROCHURE_MESSAGE_PREFIX = 'Brochure requested for';
 export const BROCHURE_EMAILS_PER_ADDRESS_PER_DAY = 3;
+/**
+ * Brochure emails the whole site sends in 24 hours, from every address and IP.
+ * The per-address and per-IP limits each stop one sender or one target; this
+ * stops many of them together from spending the SES sending reputation. Real
+ * traffic is a few a day. Override with BROCHURE_DAILY_CAP.
+ */
+export const DEFAULT_BROCHURE_DAILY_CAP = 200;
 const BROCHURE_MAX_BYTES = 8 * 1024 * 1024;
 
 /** Where staff notifications go unless LEADS_NOTIFY_TO says otherwise. */
@@ -110,6 +117,7 @@ export class LeadsService {
 
   private readonly notifyTo: string[];
   private readonly adminUrl: string | null;
+  private readonly brochureDailyCap: number;
 
   constructor(
     private prisma: PrismaService,
@@ -125,6 +133,10 @@ export class LeadsService {
     // which would be a dead link in anyone's inbox.
     const site = String(config.get('FRONTEND_URL') ?? '').replace(/\/+$/, '');
     this.adminUrl = /^https:\/\//.test(site) ? `${site}/admin/leads` : null;
+    // A value that is not a positive whole number keeps the default rather than
+    // switching the ceiling off.
+    const cap = Number(config.get('BROCHURE_DAILY_CAP'));
+    this.brochureDailyCap = Number.isInteger(cap) && cap > 0 ? cap : DEFAULT_BROCHURE_DAILY_CAP;
   }
 
   /**
@@ -167,14 +179,15 @@ export class LeadsService {
 
     // Counted before this request's own row is written. Filtered requests don't
     // count: a bot reusing someone's address must not use up their allowance.
-    const recentToSameAddress = await this.prisma.websiteLead.count({
-      where: {
-        email: { equals: dto.email, mode: 'insensitive' },
-        message: { startsWith: BROCHURE_MESSAGE_PREFIX },
-        createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-        spam: false,
-      },
-    });
+    const recent = {
+      message: { startsWith: BROCHURE_MESSAGE_PREFIX },
+      createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      spam: false,
+    };
+    const [recentToSameAddress, recentSiteWide] = await Promise.all([
+      this.prisma.websiteLead.count({ where: { ...recent, email: { equals: dto.email, mode: 'insensitive' } } }),
+      this.prisma.websiteLead.count({ where: recent }),
+    ]);
 
     const lead = await this.prisma.websiteLead.create({
       data: {
@@ -194,6 +207,12 @@ export class LeadsService {
     if (recentToSameAddress >= BROCHURE_EMAILS_PER_ADDRESS_PER_DAY) {
       this.logger.warn(`Brochure email withheld for ${property.slug}: daily limit reached for one address.`);
       outcome = { sent: false, reason: `this address already asked ${recentToSameAddress} times today, so the daily limit held it back` };
+    } else if (recentSiteWide >= this.brochureDailyCap) {
+      this.logger.warn(`Brochure email withheld for ${property.slug}: site-wide daily cap of ${this.brochureDailyCap} reached.`);
+      outcome = {
+        sent: false,
+        reason: `the site already sent ${recentSiteWide} brochures in the last 24 hours, so the site-wide daily limit of ${this.brochureDailyCap} held it back`,
+      };
     } else {
       try {
         const result = await this.sendBrochureEmail(dto, property, flyerUrl);

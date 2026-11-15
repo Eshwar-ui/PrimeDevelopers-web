@@ -86,10 +86,10 @@ them:
 Full task detail (acceptance criteria, verification, files, scope) is in [todo.md](todo.md).
 
 ### Phase 0: Baseline
-- [ ] Task 0: Record the green baseline
+- [x] Task 0: Record the green baseline
 
 ### Phase 1: Live bugs and API security (this repo, one PR)
-- [ ] Task 1: Brochure emails go out even when the flyer URL is invalid
+- [x] Task 1: Brochure emails go out even when the flyer URL is invalid
 - [ ] Task 2: Brochure fetch cannot reach private addresses or attach non-PDFs
 - [ ] Task 3: Brochure endpoint has a per-IP daily cap and a global daily ceiling
 - [ ] Task 4: Admin login locks an account after repeated failures

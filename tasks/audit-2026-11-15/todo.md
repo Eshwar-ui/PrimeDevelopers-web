@@ -18,12 +18,12 @@ Baseline on 15 Nov: API 123/123, web 120/120, both builds pass, web lint has war
 the branch tip, so that any later failure is known to be caused by this work.
 
 **Acceptance criteria:**
-- [ ] `fix/audit-2026-11-15` is cut from `release/2026-11-13`
-- [ ] Test counts, the build result and `pnpm audit --prod` totals are written in the PR description
+- [x] `fix/audit-2026-11-15` is cut from `release/2026-11-13`
+- [x] Test counts, the build result and `pnpm audit --prod` totals are written in the PR description
 
 **Verification:**
-- [ ] Both suites, the web lint and both builds pass
-- [ ] `node scripts/smoke.mjs` passes against the live site
+- [x] Both suites, the web lint and both builds pass
+- [x] `node scripts/smoke.mjs` passes against the live site
 
 **Dependencies:** None  **Files:** none  **Scope:** XS
 
@@ -39,14 +39,14 @@ nothing. Treat any non-`https:` or unparseable URL as "no brochure", so the than
 goes out, without an attachment, saying the team will follow up.
 
 **Acceptance criteria:**
-- [ ] `flyerUrlFor()` returns `null` for a value that is not a valid absolute `https:` URL (`#`, relative, `http:`, `javascript:`)
-- [ ] A brochure request for such a property sends the thank-you email with no attachment, and the
+- [x] `flyerUrlFor()` returns `null` for a value that is not a valid absolute `https:` URL (`#`, relative, `http:`, `javascript:`)
+- [x] A brochure request for such a property sends the thank-you email with no attachment, and the
       response is `emailed: true, hasBrochure: false`
-- [ ] Must not change: properties with a valid HTTPS flyer behave exactly as before
+- [x] Must not change: properties with a valid HTTPS flyer behave exactly as before
 
 **Verification:**
-- [ ] New tests in `apps/api/test/hardening.test.ts` fail before the fix and pass after
-- [ ] Full API suite and build pass
+- [x] New tests in `apps/api/test/hardening.test.ts` fail before the fix and pass after
+- [x] Full API suite and build pass
 
 **Dependencies:** Task 0
 **Files:** `apps/api/src/modules/leads/leads.service.ts`, `apps/api/test/hardening.test.ts`

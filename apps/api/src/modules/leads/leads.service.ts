@@ -58,6 +58,48 @@ const oneLine = (value: string) => value.replace(/[\r\n]+/g, ' ').trim();
  * so an oversized flyer is abandoned at the limit instead of downloaded in full
  * and only then measured.
  */
+/** `value` trimmed, if it is an absolute https URL with a host; otherwise null. */
+function httpsUrl(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const text = value.trim();
+  try {
+    const url = new URL(text);
+    return url.protocol === 'https:' && url.hostname ? text : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The property's brochure link, or null when it has none.
+ *
+ * A brochure is a document the client already produces; the CMS holds a link to
+ * it in a couple of places depending on how the property was set up. Checked in
+ * order of how deliberate each one is: the overview flyer is the field that means
+ * "this property's brochure", where a resource link merely happens to be a PDF.
+ *
+ * Only an absolute https URL counts. Anything else — on 15 Nov 2026 Centro Plaza
+ * and POW Lewisville carried the placeholder `#` — used to reach `fetch()`, which
+ * threw, and the visitor got no email at all. Now an unusable link is skipped, so
+ * a later valid one can still be used, and with none the visitor gets the
+ * thank-you email without an attachment.
+ */
+export function brochureUrlFor(detail: unknown): string | null {
+  const d = (detail ?? {}) as Record<string, any>;
+  const overview = httpsUrl(d.overview?.flyer);
+  if (overview) return overview;
+
+  const links: Array<{ url?: unknown; label?: unknown }> = Array.isArray(d.resourceLinks) ? d.resourceLinks : [];
+  const usable = links
+    .map((l) => ({ url: httpsUrl(l?.url), label: String(l?.label ?? '') }))
+    .filter((l): l is { url: string; label: string } => l.url !== null);
+
+  const named = usable.find((l) => /brochure|flyer/i.test(l.label));
+  if (named) return named.url;
+
+  return usable.find((l) => /\.pdf(\?|$)/i.test(l.url))?.url ?? null;
+}
+
 export async function readCapped(res: Response, max: number): Promise<Buffer | null> {
   const declared = Number(res.headers.get('content-length'));
   if (Number.isFinite(declared) && declared > max) return null;
@@ -99,28 +141,6 @@ export class LeadsService {
     // which would be a dead link in anyone's inbox.
     const site = String(config.get('FRONTEND_URL') ?? '').replace(/\/+$/, '');
     this.adminUrl = /^https:\/\//.test(site) ? `${site}/admin/leads` : null;
-  }
-
-  // A brochure is a document the client already produces; the CMS holds a
-  // link to it in a couple of places depending on how the property was set
-  // up. Checked in order of how deliberate each one is: the overview flyer
-  // is the field that means "this property's brochure", where a resource
-  // link merely happens to be a PDF.
-  private flyerUrlFor(detail: unknown): string | null {
-    const d = (detail ?? {}) as Record<string, any>;
-    const overview = d.overview?.flyer;
-    if (typeof overview === 'string' && overview.trim()) return overview.trim();
-
-    const links: Array<{ url?: string; label?: string }> = Array.isArray(d.resourceLinks)
-      ? d.resourceLinks
-      : [];
-    const named = links.find(
-      (l) => typeof l?.url === 'string' && /brochure|flyer/i.test(String(l.label ?? '')),
-    );
-    if (named?.url) return named.url;
-
-    const pdf = links.find((l) => typeof l?.url === 'string' && /\.pdf(\?|$)/i.test(l.url));
-    return pdf?.url ?? null;
   }
 
   /**
@@ -185,7 +205,7 @@ export class LeadsService {
     // given, with a visitor-supplied name in the body. The per-IP limit stops one
     // sender; this stops anyone using it to flood one recipient. The enquiry is
     // still recorded — only the email is withheld.
-    const flyerUrl = this.flyerUrlFor(property.detail);
+    const flyerUrl = brochureUrlFor(property.detail);
     let outcome: BrochureOutcome;
     if (recentToSameAddress >= BROCHURE_EMAILS_PER_ADDRESS_PER_DAY) {
       this.logger.warn(`Brochure email withheld for ${property.slug}: daily limit reached for one address.`);

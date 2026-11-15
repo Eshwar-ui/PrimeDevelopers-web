@@ -1,9 +1,10 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { randomBytes, createHash } from 'node:crypto';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
+import { LoginAttempts, LOCKOUT } from './login-attempts';
 
 /**
  * A bcrypt hash of nothing in particular, compared against when no user
@@ -17,22 +18,48 @@ export interface TokenPair {
   refreshToken: string;
 }
 
+/** `a***@prime.test`: enough to recognise in a log, not a list of admin addresses. */
+function maskEmail(email: string): string {
+  const [local, domain] = email.split('@');
+  return domain ? `${local.slice(0, 1)}***@${domain}` : '***';
+}
+
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private prisma: PrismaService,
     private jwt: JwtService,
     private config: ConfigService,
+    // Optional so a service built by hand (tests, scripts) still works.
+    private attempts: LoginAttempts = new LoginAttempts(),
   ) {}
 
   async login(email: string, password: string): Promise<TokenPair> {
-    const user = await this.prisma.websiteAdminUser.findUnique({
-      where: { email: email.toLowerCase().trim() },
-    });
+    const key = email.toLowerCase().trim();
+
+    // A locked email gets the same answer, after the same bcrypt work, as any
+    // wrong password — nothing tells a guesser the lock exists, or that the
+    // address is an admin's.
+    if (this.attempts.isLocked(key)) {
+      await bcrypt.compare(password, DUMMY_HASH);
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
+    const user = await this.prisma.websiteAdminUser.findUnique({ where: { email: key } });
 
     const ok = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH);
-    if (!user || !ok) throw new UnauthorizedException('Invalid email or password');
+    if (!user || !ok) {
+      if (this.attempts.fail(key)) {
+        this.logger.warn(
+          `Admin login for ${maskEmail(key)} locked for ${LOCKOUT.lockMs / 60_000} minutes after ${LOCKOUT.failures} failures.`,
+        );
+      }
+      throw new UnauthorizedException('Invalid email or password');
+    }
 
+    this.attempts.succeed(key);
     return this.issue(user.id, user.email);
   }
 

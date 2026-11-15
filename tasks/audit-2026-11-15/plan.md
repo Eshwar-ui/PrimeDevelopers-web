@@ -92,7 +92,7 @@ Full task detail (acceptance criteria, verification, files, scope) is in [todo.m
 - [x] Task 1: Brochure emails go out even when the flyer URL is invalid
 - [x] Task 2: Brochure fetch cannot reach private addresses or attach non-PDFs
 - [x] Task 3: Brochure endpoint has a per-IP daily cap and a global daily ceiling
-- [ ] Task 4: Admin login locks an account after repeated failures
+- [x] Task 4: Admin login locks an account after repeated failures
 - [ ] Task 5: API runtime dependencies upgraded past the critical and high advisories
 
 ### Checkpoint A: after Tasks 1–5 (deploy the API)

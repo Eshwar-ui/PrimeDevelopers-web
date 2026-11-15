@@ -107,12 +107,12 @@ A success clears the counter, and every lock writes one log line. A comment at t
 single-process assumption (pm2 fork, `02-deploy-api.sh:258`).
 
 **Acceptance criteria:**
-- [ ] The 6th attempt within 15 minutes is refused even with the right password; it works again after 15 minutes
-- [ ] Unknown and known emails get the identical response
-- [ ] Must not change: the per-IP 5-per-minute throttle, refresh rotation and logout
+- [x] The 6th attempt within 15 minutes is refused even with the right password; it works again after 15 minutes
+- [x] Unknown and known emails get the identical response
+- [x] Must not change: the per-IP 5-per-minute throttle, refresh rotation and logout
 
 **Verification:**
-- [ ] Unit tests with an injected clock; full API suite and build pass
+- [x] Unit tests with an injected clock; full API suite and build pass
 
 **Dependencies:** Task 0
 **Files:** `apps/api/src/modules/auth/login-attempts.ts` (new), `auth.service.ts`, `auth.module.ts`, `apps/api/test/auth-lockout.test.ts` (new)

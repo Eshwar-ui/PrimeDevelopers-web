@@ -132,7 +132,7 @@ export default function Footer() {
   const soldPct = current?.buildings > 0 ? Math.round((current.sold / current.buildings) * 100) : 0
   const cta = current
     ? {
-        heading: detailCopy.closingHeading.replace('{name}', current.name),
+        heading: current.detail?.closing?.heading || detailCopy.closingHeading.replace('{name}', current.name),
         paragraph: current.detail?.closing?.body || detailCopy.closingParagraph.replace('{soldPct}', soldPct),
         ctaLabel: detailCopy.closingCtaLabel,
         ctaHref: '/contact',

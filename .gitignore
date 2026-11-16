@@ -99,3 +99,5 @@ tmp/uploads-*.json
 /archive/
 /*-backup-*.json
 /*.docx
+rio-ranch-drive-photos/
+rio-ranch-web-photos/

@@ -180,6 +180,7 @@ export default function PropertyHero({ property, soldPct, onEnquire }) {
                 <span className="grid size-11 place-items-center rounded-full bg-white text-charcoal"><ArrowRight className="size-4 -rotate-45 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" /></span>
               </button>
               {property.detail?.floorPlans?.buildings?.length > 0 && <a href="#floor-plans" className="inline-flex min-h-11 items-center font-body text-[13px] font-bold uppercase tracking-[0.12em] text-white/75 underline decoration-white/30 underline-offset-8 transition hover:text-white hover:decoration-white active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">Explore floor plans</a>}
+              {!(property.detail?.floorPlans?.buildings?.length > 0) && property.detail?.lots?.rows?.length > 0 && <a href="#floor-plans" className="inline-flex min-h-11 items-center font-body text-[13px] font-bold uppercase tracking-[0.12em] text-white/75 underline decoration-white/30 underline-offset-8 transition hover:text-white hover:decoration-white active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">View available lots</a>}
             </div>
           </div>
 

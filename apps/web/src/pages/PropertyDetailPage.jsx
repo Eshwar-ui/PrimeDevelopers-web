@@ -14,6 +14,7 @@ import { coverImage } from '../lib/covers'
 import { usePropertyHead } from '../hooks/usePropertyHead'
 import Prose from '../components/Prose'
 import PropertyPricingTables from '../components/PropertyPricingTables'
+import PropertyLots from '../components/PropertyLots'
 import VideoFacade from '../components/VideoFacade'
 import { scrollToElement } from '../lib/scrollToElement'
 import PropertyHero from '../components/PropertyHero'
@@ -712,6 +713,20 @@ export default function PropertyDetailPage() {
             </div>
           </section>
         )}
+      {/* Land sold by the lot (Rio Ranch): no buildings, one card per lot.
+          Same id as the floor plans, so the section rail's "Availability" tab
+          and the hero's link land here. */}
+      {!hasSiteModel(property) && !(d?.floorPlans?.buildings?.length > 0) && d?.lots?.rows?.length > 0 && (
+        <section
+          data-band="light"
+          id="floor-plans"
+          className="scroll-mt-24 bg-surface-alt px-gutter pb-16 pt-8 md:pb-20 md:pt-10"
+        >
+          <div className="mx-auto max-w-[1560px]">
+            <PropertyLots lots={d.lots} />
+          </div>
+        </section>
+      )}
 
       {/* ── Gateway for growth ───────────────────────────────────
           `bg-bone` / `text-ink` before this: fixed pigments, not role tokens.
@@ -1148,6 +1163,42 @@ export default function PropertyDetailPage() {
             </section>
           )
         })()}
+
+      {/* ── Related listings ("More at Rio Ranch") ───────────────
+          Sibling pages of one development that are not phases of each other.
+          The label is an eyebrow, not a heading: the strip is a way out, not
+          a section of this page's argument. */}
+      {d?.related?.links?.some((link) => link?.href && link?.label) && (
+        <section data-band="light" className="bg-base px-gutter py-14 md:py-16">
+          <div className="mx-auto max-w-[1560px]">
+            <SectionTag>{d.related.label || 'More from this development'}</SectionTag>
+            <ul className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {d.related.links
+                .filter((link) => link?.href && link?.label)
+                .map((link) => (
+                  <li key={link.href}>
+                    <Link
+                      to={link.href}
+                      className="group flex h-full items-center justify-between gap-4 rounded-panel bg-surface p-5 ring-1 ring-inset ring-line transition-[box-shadow,translate,--tw-ring-color] duration-300 ease-brand hover:-translate-y-0.5 hover:ring-accent/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+                    >
+                      <span className="min-w-0">
+                        <span className="block font-display text-lg font-bold tracking-[-0.01em] text-content transition-colors duration-300 group-hover:text-accent">
+                          {link.label}
+                        </span>
+                        {link.note && (
+                          <span className="mt-1 block font-body text-[14px] leading-snug text-content/70">{link.note}</span>
+                        )}
+                      </span>
+                      <span aria-hidden className="text-accent transition-transform duration-300 group-hover:translate-x-1">
+                        →
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+            </ul>
+          </div>
+        </section>
+      )}
     </div>
   )
 }

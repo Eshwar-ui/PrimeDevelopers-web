@@ -203,9 +203,13 @@ export function propertySchema({ property, origin, url, title, description, phas
         address,
         geo: hasGeo ? { '@type': 'GeoCoordinates', latitude: seo.latitude, longitude: seo.longitude } : undefined,
         hasMap: hasGeo ? `https://www.google.com/maps?q=${seo.latitude},${seo.longitude}` : undefined,
+        // `seo.containedIn` names a wider area than the city when the page
+        // states one (Rio Ranch: "Williamson County, TX").
         containedInPlace: parentUrl
           ? { '@id': `${parentUrl}#place` }
-          : address
+          : seo.containedIn
+            ? { '@type': 'AdministrativeArea', name: seo.containedIn }
+            : address
             ? { '@type': 'City', name: `${address.addressLocality}, ${address.addressRegion}` }
             : undefined,
         amenityFeature: (seo.amenities ?? []).map((name) => ({

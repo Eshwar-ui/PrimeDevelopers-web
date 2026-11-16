@@ -1,0 +1,32 @@
+{
+  "source": "Rate Master export, 28 Oct 2026 (rio-ranch-claude-code-handoff). Asking prices for land only, per lot. Acre-lot prices rounded to the nearest $1,000 (about $6.89/SF).",
+  "todo": "Lot-level availability is not in any source yet: every lot defaults to \"available\". Set status per lot here (available | sold | coming-soon) and re-run both Rio Ranch scripts.",
+  "commercial": [
+    { "lot": "G2",  "acres": 1.27, "landSf": 55321,  "pricePerSf": 12, "price": 663854,  "status": "available" },
+    { "lot": "G1",  "acres": 1.53, "landSf": 66647,  "pricePerSf": 14, "price": 933055,  "status": "available" },
+    { "lot": "G5",  "acres": 2.39, "landSf": 104108, "pricePerSf": 12, "price": 1249301, "status": "available" },
+    { "lot": "H",   "acres": 2.49, "landSf": 108464, "pricePerSf": 16, "price": 1735430, "status": "available" },
+    { "lot": "C11", "acres": 5.05, "landSf": 219978, "pricePerSf": 14, "price": 3079692, "status": "available" },
+    { "lot": "C9",  "acres": 7.39, "landSf": 321908, "pricePerSf": 12, "price": 3862901, "status": "available" }
+  ],
+  "acre": [
+    { "lot": "A5",  "acres": 1.00, "landSf": 43560,  "price": 300000, "status": "available" },
+    { "lot": "A6",  "acres": 1.00, "landSf": 43560,  "price": 300000, "status": "available" },
+    { "lot": "A7",  "acres": 1.00, "landSf": 43560,  "price": 300000, "status": "available" },
+    { "lot": "A10", "acres": 1.00, "landSf": 43560,  "price": 300000, "status": "available" },
+    { "lot": "B6",  "acres": 1.00, "landSf": 43560,  "price": 300000, "status": "available" },
+    { "lot": "D10", "acres": 1.00, "landSf": 43560,  "price": 300000, "status": "available" },
+    { "lot": "D11", "acres": 1.00, "landSf": 43560,  "price": 300000, "status": "available" },
+    { "lot": "D12", "acres": 1.00, "landSf": 43560,  "price": 300000, "status": "available" },
+    { "lot": "D9",  "acres": 1.01, "landSf": 43996,  "price": 303000, "status": "available" },
+    { "lot": "A13", "acres": 1.04, "landSf": 45302,  "price": 312000, "status": "available" },
+    { "lot": "A11", "acres": 1.06, "landSf": 46174,  "price": 318000, "status": "available" },
+    { "lot": "A12", "acres": 1.12, "landSf": 48787,  "price": 336000, "status": "available" },
+    { "lot": "A8",  "acres": 1.16, "landSf": 50530,  "price": 348000, "status": "available" },
+    { "lot": "A9",  "acres": 1.16, "landSf": 50530,  "price": 348000, "status": "available" },
+    { "lot": "D16", "acres": 1.21, "landSf": 52708,  "price": 363000, "status": "available" },
+    { "lot": "A4",  "acres": 1.31, "landSf": 57064,  "price": 393000, "status": "available" },
+    { "lot": "D15", "acres": 1.44, "landSf": 62726,  "price": 432000, "status": "available" },
+    { "lot": "A3",  "acres": 2.35, "landSf": 102366, "price": 705000, "status": "available" }
+  ]
+}

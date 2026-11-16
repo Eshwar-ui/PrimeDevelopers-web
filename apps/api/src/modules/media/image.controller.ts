@@ -45,7 +45,10 @@ const MAX_INPUT_PIXELS = 50_000_000;
 // at once (the partner wall alone is 20 logos); the first version kept a line of 8
 // and its reads outside the gate, and turned the rest of the page away as broken
 // images.
-const MAX_ACTIVE = 2;
+// One, not two: a large original decodes to 150 MB+ of pixels, and two at once was
+// what pushed the process past its memory limit (pm2.log, Nov 2026). The line below
+// absorbs the rest; a resize takes well under a second.
+const MAX_ACTIVE = 1;
 // Past this many waiting, or this long in line, a request is turned away with a 503
 // and Retry-After rather than left queueing behind work it would time out on
 // (CloudFront gives the origin 60 seconds).

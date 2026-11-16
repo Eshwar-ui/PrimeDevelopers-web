@@ -11,6 +11,19 @@ import { IS_PUBLIC_KEY } from './decorators/public.decorator';
  *
  * Set before the handler runs, so a route's own @Header still wins.
  */
+/** Paths whose every response, refusals included, must not be cached. */
+export const PRIVATE_PATHS = /^\/api\/(admin|auth|uploads)(\/|$)/;
+
+/**
+ * Express middleware for PRIVATE_PATHS. It runs before Nest's guards, so a
+ * request the JWT guard refuses (401) still says no-store; the interceptor below
+ * only runs once a guard has let the request through.
+ */
+export function noStoreForPrivatePaths(req: { path?: string }, res: { setHeader(k: string, v: string): void }, next: () => void) {
+  if (PRIVATE_PATHS.test(req.path ?? '')) res.setHeader('Cache-Control', 'private, no-store');
+  next();
+}
+
 @Injectable()
 export class NoStoreInterceptor implements NestInterceptor {
   constructor(private reflector: Reflector) {}

@@ -8,7 +8,7 @@
  * it runs anywhere the repo is checked out.
  *
  *   node scripts/smoke.mjs                      # against a running dev server
- *   node scripts/smoke.mjs --url http://…       # against a preview build or prod
+ *   node scripts/smoke.mjs --url https://dtw8rs0oq8bpp.cloudfront.net   # the live site (read-only)
  *   node scripts/smoke.mjs --routes /,/about    # narrow it while fixing one thing
  *
  * Exits non-zero if anything fails, so it can gate a deploy.
@@ -46,8 +46,10 @@ const ROUTES = arg('routes', [
   '/about',
   '/enterprise',
   '/properties',
-  '/properties/pow-lewisville-phase-i',
+  '/properties/centro-plaza',
+  '/properties/pow-lewisville',
   '/properties/pow-lewisville-phase-ii',
+  '/properties/reagan-crossing',
   '/news',
   '/news/welcome-to-the-prime-developers-journal',
   '/contact',

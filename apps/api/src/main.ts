@@ -6,6 +6,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { MediaStorage } from './modules/media/media-storage';
+import { noStoreForPrivatePaths } from './common/no-store.interceptor';
 
 async function bootstrap() {
   // `rawBody` keeps the request bytes beside the parsed body. The Prime Tracker
@@ -25,6 +26,11 @@ async function bootstrap() {
   app.set('trust proxy', Number(config.get('TRUST_PROXY_HOPS', 1)));
 
   app.use(helmet());
+
+  // no-store on everything admin, auth and upload, set before any guard runs so a
+  // 401 or 403 carries it too. NoStoreInterceptor covers the other non-public
+  // routes once the guard has let them through.
+  app.use(noStoreForPrivatePaths);
 
   // CSP violation reports (modules/csp) arrive as application/csp-report or
   // application/reports+json, which the default JSON parser ignores. A text parser,

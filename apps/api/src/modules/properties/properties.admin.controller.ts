@@ -9,11 +9,12 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Prisma } from '@prisma/client';
 import { PropertiesService } from './properties.service';
-import { CreatePropertyDto, UpdatePropertyDto } from './dto/property.dto';
+import { CreatePropertyDto, TrackerLinkDto, UpdatePropertyDto } from './dto/property.dto';
 import { assertSafeUrls } from '../../common/validators/safe-urls';
 
 /** Links in a property must be safe to put in an href (security audit L1). */
@@ -54,6 +55,12 @@ export class PropertiesAdminController {
     checkLinks(dto);
     const { expectedUpdatedAt, ...data } = dto;
     return this.properties.update(id, data as unknown as Prisma.PropertyUpdateInput, expectedUpdatedAt);
+  }
+
+  @Put(':id/tracker-link')
+  @ApiOperation({ summary: 'Link the property to a Prime Tracker project (null unlinks); the sync only updates linked properties' })
+  linkTracker(@Param('id', ParseUUIDPipe) id: string, @Body() dto: TrackerLinkDto) {
+    return this.properties.setTrackerLink(id, dto.trackerProjectId);
   }
 
   @Delete(':id')

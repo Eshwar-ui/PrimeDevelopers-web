@@ -7,8 +7,10 @@ import {
   IsObject,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   Min,
+  ValidateIf,
 } from 'class-validator';
 
 // Room to spare over what is stored today (135 photos, URLs under 150 characters),
@@ -111,4 +113,17 @@ export class UpdatePropertyDto extends PartialType(CreatePropertyDto) {
   @IsOptional()
   @IsISO8601()
   expectedUpdatedAt?: string;
+}
+
+/**
+ * Which Prime Tracker project this property mirrors. Set by an admin, never by
+ * the sync itself (security audit M3): the sync only updates a property that is
+ * already linked. null unlinks.
+ */
+export class TrackerLinkDto {
+  @ApiPropertyOptional({ nullable: true, description: "The tracker project's id (a cuid), or null to unlink." })
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  @Matches(/^[a-z0-9_-]{8,64}$/i, { message: 'trackerProjectId must be the project id from Prime Tracker' })
+  trackerProjectId!: string | null;
 }

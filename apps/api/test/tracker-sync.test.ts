@@ -279,7 +279,7 @@ test('a tracker building with no units and no website building is reported but h
 });
 
 /** An in-memory stand-in for the slice of Prisma the service uses. */
-function fakePrisma(property: Record<string, any>) {
+function fakePrisma(property: Record<string, any>, lastSync: Record<string, any> | null = null) {
   const writes = { updates: [] as any[], syncs: [] as any[] };
   const tx = {
     $queryRaw: async () => [],
@@ -298,6 +298,7 @@ function fakePrisma(property: Record<string, any>) {
       create: async ({ data }: any) => {
         writes.syncs.push(data);
       },
+      findFirst: async () => lastSync,
     },
   };
   const prisma: any = { $transaction: (fn: (t: typeof tx) => unknown) => fn(tx) };
@@ -307,7 +308,7 @@ function fakePrisma(property: Record<string, any>) {
 const leanderProperty = () => ({
   id: '00000000-0000-0000-0000-000000000001',
   slug: 'centro-plaza',
-  trackerProjectId: null,
+  trackerProjectId: 'proj-centro',
   buildings: 81,
   sold: 48,
   available: 33,
@@ -1583,4 +1584,53 @@ test('a row the sync creates has every field the CMS gives a new unit, the websi
   const created = row(next, 0, '101');
   for (const key of Object.keys(makeUnit('101'))) assert.ok(key in created, `"${key}" is missing from a synced row`);
   assert.equal(created.hidden, false);
+});
+
+
+// ── Who may write a property, and in what order (1 Nov security audit M3, L5) ──
+
+test('M3: an unlinked property is never claimed by slug; a dry run may still preview it', async () => {
+  const unlinked = { ...leanderProperty(), trackerProjectId: null };
+  {
+    const { prisma, writes } = fakePrisma(unlinked);
+    await assert.rejects(new TrackerSyncService(prisma).apply(leander(), { force: true }), (err: any) => {
+      assert.equal(err.getStatus(), 404);
+      assert.match(err.message, /not linked.*Prime Tracker project ID/s);
+      return true;
+    });
+    assert.deepEqual([writes.updates.length, writes.syncs.length], [0, 0]);
+  }
+  {
+    const { prisma, writes } = fakePrisma(unlinked);
+    const result = await new TrackerSyncService(prisma).apply(leander(), { dryRun: true });
+    assert.equal(result.applied, false);
+    assert.deepEqual([writes.updates.length, writes.syncs.length], [0, 0]);
+  }
+});
+
+test('M3: a linked property is updated without the sync ever writing the link', async () => {
+  const { prisma, writes } = fakePrisma(leanderProperty());
+  await new TrackerSyncService(prisma).apply(leander(), { force: true });
+  assert.equal('trackerProjectId' in writes.updates[0], false);
+});
+
+test('L5: a snapshot no newer than the last one applied is refused; a newer one applies and is recorded', async () => {
+  const snap = leander();
+  const last = { report: { generatedAt: snap.generatedAt } };
+  {
+    const { prisma, writes } = fakePrisma(leanderProperty(), last);
+    await assert.rejects(new TrackerSyncService(prisma).apply(snap, { force: true }), (err: any) => {
+      assert.equal(err.getStatus(), 409);
+      assert.match(err.message, /older than|not newer/);
+      return true;
+    });
+    assert.equal(writes.updates.length, 0);
+  }
+  {
+    const newer = { ...snap, generatedAt: new Date(Date.parse(snap.generatedAt) + 1000).toISOString() };
+    const { prisma, writes } = fakePrisma(leanderProperty(), last);
+    const result = await new TrackerSyncService(prisma).apply(newer, { force: true });
+    assert.equal(result.applied, true);
+    assert.equal(writes.syncs[0].report.generatedAt, newer.generatedAt);
+  }
 });

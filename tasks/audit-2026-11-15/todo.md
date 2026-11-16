@@ -148,6 +148,26 @@ single-process assumption (pm2 fork, `02-deploy-api.sh:258`).
 
 ---
 
+## Status on 16 Nov 2026 (branch `fix/audit-2026-11-15-phase2`, stacked on PR #31)
+
+| Task | State | What is left |
+|---|---|---|
+| 6 Render | Done (`61f5dee`) | — |
+| 7 CSP reports | Script and runbook done (`8c66a5a`) | User: `aws sso login`, then `node scripts/csp-report-summary.mjs`, then fill in `docs/csp-rollout.md` |
+| 8 robots/sitemap | Done (`bed5fcb`) | Curl both after the web deploy |
+| 9 route store | Done, tracker branch `fix/website-prerender-and-csp` (`aa76bfe`) | User: `terraform plan` / `apply` |
+| 10 prerender | Done (`47bf785`); 25 routes, hashes match | Needs Task 9 applied before the web deploy |
+| 11 CSP hash gate | Done (`c4adbec`); tampered build refused | — |
+| 12 enforce CSP | Done, tracker branch `fix/website-enforce-csp` (`b5454ba`) | User: apply after Task 7's review |
+| 13 analytics | Removed (`6e11e79`); CSP hosts dropped in the tracker (`1244ad8`) | Deploy |
+| 14 root cleanup | Done (`906b00a`); files in gitignored `archive/` | — |
+| 15 `#` links | Scan script done (`a848cc2`); finds centro-plaza and pow-lewisville | User: fix both in the admin |
+| 16 web deps | Done (`419e4f6`); audit 0 critical, 0 high | — |
+| 17 API lint | Done (`6eef4bc`) | — |
+| 18 model chunk | Measured lazy; limit documented (`833444d`) | — |
+| 19 about video | No change needed: `About.jsx` is mounted nowhere, so no page fetches the file (checked in a browser) | Optional: delete the unused component and the 10 MB `public/about-video.mp4` |
+| 20 honeypot | Already in place (see below) | — |
+
 ## Phase 2: Infrastructure and deploy
 
 ## Task 6: Confirm the old Render API is gone and retire `render.yaml`
@@ -338,17 +358,19 @@ view. If it autoplays above the fold, re-encode it (target ≤ 3 MB) and serve i
 
 ## Added 16 Nov
 
-## Task 20: Honeypot on public forms
+## Task 20: Honeypot on public forms: already in place
 
-**Description:** Open Question 2 chose a honeypot over a CAPTCHA. Every public form posts a hidden
-`website` field that people never fill, plus the time the form was shown. The API treats a filled
-field, or a submit under 3 seconds, as spam: it answers exactly as for a real lead (so bots learn
-nothing), saves it with `spam: true` and sends no email.
+Open Question 2 chose a honeypot over a CAPTCHA. Checking on 16 Nov found it already built and
+tested, so no change was made:
+- `SpamSignalsDto` takes a hidden `honeypot` field and `fillMs`;
+- `spamSignal()` in `leads.service.ts` flags a filled honeypot, or a submit under
+  `MIN_FILL_MS` (1 s);
+- `QuoteForm` and `BrochureRequestModal` send both (`lib/spamSignals.js`, `useFormClock`);
+- `apps/api/test/cms.test.ts` covers it with 13 assertions.
 
-**Acceptance criteria:**
-- [ ] A filled honeypot or a too-fast submit sends no email to anyone and is stored as spam
-- [ ] The response is identical to a real submission
-- [ ] Must not change: a normal visitor's submit, and clients that send neither field (old cached bundles) are treated as real
+A flagged lead is kept with `spam: true`, gets no email, and the response is identical. The
+threshold stays at 1 s rather than 3 s, because autofill lets real visitors submit in about a
+second.
 
-**Verification:** API tests for both triggers and for the missing-field case; web build passes
-**Dependencies:** None  **Files:** lead DTOs, `leads.service.ts`, the web form components, tests  **Scope:** M
+- [x] A filled honeypot or too-fast submit sends no email and is stored as spam
+- [x] Identical response; clients that send neither field are treated as real

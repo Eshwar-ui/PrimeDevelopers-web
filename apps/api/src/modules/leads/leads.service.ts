@@ -4,11 +4,19 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BrochureRequestDto, CreateLeadDto, ListLeadsQueryDto, SpamSignalsDto } from './dto/lead.dto';
 import { MailService } from '../mail/mail.service';
+import { fetchPublicPdf } from './safe-fetch';
 
 // How a brochure request reads in the leads list — also how one is recognised when
 // counting recent requests to the same address.
 const BROCHURE_MESSAGE_PREFIX = 'Brochure requested for';
 export const BROCHURE_EMAILS_PER_ADDRESS_PER_DAY = 3;
+/**
+ * Brochure emails the whole site sends in 24 hours, from every address and IP.
+ * The per-address and per-IP limits each stop one sender or one target; this
+ * stops many of them together from spending the SES sending reputation. Real
+ * traffic is a few a day. Override with BROCHURE_DAILY_CAP.
+ */
+export const DEFAULT_BROCHURE_DAILY_CAP = 200;
 const BROCHURE_MAX_BYTES = 8 * 1024 * 1024;
 
 /** Where staff notifications go unless LEADS_NOTIFY_TO says otherwise. */
@@ -58,25 +66,50 @@ const oneLine = (value: string) => value.replace(/[\r\n]+/g, ' ').trim();
  * so an oversized flyer is abandoned at the limit instead of downloaded in full
  * and only then measured.
  */
-export async function readCapped(res: Response, max: number): Promise<Buffer | null> {
-  const declared = Number(res.headers.get('content-length'));
-  if (Number.isFinite(declared) && declared > max) return null;
-  if (!res.body) return Buffer.alloc(0);
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  const reader = res.body.getReader();
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
-    if (total > max) {
-      await reader.cancel();
-      return null;
-    }
-    chunks.push(value);
+/** `value` trimmed, if it is an absolute https URL with a host; otherwise null. */
+function httpsUrl(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const text = value.trim();
+  try {
+    const url = new URL(text);
+    return url.protocol === 'https:' && url.hostname ? text : null;
+  } catch {
+    return null;
   }
-  return Buffer.concat(chunks);
 }
+
+/**
+ * The property's brochure link, or null when it has none.
+ *
+ * A brochure is a document the client already produces; the CMS holds a link to
+ * it in a couple of places depending on how the property was set up. Checked in
+ * order of how deliberate each one is: the overview flyer is the field that means
+ * "this property's brochure", where a resource link merely happens to be a PDF.
+ *
+ * Only an absolute https URL counts. Anything else — on 15 Nov 2026 Centro Plaza
+ * and POW Lewisville carried the placeholder `#` — used to reach `fetch()`, which
+ * threw, and the visitor got no email at all. Now an unusable link is skipped, so
+ * a later valid one can still be used, and with none the visitor gets the
+ * thank-you email without an attachment.
+ */
+export function brochureUrlFor(detail: unknown): string | null {
+  const d = (detail ?? {}) as Record<string, any>;
+  const overview = httpsUrl(d.overview?.flyer);
+  if (overview) return overview;
+
+  const links: Array<{ url?: unknown; label?: unknown }> = Array.isArray(d.resourceLinks) ? d.resourceLinks : [];
+  const usable = links
+    .map((l) => ({ url: httpsUrl(l?.url), label: String(l?.label ?? '') }))
+    .filter((l): l is { url: string; label: string } => l.url !== null);
+
+  const named = usable.find((l) => /brochure|flyer/i.test(l.label));
+  if (named) return named.url;
+
+  return usable.find((l) => /\.pdf(\?|$)/i.test(l.url))?.url ?? null;
+}
+
+// Lives with the fetch that uses it; re-exported so existing callers and tests keep their import.
+export { readCapped } from './safe-fetch';
 
 @Injectable()
 export class LeadsService {
@@ -84,6 +117,7 @@ export class LeadsService {
 
   private readonly notifyTo: string[];
   private readonly adminUrl: string | null;
+  private readonly brochureDailyCap: number;
 
   constructor(
     private prisma: PrismaService,
@@ -99,28 +133,10 @@ export class LeadsService {
     // which would be a dead link in anyone's inbox.
     const site = String(config.get('FRONTEND_URL') ?? '').replace(/\/+$/, '');
     this.adminUrl = /^https:\/\//.test(site) ? `${site}/admin/leads` : null;
-  }
-
-  // A brochure is a document the client already produces; the CMS holds a
-  // link to it in a couple of places depending on how the property was set
-  // up. Checked in order of how deliberate each one is: the overview flyer
-  // is the field that means "this property's brochure", where a resource
-  // link merely happens to be a PDF.
-  private flyerUrlFor(detail: unknown): string | null {
-    const d = (detail ?? {}) as Record<string, any>;
-    const overview = d.overview?.flyer;
-    if (typeof overview === 'string' && overview.trim()) return overview.trim();
-
-    const links: Array<{ url?: string; label?: string }> = Array.isArray(d.resourceLinks)
-      ? d.resourceLinks
-      : [];
-    const named = links.find(
-      (l) => typeof l?.url === 'string' && /brochure|flyer/i.test(String(l.label ?? '')),
-    );
-    if (named?.url) return named.url;
-
-    const pdf = links.find((l) => typeof l?.url === 'string' && /\.pdf(\?|$)/i.test(l.url));
-    return pdf?.url ?? null;
+    // A value that is not a positive whole number keeps the default rather than
+    // switching the ceiling off.
+    const cap = Number(config.get('BROCHURE_DAILY_CAP'));
+    this.brochureDailyCap = Number.isInteger(cap) && cap > 0 ? cap : DEFAULT_BROCHURE_DAILY_CAP;
   }
 
   /**
@@ -163,14 +179,15 @@ export class LeadsService {
 
     // Counted before this request's own row is written. Filtered requests don't
     // count: a bot reusing someone's address must not use up their allowance.
-    const recentToSameAddress = await this.prisma.websiteLead.count({
-      where: {
-        email: { equals: dto.email, mode: 'insensitive' },
-        message: { startsWith: BROCHURE_MESSAGE_PREFIX },
-        createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-        spam: false,
-      },
-    });
+    const recent = {
+      message: { startsWith: BROCHURE_MESSAGE_PREFIX },
+      createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      spam: false,
+    };
+    const [recentToSameAddress, recentSiteWide] = await Promise.all([
+      this.prisma.websiteLead.count({ where: { ...recent, email: { equals: dto.email, mode: 'insensitive' } } }),
+      this.prisma.websiteLead.count({ where: recent }),
+    ]);
 
     const lead = await this.prisma.websiteLead.create({
       data: {
@@ -185,11 +202,17 @@ export class LeadsService {
     // given, with a visitor-supplied name in the body. The per-IP limit stops one
     // sender; this stops anyone using it to flood one recipient. The enquiry is
     // still recorded — only the email is withheld.
-    const flyerUrl = this.flyerUrlFor(property.detail);
+    const flyerUrl = brochureUrlFor(property.detail);
     let outcome: BrochureOutcome;
     if (recentToSameAddress >= BROCHURE_EMAILS_PER_ADDRESS_PER_DAY) {
       this.logger.warn(`Brochure email withheld for ${property.slug}: daily limit reached for one address.`);
       outcome = { sent: false, reason: `this address already asked ${recentToSameAddress} times today, so the daily limit held it back` };
+    } else if (recentSiteWide >= this.brochureDailyCap) {
+      this.logger.warn(`Brochure email withheld for ${property.slug}: site-wide daily cap of ${this.brochureDailyCap} reached.`);
+      outcome = {
+        sent: false,
+        reason: `the site already sent ${recentSiteWide} brochures in the last 24 hours, so the site-wide daily limit of ${this.brochureDailyCap} held it back`,
+      };
     } else {
       try {
         const result = await this.sendBrochureEmail(dto, property, flyerUrl);
@@ -227,27 +250,13 @@ export class LeadsService {
       // enormous file would otherwise hold the request open and push a
       // multi-megabyte buffer through the mail path. SES caps a message at
       // 40 MB; well under that is the only sane budget for a brochure.
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 10_000);
-      try {
-        const res = await fetch(flyerUrl, { signal: controller.signal });
-        if (res.ok) {
-          const buf = await readCapped(res, BROCHURE_MAX_BYTES);
-          if (buf) {
-            const name = decodeURIComponent(new URL(flyerUrl).pathname.split('/').pop() || 'brochure.pdf');
-            attachment = {
-              filename: /\.[a-z0-9]+$/i.test(name) ? name : `${name}.pdf`,
-              contentType: res.headers.get('content-type') ?? 'application/pdf',
-              content: buf,
-            };
-          } else {
-            this.logger.warn(`Brochure for ${property.name} is over ${BROCHURE_MAX_BYTES} bytes — too large to attach.`);
-          }
-        } else {
-          this.logger.warn(`Brochure fetch for ${property.name} returned ${res.status}.`);
-        }
-      } finally {
-        clearTimeout(timer);
+      // fetchPublicPdf also refuses private addresses and anything that is not
+      // a real PDF, and never throws: a refusal costs the attachment, not the email.
+      const pdf = await fetchPublicPdf(flyerUrl, { maxBytes: BROCHURE_MAX_BYTES, timeoutMs: 10_000 });
+      if (pdf.ok) {
+        attachment = { filename: pdf.filename, contentType: 'application/pdf', content: pdf.body };
+      } else {
+        this.logger.warn(`Brochure for ${property.name} not attached: ${pdf.reason}.`);
       }
     }
 

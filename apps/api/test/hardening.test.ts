@@ -53,6 +53,75 @@ test('brochure download stops at the cap instead of reading the whole file', asy
   assert.ok(pulled < 10, `read ${pulled} chunks of an endless body`);
 });
 
+test('brochure URL: only an absolute https link counts as a brochure', async () => {
+  const { brochureUrlFor } = await import('../src/modules/leads/leads.service');
+  // Live on 15 Nov 2026: Centro Plaza and POW Lewisville carry the placeholder '#'.
+  for (const bad of ['#', '', '   ', '/files/flyer.pdf', 'flyer.pdf', 'http://example.com/a.pdf', 'javascript:alert(1)', 'https://', 'not a url']) {
+    assert.equal(brochureUrlFor({ overview: { flyer: bad } }), null, `overview.flyer ${JSON.stringify(bad)}`);
+    assert.equal(brochureUrlFor({ resourceLinks: [{ label: 'Brochure', url: bad }] }), null, `named link ${JSON.stringify(bad)}`);
+  }
+  // A bad flyer does not hide a good link further down the precedence order.
+  assert.equal(
+    brochureUrlFor({ overview: { flyer: '#' }, resourceLinks: [{ label: 'Brochure', url: 'https://cdn.test/b.pdf' }] }),
+    'https://cdn.test/b.pdf',
+  );
+  // Unchanged precedence for valid links: overview.flyer, then a link named brochure/flyer, then any .pdf.
+  assert.equal(brochureUrlFor({ overview: { flyer: ' https://cdn.test/f.pdf ' } }), 'https://cdn.test/f.pdf');
+  assert.equal(
+    brochureUrlFor({ resourceLinks: [{ label: 'Site plan', url: 'https://cdn.test/plan.pdf' }, { label: 'Flyer', url: 'https://cdn.test/flyer' }] }),
+    'https://cdn.test/flyer',
+  );
+  assert.equal(brochureUrlFor({ resourceLinks: [{ label: 'Site plan', url: 'https://cdn.test/plan.pdf?v=2' }] }), 'https://cdn.test/plan.pdf?v=2');
+  assert.equal(brochureUrlFor(null), null);
+});
+
+test('a brochure request for a property whose flyer is "#" still emails the visitor', async () => {
+  const { LeadsService } = await import('../src/modules/leads/leads.service');
+  const sent: any[] = [];
+  const prisma: any = {
+    property: {
+      findUnique: async () => ({
+        id: 'p1', name: 'Centro Plaza', slug: 'centro-plaza', address: null, published: true,
+        detail: { overview: { flyer: '#' }, resourceLinks: [{ label: 'Brochure', url: '#' }] },
+      }),
+    },
+    websiteLead: { count: async () => 0, create: async () => ({ id: 'lead-1' }) },
+  };
+  const mail: any = { send: async (message: any) => (sent.push(message), true) };
+  const config: any = { get: () => undefined };
+  const service = new LeadsService(prisma, mail, config);
+
+  const result = await service.requestBrochure({ name: 'Ana', email: 'ana@example.test', propertyId: 'p1' } as any);
+
+  assert.deepEqual(result, { id: 'lead-1', emailed: true, hasBrochure: false });
+  const toVisitor = sent.find((m) => m.to === 'ana@example.test');
+  assert.ok(toVisitor, 'the visitor gets the thank-you email');
+  assert.equal(toVisitor.attachments, undefined);
+  assert.match(toVisitor.text, /send the brochure across shortly/);
+});
+
+test('a brochure link pointing at the EC2 metadata service is not fetched, and the visitor is still emailed', async () => {
+  const { LeadsService } = await import('../src/modules/leads/leads.service');
+  const sent: any[] = [];
+  const prisma: any = {
+    property: {
+      findUnique: async () => ({
+        id: 'p1', name: 'Centro Plaza', slug: 'centro-plaza', address: null, published: true,
+        detail: { overview: { flyer: 'https://169.254.169.254/latest/meta-data/iam/security-credentials/' } },
+      }),
+    },
+    websiteLead: { count: async () => 0, create: async () => ({ id: 'lead-2' }) },
+  };
+  const mail: any = { send: async (message: any) => (sent.push(message), true) };
+  const service = new LeadsService(prisma, mail, { get: () => undefined } as any);
+
+  const result = await service.requestBrochure({ name: 'Ana', email: 'ana@example.test', propertyId: 'p1' } as any);
+
+  assert.deepEqual(result, { id: 'lead-2', emailed: true, hasBrochure: true });
+  const toVisitor = sent.find((m) => m.to === 'ana@example.test');
+  assert.equal(toVisitor.attachments, undefined, 'nothing from the metadata service is attached');
+});
+
 function authWith(row: any, updateCount = 1) {
   const calls: { updateMany: any[] } = { updateMany: [] };
   const prisma: any = {

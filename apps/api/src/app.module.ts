@@ -5,6 +5,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './common/health/health.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { THROTTLERS } from './common/throttle';
 import { AuthModule } from './modules/auth/auth.module';
 import { ContentModule } from './modules/content/content.module';
 import { PropertiesModule } from './modules/properties/properties.module';
@@ -53,10 +54,9 @@ import { CspModule } from './modules/csp/csp.module';
       },
     }),
 
-    // Default ceiling for every route. Login and the public lead endpoint
-    // tighten this further with their own @Throttle — they are the
-    // unauthenticated writes and the only obvious abuse targets.
-    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
+    // The per-minute default for every route, plus a daily window used only by
+    // routes marked @DailyLimit. See common/throttle.ts.
+    ThrottlerModule.forRoot(THROTTLERS),
 
     PrismaModule,
     HealthModule,

@@ -6,7 +6,6 @@ import App from './App.jsx'
 import { ContentProvider } from './context/ContentContext.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
 import { ThemeProvider } from './context/ThemeContext.jsx'
-import { startMeasurement } from './lib/firebase.js'
 import { isProductionHost } from './lib/site.js'
 
 // Every host but the production domain is a staging copy (CloudFront, the
@@ -37,8 +36,3 @@ createRoot(document.getElementById('root')).render(
     </BrowserRouter>
   </StrictMode>,
 )
-
-// After the render call, and idle-deferred again inside — see the note in
-// lib/firebase. Nothing on screen waits on this, and in development it does
-// nothing at all.
-startMeasurement()

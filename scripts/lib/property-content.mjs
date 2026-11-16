@@ -33,18 +33,26 @@ async function call(path, { token, ...init } = {}) {
  * @param {Record<string,string>} o.files  slot key → file name in photoDir
  * @param {string[]} o.galleryOrder  slot keys, in the order the gallery should hold them
  * @param {(detail: object, img: Record<string,string>) => object} o.patch  detail fields to merge
- * @param {object} [o.top]           top-level fields to set (buildings/sold/available)
+ * @param {object|(img: Record<string,string>) => object} [o.top]  top-level fields to set
+ *        (buildings/sold/available/image); a function gets the uploaded photo URLs
+ * @param {object} [o.create]        name/address/category/… for a property that does not
+ *        exist yet: created (unpublished until the content is saved) on --commit
  */
-export async function applyContent({ slug, folder, photoDir, files, galleryOrder, patch, top = {} }) {
+export async function applyContent({ slug, folder, photoDir, files, galleryOrder, patch, top: topFor = {}, create }) {
+  const topWith = (img) => (typeof topFor === 'function' ? topFor(img) : topFor)
+  const blank = () => ({ slug, ...create, gallery: [], detail: {}, buildings: 0, sold: 0, available: 0 })
   if (PREVIEW) {
-    const property = await call(`/properties/${slug}`)
+    const property = await call(`/properties/${slug}`).catch((e) => {
+      if (create && /→ 404/.test(e.message)) return { id: `preview-${slug}`, ...blank() }
+      throw e
+    })
     const img = Object.fromEntries(
       Object.keys(files).filter((k) => photoDir && existsSync(join(photoDir, files[k]))).map((k) => [k, `${PREVIEW_MEDIA}/${files[k]}`]),
     )
     const shot = galleryOrder.map((k) => img[k]).filter(Boolean)
     const out = {
       ...property,
-      ...top,
+      ...topWith(img),
       gallery: shot.length ? shot : property.gallery,
       detail: { ...property.detail, ...patch(property.detail ?? {}, img) },
     }
@@ -72,7 +80,26 @@ export async function applyContent({ slug, folder, photoDir, files, galleryOrder
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
   })
-  const property = await call(`/admin/properties/${slug}`, { token })
+  let property = await call(`/admin/properties/${slug}`, { token }).catch((e) => {
+    if (create && /→ 404/.test(e.message)) return null
+    throw e
+  })
+  if (!property && !COMMIT) {
+    console.log(`${slug} does not exist yet — --commit creates it as ${JSON.stringify(create)}`)
+    property = { ...blank(), updatedAt: 'new' }
+  } else if (!property) {
+    // Created unpublished, so the empty record is never live; the PATCH below
+    // fills it and publishes it (create.published) in one save.
+    const { published = true, ...fields } = create
+    property = await call('/admin/properties', {
+      token,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug, ...fields, published: false }),
+    })
+    topFor = ((t) => (img) => ({ ...(typeof t === 'function' ? t(img) : t), published }))(topFor)
+    console.log(`created ${slug} (${property.id})`)
+  }
 
   const placeholder = Object.fromEntries(onHand.map((k) => [k, `<upload: ${files[k]}>`]))
   const preview = patch(property.detail ?? {}, placeholder)
@@ -80,7 +107,7 @@ export async function applyContent({ slug, folder, photoDir, files, galleryOrder
   console.log(`  images: ${onHand.length} on hand, ${missing.length} missing${photoDir ? '' : ' (no photo folder)'}`)
   if (missing.length) console.log(`    missing: ${missing.map((k) => files[k]).join(', ')}`)
   console.log(`  gallery: ${newGallery(property.gallery, placeholder) === property.gallery ? 'unchanged' : 'replaced'}`)
-  for (const [k, v] of Object.entries(top)) console.log(`  ${k}: ${property[k]} → ${v}`)
+  for (const [k, v] of Object.entries(topWith(placeholder))) console.log(`  ${k}: ${property[k]} → ${v}`)
   for (const k of Object.keys(preview)) {
     const before = JSON.stringify(property.detail?.[k] ?? null)
     const after = JSON.stringify(preview[k])
@@ -137,7 +164,7 @@ export async function applyContent({ slug, folder, photoDir, files, galleryOrder
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      ...top,
+      ...topWith(img),
       gallery: newGallery(property.gallery, img),
       detail: { ...property.detail, ...patch(property.detail ?? {}, img) },
       expectedUpdatedAt: property.updatedAt,

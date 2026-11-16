@@ -8,6 +8,7 @@ import { imageAlt, sized, srcSetFor } from '../lib/images'
 import { useProperties } from '../context/ContentContext'
 import { phaseSiblings, phaseTrail } from '../lib/phases'
 import { coverImage } from '../lib/covers'
+import { availabilityLabel, isComingSoon } from '../lib/propertyStatus'
 
 export default function PropertyHero({ property, soldPct, onEnquire }) {
   const scope = useRef(null)
@@ -63,7 +64,8 @@ export default function PropertyHero({ property, soldPct, onEnquire }) {
   }, { scope })
 
   const words = property.name.split(/\s+/)
-  const availability = property.available > 0 ? `${property.available} available` : 'Fully reserved'
+  const availability = availabilityLabel(property)
+  const comingSoon = isComingSoon(property)
 
   return (
     <section ref={scope} data-property-hero={property.slug} className="relative min-h-[100svh] overflow-hidden bg-void text-white">
@@ -213,7 +215,7 @@ export default function PropertyHero({ property, soldPct, onEnquire }) {
           <aside className="grid grid-cols-3 gap-px overflow-hidden rounded-2xl border border-white/25 bg-white/20 shadow-[0_24px_80px_-38px_rgba(0,0,0,0.9)] backdrop-blur-[3px] lg:grid-cols-1">
             {[
               ['Availability', availability],
-              ['Reserved', `${soldPct}%`],
+              ['Reserved', comingSoon ? '—' : `${soldPct}%`],
               ['Total', property.buildings || '—'],
             ].map(([label, value]) => (
               <div

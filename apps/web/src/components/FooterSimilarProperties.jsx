@@ -6,6 +6,7 @@ import { phaseOf } from '../lib/phases'
 import { sized } from '../lib/images'
 import ArrowRight from './ArrowRight'
 import { coverImage } from '../lib/covers'
+import { availabilityLabel } from '../lib/propertyStatus'
 
 /**
  * The property strip that opens the footer plate, directly below the closing
@@ -150,7 +151,7 @@ export default function FooterSimilarProperties({
         onMouseLeave={() => setOpen(0)}
       >
         {shown.map((property, index) => {
-          const availability = property.available > 0 ? `${property.available} available` : 'Fully reserved'
+          const availability = availabilityLabel(property)
           const weight = WEIGHTS[shown.length] ?? WEIGHTS[3]
 
           return (

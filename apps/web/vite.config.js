@@ -113,7 +113,17 @@ export default defineConfig(({ command, mode }) => {
 
   return {
     plugins: [react(), tailwindcss(), selfHostedDraco()],
-    build: { rolldownOptions: { output: { manualChunks } } },
+    build: {
+      rolldownOptions: { output: { manualChunks } },
+      // The one chunk over Vite's 500 kB default is three.js and its loaders
+      // (named modelUrl-*.js after a module it happens to contain). It is
+      // reached only through the lazy ModelViewer import, so the home page and
+      // property pages without a 3D model never fetch it — measured 16 Nov 2026
+      // (audit task 18). Splitting it further would only add round trips on the
+      // pages that do need all of it. The limit sits just above it, so any other
+      // chunk growing past 500 kB, or this one growing much, still warns.
+      chunkSizeWarningLimit: 600,
+    },
     define: devProxy ? { 'import.meta.env.VITE_DEV_MEDIA_ORIGIN': JSON.stringify(devMediaOrigin) } : {},
     server: DEV_API_TARGET
       ? {

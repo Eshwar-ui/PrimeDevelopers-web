@@ -24,10 +24,12 @@
 // a broken page. That is also why nothing here fails the build when a record
 // is missing.
 //
-// REQUIRES AN INFRASTRUCTURE CHANGE TO TAKE EFFECT
-// CloudFront currently answers every extensionless path with /index.html, so
-// these files are uploaded but never served until the distribution resolves
-// `/about` to `/about/index.html` first. See docs/seo-setup.md.
+// HOW THE FILES GET SERVED
+// CloudFront's website_spa function serves `<path>/index.html` only for paths
+// listed in a KeyValueStore; every other app route gets the root index.html.
+// This script writes the list it produced to dist/.prerendered-routes.json and
+// deploy-web-aws.sh syncs the store from it (scripts/route-store.mjs). The
+// dot-file is never uploaded. See docs/seo-setup.md.
 //
 //   node scripts/prerender.mjs --site https://theprimedeveloper.com --out apps/web/dist
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
@@ -84,12 +86,14 @@ function write(path, spec) {
   const file = path === '/' ? join(OUT, 'index.html') : join(OUT, path.replace(/^\//, ''), 'index.html')
   mkdirSync(dirname(file), { recursive: true })
   writeFileSync(file, html)
+  if (path !== '/') routes.push(path)
 }
 
 const [properties, news] = await Promise.all([fetchJson('/api/properties'), fetchJson('/api/news')])
 const published = (rows) => rows.filter((row) => row?.slug && row.published !== false)
 
 let count = 0
+const routes = []
 for (const route of STATIC_ROUTES) {
   write(route.path, staticHead(route.path))
   count += 1
@@ -106,6 +110,8 @@ for (const post of published(news)) {
   write(spec.path, spec)
   count += 1
 }
+
+writeFileSync(join(OUT, '.prerendered-routes.json'), `${JSON.stringify([...new Set(routes)].sort(), null, 2)}\n`)
 
 console.log(
   `prerendered ${count} heads (${STATIC_ROUTES.length} static, ${published(properties).length} properties, ${published(news).length} posts) for ${SITE}`,

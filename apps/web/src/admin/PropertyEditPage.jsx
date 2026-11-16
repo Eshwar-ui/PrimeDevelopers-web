@@ -14,6 +14,7 @@ import { Alert, Button, EmptyState, focusRing } from './components/ui'
 import ImageUploader, { ImageFormatHint } from './components/ImageUploader'
 import RepeatableList from './components/RepeatableList'
 import SiteModelManager from './components/SiteModelManager'
+import TrackerLinkPanel from './components/TrackerLinkPanel'
 import BuildingsWorkspace from './components/BuildingsWorkspace'
 import InfoPageEditor from './components/InfoPageEditor'
 import { DEFAULT_INFO } from '../data/centroPlazaInfo'
@@ -559,6 +560,13 @@ export default function PropertyEditPage() {
       </TabPanel>
 
       <TabPanel id="plans" activeTab={activeTab}>
+        <Section
+          {...section('tracker')}
+          title="Prime Tracker link"
+          description="Which tracker project updates this property's units, statuses and totals."
+        >
+          <TrackerLinkPanel propertyId={id} initialId={original.trackerProjectId} />
+        </Section>
         <Section {...section('floorplans')} title="Floor plans">
           {/* The intro the page renders above the plan. These used to edit
               `floorPlans.heading` / `.body`, which the page stopped rendering,

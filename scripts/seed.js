@@ -144,8 +144,6 @@ async function main() {
       heading: 'Pioneering real estate projects that redefine the Texan landscape.',
       paragraph1:
         "Since 2017, Prime Developers has grown into one of Texas's most active developers — owning and operating retail, flex, and residential properties across Dallas–Fort Worth and Austin.",
-      videoUrl: '/about-video.mp4',
-      videoPoster: '/about-poster.jpg',
       stats: [
         { value: 9, label: 'Years of Experience' },
         { value: 10, label: 'Properties Completed' },

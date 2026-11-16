@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PrismaService } from '../../prisma/prisma.service';
+import { JWT_AUDIENCE, jwtIssuer } from './token-claims';
 
 export interface JwtPayload {
   sub: string;
@@ -25,6 +26,10 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
       secretOrKey: secret,
+      // Tokens signed before these claims existed fail once, and the admin's
+      // refresh token quietly replaces them (security audit L4).
+      issuer: jwtIssuer(),
+      audience: JWT_AUDIENCE,
     });
   }
 

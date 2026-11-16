@@ -121,7 +121,8 @@ export default function PrivacyPage() {
         <p>
           Enquiries are kept while the conversation is live and for a reasonable period afterwards,
           so we can pick up where we left off and so there is a record of what was discussed.
-          Server logs are kept for a short operational period only.
+          Submissions our automated checks flag as spam are deleted after 30 days. Server logs are
+          kept for a short operational period only.
         </p>
       </Clause>
 

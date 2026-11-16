@@ -438,3 +438,33 @@ test('a label clash only blocks the save when the editor can fix it', async () =
   assert.equal(unitLabelProblems(clash, building([tracker('101', 't1'), tracker('102', 't2')])).errors.length, 1);
   assert.equal(unitLabelProblems(clash, clash).errors.length, 0);
 });
+
+// ── Linking a property to Prime Tracker (1 Nov security audit M3) ──────────
+
+test('an admin links a property to a tracker project; null unlinks; a bad id or a taken one is refused', async () => {
+  const { TrackerLinkDto } = await import('../src/modules/properties/dto/property.dto');
+  const { PropertiesService } = await import('../src/modules/properties/properties.service');
+  const { Prisma } = await import('@prisma/client');
+
+  assert.equal(((await validateBody(TrackerLinkDto, { trackerProjectId: 'cmtiyjnbg01bdh360e0mfslii' })) as any).trackerProjectId, 'cmtiyjnbg01bdh360e0mfslii');
+  assert.equal(((await validateBody(TrackerLinkDto, { trackerProjectId: null })) as any).trackerProjectId, null);
+  await assert.rejects(validateBody(TrackerLinkDto, { trackerProjectId: 'x; drop' }), (err) => /project id from Prime Tracker/.test(messages(err)));
+
+  const updates: any[] = [];
+  let taken = false;
+  const prisma: any = {
+    property: {
+      findUnique: async () => ({ id: ID }),
+      update: async (args: any) => {
+        if (taken) throw new Prisma.PrismaClientKnownRequestError('unique', { code: 'P2002', clientVersion: 'x' });
+        updates.push(args);
+        return { id: ID, trackerProjectId: args.data.trackerProjectId };
+      },
+    },
+  };
+  const service = new PropertiesService(prisma);
+  await service.setTrackerLink(ID, 'cmtiyjnbg01bdh360e0mfslii');
+  assert.deepEqual(updates[0].data, { trackerProjectId: 'cmtiyjnbg01bdh360e0mfslii' }, 'updatedAt untouched');
+  taken = true;
+  await assert.rejects(service.setTrackerLink(ID, 'cmtiyjnbg01bdh360e0mfslii'), (err: any) => err.getStatus() === 409);
+});

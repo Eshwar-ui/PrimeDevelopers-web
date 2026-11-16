@@ -9,11 +9,17 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Prisma } from '@prisma/client';
 import { PropertiesService } from './properties.service';
-import { CreatePropertyDto, UpdatePropertyDto } from './dto/property.dto';
+import { CreatePropertyDto, TrackerLinkDto, UpdatePropertyDto } from './dto/property.dto';
+import { assertSafeUrls } from '../../common/validators/safe-urls';
+
+/** Links in a property must be safe to put in an href (security audit L1). */
+const checkLinks = (dto: { image?: string; gallery?: string[]; detail?: Record<string, unknown> }) =>
+  assertSafeUrls({ image: dto.image, images: dto.gallery, detail: dto.detail }, 'this property');
 
 @ApiTags('Properties (admin)')
 @ApiBearerAuth()
@@ -36,6 +42,7 @@ export class PropertiesAdminController {
   @Post()
   @ApiOperation({ summary: 'Create a property' })
   create(@Body() dto: CreatePropertyDto) {
+    checkLinks(dto);
     return this.properties.create(dto as unknown as Prisma.PropertyCreateInput);
   }
 
@@ -45,8 +52,15 @@ export class PropertiesAdminController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdatePropertyDto,
   ) {
+    checkLinks(dto);
     const { expectedUpdatedAt, ...data } = dto;
     return this.properties.update(id, data as unknown as Prisma.PropertyUpdateInput, expectedUpdatedAt);
+  }
+
+  @Put(':id/tracker-link')
+  @ApiOperation({ summary: 'Link the property to a Prime Tracker project (null unlinks); the sync only updates linked properties' })
+  linkTracker(@Param('id', ParseUUIDPipe) id: string, @Body() dto: TrackerLinkDto) {
+    return this.properties.setTrackerLink(id, dto.trackerProjectId);
   }
 
   @Delete(':id')

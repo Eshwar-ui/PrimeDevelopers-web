@@ -374,3 +374,28 @@ second.
 
 - [x] A filled honeypot or too-fast submit sends no email and is stored as spam
 - [x] Identical response; clients that send neither field are treated as real
+
+---
+
+## Round 2 (16 Nov): older 1 Nov findings, per the user's answers
+
+Branch `fix/audit-2026-11-01-leftovers`, stacked on `fix/audit-2026-11-15-phase2`. Tracker branch:
+`fix/website-sync-hardening`.
+
+| Finding | Commit | Change |
+|---|---|---|
+| Dead About section | `686b12b` | Deleted `About.jsx`, the 10 MB `about-video.mp4` and its poster |
+| L1 | `71e6657` | CMS links accept only https, `/`, `#`, `mailto:` and `tel:` on save (0 of 26 live records refused); scheme check before `window.open` |
+| L2 | `71e6657` | Generic 422 on a failed resize; the libvips text goes to the log |
+| L3 | `71e6657` | `no-store` on every non-public route and on `/auth/*` |
+| L6 | `71e6657` | Logs carry lead ids, not addresses; spam-flagged leads are purged after 30 days; the privacy page says so |
+| L4 | `7cf6d55` | `iss`/`aud` on access tokens; boot refuses a JWT secret under 32 characters; 30-day absolute session (deadline carried inside the refresh token, no schema change) |
+| M3 | `4bf1bb7` + tracker `f8b3971` | The sync updates only properties an admin linked (new Prime Tracker link panel in the property editor); the tracker requires `settings:manage` to set `websiteSlug` or to force a push |
+| L5 | `4bf1bb7` + tracker `f8b3971` | Snapshots no newer than the last applied are refused; `WEBSITE_SYNC_URL` must be https or loopback http |
+| L7 | `b7b5eb1` | DB passwords leave psql's argv in `01-database.sh` (the audit missed four master-URL calls and `-v pw`) and in `02-deploy-api.sh` |
+
+**Before deploying M3:** open each tracked property in the admin (Floor plans & 3D → Prime
+Tracker link) and confirm it shows its project. Centro Plaza has synced since 1 Nov, so it is
+linked; any other tracked property that shows "Not linked" stops syncing until it is linked.
+
+Not done (Open Question answers): Nest 11 (it would clear the 7 moderate advisories), MFA.

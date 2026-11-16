@@ -57,19 +57,14 @@ const DEFAULTS = {
     // hours before any browser renders this section.
   },
   marquee: { logos: [] },
-  // The film ships with the app rather than being uploaded, so it lands here
-  // as a default: the live content row predates these two keys, and a key the
-  // row doesn't carry is exactly what the defaults are for. Setting either in
-  // the admin still overrides it.
   about_home: {
-    // `eyebrow` postdates the live row, so it carries its copy here for the
-    // same reason the film does — an empty default would leave the section's
-    // kicker missing until someone opened the admin.
+    // Only `eyebrow` is read now (the kicker over the homepage logo wall). It
+    // postdates the live row, so it carries its copy here — an empty default
+    // would leave the kicker missing until someone opened the admin. The film
+    // and stats this section once had went with components/About.jsx.
     eyebrow: 'Our Partners',
     heading: '',
     paragraph1: '',
-    videoUrl: '/about-video.mp4',
-    videoPoster: '/about-poster.jpg',
     stats: [],
   },
   properties_home: {
@@ -157,7 +152,7 @@ const DEFAULTS = {
     ],
   },
   // Ships with its copy rather than waiting on a seed, for the same reason
-  // about_home's film does: the live content row predates this key entirely, so
+  // about_home's eyebrow does: the live content row predates this key entirely, so
   // an empty default would hide the section until someone opened the admin.
   // The items carry `image` and `href` now rather than `icon` and `body`. The
   // section became four photographs with a name under each, so the icon name
@@ -875,7 +870,7 @@ const DEFAULTS = {
     items: [],
   },
   // The live row predates every key below `heroParagraph`, so these ship as
-  // defaults rather than waiting on a seed — same reason about_home's film and
+  // defaults rather than waiting on a seed — same reason about_home's eyebrow and
   // services_home's copy do. `heroSlides` stays empty on purpose: the strip
   // falls back to the listings' own photographs, which is the right content
   // for a properties carousel and needs no upload.

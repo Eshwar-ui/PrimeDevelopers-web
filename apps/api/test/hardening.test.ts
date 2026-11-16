@@ -266,3 +266,35 @@ test('the CSP text parser leaves ordinary JSON bodies parsed', async () => {
     await app.close();
   }
 });
+
+// ── Spam retention (1 Nov security audit L6) ───────────────────────────────
+test('the spam purge deletes only spam-flagged leads older than 30 days', async () => {
+  const { LeadRetention, SPAM_RETENTION_DAYS } = await import('../src/modules/leads/lead-retention');
+  let where: any;
+  const prisma: any = { websiteLead: { deleteMany: async (args: any) => ((where = args.where), { count: 2 }) } };
+  const now = Date.parse('2026-11-16T00:00:00Z');
+  assert.equal(await new LeadRetention(prisma).purgeSpam(now), 2);
+  assert.equal(SPAM_RETENTION_DAYS, 30);
+  assert.deepEqual(where, { spam: true, createdAt: { lt: new Date('2026-10-17T00:00:00Z') } });
+});
+
+// ── no-store on admin and auth responses (1 Nov security audit L3) ─────────
+test('admin and auth responses get no-store; public ones are left alone', async () => {
+  const { NoStoreInterceptor } = await import('../src/common/no-store.interceptor');
+  const run = (isPublic: boolean, path: string) => {
+    const headers: Record<string, string> = {};
+    const reflector: any = { getAllAndOverride: () => isPublic };
+    const res = { headersSent: false, setHeader: (k: string, v: string) => (headers[k] = v) };
+    const ctx: any = {
+      getType: () => 'http',
+      getHandler: () => null,
+      getClass: () => null,
+      switchToHttp: () => ({ getRequest: () => ({ path }), getResponse: () => res }),
+    };
+    new NoStoreInterceptor(reflector).intercept(ctx, { handle: () => null as any });
+    return headers['Cache-Control'];
+  };
+  assert.equal(run(false, '/api/admin/leads'), 'private, no-store');
+  assert.equal(run(true, '/api/auth/login'), 'private, no-store');
+  assert.equal(run(true, '/api/properties'), undefined);
+});

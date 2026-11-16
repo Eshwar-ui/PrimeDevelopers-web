@@ -5,6 +5,7 @@ import { ContentService } from './content.service';
 import { Public } from '../../common/decorators/public.decorator';
 import { Cacheable } from '../../common/decorators/cacheable.decorator';
 import { UpdateContentDto } from './dto/content.dto';
+import { assertSafeUrls } from '../../common/validators/safe-urls';
 
 @ApiTags('Content')
 @Controller('content')
@@ -23,6 +24,8 @@ export class ContentController {
   @Put(':section')
   @ApiOperation({ summary: 'Create or replace one section' })
   update(@Param('section') section: string, @Body() dto: UpdateContentDto) {
+    // Links must be safe to put in an href (security audit L1).
+    assertSafeUrls(dto.data, `the ${section} section`);
     return this.content.upsert(section, dto.data as Prisma.InputJsonValue);
   }
 }

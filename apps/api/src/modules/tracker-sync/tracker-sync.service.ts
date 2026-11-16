@@ -60,7 +60,7 @@ export class TrackerSyncService {
    */
   async apply(snapshot: TrackerSnapshot, options: ApplyOptions = {}): Promise<ApplyResult> {
     return this.prisma.$transaction(async (tx) => {
-      const property = await this.findProperty(tx, snapshot);
+      const property = await this.findProperty(tx, snapshot, !!options.dryRun);
       await tx.$queryRaw`SELECT id FROM properties WHERE id = ${property.id}::uuid FOR UPDATE`;
       const current = await tx.property.findUniqueOrThrow({ where: { id: property.id } });
 
@@ -82,20 +82,30 @@ export class TrackerSyncService {
         throw new ConflictException(result);
       }
 
-      // Linking is a write, so it waits until a real run — a dry run against
-      // the wrong slug must not claim that property for the project.
-      const link = current.trackerProjectId ? {} : { trackerProjectId: snapshot.project.id };
-      if (!report.changed) {
-        if (current.trackerProjectId) return result;
-        await tx.property.update({ where: { id: current.id }, data: link });
-        return { ...result, applied: true };
+      if (!report.changed) return result;
+
+      // Never roll back to an older picture of the project: a delayed push, or
+      // one replayed inside the signature's window, would undo newer statuses
+      // (security audit L5). Compared with the last snapshot that changed this
+      // property, whose generatedAt the sync record keeps.
+      const last = await tx.websiteTrackerSync.findFirst({
+        where: { propertyId: current.id },
+        orderBy: { createdAt: 'desc' },
+        select: { report: true },
+      });
+      const lastGeneratedAt = (last?.report as { generatedAt?: string } | null)?.generatedAt;
+      if (lastGeneratedAt && !(Date.parse(snapshot.generatedAt) > Date.parse(lastGeneratedAt))) {
+        this.logger.warn(`Refused stale tracker snapshot for ${current.slug}: ${snapshot.generatedAt} is not newer than ${lastGeneratedAt}`);
+        throw new ConflictException(
+          `Snapshot generated ${snapshot.generatedAt} is not newer than the last one applied (${lastGeneratedAt}); push a fresh one.`,
+        );
       }
 
       await tx.websiteTrackerSync.create({
         data: {
           propertyId: current.id,
           trackerProjectId: snapshot.project.id,
-          report: report as unknown as Prisma.InputJsonValue,
+          report: { ...report, generatedAt: snapshot.generatedAt } as unknown as Prisma.InputJsonValue,
           previousFloorPlans: (detail.floorPlans ?? Prisma.JsonNull) as Prisma.InputJsonValue,
           previousTotals: totalsBefore,
           previousSiteBindings: siteBindings(detail.siteModel),
@@ -105,7 +115,6 @@ export class TrackerSyncService {
       await tx.property.update({
         where: { id: current.id },
         data: {
-          ...link,
           ...totals,
           detail: nextDetail(detail, floorPlans, siteModel, trackerCounts),
           trackerSyncedAt: new Date(),
@@ -123,12 +132,14 @@ export class TrackerSyncService {
   }
 
   /**
-   * By tracker id once linked; by slug only for the first sync. A slug that
-   * already belongs to a different project is a conflict, never a re-link —
-   * otherwise a typo in one project's website slug would silently start
-   * overwriting another project's units.
+   * The property an admin linked to this project in the CMS (its "Prime Tracker
+   * project ID"). The sync no longer links a property itself: any tracker user
+   * who could set a project's website slug could otherwise claim any unlinked
+   * listing and rewrite its units (security audit M3). A dry run may still look
+   * a property up by slug, so the first push can be previewed before linking;
+   * it writes nothing.
    */
-  private async findProperty(tx: Prisma.TransactionClient, snapshot: TrackerSnapshot) {
+  private async findProperty(tx: Prisma.TransactionClient, snapshot: TrackerSnapshot, dryRun: boolean) {
     const linked = await tx.property.findUnique({
       where: { trackerProjectId: snapshot.project.id },
       select: { id: true },
@@ -139,14 +150,17 @@ export class TrackerSyncService {
       where: { slug: snapshot.project.websiteSlug },
       select: { id: true, trackerProjectId: true },
     });
-    if (!bySlug) {
-      throw new NotFoundException(`No property with slug "${snapshot.project.websiteSlug}"`);
-    }
-    if (bySlug.trackerProjectId && bySlug.trackerProjectId !== snapshot.project.id) {
+    if (bySlug && dryRun && !bySlug.trackerProjectId) return bySlug;
+    if (bySlug?.trackerProjectId) {
       throw new ConflictException(
         `Property "${snapshot.project.websiteSlug}" already mirrors tracker project ${bySlug.trackerProjectId}`,
       );
     }
-    return bySlug;
+    throw new NotFoundException(
+      bySlug
+        ? `Property "${snapshot.project.websiteSlug}" is not linked to tracker project ${snapshot.project.id} (${snapshot.project.name}). ` +
+            `An admin links it in the website CMS: Properties → ${snapshot.project.websiteSlug} → Prime Tracker project ID.`
+        : `No property with slug "${snapshot.project.websiteSlug}"`,
+    );
   }
 }

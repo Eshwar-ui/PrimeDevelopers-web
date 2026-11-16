@@ -333,3 +333,22 @@ view. If it autoplays above the fold, re-encode it (target ≤ 3 MB) and serve i
 ### Checkpoint C: complete
 - [ ] Every task above checked; both suites, lint and builds green; `pnpm audit --prod` has no critical or high advisories
 - [ ] `docs/seo-setup.md` and `docs/csp-rollout.md` written; stale Firebase and Render references gone
+
+---
+
+## Added 16 Nov
+
+## Task 20: Honeypot on public forms
+
+**Description:** Open Question 2 chose a honeypot over a CAPTCHA. Every public form posts a hidden
+`website` field that people never fill, plus the time the form was shown. The API treats a filled
+field, or a submit under 3 seconds, as spam: it answers exactly as for a real lead (so bots learn
+nothing), saves it with `spam: true` and sends no email.
+
+**Acceptance criteria:**
+- [ ] A filled honeypot or a too-fast submit sends no email to anyone and is stored as spam
+- [ ] The response is identical to a real submission
+- [ ] Must not change: a normal visitor's submit, and clients that send neither field (old cached bundles) are treated as real
+
+**Verification:** API tests for both triggers and for the missing-field case; web build passes
+**Dependencies:** None  **Files:** lead DTOs, `leads.service.ts`, the web form components, tests  **Scope:** M

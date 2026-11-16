@@ -3,7 +3,6 @@
 # Moving the website onto the tracker's AWS account (prime-tracker-main/infra/terraform):
 #   01-database.sh   secrets + the prime_website database on the tracker's RDS
 #   02-deploy-api.sh the website API as a second process on the tracker's EC2 host
-#   03-copy-data.sh  Supabase rows and files -> RDS and S3, URLs rewritten
 #   ../deploy-web-aws.sh  the front end -> S3 + CloudFront
 # See docs/tracker-sync-and-aws-plan.md, Phase 2.
 

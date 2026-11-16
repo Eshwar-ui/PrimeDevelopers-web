@@ -1,6 +1,6 @@
 # Prime Developers
 
-pnpm monorepo: `apps/web` (React + Vite site and admin) and `apps/api` (NestJS + Prisma on Supabase Postgres).
+pnpm monorepo: `apps/web` (React + Vite site and admin) and `apps/api` (NestJS + Prisma on Postgres: AWS RDS in production, Docker locally).
 
 ## Local setup
 
@@ -24,9 +24,18 @@ This is **live data**: changes made in the admin are real. To override anything 
 
 ### Option B — run the API locally
 
-1. `cp apps/api/.env.example apps/api/.env` and fill it in. Get the values from the project owner through the team password manager — never chat or git.
-2. Use a **development** database, not production.
-3. Start the API (http://localhost:3001) and point the web app at it by putting this in `apps/web/.env.development.local`:
+Needs Docker. The API runs against a local Postgres 15 (`docker-compose.yml`, port 5433), never production.
+
+```bash
+cp apps/api/.env.example apps/api/.env   # then set JWT_ACCESS_SECRET: openssl rand -hex 64
+pnpm db:up                               # start Postgres and apply the Prisma migrations
+pnpm db:seed                             # optional: copy the live CMS content (needs: aws sso login --profile prime-client)
+node apps/api/scripts/create-admin.mjs   # a local admin login
+```
+
+`pnpm db:seed` copies content, properties, news and sync history. It never copies leads (real people's details) or admin logins. Image URLs keep pointing at the live site, so pictures load. Uploads made locally go to `apps/api/.media/`, which the API serves at `http://localhost:3001/media`.
+
+Then point the web app at your API by putting this in `apps/web/.env.development.local`:
 
 ```bash
 DEV_API_TARGET=http://localhost:3001
@@ -37,7 +46,7 @@ pnpm --filter @prime-developers/api dev
 pnpm --filter @prime-developers/web dev
 ```
 
-If the API exits at startup it names the missing variables.
+If the API exits at startup it names the missing variables. `pnpm db:down` stops the database; its data stays in a Docker volume.
 
 ### Troubleshooting
 

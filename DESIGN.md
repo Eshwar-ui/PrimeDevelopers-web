@@ -320,9 +320,9 @@ a section that predates a key is to put it in `DEFAULTS` — that is why
 `about_home`'s film, `services_home`'s copy and `cta_home`'s photograph live
 there.
 
-New editable fields need three edits: `DEFAULTS`, `scripts/seed.js`, and the
-section's entry in `admin/content/sectionEditors.jsx`. Skip the third and the
-field exists but nobody can change it.
+New editable fields need two edits: `DEFAULTS` and the section's entry in
+`admin/content/sectionEditors.jsx`. Skip the second and the field exists but
+nobody can change it.
 
 ---
 

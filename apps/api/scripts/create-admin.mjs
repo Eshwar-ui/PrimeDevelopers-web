@@ -1,15 +1,8 @@
 // Create (or reset the password of) a website CMS admin user.
 //
-// This exists because the admin account has always been made by hand. When
-// Supabase project knghxhtfkbswzhphhigy was deleted on 2 Sep 2026 and the CMS
-// was rebuilt on a fresh project, the account was the one piece that could not
-// be reconstructed from the repo — everything else came from migrations and
-// the seed scripts.
-//
-// Connects with Prisma, not supabase-js, on purpose: migrations 8 and 10 leave
-// `website_admin_users` with RLS enabled, no policies and no grants to anon or
-// authenticated, precisely so nothing reachable from a browser can read it.
-// The API reaches it as the table owner, and so does this.
+// Connects with Prisma as the table owner. Against production use
+// scripts/aws/05-add-admin.sh instead, which never puts the password on a
+// command line; this is for the local Docker database (pnpm db:up).
 //
 // The password is read from stdin rather than argv so it does not land in the
 // shell history or a process listing.

@@ -102,8 +102,7 @@ export const SECTIONS = [
   // one live one is worse than no panel: it invites edits that change nothing.
   //
   // The row itself is untouched, so the stored `eyebrow` still renders. To
-  // change it, edit the `about_home` default in ContentContext or set it with
-  // scripts/set-content-value.mjs.
+  // change it, edit the `about_home` default in ContentContext.
   {
     key: 'properties_home',
     label: 'Properties (homepage teaser)',

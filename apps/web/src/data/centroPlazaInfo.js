@@ -8,12 +8,12 @@
  * file stops being read for that slug.
  *
  * ── On the image URLs ────────────────────────────────────────────────────────
- * Most still point at the bucket the launchpad page uploaded to. Nothing else
- * on the site loads from a third-party origin, and `sized()` can only resize
- * Supabase URLs, so these arrive as full-size PNGs — the largest is 4.5MB —
- * which is why every one of them is lazy-loaded. Replacing one from the admin
- * uploads it to Supabase, after which it is resized and served as WebP like
- * everything else. The building photographs below already are.
+ * Most still point at the bucket the launchpad page uploaded to
+ * (storage.googleapis.com). `sized()` resizes only the site's own /media, so
+ * these arrive as full-size PNGs — the largest is 4.5MB — which is why every
+ * one of them is lazy-loaded. Replacing one from the admin uploads it to the
+ * site's media, after which it is resized and served as WebP like everything
+ * else. The building photographs below already are.
  */
 
 import { INFO_SLUGS } from '../lib/infoSets'

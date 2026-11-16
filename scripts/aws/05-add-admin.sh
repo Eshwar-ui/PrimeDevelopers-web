@@ -6,7 +6,7 @@
 # Asks for the email, an optional name and the password. The password is typed here
 # with echo off and is never put on a command line or written to disk: it is hashed on
 # this machine with the same bcrypt library the API checks it with, and only the hash
-# leaves — the way 04-copy-admins.sh moves hashes: an owner-only file, through the
+# leaves: an owner-only file, through the
 # private staging bucket encrypted, deleted from this machine, the server and S3 at the
 # end.
 #

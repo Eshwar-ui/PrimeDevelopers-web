@@ -1,16 +1,11 @@
 import { apiFetch, ensureFreshSession } from './api'
 
 /**
- * Admin file uploads, via the API rather than straight to Supabase Storage.
+ * Admin file uploads, through the API.
  *
- * The browser no longer holds any Supabase credential, so it cannot write to a
- * bucket itself. It posts the file to the API, which uploads with the
- * service-role key and returns the public URL. Reads are unaffected: the
- * buckets stay public, so every stored URL keeps working in an <img> or the
- * GLB loader with no credential at all.
- *
- * Both functions keep the `(file, folder) -> url` signature the previous
- * Supabase helpers had, so ImageUploader and ModelManager did not change.
+ * The browser holds no storage credential. It posts the file to the API, which
+ * checks it, stores it (S3 in production, a local folder in development) and
+ * returns the public URL under the site's /media.
  */
 
 /**
@@ -29,8 +24,8 @@ export const IMAGE_MAX_BYTES = 10 * 1024 * 1024
  * the site — which is what an editor choosing between two exports needs to
  * know, and what the accept list alone cannot tell them.
  *
- * Everything is served through Supabase's render endpoint, which re-encodes to
- * WebP when the browser's Accept header allows it. So the stored format mostly
+ * Everything is served through the API's resizer (/api/img), which re-encodes to
+ * WebP. So the stored format mostly
  * decides upload size and how much detail survives that re-encode, not what
  * visitors download — with one exception worth stating: PNG is lossless, so a
  * photograph stored as PNG is many times larger than the same frame as JPEG

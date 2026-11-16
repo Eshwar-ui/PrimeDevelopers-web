@@ -1,4 +1,4 @@
-// The AWS replacement for Supabase's image render endpoint.
+// The website API's image resizer (/api/img).
 //
 //   pnpm --filter @prime-developers/api test
 import { test } from 'node:test';

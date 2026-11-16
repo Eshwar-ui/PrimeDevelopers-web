@@ -1,17 +1,14 @@
 // Apply the Centro Plaza page copy, SEO fields, pricing and Drive photography
 // from the 2026-10 content handoff (centro-plaza-claude-code-handoff.md).
 //
-// Through the live API, as an admin — not Supabase. The site reads the AWS
-// copy (RDS `prime_website`); Supabase is only the source the one-off
-// migration copied from, and scripts/aws/03-copy-content.sh would *replace*
-// RDS from it, wiping every admin edit since. So this logs in, uploads the
+// Through the live API, as an admin, never the database directly. So this logs in, uploads the
 // images through /uploads/image (they land in the S3 media bucket like any
 // admin upload) and saves with PATCH /admin/properties/:id, carrying
 // `expectedUpdatedAt` so it refuses to overwrite an edit made meanwhile.
 //
 // Merges into the live record rather than replacing it. Untouched on purpose:
-// floorPlans.buildings (the unit inventory — Prime Tracker owns it, see
-// sync-centro-from-tracker.mjs), siteModel, socials, tenants and the headline
+// floorPlans.buildings (the unit inventory — Prime Tracker owns it through
+// the tracker sync), siteModel, socials, tenants and the headline
 // totals. Writes a backup of the record before committing.
 //
 // Values the handoff marks unconfirmed are left out, not guessed:

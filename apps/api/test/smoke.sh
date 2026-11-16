@@ -107,9 +107,8 @@ chk "no file → 400"               400 "$(code "${A[@]}" -X POST -F 'folder=x/y
 chk ".txt as image → 400"         400 "$(code "${A[@]}" -X POST -F "file=@$TMP/notes.txt" -F 'folder=x/y' $B/uploads/image)"
 chk ".txt as model → 400"         400 "$(code "${A[@]}" -X POST -F "file=@$TMP/notes.txt;type=text/plain" -F 'folder=x/y' $B/uploads/model)"
 chk "missing folder → 400"        400 "$(code "${A[@]}" -X POST -F "file=@$TMP/px.png" $B/uploads/image)"
-# A valid file gets past validation. With storage configured that's a 201; with
-# SUPABASE_SERVICE_ROLE_KEY unset it's a 500 naming the missing variables.
-# Either proves validation passed — a 400 here would mean it didn't.
+# A valid file gets past validation: 201 (local disk or S3), or 500 if the store
+# itself failed. Either proves validation passed — a 400 here would mean it didn't.
 UP=$(code "${A[@]}" -X POST -F "file=@$TMP/px.png" -F 'folder=x/y' $B/uploads/image)
 case "$UP" in
   201|500) echo "  ✓ valid image passes validation ($UP)"; pass=$((pass+1));;

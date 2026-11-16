@@ -12,7 +12,7 @@
  *   The article itself, in Markdown…
  *
  * The `news` table is shared with the construction-management app and its
- * schema is applied by hand (supabase/migrations, via SSM), so three display fields did not
+ * schema changes go through Prisma migrations, so three display fields did not
  * justify a migration. The admin editor reads and writes this block through
  * plain fields, so nobody has to type it.
  */

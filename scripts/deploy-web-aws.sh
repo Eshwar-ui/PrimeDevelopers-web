@@ -9,7 +9,7 @@
 # /media. This is the site's only deployment: Firebase Hosting was retired on
 # 25 Oct 2026, and `pnpm run deploy:web` runs this script.
 #
-# media/ in the bucket holds uploads (scripts/aws/03-copy-content.sh and the API's
+# media/ in the bucket holds uploads (copied from Supabase in Oct 2026, then the API's
 # STORAGE_DRIVER=s3), not build output. Both syncs below leave it alone.
 #
 # The bucket and distribution come from prime-tracker-main/infra/terraform/website.tf
@@ -43,7 +43,7 @@ VITE_API_BASE_URL="$SITE" VITE_MEDIA_BASE="$SITE/media" VITE_REFRESH_COOKIE=true
 
 # Either of these in the bundle means it would talk to the old stack, not AWS.
 if grep -rqE "localhost:(3001|5173|5174)|onrender\.com|nrtqntqutquapydsnjbm" "$DIST/assets"; then
-  echo "The build still points at localhost, Render or Supabase — not deploying." >&2
+  echo "The build still points at localhost, Render or the old Supabase project — not deploying." >&2
   exit 1
 fi
 

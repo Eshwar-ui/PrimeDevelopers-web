@@ -44,7 +44,7 @@ Because NNN tenants cover most operating costs, the rent an owner collects sits 
 
 It's also why NNN properties are often described as **largely passive**. With taxes, insurance and maintenance handled under the lease, day-to-day involvement for the owner is kept to a minimum. Largely passive isn't the same as hands-off, though — leases still need administering, renewals still need negotiating, and the property still needs looking after.
 
-![Retail buildings at Centro Plaza in Cedar Park, Texas](https://nrtqntqutquapydsnjbm.supabase.co/storage/v1/object/public/images/projects/centro-plaza/drive/buildings/building-03/LcaVisualStudios-7.jpg "Centro Plaza, Cedar Park, Texas.")
+![Retail buildings at Centro Plaza in Cedar Park, Texas](https://dtw8rs0oq8bpp.cloudfront.net/media/images/projects/centro-plaza/drive/buildings/building-03/LcaVisualStudios-7.jpg "Centro Plaza, Cedar Park, Texas.")
 
 ## A higher cap rate isn't automatically better
 

@@ -4,7 +4,7 @@ import { Header } from '@nestjs/common';
  * Marks a public read endpoint as cacheable by shared caches.
  *
  * These responses carried no `Cache-Control` at all, which means every visitor
- * to the marketing site round-tripped through Render to Supabase in Mumbai for
+ * to the marketing site went all the way to the API and the database for
  * content that changes a few times a month.
  *
  * The directives, and why each one:

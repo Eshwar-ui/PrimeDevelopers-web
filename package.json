@@ -9,12 +9,10 @@
     "deploy:web": "bash scripts/deploy-web-aws.sh",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
-    "seed": "node --env-file=.env.seed scripts/seed.js",
-    "seed:interiors-demo": "node --env-file=apps/api/.env scripts/seed-interiors-demo.mjs",
+    "db:up": "docker compose up -d --wait db && pnpm --filter @prime-developers/api exec prisma migrate deploy",
+    "db:down": "docker compose stop db",
+    "db:seed": "bash scripts/db-seed-from-prod.sh",
     "monitors": "node scripts/uptimerobot.mjs"
-  },
-  "devDependencies": {
-    "@supabase/supabase-js": "^2.110.8"
   },
   "engines": {
     "node": ">=20.0.0",

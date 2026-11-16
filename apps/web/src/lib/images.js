@@ -1,41 +1,41 @@
-// Serves stored images through Supabase's image transformer instead of raw.
+// Serves stored images through the website API's resizer instead of raw.
 //
 // The CMS stores whatever the admin uploaded, and the client's source images
 // are ~2MB PNGs of photographs — PNG being lossless, and therefore the worst
-// possible format for a photo. The hero carousel alone pulled 12.7MB, which is
-// most of why a cold load took seconds.
-//
-// Supabase's render endpoint resizes on the fly and content-negotiates WebP
-// from the browser's Accept header, so the same slide drops from 2,153,717
-// bytes to 115,298 — a 95% saving with no re-upload and no change to what is
-// stored. Transformed results are cached at the edge, so the cost is paid once.
+// possible format for a photo. Originals live at <site>/media/images/...; the
+// API resizes them at <site>/api/img/images/... (apps/api/src/modules/media),
+// proportionally, never enlarging, as WebP. A 2,153,717-byte hero slide arrives
+// as ~115,298 bytes, with no re-upload and no change to what is stored.
+// CloudFront caches each resized result, so the cost is paid once.
 
-const OBJECT_PATH = '/storage/v1/object/public/'
-const RENDER_PATH = '/storage/v1/render/image/public/'
-
-// The same thing on AWS. Originals live at <site>/media/images/..., and the
-// website API resizes them at <site>/api/img/images/... with the same width,
-// quality and never-enlarge contract (apps/api/src/modules/media). Matched only
-// on the site's own origin, so an external URL that happens to contain
+// The site's own origin. Media is matched only there (absolute) or as a
+// root-relative path, so an external URL that happens to contain
 // /media/images/ is left alone rather than pointed at a resizer it doesn't have.
-const AWS_ORIGIN = (() => {
+const SITE_ORIGIN = (() => {
   try {
     return new URL(import.meta.env.VITE_API_BASE_URL).origin
   } catch {
-    return null
+    return ''
   }
 })()
-const AWS_MEDIA = AWS_ORIGIN && `${AWS_ORIGIN}/media/images/`
-const AWS_RESIZER = AWS_ORIGIN && `${AWS_ORIGIN}/api/img/images/`
-const isAws = (src) => Boolean(AWS_ORIGIN) && (src.startsWith(AWS_MEDIA) || src.startsWith(AWS_RESIZER))
+const MEDIA_IMAGES = '/media/images/'
+const RESIZER_IMAGES = '/api/img/images/'
+const pathOnSite = (src) => {
+  if (src.startsWith('/') && !src.startsWith('//')) return src
+  if (SITE_ORIGIN && src.startsWith(`${SITE_ORIGIN}/`)) return src.slice(SITE_ORIGIN.length)
+  return null
+}
+const isSiteImage = (src) => {
+  const path = pathOnSite(src)
+  return Boolean(path) && (path.startsWith(MEDIA_IMAGES) || path.startsWith(RESIZER_IMAGES))
+}
 
 /**
- * Where images the code itself names are stored — the public root that
- * `images/...` paths hang off. Supabase Storage until the move to AWS; the AWS
- * build sets VITE_MEDIA_BASE to <site>/media.
+ * The public root that `images/...` paths hang off: the site's own /media
+ * (S3 behind CloudFront in production; the dev server proxies it). The AWS
+ * build also sets VITE_MEDIA_BASE to <site>/media explicitly.
  */
-export const MEDIA_BASE =
-  import.meta.env.VITE_MEDIA_BASE || 'https://nrtqntqutquapydsnjbm.supabase.co/storage/v1/object/public'
+export const MEDIA_BASE = import.meta.env.VITE_MEDIA_BASE || `${SITE_ORIGIN}/media`
 
 // Wide enough for a full-bleed hero on a 2x laptop display without being so
 // large that a phone downloads desktop pixels. Individual call sites pass a
@@ -43,18 +43,6 @@ export const MEDIA_BASE =
 // no use for 1920px.
 const DEFAULT_WIDTH = 1920
 const DEFAULT_QUALITY = 75
-
-// Load-bearing, and not obvious: the render endpoint does NOT preserve aspect
-// ratio when handed a width alone. Its default mode is `cover`, and with no
-// height to go with it the height simply passes through unscaled — so a
-// 2700x1800 hero asked for at width=1200 came back 1200x1800, squeezed to 44%
-// of its proper width. Every photograph on the site was served this way, with
-// `object-cover` disguising it as an aggressive crop.
-//
-// `contain` scales proportionally to fit the width instead. It never upscales,
-// so the 180x100 partner logos — which ask for 600 and are already smaller
-// than every width in the table below — keep passing through untouched.
-const RESIZE = 'contain'
 
 /**
  * Named widths, so call sites state what the image *is* rather than guessing a
@@ -84,10 +72,9 @@ export const WIDTHS = {
 }
 
 /**
- * Rewrite a Supabase public object URL to its transformed equivalent, or resize
- * one that has already been rewritten.
+ * Point a stored site image at the resizer, or re-size one already pointed there.
  *
- * Handling the already-transformed case is what lets call sites narrow an image
+ * Handling the already-resized case is what lets call sites narrow an image
  * that `withTransformedImages` has stamped with the default width. Without it
  * the blanket transform would be a ceiling as well as a floor, and nothing
  * downstream could ask for the 200px version it actually needs.
@@ -96,20 +83,14 @@ export const WIDTHS = {
  * is returned untouched, so this is safe to apply blanket-wise across CMS data.
  */
 export function imageUrl(src, { width = DEFAULT_WIDTH, quality = DEFAULT_QUALITY } = {}) {
-  if (typeof src !== 'string') return src
+  if (typeof src !== 'string' || !isSiteImage(src)) return src
 
-  const isObject = src.includes(OBJECT_PATH)
-  const isRendered = src.includes(RENDER_PATH)
-  const onAws = isAws(src)
-  if (!isObject && !isRendered && !onAws) return src
-
-  // `.glb` models live in a bucket of their own and must never be handed to an
-  // image transformer, which would reject them and break the 3D viewer.
+  // `.glb` models must never be handed to the image resizer, which would
+  // reject them and break the 3D viewer.
   if (/\.glb(\?|$)/i.test(src)) return src
 
   const [base] = src.split('?')
-  if (onAws) return `${base.replace(AWS_MEDIA, AWS_RESIZER)}?width=${width}&quality=${quality}`
-  return `${base.replace(OBJECT_PATH, RENDER_PATH)}?width=${width}&quality=${quality}&resize=${RESIZE}`
+  return `${base.replace(MEDIA_IMAGES, RESIZER_IMAGES)}?width=${width}&quality=${quality}`
 }
 
 /** `imageUrl` at a named width — the form nearly every call site wants. */
@@ -147,10 +128,7 @@ export function withTransformedImages(value, options) {
  * URL tell the browser it has a choice of widths when it has one file, and it
  * will happily pick the "1920w" entry for a 400px slot.
  */
-const isTransformable = (src) =>
-  typeof src === 'string' &&
-  (src.includes(OBJECT_PATH) || src.includes(RENDER_PATH) || isAws(src)) &&
-  !/\.glb(\?|$)/i.test(src)
+const isTransformable = (src) => typeof src === 'string' && isSiteImage(src) && !/\.glb(\?|$)/i.test(src)
 
 /**
  * Candidate widths per named slot.

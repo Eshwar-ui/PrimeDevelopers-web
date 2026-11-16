@@ -50,9 +50,26 @@ The script prints the table below, pre-filled except for the Decision column. It
 Reports from before the analytics removal deploy will show Google and Firebase hosts.
 Those need no change.
 
-### Results
+### Results: reviewed and enforced on 16 Nov 2026
 
-_Not yet run: it needs the `prime-client` SSO session._
+`node scripts/csp-report-summary.mjs --days 30` found 142 reports, 5 distinct:
 
 | Count | Kind | Directive | Blocked | Example page | Decision |
 |---:|---|---|---|---|---|
+| 86 | external | frame-src | https://www.google.com | /contact | **Allowed** `https://www.google.com/maps`: the map embeds on /contact and each property's neighbourhood section |
+| 44 | external | connect-src | blob | /properties/centro-plaza | **Allowed** `blob:`: three.js fetches the textures a .glb unpacks into blob URLs |
+| 8 | site | frame-src | the site's own pages | / | Ignored: a test harness framing the site on 27 Oct. The app never frames itself |
+| 3 | external | connect-src | https://www.google.com/g/collect | /properties | Ignored: Google Analytics, removed the same day |
+| 1 | external | img-src | https://verify.test | /verify-step4 | Ignored: a test on 26 Oct |
+
+**Applied:**
+- Tracker PR #48 added the two allowances, still report-only.
+- Tracker PR #46 enforced the policy. It now lives in `security_headers_config.content_security_policy`, because CloudFront refuses `Content-Security-Policy` as a custom header.
+
+**Checked after enforcing:**
+- In a browser: home, /contact (map), Centro Plaza (map, 3D viewer, a `blob:` fetch), the 404 fallback, /learn and /admin/login all rendered with no "Refused" console messages. The theme inline script ran.
+- In the logs: the only reports since the switch came from deliberate test controls.
+
+**Rollback** (minutes): move `local.website_csp` back into a `custom_headers_config` item named
+`Content-Security-Policy-Report-Only`, then apply with
+`-target aws_cloudfront_response_headers_policy.website_site`.

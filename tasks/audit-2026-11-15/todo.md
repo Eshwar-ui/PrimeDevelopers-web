@@ -399,3 +399,16 @@ Tracker link) and confirm it shows its project. Centro Plaza has synced since 1 
 linked; any other tracked property that shows "Not linked" stops syncing until it is linked.
 
 Not done (Open Question answers): Nest 11 (it would clear the 7 moderate advisories), MFA.
+
+---
+
+## Deployed and closed (16 Nov)
+
+- **Website:** API release `20261116061336-40b57fc` and the web build are live; PRs #31–#34 merged, so `main` matches production. No migrations were needed.
+- **Tracker:**
+  - #45 (route store) applied and merged.
+  - #47 (admin-only slug and force; https sync URL) merged and deployed by CI.
+  - #48 (CSP allowances) and #46 (enforced CSP) applied and merged.
+- **Data:** the `#` flyer on centro-plaza and pow-lewisville was cleared through an SSM SQL step (dry run first; overview blocks backed up to `.aws-stage/flyer-backup-*.txt`). `scan-resource-links.mjs` now reports none.
+- **Tracker links:** Centro Plaza is the only linked property and the only one the tracker has ever synced, so there is nothing else to link.
+- **Still open (by choice):** Nest 11 (it would clear the 7 moderate advisories) and admin MFA.

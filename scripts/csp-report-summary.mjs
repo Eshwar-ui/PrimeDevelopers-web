@@ -62,7 +62,9 @@ const kind = (blocked, source) => {
 const groups = new Map()
 let unparsed = 0
 for (const line of messages) {
-  const json = line.slice(line.indexOf('{'))
+  // pm2 keeps Nest's colours: strip the ANSI codes, then take the JSON object.
+  const plain = line.replace(/\x1b\[[0-9;]*m/g, '')
+  const json = plain.slice(plain.indexOf('{'), plain.lastIndexOf('}') + 1)
   let v
   try {
     v = JSON.parse(json)

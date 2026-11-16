@@ -221,7 +221,8 @@ export class LeadsService {
           : { sent: false, reason: 'email is switched off on the server (MAIL_FROM or AWS_REGION unset)' };
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        this.logger.error(`Brochure email to ${dto.email} for ${property.slug} failed: ${message}`);
+        // The lead id, not the visitor's address: logs outlive leads (security audit L6).
+        this.logger.error(`Brochure email for lead ${lead.id} (${property.slug}) failed: ${message}`);
         outcome = { sent: false, reason: `the send failed (${message})` };
       }
     }

@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './common/health/health.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { NoStoreInterceptor } from './common/no-store.interceptor';
 import { THROTTLERS } from './common/throttle';
 import { AuthModule } from './modules/auth/auth.module';
 import { ContentModule } from './modules/content/content.module';
@@ -79,6 +80,7 @@ import { CspModule } from './modules/csp/csp.module';
     // Global, so authentication is the default and a new admin route that
     // forgets to declare it fails closed. Public routes opt out with @Public().
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_INTERCEPTOR, useClass: NoStoreInterceptor },
   ],
 })
 export class AppModule {}

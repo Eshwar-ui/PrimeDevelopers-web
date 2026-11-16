@@ -73,7 +73,9 @@ export class MailService {
   async send(mail: OutgoingMail): Promise<boolean> {
     if (!this.client || !this.from) {
       this.logger.log(
-        `[email disabled] would send "${mail.subject}" to ${mail.to}` +
+        // Not the subject or the recipient: both can carry a visitor's name and
+        // address, and logs outlive leads (security audit L6).
+        `[email disabled] would send an email to ${mail.to.split(',').length} recipient(s)` +
           (mail.attachments?.length
             ? ` with ${mail.attachments.length} attachment(s): ${mail.attachments.map((a) => a.filename).join(', ')}`
             : ''),

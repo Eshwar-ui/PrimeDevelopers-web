@@ -789,7 +789,10 @@ export default function PropertyInfoPage() {
                     <li key={`${link.label}-${link.href}`}>
                       <button
                         type="button"
-                        onClick={() => window.open(link.href, '_blank', 'noopener,noreferrer')}
+                        onClick={() => {
+                          // React's javascript: guard covers href, not window.open.
+                          if (/^(https?:\/\/|\/(?!\/))/i.test(link.href ?? '')) window.open(link.href, '_blank', 'noopener,noreferrer')
+                        }}
                         className="flex min-h-14 w-full items-center justify-between gap-6 border-b border-[var(--color-line)] py-4 text-left font-body text-[15px] text-content transition-colors duration-300 hover:text-accent"
                       >
                         {link.label}

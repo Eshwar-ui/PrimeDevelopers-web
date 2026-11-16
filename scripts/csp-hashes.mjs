@@ -8,7 +8,8 @@
 // others (prime-tracker-main/infra/terraform/website.tf, website_inline_script_hashes).
 // Any edit to an inline script in apps/web/index.html — or to an env value Vite
 // substitutes into one — changes its hash, and the list there has to follow.
-// scripts/deploy-web-aws.sh runs this and warns when the live header is behind.
+// scripts/deploy-web-aws.sh runs this on every built page and refuses to upload
+// when the live header is missing any of them.
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 

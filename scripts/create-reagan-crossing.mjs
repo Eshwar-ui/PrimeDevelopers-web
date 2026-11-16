@@ -1,5 +1,5 @@
 // Create the two Reagan Crossing property records from
-// Reagan_Crossing_SEO_AEO_GEO_Page_Pack.docx (repo root) — they do not exist
+// Reagan_Crossing_SEO_AEO_GEO_Page_Pack.docx (archive/, gitignored) — they do not exist
 // in the CMS yet. Confirmed by listing every record through
 // GET /admin/properties on 2026-11-05: six properties, none named Reagan
 // Crossing, published or not.
@@ -34,12 +34,8 @@ const COMMIT = process.argv.includes('--commit')
 const WITH_PRICING = process.argv.includes('--with-pricing')
 const priced = (withPrices, without) => (WITH_PRICING ? withPrices : without)
 const SHOW_TENANT_NAMES = false
-// The CloudFront-fronted API — confirmed live and reachable 2026-11-05.
-// `prime-developers-api.onrender.com` (apps/web/.env.production's
-// VITE_API_BASE_URL) 401'd on login and 500'd on every /properties call
-// during that same check; this project appears to have moved its real
-// backend behind CloudFront/nginx without updating that file. Worth a look
-// independent of this script.
+// The CloudFront-fronted API, the only production API since 25 Oct 2026
+// (the old Render service is deleted).
 const API = `${(process.env.PRIME_API ?? 'https://dtw8rs0oq8bpp.cloudfront.net').replace(/\/$/, '')}/api`
 
 const unit = (unit, type, size, salePrice, salePsf, lease, nnn, annualRent) =>

@@ -270,7 +270,7 @@ Design: [tracker-sync-and-aws-plan.md](../tracker-sync-and-aws-plan.md). Tracker
 - **Firebase cache:** `.firebase/` (gitignored) is harmless.
 
 **11. Dev proxies to production.**
-- **The default target is live:** `DEV_API_TARGET` defaults to the deployed API ([vite.config.js:58-99](../../apps/web/vite.config.js); [tasks/plan.md](../../tasks/plan.md), "Architecture Decisions").
+- **The default target is live:** `DEV_API_TARGET` defaults to the deployed API ([vite.config.js:58-99](../../apps/web/vite.config.js); [tasks/plan.md](../../tasks/archive/2026-10-28/plan.md), "Architecture Decisions").
 - **Consequence:** a local admin session writes to production.
 - **The API side is the same:** per project memory, `apps/api/.env` also points at production.
 

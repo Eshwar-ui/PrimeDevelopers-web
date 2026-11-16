@@ -1,5 +1,5 @@
 // Apply the Reagan Crossing Phase I page copy, SEO fields, pricing and FAQs
-// from Reagan_Crossing_SEO_AEO_GEO_Page_Pack.docx, Part 2 (repo root).
+// from Reagan_Crossing_SEO_AEO_GEO_Page_Pack.docx, Part 2 (archive/, gitignored).
 //
 // Through the live API, as an admin — not Supabase. Same pattern as
 // update-centro-content.mjs: logs in, reads the current record at SLUG, and

@@ -1,5 +1,5 @@
 // Apply the Reagan Crossing Phase II page copy, SEO fields, pricing and FAQs
-// from Reagan_Crossing_SEO_AEO_GEO_Page_Pack.docx, Part 3 (repo root).
+// from Reagan_Crossing_SEO_AEO_GEO_Page_Pack.docx, Part 3 (archive/, gitignored).
 //
 // Same pattern as update-reagan-crossing-phase-1.mjs and
 // update-centro-content.mjs — see that file's header for the login/PATCH/

@@ -3,7 +3,8 @@
 > **25 Oct 2026: the website is on AWS only.** Firebase Hosting is retired (all three
 > sites disabled), and the monitors below now check the AWS site and its API through
 > CloudFront (https://dtw8rs0oq8bpp.cloudfront.net). Re-run `node scripts/uptimerobot.mjs --apply` to move the
-> existing monitors over. The Render and Firebase triage notes further down are
+> existing monitors over. The Render service is deleted (confirmed 16 Nov 2026) and
+> `render.yaml` is gone; the Render and Firebase triage notes further down are
 > history: on AWS, look at the `/prime-tracker/app/website-api` log group and the
 > CloudWatch alarms instead.
 

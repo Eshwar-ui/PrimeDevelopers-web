@@ -153,19 +153,22 @@ Full task detail (acceptance criteria, verification, files, scope) is in [todo.m
 | Throttler named-window change applies to every route | Medium | The `daily` throttler's default limit is far above real traffic; a test asserts that other routes still answer after 50 requests |
 | Global brochure ceiling withholds emails for real visitors on a busy day | Low | Default 200 per day (configurable, `BROCHURE_DAILY_CAP`); staff are notified of every withheld email, as today |
 
-## Open questions (need the user or the client)
+## Open questions: answered 16 Nov 2026
 
-1. **Analytics vs privacy policy (Task 12):** keep Firebase Analytics and Performance and update the
-   policy to name them (copy from the client), or remove the SDK and its CSP hosts?
-2. **CAPTCHA on public forms:** worth adding Cloudflare Turnstile after Task 3, or are the caps enough?
-3. **MFA for admin:** wanted? It needs a schema change (TOTP secret), so it would be its own plan.
-4. **Where do the root backups and `.docx` files go (Task 13)?** S3 under the prod account,
-   `.aws-stage/backups/`, or the client's Drive?
-5. **Old stashes:** `stash@{0}` (3 Nov unit filters, superseded by CollectionFilters per notes) and
-   `stash@{1}`. Drop them, or keep them?
-6. **The 28 Oct plan in `tasks/plan.md`:** all four tasks have landed (`.env.development` tracked,
-   `--strictPort`, the README "Local setup" section, the env check in `app.module.ts`), but its
-   boxes are unchecked. Tick and archive it?
+1. **Analytics vs privacy policy (Task 13):** **remove analytics.** Delete the Firebase SDK, its
+   import and env variables; the CSP's analytics hosts are dropped in the tracker repo with Task 12.
+2. **CAPTCHA on public forms:** **honeypot only** (new Task 20). An invisible field plus a minimum
+   fill time, checked by the API; no third party, no CSP change, no visitor friction.
+3. **MFA for admin:** **not now.** The lockout (Task 4) covers guessing; MFA needs a schema change
+   and stays a separate project.
+4. **Root backups and `.docx` files (Task 14):** **a gitignored `archive/` folder** in this repo.
+5. **Old stashes:** **keep them.**
+6. **The 28 Oct plan:** **tick and move to `tasks/archive/2026-10-28/`.**
+7. **Render (Task 6):** the user confirms the service is **deleted**.
+8. **`#` brochure links (Task 15):** **the user fixes them in the admin**; this repo gets a
+   read-only scan script.
+9. **Infrastructure (Tasks 7, 9, 10, 12):** Claude writes the code and runs `terraform plan`;
+   **the user runs `apply` and the deploys** with the `prime-client` SSO profile.
 
 ## Not in this plan
 

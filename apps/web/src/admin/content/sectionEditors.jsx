@@ -97,8 +97,8 @@ export const SECTIONS = [
   },
   // `about_home` no longer has an editor. Of its six fields the site read one
   // — `eyebrow`, the kicker over the homepage logo wall — while Heading,
-  // Paragraph, Film and Stats drove components/About.jsx, which nothing has
-  // mounted since the homepage was rebuilt. A panel of five dead inputs around
+  // Paragraph, Film and Stats drove components/About.jsx, which nothing
+  // mounted after the homepage was rebuilt (removed 16 Nov 2026). A panel of five dead inputs around
   // one live one is worse than no panel: it invites edits that change nothing.
   //
   // The row itself is untouched, so the stored `eyebrow` still renders. To

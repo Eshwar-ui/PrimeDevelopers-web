@@ -37,9 +37,9 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   async onModuleInit() {
     // Deliberately non-fatal. A throw here happens during Nest's init hooks,
     // before `app.listen`, so an unreachable database takes the whole process
-    // down and Render restart-loops the deploy — including on failures no
-    // redeploy can fix (a deleted or paused Supabase project, a rotated
-    // password). That defeats the health design in render.yaml: liveness is
+    // down and pm2 restart-loops it — including on failures no redeploy can
+    // fix (a deleted or stopped database, a rotated password). That defeats the
+    // health design: liveness (/api/health) is
     // meant to answer even when the database does not, so /api/health/ready
     // can report *why*.
     //

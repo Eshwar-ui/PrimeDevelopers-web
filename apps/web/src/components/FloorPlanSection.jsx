@@ -27,12 +27,13 @@ import { sized } from '../lib/images'
 // height climbs again as the column gets its width back.
 const PLAN_HEIGHT = 'h-[340px] sm:h-[420px] md:h-[500px] lg:h-[calc(100dvh-7rem)]'
 
-// A cap, not a height. Forcing the panel to match the plan looks composed on a
-// fully filled unit and hollow on a sparse one — and unit records here are
-// routinely sparse, so the hollow case is the common one. Capped instead, the
-// panel sizes to what the unit actually has, the two columns still align along
-// the top edge, and only an unusually wordy unit ever scrolls.
-const PANEL_MAX = 'lg:max-h-[calc(100dvh-7rem)]'
+// A height, not a cap: the panel is exactly as tall as the plan beside it.
+// Capped, it resized on every unit clicked — the photograph, the figures and
+// the enquiry button all jumped — and a long unit scrolled inside a frame whose
+// top could already be under the bars. Fixed, it is one steady frame, and the
+// card lays itself out to fit it: a fixed photograph band, the figures, and a
+// description that fades rather than pushing anything out of view.
+const PANEL_HEIGHT = 'lg:h-[calc(100dvh-7rem)]'
 
 // Enough to be useful, few enough that each column stays wide enough to read.
 // Past this the table is a horizontal scroll of narrow slivers, which is worse
@@ -86,6 +87,13 @@ export default function FloorPlanSection({ building, propertyId }) {
   const modelUrl = model?.url ?? null
   const isLocalhostUrl = modelUrl ? /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/.test(modelUrl) : false
   const viewer = useViewerState(modelUrl)
+  // Which view the visitor asked for on the launch poster. The viewer mounts
+  // in it and the 2D/3D toggle inside still switches.
+  const [launchMode, setLaunchMode] = useState('3d')
+  const launch = (mode) => () => {
+    setLaunchMode(mode)
+    viewer.activate()
+  }
   const { Viewer } = viewer
   const canShow3D = Boolean(modelUrl) && !isLocalhostUrl && !viewer.failure
   const poster = model?.poster || building?.planImage || null
@@ -250,7 +258,7 @@ export default function FloorPlanSection({ building, propertyId }) {
                   onError={viewer.fail}
                   poster={poster}
                   fileSize={model?.fileSize}
-                  defaultMode="3d"
+                  defaultMode={launchMode}
                   height={PLAN_HEIGHT}
                 />
               </Suspense>
@@ -258,7 +266,7 @@ export default function FloorPlanSection({ building, propertyId }) {
           )}
 
           {canShow3D && !viewer.activated && (
-            <ViewerLaunch poster={poster} height={PLAN_HEIGHT} onLaunch={viewer.activate} onPrefetch={loadViewer} />
+            <ViewerLaunch poster={poster} height={PLAN_HEIGHT} onLaunch={launch('3d')} onLaunch2D={launch('2d')} onPrefetch={loadViewer} />
           )}
 
           {/* Tier 2 — the original pin plan, retained rather than replaced. */}
@@ -305,7 +313,7 @@ export default function FloorPlanSection({ building, propertyId }) {
             // this replaces what you were looking at rather than building a
             // comparison.
             onSelectUnit={(unit) => select(unit.index)}
-            maxHeight={canShow3D ? PANEL_MAX : ''}
+            height={canShow3D ? PANEL_HEIGHT : ''}
             detailsHref={selectedUnit && propertySlug ? unitPath(propertySlug, building?.building, selectedUnit.label) : null}
           />
         </aside>

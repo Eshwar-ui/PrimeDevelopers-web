@@ -3,7 +3,8 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { ArrowSquareOut, Camera, MagnifyingGlass, PencilSimple, Plus, Storefront } from '@phosphor-icons/react'
 import { useProperties } from '../context/ContentContext'
 import { UNIT_STATUSES, unitStatusMeta } from '../lib/unitStatus'
-import { formatArea, formatUnitLabel, getUnitImages, listUnits, unitPath } from '../lib/units'
+import { formatArea, formatUnitLabel, getUnitImages, listUnits, unitPath, unitPrices, unitSF } from '../lib/units'
+import { UNIT_FACETS, matchesQuery } from '../lib/unitFilters'
 import { unitEditPath } from './unitsStore'
 import { Button, Card, EmptyState, IconButton, PageHeader, SearchInput, focusRing } from './components/ui'
 import { SelectField } from './components/Field'
@@ -35,13 +36,21 @@ export default function UnitsAdminPage() {
       { replace: true },
     )
 
-  const all = useMemo(() => properties.flatMap((property) => listUnits(property).map((u) => ({ ...u, property }))), [properties])
-  const q = query.trim().toLowerCase()
+  // `sf` is the row shape the shared size filter reads (collectUnits() on the public site).
+  const all = useMemo(
+    () => properties.flatMap((property) => listUnits(property).map((u) => ({ ...u, property, sf: unitSF(u.unit.size) }))),
+    [properties],
+  )
+  // Size and pricing come from the same table as the public list, so "under
+  // 1,000 SF" means the same here. Status keeps its own pills below.
+  const extraFacets = UNIT_FACETS.filter((f) => f.id !== 'status')
+  const facetValue = (facet) => (facet.options.some((o) => o.id === params.get(facet.id)) ? params.get(facet.id) : '')
   const shown = all.filter(
     (u) =>
       (!propertyFilter || u.property.id === propertyFilter) &&
       (!statusFilter || (u.unit.status || 'available') === statusFilter) &&
-      (!q || [u.unit.label, u.unit.tenant, u.building.building, u.property.name].some((f) => String(f ?? '').toLowerCase().includes(q))),
+      extraFacets.every((f) => !facetValue(f) || f.options.find((o) => o.id === facetValue(f)).test(u)) &&
+      matchesQuery(u, query),
   )
 
   const counts = useMemo(() => {
@@ -74,13 +83,22 @@ export default function UnitsAdminPage() {
         }
       />
 
-      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,16rem)_1fr] sm:items-end">
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-[repeat(3,minmax(0,13rem))_1fr] sm:items-end">
         <SelectField
           label="Property"
           value={propertyFilter}
           onChange={(v) => setParam('property', v)}
           options={[{ value: '', label: 'All properties' }, ...properties.map((p) => ({ value: p.id, label: p.name }))]}
         />
+        {extraFacets.map((facet) => (
+          <SelectField
+            key={facet.id}
+            label={facet.label}
+            value={facetValue(facet)}
+            onChange={(v) => setParam(facet.id, v)}
+            options={[{ value: '', label: facet.anyLabel }, ...facet.options.map((o) => ({ value: o.id, label: o.label }))]}
+          />
+        ))}
         <div className="flex justify-end">
           <SearchInput value={query} onChange={setQuery} placeholder="Search unit, tenant, building…" label="Search units" icon={MagnifyingGlass} />
         </div>
@@ -126,7 +144,8 @@ export default function UnitsAdminPage() {
               {g.units.map(({ unit, property, building }) => {
                 const meta = unitStatusMeta(unit.status)
                 const photos = getUnitImages(unit)
-                const facts = [formatArea(unit.size), unit.rate, unit.tenant].filter(Boolean)
+                const price = unitPrices(unit)
+                const facts = [formatArea(unit.size), price.lease, price.sale, price.sold, unit.tenant].filter(Boolean)
                 const edit = unitEditPath(property, building.building, unit.label)
                 return (
                   <div key={`${unit.label}-${unit.index}`} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2.5 sm:flex-nowrap sm:px-4">

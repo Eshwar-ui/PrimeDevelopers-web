@@ -1,59 +1,73 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, Navigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { useProperty, usePropertiesLoaded } from '../context/ContentContext'
 import { useHead } from '../hooks/useHead'
 import { useScrollLock } from '../hooks/useScrollLock'
 import { propertyHead, brandedTitle } from '../lib/seo'
-import { imageAlt, sized, srcSetFor } from '../lib/images'
-import { formatUnitLabel, getBuildings, getUnitImages, getUnits } from '../lib/units'
+import { sized, srcSetFor } from '../lib/images'
+import { scrollToElement } from '../lib/scrollToElement'
+import { collectGroups, flattenGroups } from '../lib/propertyGallery'
+
+// Photographs per page. A property holds well over a hundred; one page of them
+// is a long scroll of decoding images, and a page of 24 is a screen or three.
+const PAGE_SIZE = 24
 
 /**
- * Every photograph a property holds, on one page.
- *
- * The property page's carousel shows one frame at a time, which is right for
- * a section halfway down a listing and wrong for someone who came to look:
- * with 100+ frames, "show me everything" is a page, not a strip of chips.
- *
- * Two kinds of photograph are gathered here: the property's own gallery (site
- * and exterior photography), and each unit's shoot, grouped by building. A
- * frame that appears in both is shown once, in the property group.
+ * One photograph in the grid. The well shimmers until the picture has arrived,
+ * and holds a 4:3 box so the columns do not jump as frames land and take their
+ * real shape.
  */
-function collectGroups(property) {
-  if (!property) return []
-  const seen = new Set()
-  const take = (src) => {
-    if (!src || seen.has(src)) return false
-    seen.add(src)
-    return true
-  }
+function Shot({ image, onOpen, label }) {
+  const [loaded, setLoaded] = useState(false)
+  const ref = useRef(null)
+  // A cached image can finish before React attaches onLoad.
+  useEffect(() => {
+    if (ref.current?.complete) setLoaded(true)
+  }, [])
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={label}
+      className={`group mb-4 block w-full break-inside-avoid overflow-hidden rounded-xl bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${loaded ? '' : 'image-shimmer aspect-[4/3]'}`}
+    >
+      <img
+        ref={ref}
+        src={sized(image.src, 'card')}
+        srcSet={srcSetFor(image.src, 'card')}
+        sizes="(min-width: 1536px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+        alt=""
+        loading="lazy"
+        decoding="async"
+        onLoad={() => setLoaded(true)}
+        className={`h-auto w-full transition-[opacity,transform] duration-500 ease-brand group-hover:scale-[1.03] ${loaded ? 'opacity-100' : 'opacity-0'}`}
+      />
+    </button>
+  )
+}
 
-  const groups = []
-  const site = [property.image, ...(property.gallery ?? [])]
-    .filter(take)
-    .map((src) => ({ src, alt: imageAlt(property, src), caption: property.name }))
-  if (site.length) groups.push({ key: 'property', label: 'The property', images: site })
+/** The grid's loading state: the same columns, all shimmer. */
+function GallerySkeleton() {
+  return (
+    <div aria-busy="true" aria-label="Loading photographs" className="columns-1 gap-4 sm:columns-2 lg:columns-3 2xl:columns-4">
+      {Array.from({ length: 8 }, (_, i) => (
+        <div key={i} className={`image-shimmer mb-4 break-inside-avoid rounded-xl ${i % 3 === 1 ? 'aspect-[3/4]' : 'aspect-[4/3]'}`} />
+      ))}
+    </div>
+  )
+}
 
-  for (const building of getBuildings(property)) {
-    const images = getUnits(building).flatMap((unit) => {
-      // A sold unit's tenant may be a private owner (see PropertyDetailPage's
-      // establishedAlt), so only a leased unit names its business.
-      const unitName = `Unit ${formatUnitLabel(unit.label)}`
-      const tenant = unit.status === 'leased' && String(unit.tenant ?? '').trim()
-      const caption = [building.building, unitName, tenant].filter(Boolean).join(' · ')
-      return getUnitImages(unit)
-        .filter(take)
-        .map((src) => ({
-          src,
-          alt: imageAlt(property, src) || `${tenant || unitName}, ${building.building ?? ''} at ${property.name}`,
-          caption,
-        }))
-    })
-    if (images.length) {
-      groups.push({ key: `b-${building.building}`, label: building.building || 'Units', images })
-    }
+/** First, last, and a window around the current page, with gaps marked. */
+function pageNumbers(page, pages) {
+  const keep = new Set([1, pages, page - 1, page, page + 1])
+  const out = []
+  for (let n = 1; n <= pages; n++) {
+    if (!keep.has(n)) continue
+    if (out.length && n - out[out.length - 1] > 1) out.push('gap')
+    out.push(n)
   }
-  return groups
+  return out
 }
 
 export default function PropertyGalleryPage() {
@@ -63,10 +77,34 @@ export default function PropertyGalleryPage() {
   const groups = useMemo(() => collectGroups(property), [property])
   const [filter, setFilter] = useState('all')
   const [open, setOpen] = useState(null)
+  const [params, setParams] = useSearchParams()
+  const gridTop = useRef(null)
 
   const visibleGroups = filter === 'all' ? groups : groups.filter((g) => g.key === filter)
-  // One flat list for the lightbox, so its arrows walk on past a group's end.
-  const flat = useMemo(() => visibleGroups.flatMap((g) => g.images), [visibleGroups])
+  // One flat list for the lightbox, so its arrows walk on past a page's end.
+  const flat = useMemo(() => flattenGroups(visibleGroups), [visibleGroups])
+  const pages = Math.max(1, Math.ceil(flat.length / PAGE_SIZE))
+  // In the URL, so a page of photographs can be linked and Back lands on it.
+  const page = Math.min(Math.max(1, Number.parseInt(params.get('page') ?? '1', 10) || 1), pages)
+  const start = (page - 1) * PAGE_SIZE
+  const slice = flat.slice(start, start + PAGE_SIZE)
+  // Consecutive photographs of one group share a heading.
+  const runs = slice.reduce((acc, image, i) => {
+    const last = acc[acc.length - 1]
+    if (last && last.key === image.groupKey) last.items.push({ image, index: start + i })
+    else acc.push({ key: image.groupKey, label: image.groupLabel, items: [{ image, index: start + i }] })
+    return acc
+  }, [])
+
+  const goTo = (n) => {
+    setParams(n <= 1 ? {} : { page: String(n) }, { replace: false })
+    // After the new page has rendered, so the target exists at its new height.
+    requestAnimationFrame(() => gridTop.current && scrollToElement(gridTop.current, { offset: -120 }))
+  }
+  const chooseFilter = (key) => {
+    setFilter(key)
+    setParams({}, { replace: true })
+  }
   const total = groups.reduce((n, g) => n + g.images.length, 0)
 
   const base = propertyHead(property)
@@ -87,10 +125,18 @@ export default function PropertyGalleryPage() {
     [flat.length],
   )
 
-  if (!loaded) return <div className="min-h-[70vh] bg-base" aria-busy="true" />
+  if (!loaded)
+    return (
+      <div className="min-h-[70vh] overflow-x-hidden bg-base px-gutter pt-32 md:pt-40">
+        <div className="mx-auto max-w-[1560px]">
+          <div className="image-shimmer h-10 w-72 rounded-lg" />
+          <div className="mt-12">
+            <GallerySkeleton />
+          </div>
+        </div>
+      </div>
+    )
   if (!property) return <Navigate to="/properties" replace />
-
-  let offset = 0
 
   return (
     <div className="overflow-x-hidden bg-base text-content">
@@ -124,7 +170,7 @@ export default function PropertyGalleryPage() {
                 <button
                   key={g.key}
                   type="button"
-                  onClick={() => setFilter(g.key)}
+                  onClick={() => chooseFilter(g.key)}
                   aria-pressed={filter === g.key}
                   className={`min-h-11 shrink-0 snap-start rounded-full border px-5 font-body text-[13px] font-bold transition-colors ${
                     filter === g.key ? 'border-accent bg-accent text-white dark:text-void' : 'border-content/20 hover:border-content/50'
@@ -138,49 +184,77 @@ export default function PropertyGalleryPage() {
         </div>
       </header>
 
-      <div data-band="light" className="bg-surface-alt px-gutter py-10 md:py-14">
+      <div ref={gridTop} data-band="light" className="bg-surface-alt px-gutter py-10 md:py-14">
         <div className="mx-auto max-w-[1560px]">
           {total === 0 ? (
             <p className="py-16 text-center font-body text-content/60">Photographs of {property.name} are on the way.</p>
           ) : (
-            visibleGroups.map((group) => {
-              const start = offset
-              offset += group.images.length
-              return (
-                <section key={group.key} className="mb-14 last:mb-0" aria-labelledby={`gallery-${group.key}`}>
-                  <div className="mb-6 flex items-center gap-4">
-                    <span aria-hidden className="h-px w-10 shrink-0 bg-accent" />
-                    <h2 id={`gallery-${group.key}`} className="eyebrow font-body text-[13px] text-content/70">
-                      {group.label}
-                    </h2>
-                    <span className="font-body text-[13px] tabular-nums text-content/45">{group.images.length}</span>
-                  </div>
-                  {/* CSS columns rather than a grid: site shots, portrait unit
-                      frames and wide aerials sit together without cropping. */}
-                  <div className="columns-1 gap-4 sm:columns-2 lg:columns-3 2xl:columns-4">
-                    {group.images.map((image, i) => (
-                      <button
-                        key={image.src}
-                        type="button"
-                        onClick={() => setOpen(start + i)}
-                        aria-label={`Open photograph ${start + i + 1} of ${flat.length}${image.alt ? `: ${image.alt}` : ''}`}
-                        className="group mb-4 block w-full break-inside-avoid overflow-hidden rounded-xl bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                      >
-                        <img
-                          src={sized(image.src, 'card')}
-                          srcSet={srcSetFor(image.src, 'card')}
-                          sizes="(min-width: 1536px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-                          alt=""
-                          loading="lazy"
-                          decoding="async"
-                          className="h-auto w-full transition-transform duration-500 ease-brand group-hover:scale-[1.03]"
-                        />
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              )
-            })
+            runs.map((run, r) => (
+              <section key={`${run.key}-${r}`} className="mb-14 last:mb-0" aria-labelledby={`gallery-${run.key}-${r}`}>
+                <div className="mb-6 flex items-center gap-4">
+                  <span aria-hidden className="h-px w-10 shrink-0 bg-accent" />
+                  <h2 id={`gallery-${run.key}-${r}`} className="eyebrow font-body text-[13px] text-content/70">
+                    {run.label}
+                  </h2>
+                </div>
+                {/* CSS columns rather than a grid: site shots, portrait unit
+                    frames and wide aerials sit together without cropping. */}
+                <div className="columns-1 gap-4 sm:columns-2 lg:columns-3 2xl:columns-4">
+                  {run.items.map(({ image, index }) => (
+                    <Shot
+                      key={image.src}
+                      image={image}
+                      onOpen={() => setOpen(index)}
+                      label={`Open photograph ${index + 1} of ${flat.length}${image.alt ? `: ${image.alt}` : ''}`}
+                    />
+                  ))}
+                </div>
+              </section>
+            ))
+          )}
+
+          {pages > 1 && (
+            <nav aria-label="Gallery pages" className="mt-12 flex flex-wrap items-center justify-center gap-2">
+              <button
+                type="button"
+                disabled={page === 1}
+                onClick={() => goTo(page - 1)}
+                className="min-h-11 rounded-full border border-content/20 px-5 font-body text-[13px] font-bold transition-colors hover:border-content/50 disabled:opacity-30"
+              >
+                ← Prev
+              </button>
+              {pageNumbers(page, pages).map((n, i) =>
+                n === 'gap' ? (
+                  <span key={`gap-${i}`} aria-hidden className="px-1 text-content/40">
+                    …
+                  </span>
+                ) : (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => goTo(n)}
+                    aria-label={`Page ${n}`}
+                    aria-current={n === page ? 'page' : undefined}
+                    className={`size-11 rounded-full border font-body text-[13px] font-bold tabular-nums transition-colors ${
+                      n === page ? 'border-accent bg-accent text-white dark:text-void' : 'border-content/20 hover:border-content/50'
+                    }`}
+                  >
+                    {n}
+                  </button>
+                ),
+              )}
+              <button
+                type="button"
+                disabled={page === pages}
+                onClick={() => goTo(page + 1)}
+                className="min-h-11 rounded-full border border-content/20 px-5 font-body text-[13px] font-bold transition-colors hover:border-content/50 disabled:opacity-30"
+              >
+                Next →
+              </button>
+              <p className="basis-full text-center font-body text-[12px] tabular-nums text-content/50">
+                Photographs {start + 1}–{start + slice.length} of {flat.length}
+              </p>
+            </nav>
           )}
         </div>
       </div>

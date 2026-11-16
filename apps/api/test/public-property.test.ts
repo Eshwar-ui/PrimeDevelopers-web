@@ -223,6 +223,53 @@ test('the CMS opt-ins publish them, and only a literal true counts', () => {
   assert.equal(toPublicUnit({ label: '602', status: 'leased', rate: '$28', publishRate: true }).rate, '$28');
 });
 
+test('lease and sale prices are public while a unit is an offer; a let or sold unit’s price only with the opt-in', () => {
+  const priced = { label: '1', leasePrice: '28', salePrice: '650000', soldPrice: '610000' };
+  for (const status of ['available', 'coming-soon', '']) {
+    const out = toPublicUnit({ ...priced, status });
+    assert.equal(out.leasePrice, '28', status);
+    assert.equal(out.salePrice, '650000', status);
+    // A sold price means nothing on a unit that has not sold.
+    assert.equal('soldPrice' in out, false, status);
+  }
+
+  // Leased: what it let for is private until the editor says otherwise, and a sale price is stale.
+  assert.equal('leasePrice' in toPublicUnit({ ...priced, status: 'leased' }), false);
+  const leased = toPublicUnit({ ...priced, status: 'leased', publishRate: true });
+  assert.equal(leased.leasePrice, '28');
+  assert.equal('salePrice' in leased, false);
+  assert.equal('soldPrice' in leased, false);
+
+  // Sold: only the sold price, and only opted in.
+  assert.equal(Object.keys(toPublicUnit({ ...priced, status: 'sold' })).some((k) => k.endsWith('Price')), false);
+  const sold = toPublicUnit({ ...priced, status: 'sold', publishRate: true });
+  assert.equal(sold.soldPrice, '610000');
+  assert.equal('leasePrice' in sold, false);
+  assert.equal('salePrice' in sold, false);
+
+  // Only a literal true opts in, and an unknown status has no price at all.
+  for (const loose of ['true', 1, 'yes', {}]) {
+    assert.equal('soldPrice' in toPublicUnit({ ...priced, status: 'sold', publishRate: loose }), false, json(loose));
+  }
+  assert.equal(Object.keys(toPublicUnit({ ...priced, status: 'under-contract', publishRate: true })).some((k) => k.endsWith('Price')), false);
+});
+
+test('clear height is public; the old floor is not, and neither is the tracker switch or the editor’s overrides', () => {
+  const out = toPublicUnit({
+    label: '1',
+    status: 'available',
+    clearHeight: '24 ft',
+    floor: 'Ground',
+    trackerSync: false,
+    trackerOverrides: ['size'],
+    tracker: { values: { soldPrice: '610000' } },
+  });
+  assert.deepEqual(out, { label: '1', status: 'available', clearHeight: '24 ft' });
+
+  const body = json(toPublicProperty(row()));
+  assert.doesNotMatch(body, /trackerSync|trackerOverrides|"values"/);
+});
+
 test('a status the projection does not know withholds both, so a new status cannot publish a buyer', () => {
   const out = toPublicUnit({ label: '1', status: 'under-contract', tenant: 'A. Person', rate: '$1' });
   assert.deepEqual(out, { label: '1', status: 'under-contract' });

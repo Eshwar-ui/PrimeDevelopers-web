@@ -4,11 +4,17 @@ import { readFileSync } from 'node:fs'
 import {
   applyUnitChange,
   formatArea,
+  formatClearHeight,
+  formatLeasePrice,
+  formatTotalPrice,
   getUnits,
+  makeUnit,
+  parsePrice,
   markOriginalLabels,
   reconcile,
   rekeyForSave,
   rekeySiteBindings,
+  unitPrices,
 } from '../src/lib/units.js'
 import { reconcileSite } from '../src/lib/siteModel.js'
 
@@ -255,4 +261,49 @@ test('a building and one of its units renamed in the same save', () => {
   const saved = rekeyForSave(typed)
   assert.equal(resolve(saved).resolved.filter((e) => e.building?.building === 'Building 9A').length, count)
   assert.deepEqual(unitShapes(saved, 'Building 9A', '908A'), shapes908)
+})
+
+/* ── prices and clear height ───────────────────────────────────────── */
+
+test('a new unit has clear height and the three prices, and no floor', () => {
+  const unit = makeUnit('101')
+  assert.equal(unit.clearHeight, '')
+  assert.deepEqual([unit.leasePrice, unit.salePrice, unit.soldPrice], ['', '', ''])
+  assert.equal('floor' in unit, false)
+})
+
+test('parsePrice reads typed prices and nothing it cannot be sure of', () => {
+  assert.equal(parsePrice('28'), 28)
+  assert.equal(parsePrice('$28.50'), 28.5)
+  assert.equal(parsePrice('1,250,000'), 1250000)
+  assert.equal(parsePrice(''), null)
+  assert.equal(parsePrice(null), null)
+  assert.equal(parsePrice('0'), null)
+  assert.equal(parsePrice('call us'), null)
+})
+
+test('lease prices read per sq ft per year, totals as dollars', () => {
+  assert.equal(formatLeasePrice('30'), '$30 / SF / yr')
+  assert.equal(formatLeasePrice('28.5'), '$28.50 / SF / yr')
+  assert.equal(formatLeasePrice(''), null)
+  assert.equal(formatTotalPrice('650000'), '$650,000')
+  assert.equal(formatTotalPrice('610000.5'), '$610,000.50')
+  assert.equal(formatTotalPrice(undefined), null)
+})
+
+test('a unit’s prices are its three, with the older free-text rate standing in for a missing lease price', () => {
+  assert.deepEqual(unitPrices({ leasePrice: '30', salePrice: '650000' }), { lease: '$30 / SF / yr', sale: '$650,000', sold: null })
+  assert.deepEqual(unitPrices({ soldPrice: '610000' }), { lease: null, sale: null, sold: '$610,000' })
+  assert.equal(unitPrices({ rate: '$28 / SF / yr NNN' }).lease, '$28 / SF / yr NNN')
+  assert.equal(unitPrices({ rate: '$28', leasePrice: '30' }).lease, '$30 / SF / yr')
+  assert.deepEqual(unitPrices(null), { lease: null, sale: null, sold: null })
+})
+
+test('clear height: a bare number is feet, anything else is kept as written', () => {
+  assert.equal(formatClearHeight('24'), '24 ft')
+  assert.equal(formatClearHeight('18.5'), '18.5 ft')
+  assert.equal(formatClearHeight('24 ft'), '24 ft')
+  assert.equal(formatClearHeight('24 ft, 28 ft at the ridge'), '24 ft, 28 ft at the ridge')
+  assert.equal(formatClearHeight('  '), null)
+  assert.equal(formatClearHeight(undefined), null)
 })

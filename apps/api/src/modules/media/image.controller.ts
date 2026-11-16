@@ -1,4 +1,5 @@
 import {
+  Logger,
   BadRequestException,
   Controller,
   Get,
@@ -139,6 +140,8 @@ export class Gate {
 export class ImageController {
   private readonly gate = new Gate();
 
+  private readonly logger = new Logger('ImageController');
+
   constructor(private media: MediaStorage) {}
 
   // Only cache misses reach here — CloudFront answers repeats — so this is a ceiling
@@ -182,7 +185,9 @@ export class ImageController {
           .toBuffer()
           .catch((err: Error) => {
             // Over the pixel limit, or not an image at all: the request, not the server.
-            throw new UnprocessableEntityException(`Cannot resize this image: ${err.message}`);
+            // The libvips text goes to the log, not the response (security audit L2).
+            this.logger.warn(`Cannot resize ${bucket}/${path}: ${err.message}`);
+            throw new UnprocessableEntityException('Cannot resize this image');
           });
       })
       .catch((err: Error) => {

@@ -11,7 +11,7 @@
 // A half-filled investment page has to look deliberate, because that is the
 // state it will be in for a while.
 
-import { getUnits, labelSlug } from './units'
+import { getUnits, labelSlug, unitPrices } from './units'
 
 /**
  * Every field the editor writes, in one place.
@@ -94,7 +94,9 @@ export const rentRoll = (building) =>
       label: unit.label,
       tenant: String(unit.tenant ?? '').trim(),
       size: String(unit.size ?? '').trim(),
-      rate: String(unit.rate ?? '').trim(),
+      // The lease price, or the older free-text rate where a unit has no
+      // structured one. The API sends a let unit's only when the editor opted in.
+      rate: unitPrices(unit).lease ?? '',
       status: unit.status || 'available',
     }))
     .filter((row) => String(row.label ?? '').trim())

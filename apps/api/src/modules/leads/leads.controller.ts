@@ -4,6 +4,7 @@ import { Throttle } from '@nestjs/throttler';
 import { LeadsService } from './leads.service';
 import { BrochureRequestDto, CreateLeadDto } from './dto/lead.dto';
 import { Public } from '../../common/decorators/public.decorator';
+import { DailyLimit } from '../../common/throttle';
 
 @ApiTags('Leads')
 @Controller('leads')
@@ -32,6 +33,9 @@ export class LeadsController {
    */
   @Public()
   @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  // It mails the company's brochure to any address it is given: 10 a minute
+  // still allows 14,400 a day from one IP. The service adds a site-wide ceiling.
+  @DailyLimit(20)
   @Post('brochure')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Request a property brochure by email' })

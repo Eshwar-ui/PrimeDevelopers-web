@@ -84,6 +84,26 @@ export class PropertiesService {
     });
   }
 
+  /**
+   * Links (or, with null, unlinks) the tracker project this property mirrors.
+   * Leaves updatedAt alone, so an editor open on the property can still save.
+   */
+  async setTrackerLink(id: string, trackerProjectId: string | null) {
+    await this.assertExists(id);
+    try {
+      return await this.prisma.property.update({
+        where: { id },
+        data: { trackerProjectId },
+        select: { id: true, slug: true, trackerProjectId: true, trackerSyncedAt: true },
+      });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw new ConflictException(`Tracker project ${trackerProjectId} is already linked to another property.`);
+      }
+      throw err;
+    }
+  }
+
   async remove(id: string) {
     await this.assertExists(id);
     await this.prisma.property.delete({ where: { id } });

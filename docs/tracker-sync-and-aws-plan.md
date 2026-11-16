@@ -57,7 +57,7 @@ read the secret from `TRACKER_SYNC_SECRET` (website) / `WEBSITE_SYNC_SECRET`
 
 ### Payload
 
-The website accepts version 1 and version 2; version 2 only adds fields.
+The website accepts versions 1, 2 and 3; versions 2 and 3 only add fields.
 
 **Deploy order: the website first, then the tracker.** The website rejects any
 field it does not know, so a tracker sending version 2 to a website that only
@@ -101,23 +101,76 @@ Version 2 adds, all optional to the website:
 | `unit.dealUnitIds` | Every unit in the building in a deal with this one, itself included, whatever their statuses (any live sale's `combinedDealRef`, or the active lease's). `dealRef` still decides the grouping. Accepted, but the website does not match on it: deal partners are different units, and matching on them swapped photographs between partners renumbered together. |
 | `unit.mergedFromIds` | The units combined into this one, two combines deep. Combining mints a new unit id, so this is how the website knows what it continues. |
 | `unit.unitType` | The tracker's unit type key, e.g. `RETAIL`. |
-| `unit.askingRent`, `unit.askingPrice` | List figures, sent **only while the unit is AVAILABLE or UNDER_CONSTRUCTION**, so neither can be read as what a tenant or buyer agreed. **Accepted and dropped by the website for now:** `detail` is public as stored, so they are held until the client approves publishing them. Phase 2 adds public-read filtering of `tracker` data. |
+| `unit.askingRent`, `unit.askingPrice` | List figures (rent per sq ft per **month**), sent **only while the unit is AVAILABLE or UNDER_CONSTRUCTION**. Since the unit-pricing change (3 Nov 2026) the website writes them to the row as `leasePrice` (× 12, per sq ft per year) and `salePrice`. The public API sends them only by status — see "Prices" below. |
 | `unit.availableSince` | ISO date, when the unit last became available. |
 | `building.totalSqft`, `building.stories` | From the tracker's building. |
 
-Never sent, in either version: buyers, sale prices, lease rents, deposits, contact
-details.
+Version 3 adds, both optional:
+
+| Field | What it is |
+|---|---|
+| `unit.leaseRent` | Rent per sq ft per **month** of the lease in place, sent **only for LEASED, OCCUPIED and LEASE_PENDING units**. Written as `leasePrice` (× 12). |
+| `unit.soldPrice` | What the unit sold for, sent **only for SOLD units** (the live sale's price; an UNDER_CONTRACT unit has none yet). Written as `soldPrice`. |
+
+Never sent, in any version: buyers, deposits, contact details. (Prices above are
+the exception, and only for the stage each belongs to.)
+
+> The tracker still sends version 2 and needs a change to send version 3 — see
+> `buildSnapshot()` in `apps/api/src/modules/website-sync/website-snapshot.ts`
+> there. Until it does, `leasePrice` and `salePrice` flow for units on the market
+> (from `askingRent` / `askingPrice`); a let unit's lease price and a sold unit's
+> sold price stay blank. Deploy the website first.
 
 ### Who owns which field
 
 | Field on a website unit row | Owner |
 |---|---|
-| `label`, `status`, `trackerUnitIds` | Tracker |
-| `size` | Tracker when it has a sqft; otherwise the website's value stays |
-| `tenant` | Tracker for leased units; cleared when a unit becomes available. When every unit of the row is LEASE_PENDING (the sitting tenant is leaving), cleared only if it is the name the sync last sent (`tracker.occupant`) — a tenant typed in the CMS stays. **Left alone on sold units** |
-| `tracker` (sub-object) | Tracker only: `ids`, `unitNumber`, `status` (the tracker's own), `sqft`, `unitType`, `availableSince`, `occupant` (what the sync sent as the tenant), `syncedAt`. Nothing reads it yet; the top-level fields above are still written exactly as before, so the public site and the CMS are unaffected. `syncedAt` is when these values last changed, not the last push. |
-| `images`, `description`, `x`/`y`, `logo`, `rate`, `floor`, `frontage`, `tenantUrl`, `tenantCategory`, `facingRoad` | Website |
+| `label`, `trackerUnitIds` | Tracker, always. The label is how a unit is matched to its tracker units and its 3D shape, so a renumbering is made in the tracker. |
+| `status` | **Fed** by the tracker (see "Fed fields" below) |
+| `size` | **Fed**, when the tracker has a sqft; otherwise the website's value stays |
+| `tenant` | **Fed** for leased units; cleared when a unit becomes available. When every unit of the row is LEASE_PENDING (the sitting tenant is leaving), cleared only if it is the name the sync last sent (`tracker.occupant`) — a tenant typed in the CMS stays. **Left alone on sold units** |
+| `leasePrice`, `salePrice`, `soldPrice` | **Fed**, only where the tracker sends a figure for the unit's stage; never blanked (see "Prices") |
+| `tracker` (sub-object) | Tracker only: `ids`, `unitNumber`, `status` (the tracker's own), `sqft`, `unitType`, `availableSince`, `occupant` (what the sync sent as the tenant), `values` (what the tracker says each fed field should be, in the website's terms), `syncedAt`. The admin reads `values`; the public site reads none of it. `syncedAt` is when these values last changed, not the last push. |
+| `trackerSync`, `trackerOverrides` | The editor's, per unit — see "Fed fields". Never public. |
+| `images`, `description`, `x`/`y`, `logo`, `rate` (older free text), `clearHeight`, `frontage`, `tenantUrl`, `tenantCategory`, `facingRoad` | Website. `clearHeight` replaced `floor` on the unit page; rows still carry `floor`, unread. |
 | `hidden` | Website. `true` is the CMS's "Show on website" switched off: the public API drops the unit (public-property.ts). Carried over every sync; a row made by splitting or combining a hidden row starts hidden. A row the tracker removes takes the flag with it |
+
+#### Fed fields: the tracker's unless the editor says otherwise
+
+`status`, `size`, `tenant`, `leasePrice`, `salePrice` and `soldPrice`
+(`TRACKED_FIELDS` in `tracker-merge.ts` and `unitChecks.js`) follow the tracker
+by default. Per unit, the editor can:
+
+- **Switch the tracker off** (`trackerSync: false`, "Get this unit's data from
+  Prime Tracker" in the unit form). The sync still keeps the unit linked, so a
+  renumbering, split or combine carries its photographs, and still records what
+  the tracker says under `row.tracker.values` — but writes none of the fed
+  fields, reports no status change, and the headline counts use the website's
+  status.
+- **Change one field.** The admin works out which fed fields now differ from
+  `tracker.values` on every edit and saves them as `trackerOverrides`; the sync
+  leaves those alone and updates the rest. Changing a field back to the
+  tracker's value makes it follow again.
+- **Replace their edits** (the "Replace my edits with the tracker's data"
+  checkbox): the form puts every fed field back to `tracker.values` and clears
+  the list, so the next push finds nothing to change.
+
+#### Prices
+
+`leasePrice` is per sq ft per **year** (the tracker quotes per month; the website
+multiplies by 12 — the site has always quoted `$28 / SF / yr`); `salePrice` and
+`soldPrice` are totals. A figure is written only when the tracker sends one for
+the unit's stage: `askingRent` / `askingPrice` while on the market, `leaseRent`
+for a let unit, `soldPrice` for a sold one. A row of units let or sold together
+gets one lease price when they agree, and a total when every unit is priced.
+Nothing is ever blanked: a stage the tracker has no figure for leaves the
+website's value.
+
+The public API sends them by status (`toPublicUnit()` in `public-property.ts`):
+lease and sale prices while the unit is available or coming soon; a leased
+unit's lease price and a sold unit's sold price only when the unit's
+`publishRate` is ticked; a price outside its stage (a leased unit's old sale
+price) never.
 
 On each matched building the sync writes `trackerBuildingId` (the mapping, see
 below), `units`, `available` and a `tracker` sub-object (`id`, `name`, `totalSqft`,

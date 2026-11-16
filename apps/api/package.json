@@ -8,7 +8,7 @@
     "build": "nest build",
     "start": "node dist/main",
     "start:prod": "node dist/main",
-    "lint": "echo \"(no linter configured for api yet)\"",
+    "lint": "oxlint src test",
     "test": "TS_NODE_TRANSPILE_ONLY=1 node --test --require ts-node/register test/*.test.ts",
     "prisma": "prisma",
     "db:pull": "prisma db pull && prisma generate",
@@ -31,12 +31,12 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0",
     "helmet": "^7.1.0",
-    "multer": "^2.0.2",
+    "multer": "^2.5.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.1",
     "rxjs": "^7.8.0",
-    "sharp": "^0.34.5"
+    "sharp": "^0.35.5"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.3.0",
@@ -46,6 +46,7 @@
     "@types/multer": "^2.0.0",
     "@types/node": "^20.10.0",
     "@types/passport-jwt": "^4.0.1",
+    "oxlint": "^1.76.0",
     "prisma": "^5.8.0",
     "ts-node": "^10.9.0",
     "typescript": "^5.3.0"

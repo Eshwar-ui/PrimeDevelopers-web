@@ -50,8 +50,13 @@ export const PUBLIC_COLUMNS = [
  * The unit-row fields some public component reads — the unit card and page,
  * the unit list and comparison, the 2D pin plan, the 3D viewer, the rent roll.
  * `makeUnit()` in apps/web/src/lib/units.js names the CMS's side of them.
- * Left out: `trackerUnitIds` and the `tracker` sub-object (ids, occupant,
- * availableSince), the two opt-in flags below, and `hidden` (WITHHELD_UNIT_FIELDS).
+ * Left out: `trackerUnitIds`, the `tracker` sub-object (ids, occupant,
+ * availableSince, what the tracker last said), `trackerSync` and
+ * `trackerOverrides`, the two opt-in flags below, and `hidden`
+ * (WITHHELD_UNIT_FIELDS). `floor` went when the unit page swapped it for
+ * `clearHeight`; rows still carry it, unread.
+ *
+ * The price fields are filtered by status in toPublicUnit(), not here.
  */
 export const PUBLIC_UNIT_FIELDS = [
   'label',
@@ -60,8 +65,11 @@ export const PUBLIC_UNIT_FIELDS = [
   'tenantUrl',
   'tenantCategory',
   'size',
-  'floor',
+  'clearHeight',
   'rate',
+  'leasePrice',
+  'salePrice',
+  'soldPrice',
   'frontage',
   'description',
   'x',
@@ -105,9 +113,27 @@ const TENANT_PUBLIC = new Set(['', 'available', 'coming-soon', 'leased']);
 const RATE_PUBLIC = new Set(['', 'available', 'coming-soon']);
 
 /**
+ * The structured prices, and the statuses each one means something in: a lease
+ * price is what a space is offered at or let for, a sale price is an offer, a
+ * sold price is what a sale closed at. A figure outside its statuses is stale
+ * (a leased unit's old sale price) and never goes out, opt-in or not.
+ *
+ * Within those, only an offer is public without an opt-in. What a let or sold
+ * space went for is commercially sensitive, so the unit's `publishRate` — the
+ * same switch that publishes the legacy `rate` — has to be ticked. A status
+ * this file does not know has no price at all.
+ */
+const OFFER = new Set(['', 'available', 'coming-soon']);
+const PRICE_STATUSES = {
+  leasePrice: new Set(['', 'available', 'coming-soon', 'leased']),
+  salePrice: new Set(['', 'available', 'coming-soon']),
+  soldPrice: new Set(['sold']),
+} as const;
+
+/**
  * The CMS's opt-ins, set per unit. `publishTenant` publishes a sold unit's
  * occupant (an owner-occupier's trading name, say); `publishRate` publishes
- * the rate of a leased or sold unit. Only a literal `true` counts.
+ * the rate and prices of a leased or sold unit. Only a literal `true` counts.
  */
 export const OPT_IN = { tenant: 'publishTenant', rate: 'publishRate' } as const;
 
@@ -115,10 +141,14 @@ export function toPublicUnit(unit: unknown): Row {
   if (!isObject(unit)) return {};
   const out = pick(unit, PUBLIC_UNIT_FIELDS);
   const status = String(unit.status ?? '').trim();
+  const optedIn = unit[OPT_IN.rate] === true;
   if (!TENANT_PUBLIC.has(status) && unit[OPT_IN.tenant] !== true) {
     for (const key of TENANT_FIELDS) delete out[key];
   }
-  if (!RATE_PUBLIC.has(status) && unit[OPT_IN.rate] !== true) delete out.rate;
+  if (!RATE_PUBLIC.has(status) && !optedIn) delete out.rate;
+  for (const [field, statuses] of Object.entries(PRICE_STATUSES)) {
+    if (!statuses.has(status) || (!OFFER.has(status) && !optedIn)) delete out[field];
+  }
   return out;
 }
 

@@ -1,9 +1,10 @@
 import { useEffect, useMemo } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
+import { ArrowSquareOut } from '@phosphor-icons/react'
 import { useProperty, usePropertiesLoaded } from '../context/ContentContext'
 import { sized } from '../lib/images'
 import { STATUS_COPY, TENANTED, unitStatusMeta } from '../lib/unitStatus'
-import { findUnitBySlugs, formatArea, formatUnitLabel, getUnitImages, getUnits, unitPath } from '../lib/units'
+import { findUnitBySlugs, formatArea, formatClearHeight, formatUnitLabel, getUnitImages, getUnits, unitPath, unitPrices } from '../lib/units'
 import PrimePill from '../components/PrimePill'
 import { TenantBlock, UnitGallery, UnitLabel } from '../components/UnitDetailCard'
 import { useCapListings } from '../components/CapListings'
@@ -50,11 +51,14 @@ export default function UnitPage() {
   const tenant = String(unit.tenant ?? '').trim()
   const images = getUnitImages(unit)
   const area = formatArea(unit.size)
+  // Prices are whatever the API sent — see UnitDetailCard.
+  const prices = unitPrices(unit)
   const specs = [
     ['Size', area],
-    ['Floor', unit.floor],
-    // Published only while it is still an offer — see UnitDetailCard.
-    isTenanted ? null : ['Rate', unit.rate],
+    ['Lease price', prices.lease],
+    ['Sale price', prices.sale],
+    ['Sold price', prices.sold],
+    ['Clear height', formatClearHeight(unit.clearHeight)],
     ['Frontage', unit.frontage],
   ].filter((row) => row && row[1])
 
@@ -89,7 +93,13 @@ export default function UnitPage() {
           <div className="mt-8 grid gap-10 lg:grid-cols-12 lg:gap-14">
             <div className="lg:col-span-7">
               {images.length > 0 ? (
-                <UnitGallery images={images} label={unit.label} />
+                // One fixed 3:2 frame, the shape most of these storefront
+                // photographs are taken at. The frame used to take each
+                // photograph's own proportions, so stepping from a landscape
+                // shot to a portrait one resized the frame and shifted the
+                // whole column. Each photograph is still shown whole inside
+                // it; a portrait one sits over a soft fill of itself.
+                <UnitGallery images={images} label={unit.label} frameClassName="aspect-[3/2] w-full" />
               ) : (
                 // No photographs of this space yet. The property's own photo
                 // stands in, captioned as what it is rather than passed off
@@ -177,18 +187,43 @@ export default function UnitPage() {
             {building.planImage && (
               <div className={neighbours.length ? 'lg:col-span-7' : 'lg:col-span-12'}>
                 <p className="eyebrow font-body text-[13px] text-content/60">{building.building} plan</p>
-                <div className="relative mt-5 overflow-hidden rounded-2xl border border-line bg-surface-alt">
-                  <img src={sized(building.planImage, 'card')} alt={`${building.building} floor plan`} loading="lazy" className="block w-full" />
-                  {hasPin && (
-                    <span
-                      aria-label={`Unit ${label}`}
-                      style={{ left: `${unit.x}%`, top: `${unit.y}%` }}
-                      className="absolute flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-accent px-2.5 py-1 font-body text-[12px] font-bold text-white shadow-lg ring-4 ring-accent/30"
-                    >
-                      {label}
-                    </span>
-                  )}
+                {/* Capped in height and centred, rather than as wide as the
+                    column. Plans are drawn at every shape, and a square one at
+                    full width came out over a thousand pixels tall on a
+                    building with no neighbours to share the row. The frame
+                    stays the column's width; the drawing sits inside it at a
+                    size that fits on screen, and the full-size file is one
+                    click away for anyone who wants to read the dimensions. */}
+                <div className="mt-5 rounded-2xl border border-line bg-surface-alt p-4 md:p-6">
+                  {/* Shrink-wrapped to the drawing, so the pin's percentages
+                      are percentages of the plan and not of the frame. */}
+                  <div className="relative mx-auto w-fit max-w-full">
+                    <img
+                      src={sized(building.planImage, 'card')}
+                      alt={`${building.building} floor plan`}
+                      loading="lazy"
+                      className="block h-auto max-h-[min(70dvh,36rem)] w-auto max-w-full rounded-lg"
+                    />
+                    {hasPin && (
+                      <span
+                        aria-label={`Unit ${label}`}
+                        style={{ left: `${unit.x}%`, top: `${unit.y}%` }}
+                        className="absolute flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-accent px-2.5 py-1 font-body text-[12px] font-bold text-white shadow-lg ring-4 ring-accent/30"
+                      >
+                        {label}
+                      </span>
+                    )}
+                  </div>
                 </div>
+                <a
+                  href={building.planImage}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group mt-3 inline-flex min-h-11 items-center gap-2 font-body text-[13px] font-semibold text-accent underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+                >
+                  Open the full-size plan
+                  <ArrowSquareOut aria-hidden weight="bold" className="size-4" />
+                </a>
               </div>
             )}
 

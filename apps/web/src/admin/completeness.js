@@ -1,6 +1,6 @@
 // What a unit or building still needs before its public card reads as finished.
 // Pure, so the chip row, the summary strip and the tests all agree.
-import { siteLinkedUnits, trackerOwnedFields, unitPlacement } from './unitChecks.js'
+import { isTrackerUnit, siteLinkedUnits, unitFed, unitPlacement } from './unitChecks.js'
 import { TENANTED } from '../lib/unitStatus.js'
 
 const blank = (value) => !String(value ?? '').trim()
@@ -14,15 +14,23 @@ export const STATUS_WORDS = {
   'coming-soon': { short: 'Coming soon', long: 'Coming soon' },
 }
 
-/** Field names a unit is still missing. Tracker-owned fields are skipped — the editor can't fill them. */
+// A price of any kind. A unit needs one to read as finished, but which one
+// depends on its stage — a lease price while it is for lease, a sold price once
+// sold — so any of the three (or the older free-text rate) will do.
+const hasPrice = (unit) => [unit?.leasePrice, unit?.salePrice, unit?.soldPrice, unit?.rate].some((value) => !blank(value))
+
+/**
+ * Field names a unit is still missing. What the tracker will fill in on its
+ * next sync is skipped — the editor would only be typing over it — and so is
+ * the label of a tracker unit, which is the tracker's alone to change.
+ */
 export function unitMissing(unit) {
-  const owned = trackerOwnedFields(unit)
   const missing = []
-  if (!owned.label && blank(unit?.label)) missing.push('Label')
-  if (!owned.size && blank(unit?.size)) missing.push('Size')
-  if (blank(unit?.floor)) missing.push('Floor / level')
-  if (blank(unit?.rate)) missing.push('Lease rate / price')
-  if (TENANTED.has(unit?.status) && blank(unit?.tenant)) missing.push('Tenant')
+  if (!isTrackerUnit(unit) && blank(unit?.label)) missing.push('Label')
+  if (!unitFed(unit, 'size') && blank(unit?.size)) missing.push('Size')
+  if (blank(unit?.clearHeight)) missing.push('Clear height')
+  if (!hasPrice(unit) && !unitFed(unit, 'leasePrice') && !unitFed(unit, 'salePrice')) missing.push('Price')
+  if (TENANTED.has(unit?.status) && !unitFed(unit, 'tenant') && blank(unit?.tenant)) missing.push('Tenant')
   if (!(unit?.images ?? []).some((url) => !blank(url))) missing.push('Photograph')
   if (blank(unit?.description)) missing.push('Description')
   return missing

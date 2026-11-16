@@ -29,25 +29,38 @@ if [ -z "$MASTER" ] || [ "$MASTER" = REPLACE_ME ]; then
 fi
 # Prisma's URL may carry ?schema=…&connection_limit=…, which psql rejects.
 MASTER="${MASTER%%\?*}?sslmode=require"
+# Every connection URL here carries a password, and psql's command line is readable
+# by any user on the host through ps (security audit L7). pg() strips the password
+# out of the URL (user and host are not secret) and hands it over in PGPASSWORD,
+# percent-decoded, which ps does not show.
+pg() {
+  local url="$1"; shift
+  local pw bare
+  pw=$(printf '%s' "$url" | sed -nE 's#^[a-z]+://[^:/@]+:([^@]*)@.*#\1#p')
+  bare=$(printf '%s' "$url" | sed -E 's#^([a-z]+://[^:/@]+):[^@]*@#\1@#')
+  PGPASSWORD="$(printf '%b' "${pw//%/\\x}")" psql "$bare" "$@"
+}
 PGPASSWORD_WEB=$(aws ssm get-parameter --name /prime-tracker/website/DB_PASSWORD --with-decryption \
   --region us-east-1 --query Parameter.Value --output text)
 
-has_role=$(psql "$MASTER" -XAtc "select 1 from pg_roles where rolname = 'prime_website'")
+has_role=$(pg "$MASTER" -XAtc "select 1 from pg_roles where rolname = 'prime_website'")
 if [ -z "$has_role" ]; then
-  # Through stdin, not -c: psql only expands :'pw' in script input, and this keeps
-  # the password off the process list.
-  printf "create role prime_website login password :'pw';\n" \
-    | psql "$MASTER" -X -q -v ON_ERROR_STOP=1 -v pw="$PGPASSWORD_WEB"
+  # The password goes in through stdin, not -v (which is on the command line).
+  # It is openssl rand -hex output (ensure_secret), so it needs no escaping; refuse
+  # anything else rather than quote it wrong.
+  [[ "$PGPASSWORD_WEB" =~ ^[A-Za-z0-9]+$ ]] || { echo "unexpected DB_PASSWORD format" >&2; exit 1; }
+  printf "\\set pw '%s'\ncreate role prime_website login password :'pw';\n" "$PGPASSWORD_WEB" \
+    | pg "$MASTER" -X -q -v ON_ERROR_STOP=1
   echo "role prime_website created"
 else
   echo "role prime_website exists"
 fi
 
-has_db=$(psql "$MASTER" -XAtc "select 1 from pg_database where datname = 'prime_website'")
+has_db=$(pg "$MASTER" -XAtc "select 1 from pg_database where datname = 'prime_website'")
 if [ -z "$has_db" ]; then
   # RDS's master is not a superuser: it must be a member of a role to create a
   # database owned by it.
-  psql "$MASTER" -X -v ON_ERROR_STOP=1 \
+  pg "$MASTER" -X -v ON_ERROR_STOP=1 \
     -c "grant prime_website to current_user" \
     -c "create database prime_website owner prime_website" \
     -c "revoke connect on database prime_website from public" \
@@ -58,6 +71,6 @@ else
 fi
 
 HOST=$(echo "$MASTER" | sed -E 's#^[a-z]+://[^@]+@([^:/?]+).*#\1#')
-psql "postgresql://prime_website:${PGPASSWORD_WEB}@${HOST}:5432/prime_website?sslmode=require" -XAtc \
+pg "postgresql://prime_website:${PGPASSWORD_WEB}@${HOST}:5432/prime_website?sslmode=require" -XAtc \
   "select 'connected as ' || current_user || ' to ' || current_database() || ', postgres ' || current_setting('server_version')"
 REMOTE

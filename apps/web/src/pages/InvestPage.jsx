@@ -6,9 +6,61 @@ import { useGSAP } from '@gsap/react'
 import { useSection } from '../context/ContentContext'
 import QuoteForm from '../components/QuoteForm'
 import Testimonials from '../components/Testimonials'
-import { useCapListings, CapListingGrid } from '../components/CapListings'
+import { useCapListings, useCapListingsSection, CapListingGrid } from '../components/CapListings'
+import CapCalculator from '../components/CapCalculator'
 import { lenis } from '../hooks/useSmoothScroll'
 import { sized } from '../lib/images'
+import { calculatorSettings, canRunNumbers, capDealName as dealName, capScenarioContext } from '../lib/capCalculator'
+import { capStatus } from '../lib/capListings'
+
+const wholeDollars = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+
+/**
+ * Which CAP deal the calculator runs. A native select: seventeen options is a
+ * list, and the platform's own picker is the one that works with a thumb, a
+ * screen reader and the keyboard without any of it being rebuilt here.
+ */
+function DealPicker({ listings, value, onChange }) {
+  const selected = listings.find((l) => l.slug === value)
+  return (
+    <div>
+      <label htmlFor="invest-calculator-deal" className="font-body text-[11px] font-bold uppercase tracking-[0.15em] text-content/55">
+        CAP deal
+      </label>
+      <div className="relative mt-2.5">
+        <select
+          id="invest-calculator-deal"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="min-h-12 w-full appearance-none rounded-2xl border border-line bg-surface py-3 pl-4 pr-11 font-display text-[16px] font-semibold sm:text-[15px] text-content transition-colors duration-200 hover:border-content/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          {listings.map((l) => (
+            <option key={l.slug} value={l.slug}>
+              {dealName(l)}
+              {l.status === 'under-contract' ? ` (${capStatus(l.status).label.toLowerCase()})` : ''}
+            </option>
+          ))}
+        </select>
+        <span aria-hidden className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-content/50">
+          ▾
+        </span>
+      </div>
+      {selected && (
+        <p className="mt-2.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 font-body text-[13px] text-content/60">
+          <span className="tabular-nums">
+            {wholeDollars.format(selected.price)} · {wholeDollars.format(selected.rent)} rent a year
+          </span>
+          <Link
+            to={`/cap-properties/${selected.slug}`}
+            className="font-semibold text-accent underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          >
+            View deal →
+          </Link>
+        </p>
+      )}
+    </div>
+  )
+}
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -88,6 +140,31 @@ export default function InvestPage() {
   ].filter(([, value]) => value)
 
   const capListings = useCapListings()
+
+  // The calculator runs any deal a visitor could still buy into — the same
+  // rule as the deal pages, so no deal is runnable here and not there.
+  const capSection = useCapListingsSection()
+  const runnable = useMemo(() => {
+    const settings = calculatorSettings(capSection.calculator)
+    return capListings.filter((l) => canRunNumbers(l, settings))
+  }, [capListings, capSection])
+  const [calcSlug, setCalcSlug] = useState('')
+  const calcListing = runnable.find((l) => l.slug === calcSlug) ?? runnable[0] ?? null
+
+  // What the visitor ran, for the inquiry form. Only once they have changed
+  // the deal or a loan choice: attaching the opening defaults would tell
+  // sales about a scenario nobody looked at.
+  const [calcNumbers, setCalcNumbers] = useState(null)
+  const [calcTouched, setCalcTouched] = useState(false)
+  const scenario = calcTouched ? capScenarioContext(calcListing, calcNumbers) : null
+
+  const scrollToInquire = (event) => {
+    event.preventDefault()
+    const target = document.getElementById('inquire')
+    if (!target) return
+    if (lenis.current) lenis.current.scrollTo(target, { offset: -90 })
+    else target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   const extraFields = useMemo(
     () => [
@@ -207,6 +284,33 @@ export default function InvestPage() {
         </div>
       </section>
 
+      {/* After the deals rather than before them: a visitor arrives here having
+          seen the prices and cap rates, and the next question is what one of
+          them would cost to carry. `#calculator` is linkable. */}
+      {calcListing && (
+        <CapCalculator
+          id="calculator"
+          className="border-t border-line"
+          listing={calcListing}
+          section={capSection}
+          heading="Run the numbers on a CAP deal"
+          intro="Choose a deal, a rate and a loan term. Every figure uses that deal’s price and rent, and the same formulas as our loan price sheet."
+          picker={
+            <DealPicker
+              listings={runnable}
+              value={calcListing.slug}
+              onChange={(slug) => {
+                setCalcSlug(slug)
+                setCalcTouched(true)
+              }}
+            />
+          }
+          cta={{ label: 'Ask about this deal', href: '#inquire', onClick: scrollToInquire }}
+          onNumbers={setCalcNumbers}
+          onUserChange={() => setCalcTouched(true)}
+        />
+      )}
+
       <Testimonials sectionKey="invest_testimonials" id="invest-testimonials" />
 
       <section id="inquire" data-band="light" data-reveal className="px-gutter py-20 md:py-28">
@@ -236,13 +340,32 @@ export default function InvestPage() {
                 </button>
               ))}
             </div>
+            {/* Said out loud, with a way out: the form is about to send
+                something the visitor did not type into it. */}
+            {scenario && (
+              <p className="mt-5 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-line pt-5 font-body text-[13px] text-content/65">
+                <span>
+                  Sent with your inquiry:{' '}
+                  <span className="font-semibold text-content">
+                    {scenario.calculatorDeal} · {scenario.calculatorPrice} · {scenario.calculatorTerms}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setCalcTouched(false)}
+                  className="min-h-11 font-semibold text-accent underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:min-h-0"
+                >
+                  Don&apos;t include
+                </button>
+              </p>
+            )}
           </div>
           <QuoteForm
             source="invest"
             eyebrow="Investor inquiry"
             heading="Request investor information"
             description="Tell us a bit about what you're looking for, and our investor relations team will follow up."
-            context={{ track: TRACKS.find((t) => t.id === track)?.name || 'Both / not sure yet' }}
+            context={{ track: TRACKS.find((t) => t.id === track)?.name || 'Both / not sure yet', ...scenario }}
             extraFields={extraFields}
             messageLabel="Anything else we should know?"
             messagePlaceholder="Questions, background, or specific properties you're interested in"

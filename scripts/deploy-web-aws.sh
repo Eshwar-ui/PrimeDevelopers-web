@@ -47,6 +47,12 @@ if grep -rqE "localhost:(3001|5173|5174)|onrender\.com|nrtqntqutquapydsnjbm" "$D
   exit 1
 fi
 
+# robots.txt and sitemap.xml. The CloudFront host is a staging copy of the real
+# domain, so seo-assets.mjs gives it a robots.txt that disallows everything and an
+# empty sitemap; on theprimedeveloper.com it lists the published properties and
+# posts. Both have extensions, so website_spa serves them as files.
+node "$(dirname "$0")/seo-assets.mjs" --site "$SITE" --api "$SITE" --out "$DIST"
+
 # The site's CSP allows inline scripts by hash (website_inline_script_hashes in
 # prime-tracker-main/infra/terraform/website.tf). While the policy is report-only a
 # build the header doesn't know still works, but every page view reports a

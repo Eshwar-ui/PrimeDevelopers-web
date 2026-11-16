@@ -1,7 +1,8 @@
 // Write robots.txt and sitemap.xml into the build, from the content the site
 // is actually publishing.
 //
-// Run after `vite build` and before the S3 sync — deploy-web-aws.sh does both.
+// Run after `vite build` and before the S3 sync. deploy-web-aws.sh does both
+// (wired in 16 Nov 2026; before that the header claimed it and robots.txt 403'd).
 // Neither file can be a checked-in static asset:
 //
 //   * robots.txt has to say opposite things on the two hosts. The CloudFront

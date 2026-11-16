@@ -1,6 +1,9 @@
 # Deployment Plan — Frontend on Firebase, Backend on Render
 
 > ### ⛔ Superseded (25 Oct 2026): the website is on AWS only
+> **16 Nov 2026:** the Render API is deleted and `render.yaml` is removed from the repo. Everything
+> below about Render is history.
+>
 > Firebase Hosting is retired: all three sites are disabled and `firebase.json` is
 > gone. The site deploys with `scripts/deploy-web-aws.sh` (`pnpm run deploy:web`), and
 > its API runs on AWS beside Prime Tracker. A `firebase deploy` from this document

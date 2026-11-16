@@ -23,8 +23,8 @@ import { CspModule } from './modules/csp/csp.module';
      * Environment: local files in development, real process variables in
      * production.
      *
-     * On Render none of these files exist — the values are set in the dashboard
-     * (see render.yaml) and arrive as real process variables. dotenv never
+     * In production the deploy (scripts/aws/02-deploy-api.sh) supplies the
+     * values from SSM as real process variables. dotenv never
      * overwrites a variable that is already set, so a stray file could not
      * shadow them even if one were deployed.
      *

@@ -47,7 +47,7 @@ yarn.lock
 !apps/web/.env.development
 
 # The API's secrets stay out: apps/api/.env is local-only and production lives
-# in the Render dashboard (render.yaml, `sync: false`). Both are covered by the
+# on the EC2 host, written by scripts/aws/02-deploy-api.sh from SSM. Both are covered by the
 # deny-by-default above — do not add a negation for them.
 
 # Supabase local dev

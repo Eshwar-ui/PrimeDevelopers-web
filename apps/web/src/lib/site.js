@@ -1,9 +1,9 @@
 // The public identity of the site, for anything written into <head>.
 //
 // Canonicals and structured data always name the production origin, whichever
-// host is serving the build. theprimedeveloper.com still serves the 2023 site
-// (see render.yaml); this app runs on the CloudFront and Firebase copies until
-// the domain moves over, and those copies must not compete with it in search.
+// host is serving the build. theprimedeveloper.com still serves the 2023 site;
+// this app runs on the CloudFront copy until the domain moves over, and that
+// copy must not compete with it in search.
 
 export const SITE_ORIGIN = (import.meta.env.VITE_SITE_ORIGIN || 'https://theprimedeveloper.com').replace(/\/$/, '')
 

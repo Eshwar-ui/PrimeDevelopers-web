@@ -103,8 +103,11 @@ as_app pnpm exec prisma generate 2>&1 | tail -1
 # The AWS database was created with \`db push\` before migrations existed. If its
 # tables are there but Prisma's ledger is not, record the baseline as applied
 # instead of trying to create everything again.
-has_ledger=\$(psql "\$DB_URL" -XAtc "select to_regclass('public._prisma_migrations') is not null")
-has_tables=\$(psql "\$DB_URL" -XAtc "select to_regclass('public.properties') is not null")
+# The password in PGPASSWORD, not in the URL on psql's command line, where ps on
+# this shared host would show it (security audit L7).
+DB_PSQL_URL="postgresql://prime_website@\${DB_HOST}:5432/prime_website?sslmode=require"
+has_ledger=\$(PGPASSWORD="\$(param DB_PASSWORD)" psql "\$DB_PSQL_URL" -XAtc "select to_regclass('public._prisma_migrations') is not null")
+has_tables=\$(PGPASSWORD="\$(param DB_PASSWORD)" psql "\$DB_PSQL_URL" -XAtc "select to_regclass('public.properties') is not null")
 if [ "\$has_ledger" = f ] && [ "\$has_tables" = t ]; then
   as_app pnpm exec prisma migrate resolve --applied 0_init 2>&1 | tail -1
   as_app pnpm exec prisma migrate resolve --applied 1_updated_at_triggers 2>&1 | tail -1

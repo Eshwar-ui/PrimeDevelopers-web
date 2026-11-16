@@ -1,3 +1,5 @@
+> **Done and archived 16 Nov 2026:** all four tasks landed (see tasks/audit-2026-11-15/plan.md, Open Question 6).
+
 # Implementation Plan: Local dev setup that works on a fresh clone
 
 ## Overview
@@ -17,15 +19,15 @@ when its own `.env` is missing.
 - API secrets stay out of git. Local API needs its own dev database (not prod).
 
 ## Task List
-- [ ] Task 1: Un-ignore + restore apps/web/.env.development; pin dev port
-- [ ] Task 2: Fix apps/web/.env.example and apps/api/.env.example
-- [ ] Task 3: README "Local setup" section
-- [ ] Task 4: API fails fast with a clear message when required env is missing
+- [x] Task 1: Un-ignore + restore apps/web/.env.development; pin dev port
+- [x] Task 2: Fix apps/web/.env.example and apps/api/.env.example
+- [x] Task 3: README "Local setup" section
+- [x] Task 4: API fails fast with a clear message when required env is missing
 
 ### Checkpoint
-- [ ] `git check-ignore` shows .env.development tracked-able, apps/api/.env still ignored
-- [ ] Vite dev with no personal env proxies /api to the deployed API
-- [ ] API without DATABASE_URL exits with a readable message; API build passes
+- [x] `git check-ignore` shows .env.development tracked-able, apps/api/.env still ignored
+- [x] Vite dev with no personal env proxies /api to the deployed API
+- [x] API without DATABASE_URL exits with a readable message; API build passes
 
 ## Risks and Mitigations
 | Risk | Impact | Mitigation |

@@ -93,3 +93,9 @@ pow-lewisville-web-photos/
 pow-lewisville*-content-backup-*.json
 tmp/*.preview.json
 tmp/uploads-*.json
+
+# Data backups and client source documents (backup JSONs from the update-*.mjs
+# scripts, the .docx page packs). Kept on the developer's machine, never in git.
+/archive/
+/*-backup-*.json
+/*.docx

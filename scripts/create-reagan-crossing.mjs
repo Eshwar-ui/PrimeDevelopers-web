@@ -1,5 +1,5 @@
 // Create the two Reagan Crossing property records from
-// Reagan_Crossing_SEO_AEO_GEO_Page_Pack.docx (repo root) — they do not exist
+// Reagan_Crossing_SEO_AEO_GEO_Page_Pack.docx (archive/, gitignored) — they do not exist
 // in the CMS yet. Confirmed by listing every record through
 // GET /admin/properties on 2026-11-05: six properties, none named Reagan
 // Crossing, published or not.

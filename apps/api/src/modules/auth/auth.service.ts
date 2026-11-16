@@ -5,6 +5,7 @@ import { randomBytes, createHash } from 'node:crypto';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LoginAttempts, LOCKOUT } from './login-attempts';
+import { JWT_AUDIENCE, SESSION_MAX_MS, jwtIssuer, sessionDeadline, withDeadline } from './token-claims';
 
 /**
  * A bcrypt hash of nothing in particular, compared against when no user
@@ -60,7 +61,7 @@ export class AuthService {
     }
 
     this.attempts.succeed(key);
-    return this.issue(user.id, user.email);
+    return this.issue(user.id, user.email, Date.now() + SESSION_MAX_MS);
   }
 
   /**
@@ -93,6 +94,10 @@ export class AuthService {
     }
     if (row.expiresAt < now) throw new UnauthorizedException('Invalid or expired refresh token');
 
+    // Past the session's absolute limit: sign in again, however recently used.
+    const deadline = sessionDeadline(refreshToken, now.getTime());
+    if (deadline <= now.getTime()) throw new UnauthorizedException('Session expired, please sign in again');
+
     // Revoke-if-still-live in one statement. Two concurrent refreshes with the same
     // token used to both pass the check above and both get new tokens; now only
     // the one that flips the row wins.
@@ -102,7 +107,7 @@ export class AuthService {
     });
     if (count !== 1) throw new UnauthorizedException('Invalid or expired refresh token');
 
-    return this.issue(row.user.id, row.user.email);
+    return this.issue(row.user.id, row.user.email, deadline);
   }
 
   /**
@@ -118,20 +123,23 @@ export class AuthService {
     });
   }
 
-  private async issue(userId: string, email: string): Promise<TokenPair> {
+  private async issue(userId: string, email: string, deadline: number): Promise<TokenPair> {
     const accessToken = await this.jwt.signAsync(
       { sub: userId, email },
       {
         secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET'),
         expiresIn: this.config.get<string>('JWT_ACCESS_EXPIRY', '15m'),
+        issuer: jwtIssuer(),
+        audience: JWT_AUDIENCE,
       },
     );
 
     // Opaque random token rather than a second JWT. The database row is the
     // source of truth for whether it is still valid, so a signature would add
     // nothing but another secret to leak.
-    const refreshToken = randomBytes(48).toString('base64url');
-    const ttlMs = parseDuration(this.config.get<string>('JWT_REFRESH_EXPIRY', '7d'));
+    // It carries the session's deadline (see token-claims), and never outlives it.
+    const refreshToken = withDeadline(randomBytes(48).toString('base64url'), deadline);
+    const ttlMs = Math.min(parseDuration(this.config.get<string>('JWT_REFRESH_EXPIRY', '7d')), deadline - Date.now());
 
     await this.prisma.websiteAdminRefreshToken.create({
       data: {

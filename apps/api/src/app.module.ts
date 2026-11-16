@@ -5,6 +5,7 @@ import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './common/health/health.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { MIN_JWT_SECRET_LENGTH } from './modules/auth/token-claims';
 import { NoStoreInterceptor } from './common/no-store.interceptor';
 import { THROTTLERS } from './common/throttle';
 import { AuthModule } from './modules/auth/auth.module';
@@ -17,6 +18,25 @@ import { UploadsModule } from './modules/uploads/uploads.module';
 import { TrackerSyncModule } from './modules/tracker-sync/tracker-sync.module';
 import { MediaModule } from './modules/media/media.module';
 import { CspModule } from './modules/csp/csp.module';
+
+/** Fail at startup with the variable names, instead of a Prisma stack trace. */
+export function validateEnv(config: Record<string, unknown>): Record<string, unknown> {
+  const missing = ['DATABASE_URL', 'JWT_ACCESS_SECRET'].filter((key) => !config[key]);
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing required environment variable(s): ${missing.join(', ')}. ` +
+        'Copy apps/api/.env.example to apps/api/.env and fill it in (see README "Local setup").',
+    );
+  }
+  const secret = String(config.JWT_ACCESS_SECRET);
+  if (secret.length < MIN_JWT_SECRET_LENGTH) {
+    throw new Error(
+      `JWT_ACCESS_SECRET is ${secret.length} characters; at least ${MIN_JWT_SECRET_LENGTH} are required. ` +
+        'Generate one with: openssl rand -hex 64',
+    );
+  }
+  return config;
+}
 
 @Module({
   imports: [
@@ -43,16 +63,7 @@ import { CspModule } from './modules/csp/csp.module';
       envFilePath: [`.env.${process.env.NODE_ENV || 'development'}`, '.env'],
       // Fail at startup with the variable names, instead of a Prisma stack trace
       // or a web app that only says "Could not reach the server".
-      validate: (config: Record<string, unknown>) => {
-        const missing = ['DATABASE_URL', 'JWT_ACCESS_SECRET'].filter((key) => !config[key]);
-        if (missing.length > 0) {
-          throw new Error(
-            `Missing required environment variable(s): ${missing.join(', ')}. ` +
-              'Copy apps/api/.env.example to apps/api/.env and fill it in (see README "Local setup").',
-          );
-        }
-        return config;
-      },
+      validate: validateEnv,
     }),
 
     // The per-minute default for every route, plus a daily window used only by

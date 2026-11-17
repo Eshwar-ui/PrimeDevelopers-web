@@ -221,8 +221,52 @@ export default function CollectionFilters({
 
   return (
     <div>
+      {/* ── The view ─────────────────────────────────────────────────────
+          Properties or units is the one choice that changes what everything
+          below is a list of, so it leads: the largest type in the block, set
+          as tabs on a rule rather than as a pill in the corner of the search
+          row, where it read as one more filter. The counts say how much is
+          behind each. Everything under it narrows *this* view. */}
+      {views.length > 1 && (
+        <div
+          role="group"
+          aria-label="Browse the collection by"
+          className="mb-8 flex gap-8 border-b border-[var(--color-line)] md:gap-12"
+        >
+          {views.map((v) => {
+            const active = v.id === view
+            return (
+              <button
+                key={v.id}
+                type="button"
+                aria-pressed={active}
+                onClick={() => onView(v.id)}
+                className={`relative -mb-px inline-flex min-h-14 items-center gap-3 pb-4 pt-2 font-display text-[1.5rem] font-bold tracking-[-0.02em] transition-colors duration-300 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent md:text-[2rem] ${
+                  active ? 'text-content' : 'text-content/60 hover:text-content'
+                }`}
+              >
+                {v.label}
+                <span
+                  className={`rounded-full px-2.5 py-1 font-body text-[13px] font-semibold tabular-nums leading-none transition-colors duration-300 ${
+                    active ? 'bg-accent text-white dark:text-void' : 'bg-content/8 text-content/70'
+                  }`}
+                >
+                  {viewCounts[v.id]}
+                </span>
+                <span
+                  aria-hidden
+                  className={`absolute inset-x-0 bottom-0 h-[3px] rounded-full bg-accent transition-opacity duration-300 ${
+                    active ? 'opacity-100' : 'opacity-0'
+                  }`}
+                />
+              </button>
+            )
+          })}
+        </div>
+      )}
+
       {/* ── The bar ──────────────────────────────────────────────────────
-          Scope over facets at a 12px interval: one object, two lines. */}
+          Search and availability over the facets at a 12px interval: one object, two lines. */}
       <div className="flex flex-col gap-3">
         {/* Scope. Anchored to both edges of the measure rather than huddled at
             the left of it — the field grows to its cap and the toggle is
@@ -236,36 +280,35 @@ export default function CollectionFilters({
             resultLabel={summary}
           />
 
-          {views.length > 1 && (
-            <div
-              role="group"
-              aria-label="Browse the collection by"
-              // Flush, not inset. A `p-1` well would make the control 8px
-              // taller than everything beside it, which on one line reads as a
-              // misalignment rather than as emphasis.
-              className="inline-flex shrink-0 rounded-full border border-[var(--color-line)] sm:ml-auto"
+          {/* The question most visitors arrive with, beside the search that
+            answers the other half of it, and given a control of its own
+            rather than a menu they have to read four options to get
+            through. Pushed to the far rail, where a switch is looked for. */}
+          <button
+            type="button"
+            role="switch"
+            aria-checked={onlyAvailable}
+            onClick={toggleAvailable}
+            className={`inline-flex min-h-11 shrink-0 items-center sm:ml-auto gap-2.5 rounded-full border px-4 font-body text-[13px] font-medium transition-colors duration-300 ${
+              onlyAvailable
+                ? 'border-[var(--color-status-available)] text-content'
+                : 'border-[var(--color-line)] text-content/70 hover:border-content/35 hover:text-content'
+            }`}
+          >
+            <span
+              aria-hidden
+              className={`relative h-5 w-9 rounded-full transition-colors duration-300 ${
+                onlyAvailable ? 'bg-[var(--color-status-available)]' : 'bg-content/25'
+              }`}
             >
-              {views.map((v) => {
-                const active = v.id === view
-                return (
-                  <button
-                    key={v.id}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => onView(v.id)}
-                    className={`min-h-11 rounded-full px-6 font-body text-[13px] font-bold uppercase tracking-[0.1em] transition-colors duration-300 ${
-                      active ? 'bg-accent text-white dark:text-void' : 'text-content/70 hover:text-content'
-                    }`}
-                  >
-                    {v.label}
-                    <Count className={active ? 'text-white dark:text-void' : 'text-content/65'}>
-                      {viewCounts[v.id]}
-                    </Count>
-                  </button>
-                )
-              })}
-            </div>
-          )}
+              <span
+                className={`absolute top-0.5 size-4 rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.35)] transition-[left] duration-300 ease-brand ${
+                  onlyAvailable ? 'left-[1.125rem]' : 'left-0.5'
+                }`}
+              />
+            </span>
+            Available only
+          </button>
         </div>
 
         {/* Facets, on one line: use on the left, state on the right, a hairline
@@ -372,35 +415,6 @@ export default function CollectionFilters({
                 ]}
               />
             )}
-
-            {/* The question most visitors arrive with, given a control of
-                its own rather than a menu they have to read four options to
-                get through. */}
-            <button
-              type="button"
-              role="switch"
-              aria-checked={onlyAvailable}
-              onClick={toggleAvailable}
-              className={`inline-flex min-h-11 shrink-0 items-center gap-2.5 rounded-full border px-4 font-body text-[13px] font-medium transition-colors duration-300 ${
-                onlyAvailable
-                  ? 'border-[var(--color-status-available)] text-content'
-                  : 'border-[var(--color-line)] text-content/70 hover:border-content/35 hover:text-content'
-              }`}
-            >
-              <span
-                aria-hidden
-                className={`relative h-5 w-9 rounded-full transition-colors duration-300 ${
-                  onlyAvailable ? 'bg-[var(--color-status-available)]' : 'bg-content/25'
-                }`}
-              >
-                <span
-                  className={`absolute top-0.5 size-4 rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.35)] transition-[left] duration-300 ease-brand ${
-                    onlyAvailable ? 'left-[1.125rem]' : 'left-0.5'
-                  }`}
-                />
-              </span>
-              Available only
-            </button>
           </div>
         </div>
       </div>

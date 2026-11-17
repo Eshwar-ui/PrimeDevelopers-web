@@ -5,6 +5,8 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { MediaStorage } from './modules/media/media-storage';
+import { noStoreForPrivatePaths } from './common/no-store.interceptor';
 
 async function bootstrap() {
   // `rawBody` keeps the request bytes beside the parsed body. The Prime Tracker
@@ -12,11 +14,11 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
   const config = app.get(ConfigService);
 
-  // Render injects PORT; fall back to 3001 so it doesn't collide with Vite on 5173.
+  // pm2 sets PORT (3002 on AWS); fall back to 3001 so it doesn't collide with Vite on 5173.
   const port = Number(process.env.PORT ?? config.get('API_PORT', 3001));
   const frontendUrl = config.get('FRONTEND_URL', 'http://localhost:5173');
 
-  // Behind Render's proxy, trust the first hop so req.ip is the real client
+  // Behind a proxy, trust the first hop so req.ip is the real client
   // rather than the proxy — without this, ThrottlerGuard buckets every request
   // under one IP and per-IP rate limiting silently does nothing. On AWS there
   // are two hops (CloudFront, then nginx), so TRUST_PROXY_HOPS=2 there; trusting
@@ -24,6 +26,11 @@ async function bootstrap() {
   app.set('trust proxy', Number(config.get('TRUST_PROXY_HOPS', 1)));
 
   app.use(helmet());
+
+  // no-store on everything admin, auth and upload, set before any guard runs so a
+  // 401 or 403 carries it too. NoStoreInterceptor covers the other non-public
+  // routes once the guard has let them through.
+  app.use(noStoreForPrivatePaths);
 
   // CSP violation reports (modules/csp) arrive as application/csp-report or
   // application/reports+json, which the default JSON parser ignores. A text parser,
@@ -37,8 +44,8 @@ async function bootstrap() {
   app.enableShutdownHooks();
 
   // An origin is compared byte for byte with the browser's Origin header, which
-  // never carries a space or a trailing slash. Both are easy to paste into the
-  // Render dashboard, and either one silently made that origin fail CORS.
+  // never carries a space or a trailing slash. Both are easy to paste into an
+  // env file, and either one silently made that origin fail CORS.
   const corsOrigins = String(config.get('CORS_ORIGINS', frontendUrl))
     .split(',')
     .map((origin) => origin.trim().replace(/\/+$/, ''))
@@ -52,6 +59,14 @@ async function bootstrap() {
   });
 
   app.setGlobalPrefix('api');
+
+  // Outside production, uploads land in a local folder (MediaStorage); serve it
+  // at /media, the same path CloudFront serves S3 media at, so stored URLs and
+  // the /api/img resizer behave the same locally. In production S3 serves /media.
+  const media = app.get(MediaStorage);
+  if (media.driver === 'local') {
+    app.useStaticAssets(media.localDir, { prefix: '/media/', fallthrough: true, index: false, dotfiles: 'deny' });
+  }
 
   app.useGlobalPipes(
     new ValidationPipe({

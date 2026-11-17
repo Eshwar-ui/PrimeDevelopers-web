@@ -4,11 +4,10 @@ import { api, clearTokens, getRefreshToken, refreshBody, restoreSession, setAuth
 const AuthContext = createContext(null)
 
 /**
- * Admin authentication against the API's JWT endpoints, replacing Supabase Auth.
+ * Admin authentication against the API's JWT endpoints.
  *
- * `session` keeps the same shape as the Supabase version — undefined while
- * resolving, null when signed out, an object when signed in — so RequireAuth
- * and LoginPage needed no changes.
+ * `session` is undefined while resolving, null when signed out, and an object
+ * when signed in; RequireAuth and LoginPage rely on those three states.
  *
  * `restoreError` is set when a stored session could not be checked because the
  * API was unreachable. `session` stays undefined then: the admin is neither in

@@ -963,16 +963,14 @@ export function ContentProvider({ children }) {
   }, [])
 
   // Signed-in admins read the admin endpoints, which include unpublished
-  // drafts; everyone else reads the public ones, which don't. Under Supabase
-  // this distinction was invisible — the same query returned different rows
-  // depending on the caller's RLS role. Making it explicit is the point: the
-  // admin list would otherwise silently lose its drafts, leaving unpublished
-  // properties uneditable.
+  // drafts; everyone else reads the public ones, which don't. The admin list
+  // would otherwise silently lose its drafts, leaving unpublished properties
+  // uneditable.
   const isAdmin = Boolean(session)
 
   const load = useCallback(async () => {
     const prefix = isAdmin ? '/admin' : ''
-    // Image URLs are rewritten to Supabase's transformer here, at the one point
+    // Image URLs are pointed at the API's resizer here, at the one point
     // every image enters the app, rather than at each of the ~30 <img> sites.
     // The admin is deliberately excluded: it edits the stored URL, and handing
     // it a derived one would save the transformed URL back into the CMS.

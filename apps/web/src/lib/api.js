@@ -1,10 +1,8 @@
 /**
  * Client for the Prime Developers API (apps/api).
  *
- * This is the browser's only data path. Nothing here talks to Supabase — the
- * anon key is gone from the app entirely. Image and model URLs still point at
- * Supabase's public buckets, but those are plain URLs in an <img>/loader and
- * need no credentials.
+ * This is the browser's only data path, and it holds no database credential.
+ * Image and model URLs are plain public URLs under the site's own /media.
  */
 
 const BASE = import.meta.env.VITE_API_BASE_URL

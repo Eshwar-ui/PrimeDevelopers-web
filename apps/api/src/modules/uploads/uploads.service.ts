@@ -1,5 +1,4 @@
 import { BadRequestException, Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { randomUUID } from 'node:crypto';
 import sharp from 'sharp';
 import { MediaStorage } from '../media/media-storage';
@@ -80,34 +79,7 @@ export async function assertContentMatches(kind: UploadKind, buffer: Buffer, con
 @Injectable()
 export class UploadsService {
   private readonly logger = new Logger(UploadsService.name);
-  private client: SupabaseClient | null = null;
-
   constructor(private media: MediaStorage) {}
-
-  /**
-   * Built lazily rather than in the constructor so the API still boots without
-   * storage credentials. Everything else — content, properties, news, leads,
-   * auth — works without them; only uploads should fail, and only when tried.
-   */
-  private get supabase(): SupabaseClient {
-    if (!this.client) {
-      const url = process.env.SUPABASE_URL;
-      const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-      if (!url || !key) {
-        throw new InternalServerErrorException(
-          'Uploads are not configured: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set.',
-        );
-      }
-      // The service-role key bypasses RLS, which is the point — the API has
-      // already checked that the caller is an authenticated admin, and the
-      // storage policies still expect a Supabase Auth session that no longer
-      // exists now that auth lives here.
-      this.client = createClient(url, key, {
-        auth: { persistSession: false, autoRefreshToken: false },
-      });
-    }
-    return this.client;
-  }
 
   async upload(kind: UploadKind, file: Express.Multer.File, folder: string): Promise<{ url: string }> {
     if (!file) throw new BadRequestException('No file received. Send it as multipart field "file".');
@@ -121,29 +93,13 @@ export class UploadsService {
     const { bucket, path, contentType, cacheControl } = prepare();
     await assertContentMatches(kind, file.buffer, contentType);
 
-    // On AWS (STORAGE_DRIVER=s3) the same bucket/path lands under the website
-    // bucket's media/ prefix. Supabase stays the default until the cutover.
-    if (this.media.enabled) {
-      try {
-        return { url: await this.media.put(bucket, path, file.buffer, contentType, `public, max-age=${cacheControl}`) };
-      } catch (err) {
-        this.logger.error(`Upload to s3 ${bucket}/${path} failed: ${(err as Error).message}`);
-        throw new InternalServerErrorException('Upload failed. Please try again.');
-      }
-    }
-
-    const { error } = await this.supabase.storage.from(bucket).upload(path, file.buffer, {
-      contentType,
-      cacheControl,
-      upsert: false,
-    });
-
-    if (error) {
-      this.logger.error(`Upload to ${bucket}/${path} failed: ${error.message}`);
+    // S3 in production (STORAGE_DRIVER=s3), a local folder otherwise; see MediaStorage.
+    try {
+      return { url: await this.media.put(bucket, path, file.buffer, contentType, `public, max-age=${cacheControl}`) };
+    } catch (err) {
+      this.logger.error(`Upload to ${this.media.driver} ${bucket}/${path} failed: ${(err as Error).message}`);
       throw new InternalServerErrorException('Upload failed. Please try again.');
     }
-
-    return { url: this.supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl };
   }
 
   private plainImage(file: Express.Multer.File, folder: string) {

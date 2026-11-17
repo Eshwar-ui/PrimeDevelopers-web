@@ -298,3 +298,16 @@ test('admin and auth responses get no-store; public ones are left alone', async 
   assert.equal(run(true, '/api/auth/login'), 'private, no-store');
   assert.equal(run(true, '/api/properties'), undefined);
 });
+
+test('admin, auth and upload paths say no-store before any guard runs, refusals included', async () => {
+  const { noStoreForPrivatePaths } = await import('../src/common/no-store.interceptor');
+  const run = (path: string) => {
+    const headers: Record<string, string> = {};
+    let called = false;
+    noStoreForPrivatePaths({ path }, { setHeader: (k, v) => (headers[k] = v) }, () => (called = true));
+    assert.equal(called, true);
+    return headers['Cache-Control'];
+  };
+  for (const p of ['/api/admin/leads', '/api/admin', '/api/auth/login', '/api/uploads/image']) assert.equal(run(p), 'private, no-store', p);
+  for (const p of ['/api/properties', '/api/administrator', '/api/img/images/a.jpg', '/']) assert.equal(run(p), undefined, p);
+});

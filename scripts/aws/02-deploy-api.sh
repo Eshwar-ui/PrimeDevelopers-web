@@ -255,13 +255,29 @@ if sudo -u ubuntu HOME=/home/ubuntu pm2 describe prime-website-api >/dev/null 2>
   sudo -u ubuntu HOME=/home/ubuntu pm2 save >/dev/null
   echo "moved prime-website-api off ubuntu's pm2"
 fi
+# The process definition lives in an ecosystem file so its limits change with a
+# deploy; a plain pm2 restart keeps whatever the app was first started with.
+#   - 400M: image resizes peaked at 316-374 MB, and every restart in pm2.log was a
+#     memory kill at the old 300M (Nov 2026). The host has ~650 MB for both APIs.
+#   - MALLOC_ARENA_MAX=2: glibc otherwise keeps the memory libvips frees in
+#     per-thread arenas, so RSS only ratchets up (sharp's documented advice).
+#   - a 192 MB V8 heap: the JS heap collects well before RSS nears the limit.
+cat > \$APP/shared/ecosystem.config.js <<ECO
+module.exports = { apps: [{
+  name: 'prime-website-api',
+  script: '\$APP/current/apps/api/dist/main.js',
+  cwd: '\$APP/current/apps/api',
+  max_memory_restart: '400M',
+  node_args: '--max-old-space-size=192',
+  env: { NODE_ENV: 'production', MALLOC_ARENA_MAX: '2' },
+}] };
+ECO
+chown prime-website:prime-website \$APP/shared/ecosystem.config.js
 if as_app pm2 describe prime-website-api >/dev/null 2>&1; then
-  as_app pm2 restart prime-website-api --update-env 2>&1 | tail -1
-else
-  as_app env NODE_ENV=production pm2 start \$APP/current/apps/api/dist/main.js --name prime-website-api \
-    --cwd \$APP/current/apps/api --max-memory-restart 300M 2>&1 | tail -1
-  env PATH=\$PATH:/usr/bin pm2 startup systemd -u prime-website --hp \$APP >/dev/null 2>&1 || true
+  as_app pm2 delete prime-website-api >/dev/null
 fi
+as_app pm2 start \$APP/shared/ecosystem.config.js 2>&1 | tail -1
+env PATH=\$PATH:/usr/bin pm2 startup systemd -u prime-website --hp \$APP >/dev/null 2>&1 || true
 as_app pm2 save >/dev/null
 
 healthy=no

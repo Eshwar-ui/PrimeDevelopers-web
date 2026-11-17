@@ -1,7 +1,7 @@
 // Apply the Reagan Crossing Phase I page copy, SEO fields, pricing and FAQs
 // from Reagan_Crossing_SEO_AEO_GEO_Page_Pack.docx, Part 2 (archive/, gitignored).
 //
-// Through the live API, as an admin — not Supabase. Same pattern as
+// Through the live API, as an admin, never the database directly. Same pattern as
 // update-centro-content.mjs: logs in, reads the current record at SLUG, and
 // saves with PATCH /admin/properties/:id, carrying `expectedUpdatedAt` so it
 // refuses to overwrite an edit made meanwhile. Dry run by default; --commit
@@ -129,7 +129,7 @@ const fullPatch = (detail) => ({
       body: 'Phase I wraps the Journey Parkway corner with retail, office, drive-thru and daycare buildings. Select a building to see its units, sizes and who is already open there.',
     },
     // `buildings` itself is untouched — it is the unit inventory and Prime
-    // Tracker owns it (see sync-centro-from-tracker.mjs for the equivalent
+    // Tracker owns it (see the tracker sync for the equivalent
     // flow). The pack lists only Building 3 and flags "[add the other
     // Phase I buildings]"; this script cannot add buildings it has no data for.
   },

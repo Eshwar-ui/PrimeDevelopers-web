@@ -1,0 +1,26 @@
+# Local development database: Postgres 15, the same major version as production
+# (RDS). Port 5433 on loopback, so it never clashes with a Postgres already on
+# 5432 and is unreachable from the network.
+#
+#   pnpm db:up     start it and apply the Prisma migrations
+#   pnpm db:seed   copy the live CMS content into it (scripts/db-seed-from-prod.sh)
+#   pnpm db:down   stop it (data stays in the volume)
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: prime
+      POSTGRES_PASSWORD: prime
+      POSTGRES_DB: prime_website
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - prime_website_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U prime -d prime_website"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  prime_website_dev:

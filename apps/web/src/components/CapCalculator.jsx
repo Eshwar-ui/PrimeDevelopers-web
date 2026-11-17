@@ -7,12 +7,12 @@ import PrimePill from './PrimePill'
 // sheet's formulas row for row; this file only lays them out.
 //
 // Kept deliberately plain (the client asked for "simple"): two or three
-// choices on the left, the answers on the right, no charts beyond one bar that
-// sets the monthly rent against the monthly loan payment — the comparison
-// every other figure on the panel follows from.
+// choices on the left, the answers on the right: what it takes to buy, the
+// monthly EMI and how much of it is interest, then the year-1 and hold ledgers.
 
 const wholeDollars = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
 const plain = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 })
+const grouped = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 })
 
 // A true minus sign, not a hyphen: in a column of tabular figures the hyphen is
 // short enough to miss, and a cash flow read as positive is the one mistake
@@ -73,7 +73,6 @@ export default function CapCalculator({
     setChoice((c) => ({ ...c, [key]: value }))
     onUserChange?.()
   }
-  const barMax = Math.max(n.monthlyRent, n.monthlyPayment) || 1
 
   return (
     <section
@@ -96,16 +95,7 @@ export default function CapCalculator({
           {picker && <div className="mt-8">{picker}</div>}
 
           <div className={`${picker ? 'mt-6' : 'mt-8'} flex flex-col gap-6`}>
-            <Slider
-              label="Purchase price"
-              value={n.price}
-              min={Math.round((listing.price * SLIDERS.price.minShare) / SLIDERS.price.step) * SLIDERS.price.step}
-              max={Math.round((listing.price * SLIDERS.price.maxShare) / SLIDERS.price.step) * SLIDERS.price.step}
-              step={SLIDERS.price.step}
-              onChange={set('price')}
-              format={money}
-              note={n.price !== listing.price ? `Listed at ${money(listing.price)}` : null}
-            />
+            <PriceField key={listing.slug} listed={listing.price} value={n.price} onChange={set('price')} />
             <Slider label="Interest rate" value={n.rate} {...SLIDERS.rate} onChange={set('rate')} format={pct} />
             <Slider label="Loan term" value={n.term} {...SLIDERS.term} onChange={set('term')} format={years} />
             <Slider label="Down payment" value={n.down} {...SLIDERS.down} onChange={set('down')} format={pct} />
@@ -142,18 +132,20 @@ export default function CapCalculator({
 
         <div className="lg:col-span-8">
           <div className="overflow-hidden rounded-2xl border border-line bg-surface">
-            {/* The three a visitor decides on: what it takes to buy, what it
-                costs each month, and what it brings in each month. */}
+            {/* The three a visitor decides on: what it takes to buy, what the
+                loan costs each month, and how much of that is interest. */}
             <dl className="grid divide-y divide-[var(--color-line)] sm:grid-cols-3 sm:divide-x sm:divide-y-0">
               <Headline label="Cash needed at close" value={money(n.cashAtClose)} note={`${money(n.downPayment)} down + ${money(n.closingCost)} closing`} />
-              <Headline label="Monthly loan payment" value={money(n.monthlyPayment)} note={`on a ${money(n.loan)} loan`} />
-              <Headline label="Monthly rent" value={money(n.monthlyRent)} note={`${money(n.rent)} a year, NNN`} />
+              <Headline label="Monthly EMI" value={money(n.monthlyPayment)} note={`on a ${money(n.loan)} loan at ${pct(n.rate)}`} />
+              <Headline
+                label="Monthly interest"
+                value={money(n.monthlyInterest)}
+                note={`${money(n.monthlyPrincipal)} to principal · ${money(n.totalInterest)} interest over ${years(n.term)}`}
+              />
             </dl>
 
             <div className="border-t border-line px-5 py-6 sm:px-7">
-              <Bar label="Rent in" value={n.monthlyRent} max={barMax} tone="bg-accent" />
-              <Bar label="Loan payment out" value={n.monthlyPayment} max={barMax} tone="bg-ember" />
-              <p className="mt-4 font-body text-[14px] text-content/70">
+              <p className="font-body text-[14px] text-content/70">
                 {n.cashFlowOngoing >= 0 ? (
                   <>
                     Rent covers the loan with <span className="font-bold text-content">{money(n.cashFlowOngoing / 12)}</span> a
@@ -250,6 +242,63 @@ function Slider({ label, value, min, max, step, onChange, format, note }) {
   )
 }
 
+/**
+ * The purchase price as a typed field. A slider could only reach a band around
+ * the listed price in $1,000 steps; a visitor bringing their own offer wants to
+ * type it. Cleared, it falls back to the listed price.
+ */
+function PriceField({ listed, value, onChange }) {
+  const id = useId()
+  const noteId = useId()
+  const [draft, setDraft] = useState(() => grouped.format(value))
+  const edited = value !== listed
+
+  const update = (text) => {
+    const digits = text.replace(/[^\d]/g, '').slice(0, 12)
+    setDraft(digits ? grouped.format(Number(digits)) : '')
+    onChange(digits && Number(digits) > 0 ? Number(digits) : null)
+  }
+
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-3">
+        <label htmlFor={id} className="font-body text-[11px] font-bold uppercase tracking-[0.15em] text-content/55">
+          Purchase price
+        </label>
+        {edited && (
+          <button
+            type="button"
+            onClick={() => update(String(listed))}
+            className="min-h-11 font-body text-[12px] font-semibold text-accent underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:min-h-0"
+          >
+            Reset
+          </button>
+        )}
+      </div>
+      <div className="relative mt-2.5">
+        <span aria-hidden className="pointer-events-none absolute inset-y-0 left-4 flex items-center font-display text-[16px] font-semibold text-content/55">
+          $
+        </span>
+        <input
+          id={id}
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          value={draft}
+          placeholder={grouped.format(listed)}
+          onChange={(e) => update(e.target.value)}
+          onBlur={() => !draft && setDraft(grouped.format(listed))}
+          aria-describedby={noteId}
+          className="min-h-12 w-full rounded-2xl border border-line bg-surface py-3 pl-8 pr-4 font-display text-[16px] font-semibold tabular-nums text-content transition-colors duration-200 hover:border-content/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        />
+      </div>
+      <p id={noteId} className="mt-2 font-body text-[12px] tabular-nums text-content/55">
+        {edited ? `Listed at ${money(listed)}` : 'The listed price. Type your own offer to run it.'}
+      </p>
+    </div>
+  )
+}
+
 function Headline({ label, value, note }) {
   return (
     <div className="px-5 py-6 sm:px-7">
@@ -258,23 +307,6 @@ function Headline({ label, value, note }) {
         {value}
       </dd>
       <dd className="mt-2 font-body text-[12px] tabular-nums text-content/55">{note}</dd>
-    </div>
-  )
-}
-
-function Bar({ label, value, max, tone }) {
-  return (
-    <div className="mt-3 first:mt-0">
-      <div className="flex items-baseline justify-between gap-3 font-body text-[13px]">
-        <span className="text-content/65">{label}</span>
-        <span className="font-semibold tabular-nums text-content">{money(value)}/mo</span>
-      </div>
-      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-content/8">
-        <div
-          className={`h-full rounded-full ${tone} transition-[width] duration-500 ease-out motion-reduce:transition-none`}
-          style={{ width: `${Math.max(2, (value / max) * 100)}%` }}
-        />
-      </div>
     </div>
   )
 }

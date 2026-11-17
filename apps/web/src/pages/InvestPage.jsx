@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
@@ -9,6 +9,7 @@ import Testimonials from '../components/Testimonials'
 import { useCapListings, useCapListingsSection, CapListingGrid } from '../components/CapListings'
 import CapCalculator from '../components/CapCalculator'
 import { lenis } from '../hooks/useSmoothScroll'
+import { scrollToElement } from '../lib/scrollToElement'
 import { sized } from '../lib/images'
 import { calculatorSettings, canRunNumbers, capDealName as dealName, capScenarioContext } from '../lib/capCalculator'
 import { capStatus } from '../lib/capListings'
@@ -105,6 +106,9 @@ export default function InvestPage() {
   const scope = useRef(null)
   const [track, setTrack] = useState('')
   const { hash } = useLocation()
+  const [searchParams] = useSearchParams()
+  // `?deal=<slug>` is what a CAP deal card's "Run the numbers" links with.
+  const dealParam = searchParams.get('deal') ?? ''
 
   // A cross-route hash does not scroll on its own: the browser resolves the
   // fragment while React Router is still mounting this page, so by the time the
@@ -116,7 +120,8 @@ export default function InvestPage() {
   // before its offset means anything. Lenis owns the scroll position when it
   // has mounted; `scrollIntoView` covers the routes where it has not.
   useEffect(() => {
-    if (!hash) return
+    // #calculator has its own effect below: it only exists once the deals have loaded.
+    if (!hash || hash === '#calculator') return
     const id = hash.slice(1)
     const frame = requestAnimationFrame(() => {
       const target = document.getElementById(id)
@@ -148,14 +153,33 @@ export default function InvestPage() {
     const settings = calculatorSettings(capSection.calculator)
     return capListings.filter((l) => canRunNumbers(l, settings))
   }, [capListings, capSection])
-  const [calcSlug, setCalcSlug] = useState('')
+  const [calcSlug, setCalcSlug] = useState(dealParam)
   const calcListing = runnable.find((l) => l.slug === calcSlug) ?? runnable[0] ?? null
+  const calcReady = Boolean(calcListing)
 
   // What the visitor ran, for the inquiry form. Only once they have changed
   // the deal or a loan choice: attaching the opening defaults would tell
   // sales about a scenario nobody looked at.
   const [calcNumbers, setCalcNumbers] = useState(null)
   const [calcTouched, setCalcTouched] = useState(false)
+
+  // Arriving from a deal card: open the calculator on that deal. A deal the
+  // visitor picked on purpose counts as a scenario they ran.
+  useEffect(() => {
+    if (!dealParam) return
+    setCalcSlug(dealParam)
+    if (runnable.some((l) => l.slug === dealParam)) setCalcTouched(true)
+  }, [dealParam, runnable])
+
+  // The calculator mounts only once the deals have loaded, so the scroll waits
+  // for it; scrollToElement keeps correcting while images above it settle.
+  useEffect(() => {
+    if (hash !== '#calculator' || !calcReady) return
+    // The section's inner grid, not the section: Lenis adds the section's
+    // scroll-margin on top of the offset, which scrollToElement then reads as
+    // off target. The grid has none, and lands the heading under the navbar.
+    return scrollToElement(document.getElementById('calculator')?.firstElementChild, { offset: -90 })
+  }, [hash, calcReady, dealParam])
   const scenario = calcTouched ? capScenarioContext(calcListing, calcNumbers) : null
 
   const scrollToInquire = (event) => {

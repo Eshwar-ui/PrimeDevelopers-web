@@ -2,7 +2,6 @@ import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowsVertical, Buildings, Camera, MapPin, Ruler, Tag } from '@phosphor-icons/react'
 import { formatArea, formatClearHeight, formatUnitLabel, getUnitImages, unitPath, unitPrices } from '../lib/units'
-import { tierNameFor } from '../lib/unitTiers'
 import { unitStatusMeta } from '../lib/unitStatus'
 import { hasInfoPage } from '../lib/infoSets'
 import { sized } from '../lib/images'
@@ -66,7 +65,7 @@ function PhotoChip({ children, className = '', ...props }) {
   )
 }
 
-export default function UnitCard({ property, building, unit, sf, className = '' }) {
+export default function UnitCard({ property, building, unit, className = '' }) {
   const navigate = useNavigate()
   // The card's whole job is to hand the visitor *this* unit, not the property
   // it happens to sit in. The plan section reads both parameters, focuses the
@@ -82,7 +81,6 @@ export default function UnitCard({ property, building, unit, sf, className = '' 
   }
   const area = formatArea(unit.size)
   const prices = unitPrices(unit)
-  const tierName = tierNameFor(sf)
   const chips = specChips(unit)
   const priceLines = [
     ['Lease price', prices.lease],
@@ -164,23 +162,15 @@ export default function UnitCard({ property, building, unit, sf, className = '' 
       <div className="flex flex-1 flex-col gap-3 p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            {/* A unit with no size on file reaches this card rather than being
-                dropped, so neither the tier nor the area is guaranteed. The
-                heading falls back to the unit's own label — and when it does,
-                the line below drops the label rather than printing it
-                twice. */}
+            {/* The unit number is the heading: visitors and the leasing team
+                refer to a unit by its number, not by its size tier ("Large",
+                "Small"), which several cards at one address would share. */}
             <h3 className="font-display text-lg font-bold leading-tight text-content">
-              {tierName ?? (unit.label ? `Unit ${formatUnitLabel(unit.label)}` : 'Unit')}
+              {unit.label ? `Unit ${formatUnitLabel(unit.label)}` : 'Unit'}
             </h3>
-            {(area || (tierName && unit.label)) && (
+            {area && (
               <p className="mt-0.5 font-body text-[13px] text-content/70">
-                {area && <span className="numeral">{area}</span>}
-                {area && tierName && unit.label && (
-                  <span aria-hidden className="px-1.5 text-content/40">
-                    ·
-                  </span>
-                )}
-                {tierName && unit.label && <span className="numeral">{formatUnitLabel(unit.label)}</span>}
+                <span className="numeral">{area}</span>
               </p>
             )}
           </div>

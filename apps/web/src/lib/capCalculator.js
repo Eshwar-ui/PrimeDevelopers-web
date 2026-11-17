@@ -42,13 +42,12 @@ export const CALCULATOR_DEFAULTS = {
   holdYears: 5, // B13
 }
 
-// Slider bounds. Sliders replace the sheet's dropdowns, so these are wider than
+// Slider bounds (the price is a typed field, not a slider). Sliders replace the sheet's dropdowns, so these are wider than
 // its lists (6.5-7%, 20-30 years) while still opening on the sheet's values.
 export const SLIDERS = {
   rate: { min: 4, max: 10, step: 0.25 },
   term: { min: 10, max: 30, step: 1 },
   down: { min: 10, max: 50, step: 1 },
-  price: { minShare: 0.5, maxShare: 1.5, step: 1000 },
 }
 
 const SCALARS = ['escalation', 'appreciation', 'closingCost', 'landValue', 'depreciationYears', 'holdYears']
@@ -128,7 +127,7 @@ export function loanBalance(rate, paid, payment, principal) {
  * `choice` is `{ rate, term, down }` in percent / years / percent.
  */
 export function capNumbers(listing, settings, choice) {
-  // `choice.price` is the purchase price a visitor has dragged the slider to;
+  // `choice.price` is the purchase price a visitor has typed in;
   // the rent stays the deal's, so the CAP rate moves with the price.
   const price = isNumber(choice?.price) && choice.price > 0 ? choice.price : listing?.price
   const rent = listing?.rent
@@ -148,6 +147,11 @@ export function capNumbers(listing, settings, choice) {
   const loan = price - downPayment // row 27
   const monthlyPayment = pmt(monthlyRate, payments, loan) // row 30
   const annualDebt = monthlyPayment * 12 // row 31
+  // Not on the sheet: how the first EMI splits, and what the loan costs in
+  // interest over its whole term — what a visitor weighs a rate by.
+  const monthlyInterest = loan * monthlyRate
+  const monthlyPrincipal = monthlyPayment - monthlyInterest
+  const totalInterest = Math.max(0, monthlyPayment * payments - loan)
   // Row 24 is "Expenses excluding mortgage", 0 for every tenant: on a NNN
   // lease the tenant carries taxes, insurance and maintenance, so NOI is the
   // rent. The listing's `nnn` figure is what the tenant pays, not the owner.
@@ -188,6 +192,9 @@ export function capNumbers(listing, settings, choice) {
     loan,
     monthlyPayment,
     annualDebt,
+    monthlyInterest,
+    monthlyPrincipal,
+    totalInterest,
     noi,
     closingCost,
     cashAtClose: downPayment + closingCost,
@@ -229,7 +236,7 @@ export function capScenarioContext(listing, numbers) {
   if (!listing || !numbers) return null
   return {
     calculatorDeal: capDealName(listing),
-    // The price the visitor ran, which the price slider lets differ from the
+    // The price the visitor ran, which the price field lets differ from the
     // listing's — the one figure sales cannot work out from the deal name.
     calculatorPrice: usd.format(numbers.price),
     calculatorTerms: `${numbers.rate}% · ${numbers.term} yrs · ${numbers.down}% down`,

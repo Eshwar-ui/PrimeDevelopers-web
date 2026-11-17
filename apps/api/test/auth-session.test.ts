@@ -66,6 +66,10 @@ test('a token from before the deadline format gets a fresh 30 days on its next u
 });
 
 test('a JWT secret under 32 characters stops the API at boot', async () => {
+  // Importing app.module runs ConfigModule.forRoot, which validates the real
+  // process.env. CI has no apps/api/.env, so give it placeholders first.
+  process.env.DATABASE_URL ??= 'postgres://test';
+  process.env.JWT_ACCESS_SECRET ??= SECRET;
   const { validateEnv } = await import('../src/app.module');
   assert.throws(() => validateEnv({ DATABASE_URL: 'postgres://x', JWT_ACCESS_SECRET: 'short-secret' }), /at least 32/);
   assert.doesNotThrow(() => validateEnv({ DATABASE_URL: 'postgres://x', JWT_ACCESS_SECRET: SECRET }));

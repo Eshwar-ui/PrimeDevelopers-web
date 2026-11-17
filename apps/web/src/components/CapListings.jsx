@@ -5,6 +5,7 @@ import { useSection } from '../context/ContentContext'
 import { sized } from '../lib/images'
 import { capStatus, formatSf, unitLine } from '../lib/capListings'
 import { CAP_LISTINGS_DEFAULTS } from '../data/capListings'
+import { calculatorSettings, canRunNumbers } from '../lib/capCalculator'
 import ArrowRight from './ArrowRight'
 import { dealCards } from '../lib/reveal'
 
@@ -70,11 +71,15 @@ export function TenantLogo({ src, alt, className = '' }) {
 export function CapListingCard({ listing }) {
   const sf = formatSf(listing.sf)
   const unit = unitLine(listing.units)
+  const section = useCapListingsSection()
+  const runnable = useMemo(() => canRunNumbers(listing, calculatorSettings(section.calculator)), [listing, section])
 
+  // An article with the deal link stretched over it, rather than one big
+  // <Link>: the card also carries "Run the numbers", and a link cannot sit
+  // inside another link.
   return (
-    <Link
-      to={`/cap-properties/${listing.slug}`}
-      className="group flex flex-col overflow-hidden rounded-panel border border-line bg-surface transition-[border-color,box-shadow] duration-500 ease-brand hover:border-ember/60 hover:shadow-[0_36px_80px_-52px_rgba(0,0,0,0.85)] focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-accent"
+    <article
+      className="group relative flex flex-col overflow-hidden rounded-panel border border-line bg-surface transition-[border-color,box-shadow] duration-500 ease-brand hover:border-ember/60 hover:shadow-[0_36px_80px_-52px_rgba(0,0,0,0.85)]"
     >
       <div className="relative aspect-[4/3] overflow-hidden bg-surface-alt">
         {listing.photo && (
@@ -92,7 +97,14 @@ export function CapListingCard({ listing }) {
 
       <div className="flex flex-1 flex-col p-6">
         <div className="flex items-start justify-between gap-3">
-          <h3 className="font-display text-lg font-bold leading-tight text-content">{listing.tenant}</h3>
+          <h3 className="font-display text-lg font-bold leading-tight text-content">
+            <Link
+              to={`/cap-properties/${listing.slug}`}
+              className="outline-none after:absolute after:inset-0 after:rounded-panel focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-accent"
+            >
+              {listing.tenant}
+            </Link>
+          </h3>
           <ArrowRight className="mt-1 size-4 shrink-0 text-content/40 transition-[color,transform,translate,scale,rotate] duration-300 ease-brand group-hover:translate-x-1 group-hover:text-ember" />
         </div>
         {listing.address && (
@@ -120,8 +132,18 @@ export function CapListingCard({ listing }) {
             )}
           </dl>
         )}
+        {runnable && (
+          <Link
+            to={`/enterprise/invest?deal=${encodeURIComponent(listing.slug)}#calculator`}
+            className={`relative z-10 ${unit || sf ? 'mt-4' : 'mt-auto pt-5'} inline-flex min-h-11 items-center gap-2 self-start font-body text-[13px] font-semibold text-accent underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent`}
+          >
+            Run the numbers
+            <span aria-hidden>→</span>
+            <span className="sr-only"> for {listing.tenant}</span>
+          </Link>
+        )}
       </div>
-    </Link>
+    </article>
   )
 }
 

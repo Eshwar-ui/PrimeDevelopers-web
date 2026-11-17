@@ -21,6 +21,10 @@ const SEEN_KEY = 'prime:splash-seen'
 function shouldPlay() {
   if (typeof window === 'undefined') return false
   if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return false
+  // A link straight to a section (/enterprise/invest#calculator) is a request
+  // to see that section. The intro locks scrolling while it plays, so the page
+  // would open at the top instead.
+  if (window.location.hash.length > 1) return false
   try {
     return !sessionStorage.getItem(SEEN_KEY)
   } catch {

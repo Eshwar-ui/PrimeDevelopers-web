@@ -2,7 +2,7 @@
 // labels can be saved, and where a unit sits on the plan or in 3D. Kept out of
 // the component files so Fast Refresh can keep hot-swapping those.
 // With its extension, so the API's tests can import this file under plain Node.
-import { getUnits, reconcile, unitLabelParts } from '../lib/units.js'
+import { getUnits, makeUnit, reconcile, unitLabelParts } from '../lib/units.js'
 
 /** The hint under every field, and on every control, the tracker sync owns. */
 export const TRACKER_MANAGED = 'Managed by Prime Tracker'
@@ -17,6 +17,13 @@ export const isTrackerUnit = (unit) => (unit?.trackerUnitIds ?? []).length > 0
  * forces it. Units for these buildings are added in the tracker.
  */
 export const isTrackerBuilding = (building) => Boolean(building?.trackerBuildingId)
+
+/**
+ * A unit added by hand. In a tracker-linked building it is marked website-only:
+ * the sync keeps it (and never removes it), and adopts it, photographs and pin
+ * included, if the tracker later lists the same unit.
+ */
+export const newUnitIn = (building, label) => ({ ...makeUnit(label), ...(isTrackerBuilding(building) ? { websiteOnly: true } : {}) })
 
 /**
  * The unit fields Prime Tracker feeds, mirroring TRACKED_FIELDS in the API's

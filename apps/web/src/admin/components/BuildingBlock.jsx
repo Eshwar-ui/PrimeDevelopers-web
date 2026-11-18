@@ -9,10 +9,10 @@ import { STATUS_WORDS, unitHas3D, unitMissing } from '../completeness'
 import FloorPlanPositionPicker from './FloorPlanPositionPicker'
 import ModelManager from './ModelManager'
 import UnitFields from './UnitFields'
-import { applyUnitChange, getUnits, makeUnit, nextUnitLabel, reconcile, unitFormId } from '../../lib/units'
+import { applyUnitChange, getUnits, nextUnitLabel, reconcile, unitFormId } from '../../lib/units'
 import { FIGURES, makeInvestment, hasInvestmentData } from '../../lib/investment'
 import { mergeFields, resolveNext } from '../adminUtils'
-import { TRACKER_MANAGED, isTrackerBuilding, isTrackerUnit, siteLinkedUnits, unitLabelProblems, unitPlacement } from '../unitChecks'
+import { TRACKER_MANAGED, newUnitIn, isTrackerBuilding, isTrackerUnit, siteLinkedUnits, unitLabelProblems, unitPlacement } from '../unitChecks'
 
 // One building's full editor.
 //
@@ -114,7 +114,7 @@ export default function BuildingBlock({ building, onChange, folder, siteModel = 
               once it has photographs, refuse the whole property's push. */}
           {isTrackerBuilding(building) && (
             <p className="mb-3 text-xs text-bone-3">
-              Units in this building come from Prime Tracker. A missing unit is added there and appears after the next sync.
+              Units in this building come from Prime Tracker. A unit you add here is website-only: the sync keeps it, and takes it over if the tracker lists it later.
             </p>
           )}
           <UnitsWorkspace
@@ -123,7 +123,7 @@ export default function BuildingBlock({ building, onChange, folder, siteModel = 
             building={building}
             selected={selectedUnit}
             onSelect={setSelectedUnit}
-            onAdd={isTrackerBuilding(building) ? null : () => setUnits((list) => [...list, makeUnit(nextUnitLabel(list))])}
+            onAdd={() => setUnits((list) => [...list, newUnitIn(building, nextUnitLabel(list))])}
             onMove={(i, by) =>
               setUnits((list) => {
                 const next = [...list]

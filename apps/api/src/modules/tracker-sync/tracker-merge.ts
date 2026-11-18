@@ -179,6 +179,13 @@ export type WebsiteUnit = Record<string, any> & {
   trackerSync?: boolean;
   /** Fed fields the editor changed away from the tracker's value. */
   trackerOverrides?: string[];
+  /**
+   * Added in the website's admin to a tracker-linked building, for a unit the
+   * tracker does not list. The sync keeps it as it is and never removes it. If
+   * the tracker later lists the same unit, the row is adopted like any other
+   * (photographs and pin kept) and this flag is dropped.
+   */
+  websiteOnly?: boolean;
 };
 
 export type WebsiteBuilding = Record<string, any> & {
@@ -1089,6 +1096,11 @@ export function mergeSnapshot(
     }
   }
 
+  const adopted = new Set<WebsiteUnit>([
+    ...[...continuedBy.keys()].map((p) => p.unit),
+    ...[...absorbedInto.keys()].map((p) => p.unit),
+  ]);
+
   const buildings = websiteBuildings.map((building, b) => {
     const pair = pairs.get(b);
     if (!pair) {
@@ -1170,7 +1182,15 @@ export function mergeSnapshot(
       merged.set(slot, next);
       if (carried) report.carried.push({ label: row.label, from: donors.map((d) => String(d.unit.label ?? '')) });
       if (next.status === 'available') report.available += row.ids.length;
+      // The tracker lists this unit now; it is no longer the website's alone.
+      if (next.websiteOnly) delete next.websiteOnly;
       unitList.push(next);
+    }
+
+    // Units added on the website that the tracker does not list stay as they
+    // are, after the tracker's rows. They are not in the tracker's headline counts.
+    for (const unit of building.unitList ?? []) {
+      if (unit.websiteOnly && !adopted.has(unit)) unitList.push(unit);
     }
 
     totalUnits += report.units;
@@ -1196,6 +1216,8 @@ export function mergeSnapshot(
   let removedRows = 0;
   let existingRows = 0;
   for (const prior of priors) {
+    // A website-only unit the tracker never adopted is kept above, not removed.
+    if (prior.unit.websiteOnly && !adopted.has(prior.unit)) continue;
     const report = reports.get(prior.b)!;
     const label = String(prior.unit.label ?? '');
     existingRows++;

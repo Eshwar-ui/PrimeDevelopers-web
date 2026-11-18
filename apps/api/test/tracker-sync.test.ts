@@ -1634,3 +1634,40 @@ test('L5: a snapshot no newer than the last one applied is refused; a newer one 
     assert.equal(writes.syncs[0].report.generatedAt, newer.generatedAt);
   }
 });
+
+test('a website-only unit survives every sync, and is adopted once the tracker lists it', () => {
+  const floorPlans = {
+    buildings: [
+      {
+        building: 'Building 9',
+        trackerBuildingId: 'b9',
+        unitList: [
+          { label: '908', status: 'available', trackerUnitIds: ['u908'] },
+          { label: '999', status: 'available', images: ['x.jpg'], websiteOnly: true },
+        ],
+      },
+    ],
+  };
+  const totals = { buildings: 1, sold: 0, available: 1 };
+  const first = mergeSnapshot(
+    floorPlans,
+    totals,
+    snapshot([{ id: 'b9', name: 'Building 9', units: [unit('u908', '908', 'AVAILABLE')] }]),
+  );
+  assert.deepEqual(labels(first.floorPlans), ['908', '999']);
+  assert.equal(row(first.floorPlans, 0, '999').websiteOnly, true);
+  assert.deepEqual(row(first.floorPlans, 0, '999').images, ['x.jpg']);
+  assert.deepEqual(first.report.buildings[0].removed, []);
+
+  const adopted = mergeSnapshot(
+    first.floorPlans,
+    first.totals,
+    snapshot([
+      { id: 'b9', name: 'Building 9', units: [unit('u908', '908', 'AVAILABLE'), unit('u999', '999', 'AVAILABLE')] },
+    ]),
+  );
+  assert.deepEqual(labels(adopted.floorPlans), ['908', '999']);
+  assert.equal(row(adopted.floorPlans, 0, '999').websiteOnly, undefined);
+  assert.deepEqual(row(adopted.floorPlans, 0, '999').trackerUnitIds, ['u999']);
+  assert.deepEqual(row(adopted.floorPlans, 0, '999').images, ['x.jpg']);
+});

@@ -25,16 +25,28 @@ function DealPicker({ listings, value, onChange }) {
   const selected = listings.find((l) => l.slug === value)
   return (
     <div>
-      <label htmlFor="invest-calculator-deal" className="font-body text-[11px] font-bold uppercase tracking-[0.15em] text-content/55">
-        CAP deal
-      </label>
+      <div className="flex items-baseline justify-between gap-3">
+        <label htmlFor="invest-calculator-deal" className="font-body text-[11px] font-bold uppercase tracking-[0.15em] text-content/55">
+          CAP deal
+        </label>
+        <Link
+          to="/cap-properties"
+          className="inline-flex min-h-11 items-center font-body text-[12px] font-semibold text-accent underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:min-h-0"
+        >
+          See all deals →
+        </Link>
+      </div>
       <div className="relative mt-2.5">
         <select
           id="invest-calculator-deal"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="min-h-12 w-full appearance-none rounded-2xl border border-line bg-surface py-3 pl-4 pr-11 font-display text-[16px] font-semibold sm:text-[15px] text-content transition-colors duration-200 hover:border-content/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className={`min-h-12 w-full appearance-none rounded-2xl border border-line bg-surface py-3 pl-4 pr-11 font-display text-[16px] font-semibold sm:text-[15px] ${selected ? 'text-content' : 'text-content/55'} transition-colors duration-200 hover:border-content/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent`}
         >
+          {/* No deal is chosen for the visitor: the calculator waits for one. */}
+          <option value="" disabled>
+            Select a CAP deal
+          </option>
           {listings.map((l) => (
             <option key={l.slug} value={l.slug}>
               {dealName(l)}
@@ -154,8 +166,9 @@ export default function InvestPage() {
     return capListings.filter((l) => canRunNumbers(l, settings))
   }, [capListings, capSection])
   const [calcSlug, setCalcSlug] = useState(dealParam)
-  const calcListing = runnable.find((l) => l.slug === calcSlug) ?? runnable[0] ?? null
-  const calcReady = Boolean(calcListing)
+  // No fallback to the first deal: the picker opens empty and the visitor chooses.
+  const calcListing = runnable.find((l) => l.slug === calcSlug) ?? null
+  const calcReady = runnable.length > 0
 
   // What the visitor ran, for the inquiry form. Only once they have changed
   // the deal or a loan choice: attaching the opening defaults would tell
@@ -178,7 +191,7 @@ export default function InvestPage() {
     // The section's inner grid, not the section: Lenis adds the section's
     // scroll-margin on top of the offset, which scrollToElement then reads as
     // off target. The grid has none, and lands the heading under the navbar.
-    return scrollToElement(document.getElementById('calculator')?.firstElementChild, { offset: -90 })
+    return scrollToElement(() => document.getElementById('calculator')?.firstElementChild, { offset: -90 })
   }, [hash, calcReady, dealParam])
   const scenario = calcTouched ? capScenarioContext(calcListing, calcNumbers) : null
 
@@ -311,18 +324,17 @@ export default function InvestPage() {
       {/* After the deals rather than before them: a visitor arrives here having
           seen the prices and cap rates, and the next question is what one of
           them would cost to carry. `#calculator` is linkable. */}
-      {calcListing && (
+      {calcReady && (
         <CapCalculator
           id="calculator"
           className="border-t border-line"
           listing={calcListing}
           section={capSection}
           heading="Run the numbers on a CAP deal"
-          intro="Choose a deal, a rate and a loan term. Every figure uses that deal’s price and rent, and the same formulas as our loan price sheet."
           picker={
             <DealPicker
               listings={runnable}
-              value={calcListing.slug}
+              value={calcListing?.slug ?? ''}
               onChange={(slug) => {
                 setCalcSlug(slug)
                 setCalcTouched(true)

@@ -48,7 +48,12 @@ const TOLERANCE = 4
  * the page has stopped moving underneath it.
  */
 export function scrollToElement(target, { offset = -96 } = {}) {
-  if (!target) return () => {}
+  // `target` may be a function that finds the element. Pass one when the
+  // element can be replaced while the scroll is still settling (a section that
+  // re-mounts once the page's content has loaded): a captured node would be
+  // detached by then, and scrolling to it does nothing.
+  const resolve = typeof target === 'function' ? target : () => target
+  if (!resolve()) return () => {}
 
   // Where we want the element to sit in the viewport. `offset` is Lenis's
   // sign convention — negative lifts the target down the screen, clear of the
@@ -60,8 +65,17 @@ export function scrollToElement(target, { offset = -96 } = {}) {
   let attempts = 0
   let lastScrollY = null
 
+  const go = () => {
+    const el = resolve()
+    if (!el) return
+    if (lenis.current) lenis.current.scrollTo(el, { offset })
+    else el.scrollIntoView({ block: 'start' })
+  }
+
   const aim = () => {
-    const viewportTop = target.getBoundingClientRect().top
+    const el = resolve()
+    if (!el) return
+    const viewportTop = el.getBoundingClientRect().top
     const offTarget = Math.abs(viewportTop - wantViewportTop) > TOLERANCE
     // Only correct once the page has come to rest. Re-issuing while Lenis is
     // still easing towards the target restarts the animation every tick and
@@ -76,8 +90,7 @@ export function scrollToElement(target, { offset = -96 } = {}) {
     if (!atRest || attempts >= MAX_ATTEMPTS) return
 
     attempts += 1
-    if (lenis.current) lenis.current.scrollTo(target, { offset })
-    else target.scrollIntoView({ block: 'start' })
+    go()
   }
 
   // Clears the pending first scroll as well as the correction loop. Clearing
@@ -106,8 +119,7 @@ export function scrollToElement(target, { offset = -96 } = {}) {
     // First pass unconditionally: `atRest` cannot be true yet, there being no
     // previous reading to compare against.
     attempts += 1
-    if (lenis.current) lenis.current.scrollTo(target, { offset })
-    else target.scrollIntoView({ block: 'start' })
+    go()
 
     const startedAt = Date.now()
     interval = setInterval(() => {

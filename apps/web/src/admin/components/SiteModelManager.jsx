@@ -52,12 +52,13 @@ const TABS = [
  * roads can be created straight from a tap, the same "arm-then-click, or
  * tap-to-create" pattern ModelManager already uses for units.
  */
-export default function SiteModelManager({ buildings, onBuildingsChange, siteModel, onSiteModelChange, folder }) {
+export default function SiteModelManager({ buildings: buildingsProp, onBuildingsChange, siteModel, onSiteModelChange, folder }) {
   const inputRef = useRef(null)
   const [pending, setPending] = useState(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
 
+  const buildings = useMemo(() => (Array.isArray(buildingsProp) ? buildingsProp : []), [buildingsProp])
   const [tab, setTab] = useState('buildings')
   const [armedBuildingLabel, setArmedBuildingLabel] = useState('')
   const [armedUnitLabel, setArmedUnitLabel] = useState('')

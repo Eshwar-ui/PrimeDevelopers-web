@@ -109,6 +109,13 @@ export default function PropertyEditPage() {
     if (!original || loadedFor.current === id) return
     loadedFor.current = id
     const detail = { ...emptyDetail(), ...(original.detail ?? {}) }
+    // A saved floorPlans without a buildings array would replace the default
+    // wholesale and crash the 3D site-model panel (buildings.filter).
+    detail.floorPlans = {
+      ...emptyDetail().floorPlans,
+      ...(detail.floorPlans ?? {}),
+      buildings: Array.isArray(detail.floorPlans?.buildings) ? detail.floorPlans.buildings : [],
+    }
     const next = {
       ...original,
       gallery: Array.isArray(original.gallery) ? original.gallery : [],

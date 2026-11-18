@@ -6,8 +6,8 @@ import UnitFields from './UnitFields'
 import { OrientationControl } from './ModelManager'
 import { STATUS_WORDS } from '../completeness'
 import { resolveNext } from '../adminUtils'
-import { formatBytes, getUnits, makeUnit, nextUnitLabel, siteUnitKey } from '../../lib/units'
-import { isTrackerBuilding, isTrackerUnit } from '../unitChecks'
+import { formatBytes, getUnits, nextUnitLabel, siteUnitKey } from '../../lib/units'
+import { isTrackerUnit, newUnitIn } from '../unitChecks'
 import {
   bindSiteMeshes,
   buildingMeshes,
@@ -95,8 +95,6 @@ export default function SiteModelManager({ buildings: buildingsProp, onBuildings
 
   const armedBuilding = findBuildingByLabel(buildings, armedBuildingLabel)
   const armedBuildingUnits = armedBuilding ? getUnits(armedBuilding) : []
-  // Units of a tracker-linked building are the tracker's to add.
-  const trackerBuilding = isTrackerBuilding(armedBuilding)
 
   /** Step 1's result: how many shapes each building has. Step 2 opens only a building with some. */
   const shapeCounts = useMemo(
@@ -197,9 +195,9 @@ export default function SiteModelManager({ buildings: buildingsProp, onBuildings
    *  once a building is armed on the Units tab, since a unit has to belong to
    *  one. */
   const createUnitFromTap = (names) => {
-    if (!armedBuilding || trackerBuilding) return
+    if (!armedBuilding) return
     const label = nextUnitLabel(armedBuildingUnits)
-    const unitList = [...(armedBuilding.unitList ?? []), makeUnit(label)]
+    const unitList = [...(armedBuilding.unitList ?? []), newUnitIn(armedBuilding, label)]
     const nextBuildings = buildings.map((b) => (b === armedBuilding ? { ...b, unitList } : b))
     onBuildingsChange(nextBuildings)
     setModel(bindSiteMeshes(model, names, { kind: 'unit', buildingLabel: armedBuildingLabel, unitLabel: label }))
@@ -307,10 +305,10 @@ export default function SiteModelManager({ buildings: buildingsProp, onBuildings
   }
 
   const addUnitFromPanel = () => {
-    if (!armedBuilding || trackerBuilding) return
+    if (!armedBuilding) return
     const label = nextUnitLabel(armedBuilding.unitList ?? [])
     onBuildingsChange(
-      buildingsRef.current.map((b) => (b === armedBuilding ? { ...b, unitList: [...(b.unitList ?? []), makeUnit(label)] } : b)),
+      buildingsRef.current.map((b) => (b === armedBuilding ? { ...b, unitList: [...(b.unitList ?? []), newUnitIn(armedBuilding, label)] } : b)),
     )
     setArmedUnitLabel(label)
   }
@@ -597,8 +595,7 @@ export default function SiteModelManager({ buildings: buildingsProp, onBuildings
                       {u.label || '(unlabelled)'}
                     </button>
                   ))}
-                  {!trackerBuilding && (
-                    <button
+                  <button
                       type="button"
                       onClick={() => {
                         setTagUnitMode((on) => !on)
@@ -610,8 +607,7 @@ export default function SiteModelManager({ buildings: buildingsProp, onBuildings
                       }`}
                     >
                       {tagUnitMode ? 'Done — stop creating new units' : '+ New unit by tapping'}
-                    </button>
-                  )}
+                  </button>
                 </div>
               )}
             </div>
@@ -727,7 +723,7 @@ export default function SiteModelManager({ buildings: buildingsProp, onBuildings
               onArm={(label) => setArmedUnitLabel(armedUnitLabel === label ? '' : label)}
               onUntag={(label) => untagUnit(armedBuildingLabel, label)}
               onChangeUnit={changeUnit}
-              onAdd={trackerBuilding ? null : addUnitFromPanel}
+              onAdd={addUnitFromPanel}
               folder={`${folder}/unit-images`}
             />
           )}
